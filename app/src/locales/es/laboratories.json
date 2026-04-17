@@ -1,0 +1,174 @@
+{
+  "laboratories": {
+    "header": {
+      "title": {
+        "value": "Laboratorios Interactivos",
+        "context": "Main page title heading",
+        "maxLength": 50
+      },
+      "subtitle": {
+        "value": "Aprende a través de teoría, práctica práctica y proyectos creativos",
+        "context": "Description below main title",
+        "maxLength": 100
+      }
+    },
+    "stats": {
+      "modulesCompleted": {
+        "label": "Módulos Completados",
+        "context": "Stat card label showing completion progress",
+        "maxLength": 30
+      },
+      "totalXPEarned": {
+        "label": "Puntos de Experiencia Total",
+        "context": "Stat card label showing experience points",
+        "maxLength": 30
+      },
+      "currentPhase": {
+        "label": "Fase Actual",
+        "context": "Stat card label showing active learning phase",
+        "maxLength": 30
+      },
+      "progress": {
+        "label": "Progreso",
+        "context": "Stat card label showing overall progress bar",
+        "maxLength": 20
+      },
+      "notApplicable": {
+        "value": "N/A",
+        "context": "Placeholder when no phase is selected",
+        "maxLength": 5
+      }
+    },
+    "learningPath": {
+      "title": {
+        "value": "Ruta de Aprendizaje",
+        "context": "Section title for module list sidebar",
+        "maxLength": 30
+      }
+    },
+    "phases": {
+      "theory": {
+        "label": "Teoría",
+        "title": "{{lessonTitle}} - Teoría",
+        "description": "Aprende los conceptos básicos con presentaciones visuales",
+        "context": "First learning phase",
+        "completionText": "Completar Fase de Teoría - Obtener {{xpReward}} XP",
+        "keyConceptHeader": "Concepto Clave:",
+        "keyConceptText": "Esta fase de teoría introduce conceptos fundamentales a través del material de la lección. Toma notas y comprende los principios básicos antes de pasar a la fase interactiva.",
+        "slidesInfo": "📊 <strong>{{slideCount}}</strong> diapositivas en esta lección"
+      },
+      "interactive": {
+        "label": "Interactivo",
+        "title": "{{lessonTitle}} - Exploración 3D",
+        "description": "Explora conceptos en 3D con aprendizaje interactivo",
+        "context": "Second learning phase with 3D visualization",
+        "instructions": "Explora conceptos 3D de forma interactiva. Rota, amplía e interactúa con modelos 3D para profundizar tu comprensión.",
+        "completionText": "Completar Fase Interactiva - Obtener {{xpReward}} XP",
+        "successMessage": "✓ ¡Excelente! Has explorado el contenido interactivo. Haga clic a continuación para continuar.",
+        "lockedButtonText": "Completar Fase Interactiva - Obtener {{xpReward}} XP",
+        "designPrompt": "Interactúa con modelos 3D para entender los conceptos"
+      },
+      "activity": {
+        "label": "Actividad",
+        "title": "{{lessonTitle}} - Actividad Práctica",
+        "description": "Completa ejercicios interactivos para reforzar tu aprendizaje",
+        "context": "Third learning phase with H5P activities",
+        "instructions": "Completa actividades prácticas para reforzar tu aprendizaje. Estos ejercicios interactivos pondrán a prueba tu conocimiento.",
+        "completionText": "Completar Actividad - Obtener {{xpReward}} XP",
+        "designPrompt": "Prueba tu conocimiento con ejercicios interactivos"
+      },
+      "creative": {
+        "label": "Creativo",
+        "title": "{{lessonTitle}} - Proyecto Creativo",
+        "description": "Aplica tu conocimiento con un proyecto de diseño creativo",
+        "context": "Fourth learning phase with Canva design studio",
+        "completionText": "Enviar Proyecto Creativo - Obtener {{xpReward}} XP",
+        "designPrompt": "Crea una representación visual de lo que aprendiste en \"{{lessonTitle}}\""
+      }
+    },
+    "phaseGeneric": {
+      "completionTime": {
+        "theory": "15 min",
+        "interactive": "20 min",
+        "activity": "25 min",
+        "creative": "30 min",
+        "context": "Estimated time to complete each phase"
+      },
+      "xpReward": {
+        "theory": "50",
+        "interactive": "100",
+        "activity": "150",
+        "creative": "200",
+        "context": "Experience points awarded for completing each phase"
+      }
+    },
+    "moduleCard": {
+      "locked": {
+        "value": "🔒 Bloqueado",
+        "context": "Badge/indicator when module is locked",
+        "maxLength": 20
+      },
+      "completed": {
+        "value": "✓ Completado",
+        "context": "Badge/indicator when module is completed",
+        "maxLength": 20
+      }
+    },
+    "empty": {
+      "noModules": {
+        "title": "Aún No Hay Módulos de Laboratorio",
+        "context": "Heading when no modules are available",
+        "maxLength": 50
+      },
+      "noModulesDescription": {
+        "value": "Los instructores agregarán módulos de laboratorio para que explores. ¡Vuelve pronto!",
+        "context": "Description when no modules are available",
+        "maxLength": 100
+      },
+      "selectModule": {
+        "title": "Selecciona un Módulo",
+        "context": "Heading when no module is selected in main content area",
+        "maxLength": 30
+      },
+      "selectModuleDescription": {
+        "value": "Elige un módulo de aprendizaje de la ruta para comenzar",
+        "context": "Description when no module is selected",
+        "maxLength": 80
+      },
+      "locked": {
+        "title": "Módulo Bloqueado",
+        "context": "Heading when selected module is locked",
+        "maxLength": 30
+      },
+      "lockedDescription": {
+        "value": "Completa el módulo anterior para desbloquear este",
+        "context": "Description when selected module is locked",
+        "maxLength": 80
+      }
+    },
+    "loading": {
+      "text": {
+        "value": "Cargando tus módulos de laboratorio...",
+        "context": "Loading spinner text while fetching data",
+        "maxLength": 50
+      }
+    },
+    "error": {
+      "title": {
+        "value": "Error al Cargar los Laboratorios",
+        "context": "Error message heading",
+        "maxLength": 50
+      },
+      "genericMessage": {
+        "value": "No se pudieron cargar los módulos de laboratorio. Por favor, intenta más tarde.",
+        "context": "Fallback error message",
+        "maxLength": 100
+      },
+      "backendHint": {
+        "value": "Asegúrate de que el servidor backend esté ejecutándose en el puerto 3001.",
+        "context": "Helpful hint for debugging backend issues",
+        "maxLength": 80
+      }
+    }
+  }
+}

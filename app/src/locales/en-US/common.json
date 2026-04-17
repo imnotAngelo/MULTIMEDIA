@@ -1,0 +1,58 @@
+{
+  "metadata.language": {
+    "defaultMessage": "en-US",
+    "description": "Language code for this locale"
+  },
+  "metadata.displayName": {
+    "defaultMessage": "English (United States)",
+    "description": "Display name for this language"
+  },
+  "metadata.direction": {
+    "defaultMessage": "ltr",
+    "description": "Text direction for this language (ltr or rtl)"
+  },
+  "metadata.version": {
+    "defaultMessage": "1.0.0",
+    "description": "Version of translation strings"
+  },
+  "metadata.lastUpdated": {
+    "defaultMessage": "2026-04-14",
+    "description": "Last update date for translations"
+  },
+  "common.buttons.submit": {
+    "defaultMessage": "Submit",
+    "description": "Used on form submission buttons throughout the app"
+  },
+  "common.buttons.cancel": {
+    "defaultMessage": "Cancel",
+    "description": "Used on cancel buttons throughout the app"
+  },
+  "common.buttons.save": {
+    "defaultMessage": "Save",
+    "description": "Used on save buttons throughout the app"
+  },
+  "common.buttons.delete": {
+    "defaultMessage": "Delete",
+    "description": "Used on delete buttons throughout the app"
+  },
+  "common.buttons.edit": {
+    "defaultMessage": "Edit",
+    "description": "Used on edit buttons throughout the app"
+  },
+  "common.buttons.loading": {
+    "defaultMessage": "Loading...",
+    "description": "Text shown while loading"
+  },
+  "common.labels.xpReward": {
+    "defaultMessage": "XP",
+    "description": "Experience points abbreviation"
+  },
+  "common.time.minutes": {
+    "defaultMessage": "min",
+    "description": "Minutes abbreviation"
+  },
+  "dashboard.header.title": {
+    "defaultMessage": "Dashboard",
+    "description": "Main dashboard page title"
+  }
+}

@@ -1,0 +1,10 @@
+export { InstructorDashboard } from './Dashboard';
+export { CoursesManagement as UnitsManagement } from './CoursesManagement';
+export { ViewLesson } from './ViewLesson';
+export { InstructorAssessments } from './AssessmentsManagement';
+export { CreateAssessment } from './CreateAssessment';
+export { QuizManagement } from './QuizManagement';
+export { QuizMethodPicker } from './QuizMethodPicker';
+export { CreateQuiz } from './CreateQuiz';
+export { AutoGenerateQuiz } from './AutoGenerateQuiz';
+export { CanvaSubmissions } from './CanvaSubmissions';

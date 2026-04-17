@@ -1,0 +1,218 @@
+{
+  "laboratories.header.title": {
+    "defaultMessage": "Interactive Laboratories",
+    "description": "Main page title heading"
+  },
+  "laboratories.header.subtitle": {
+    "defaultMessage": "Learn through theory, hands-on practice, and creative projects",
+    "description": "Description below main title"
+  },
+  "laboratories.stats.modulesCompleted": {
+    "defaultMessage": "Modules Completed",
+    "description": "Stat card label showing completion progress"
+  },
+  "laboratories.stats.totalXPEarned": {
+    "defaultMessage": "Total XP Earned",
+    "description": "Stat card label showing experience points"
+  },
+  "laboratories.stats.currentPhase": {
+    "defaultMessage": "Current Phase",
+    "description": "Stat card label showing active learning phase"
+  },
+  "laboratories.stats.progress": {
+    "defaultMessage": "Progress",
+    "description": "Stat card label showing overall progress bar"
+  },
+  "laboratories.stats.notApplicable": {
+    "defaultMessage": "N/A",
+    "description": "Placeholder when no phase is selected"
+  },
+  "laboratories.learningPath.title": {
+    "defaultMessage": "Learning Path",
+    "description": "Section title for module list sidebar"
+  },
+  "laboratories.phases.theory.label": {
+    "defaultMessage": "Theory",
+    "description": "Learning phase label for theory section"
+  },
+  "laboratories.phases.theory.title": {
+    "defaultMessage": "{lessonTitle} - Theory",
+    "description": "First learning phase title"
+  },
+  "laboratories.phases.theory.description": {
+    "defaultMessage": "Learn the core concepts with visual presentations",
+    "description": "Description of theory phase"
+  },
+  "laboratories.phases.theory.completionText": {
+    "defaultMessage": "Complete Theory Phase - Earn {xpReward} XP",
+    "description": "Button text to complete theory phase"
+  },
+  "laboratories.phases.theory.keyConceptHeader": {
+    "defaultMessage": "Key Concept:",
+    "description": "Header label for key concept section"
+  },
+  "laboratories.phases.theory.keyConceptText": {
+    "defaultMessage": "This theory phase introduces fundamental concepts through the lesson material. Take notes and understand the core principles before moving to the interactive phase.",
+    "description": "Instructional text for key concepts"
+  },
+  "laboratories.phases.theory.slidesInfo": {
+    "defaultMessage": "📊 <strong>{slideCount}</strong> slides in this lesson",
+    "description": "Information about number of slides"
+  },
+  "laboratories.phases.interactive.label": {
+    "defaultMessage": "Interactive",
+    "description": "Learning phase label for interactive section"
+  },
+  "laboratories.phases.interactive.title": {
+    "defaultMessage": "{lessonTitle} - 3D Exploration",
+    "description": "Second learning phase title with 3D visualization"
+  },
+  "laboratories.phases.interactive.description": {
+    "defaultMessage": "Explore concepts in 3D with interactive learning",
+    "description": "Description of interactive phase"
+  },
+  "laboratories.phases.interactive.instructions": {
+    "defaultMessage": "Explore 3D concepts interactively. Rotate, zoom, and interact with 3D models to deepen your understanding.",
+    "description": "Instructions for interactive 3D exploration"
+  },
+  "laboratories.phases.interactive.completionText": {
+    "defaultMessage": "Complete Interactive Phase - Earn {xpReward} XP",
+    "description": "Button text to complete interactive phase"
+  },
+  "laboratories.phases.interactive.successMessage": {
+    "defaultMessage": "✓ Great work! You've explored the interactive content. Click below to continue.",
+    "description": "Success message after completing interactive phase"
+  },
+  "laboratories.phases.interactive.lockedButtonText": {
+    "defaultMessage": "Complete Interactive Phase - Earn {xpReward} XP",
+    "description": "Button text when interactive phase is locked"
+  },
+  "laboratories.phases.interactive.designPrompt": {
+    "defaultMessage": "Interact with 3D models to understand the concepts",
+    "description": "Prompt for interactive 3D design"
+  },
+  "laboratories.phases.activity.label": {
+    "defaultMessage": "Activity",
+    "description": "Learning phase label for activity section"
+  },
+  "laboratories.phases.activity.title": {
+    "defaultMessage": "{lessonTitle} - Hands-On Activity",
+    "description": "Third learning phase title with H5P activities"
+  },
+  "laboratories.phases.activity.description": {
+    "defaultMessage": "Complete interactive exercises to reinforce learning",
+    "description": "Description of activity phase"
+  },
+  "laboratories.phases.activity.instructions": {
+    "defaultMessage": "Complete hands-on activities to reinforce your learning. These interactive exercises will test your knowledge.",
+    "description": "Instructions for hands-on activities"
+  },
+  "laboratories.phases.activity.completionText": {
+    "defaultMessage": "Complete Activity - Earn {xpReward} XP",
+    "description": "Button text to complete activity phase"
+  },
+  "laboratories.phases.activity.designPrompt": {
+    "defaultMessage": "Test your knowledge with interactive exercises",
+    "description": "Prompt for interactive exercises"
+  },
+  "laboratories.phases.creative.label": {
+    "defaultMessage": "Creative",
+    "description": "Learning phase label for creative section"
+  },
+  "laboratories.phases.creative.title": {
+    "defaultMessage": "{lessonTitle} - Creative Project",
+    "description": "Fourth learning phase title with Canva design studio"
+  },
+  "laboratories.phases.creative.description": {
+    "defaultMessage": "Apply your knowledge with a creative design project",
+    "description": "Description of creative phase"
+  },
+  "laboratories.phases.creative.completionText": {
+    "defaultMessage": "Submit Creative Project - Earn {xpReward} XP",
+    "description": "Button text to submit creative project"
+  },
+  "laboratories.phases.creative.designPrompt": {
+    "defaultMessage": "Create a visual representation of what you learned in \"{lessonTitle}\"",
+    "description": "Prompt for creative design project"
+  },
+  "laboratories.phaseGeneric.completionTime.theory": {
+    "defaultMessage": "15 min",
+    "description": "Estimated time to complete theory phase"
+  },
+  "laboratories.phaseGeneric.completionTime.interactive": {
+    "defaultMessage": "20 min",
+    "description": "Estimated time to complete interactive phase"
+  },
+  "laboratories.phaseGeneric.completionTime.activity": {
+    "defaultMessage": "25 min",
+    "description": "Estimated time to complete activity phase"
+  },
+  "laboratories.phaseGeneric.completionTime.creative": {
+    "defaultMessage": "30 min",
+    "description": "Estimated time to complete creative phase"
+  },
+  "laboratories.phaseGeneric.xpReward.theory": {
+    "defaultMessage": "50",
+    "description": "Experience points for completing theory phase"
+  },
+  "laboratories.phaseGeneric.xpReward.interactive": {
+    "defaultMessage": "100",
+    "description": "Experience points for completing interactive phase"
+  },
+  "laboratories.phaseGeneric.xpReward.activity": {
+    "defaultMessage": "150",
+    "description": "Experience points for completing activity phase"
+  },
+  "laboratories.phaseGeneric.xpReward.creative": {
+    "defaultMessage": "200",
+    "description": "Experience points for completing creative phase"
+  },
+  "laboratories.moduleCard.locked": {
+    "defaultMessage": "🔒 Locked",
+    "description": "Badge indicator when module is locked"
+  },
+  "laboratories.moduleCard.completed": {
+    "defaultMessage": "✓ Completed",
+    "description": "Badge indicator when module is completed"
+  },
+  "laboratories.empty.noModules": {
+    "defaultMessage": "No Laboratory Modules Yet",
+    "description": "Heading when no modules are available"
+  },
+  "laboratories.empty.noModulesDescription": {
+    "defaultMessage": "Instructors will add laboratory modules for you to explore. Check back soon!",
+    "description": "Description when no modules are available"
+  },
+  "laboratories.empty.selectModule": {
+    "defaultMessage": "Select a Module",
+    "description": "Heading when no module is selected in main content area"
+  },
+  "laboratories.empty.selectModuleDescription": {
+    "defaultMessage": "Choose a learning module from the path to get started",
+    "description": "Description when no module is selected"
+  },
+  "laboratories.empty.locked": {
+    "defaultMessage": "Module Locked",
+    "description": "Heading when selected module is locked"
+  },
+  "laboratories.empty.lockedDescription": {
+    "defaultMessage": "Complete the previous module to unlock this one",
+    "description": "Description when selected module is locked"
+  },
+  "laboratories.loading.text": {
+    "defaultMessage": "Loading your laboratory modules...",
+    "description": "Loading spinner text while fetching data"
+  },
+  "laboratories.error.title": {
+    "defaultMessage": "Error Loading Laboratories",
+    "description": "Error message heading"
+  },
+  "laboratories.error.genericMessage": {
+    "defaultMessage": "Failed to load laboratory modules. Please try again later.",
+    "description": "Fallback error message"
+  },
+  "laboratories.error.backendHint": {
+    "defaultMessage": "Make sure the backend server is running on port 3001.",
+    "description": "Helpful hint for debugging backend issues"
+  }
+}

@@ -1,0 +1,256 @@
+.submissions-list {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.submissions-list.loading,
+.submissions-list.error,
+.submissions-list.empty {
+  padding: 40px;
+  text-align: center;
+  color: #666;
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.submissions-list.error {
+  background: #fee;
+  color: #c33;
+}
+
+.list-header {
+  padding: 20px;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.list-header h3 {
+  margin: 0;
+  color: #222;
+  font-size: 18px;
+}
+
+.filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filter-btn {
+  padding: 6px 12px;
+  background: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.filter-btn:hover {
+  border-color: #5c6ac4;
+  color: #5c6ac4;
+}
+
+.filter-btn.active {
+  background: #5c6ac4;
+  border-color: #5c6ac4;
+  color: white;
+}
+
+.submissions-table {
+  display: flex;
+  flex-direction: column;
+}
+
+.table-header {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 16px;
+  padding: 16px 20px;
+  background: #f9f9f9;
+  border-bottom: 1px solid #e0e0e0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.table-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 16px;
+  padding: 16px 20px;
+  border-bottom: 1px solid #f0f0f0;
+  align-items: center;
+  transition: background 0.3s ease;
+}
+
+.table-row:hover {
+  background: #fafafa;
+}
+
+.col-student,
+.col-project,
+.col-submitted,
+.col-time,
+.col-status,
+.col-grade,
+.col-actions {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+}
+
+.student-info,
+.project-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.student-info strong,
+.project-info strong {
+  color: #222;
+  font-weight: 600;
+}
+
+.student-info small,
+.project-info small {
+  color: #999;
+  font-size: 11px;
+}
+
+.project-info a {
+  color: #5c6ac4;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.project-info a:hover {
+  color: #7c7cff;
+  text-decoration: underline;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-submitted {
+  background: #e8f4fd;
+  color: #0066cc;
+}
+
+.status-reviewed {
+  background: #fff4e6;
+  color: #cc8900;
+}
+
+.status-approved {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.status-rejected {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.col-actions {
+  gap: 8px;
+}
+
+.btn-action {
+  padding: 6px 10px;
+  border: none;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.btn-review,
+.btn-view {
+  background: #5c6ac4;
+  color: white;
+}
+
+.btn-review:hover,
+.btn-view:hover {
+  background: #4a52a0;
+}
+
+.btn-delete {
+  background: #f0f0f0;
+  color: #c33;
+}
+
+.btn-delete:hover {
+  background: #ffebee;
+}
+
+.feedback-section {
+  grid-column: 1 / -1;
+  padding: 12px;
+  background: #f0f5ff;
+  border-left: 3px solid #5c6ac4;
+  border-radius: 4px;
+  margin-top: 8px;
+}
+
+.feedback-section strong {
+  color: #333;
+  font-size: 12px;
+}
+
+.feedback-section p {
+  margin: 6px 0 0 0;
+  color: #555;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+@media (max-width: 768px) {
+  .list-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .table-header,
+  .table-row {
+    grid-template-columns: 1fr;
+  }
+
+  .table-row {
+    border-top: 1px solid #e0e0e0;
+  }
+
+  .filters {
+    width: 100%;
+  }
+
+  .filter-btn {
+    flex: 1;
+    min-width: 0;
+  }
+}
