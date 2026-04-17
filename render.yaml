@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: multimedia-learning-backend
+    runtime: node
+    region: ohio
+    plan: standard
+    buildCommand: cd backend && npm install && npm run build
+    startCommand: cd backend && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        generateValue: true
+      - key: SUPABASE_URL
+        scope: backend
+      - key: SUPABASE_ANON_KEY
+        scope: backend
+      - key: SUPABASE_SERVICE_KEY
+        scope: backend
+      - key: JWT_SECRET
+        scope: backend
+      - key: JWT_REFRESH_SECRET
+        scope: backend
+      - key: JWT_EXPIRATION
+        value: "3600"
+      - key: JWT_REFRESH_EXPIRATION
+        value: "86400"
+      - key: FRONTEND_URL
+        scope: backend
