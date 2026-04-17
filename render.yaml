@@ -11,6 +11,8 @@ services:
         value: production
       - key: PORT
         generateValue: true
+      - key: FRONTEND_URL
+        value: https://multimedia-learning.vercel.app
       - key: SUPABASE_URL
         scope: backend
       - key: SUPABASE_ANON_KEY
@@ -25,5 +27,3 @@ services:
         value: "3600"
       - key: JWT_REFRESH_EXPIRATION
         value: "86400"
-      - key: FRONTEND_URL
-        scope: backend
