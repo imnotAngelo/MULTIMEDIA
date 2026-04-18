@@ -5,7 +5,7 @@ services:
     region: ohio
     plan: standard
     buildCommand: cd backend && npm ci && npm run build
-    startCommand: node backend/dist/server.js
+    startCommand: node backend/start-server.js
     envVars:
       - key: NODE_ENV
         value: production
