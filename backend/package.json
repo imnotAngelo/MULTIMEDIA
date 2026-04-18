@@ -9,7 +9,7 @@
     "setup": "node --import tsx setup-db.ts",
     "dev:all": "concurrently \"npm run dev\" \"npm --prefix lab-publisher start\"",
     "build": "tsc",
-    "start": "node dist/server.js",
+    "start": "tsx src/server.ts",
     "lint": "eslint src --ext .ts"
   },
   "dependencies": {
@@ -26,6 +26,7 @@
     "pdf-parse": "^1.1.1",
     "pdfkit": "^0.18.0",
     "pg": "^8.20.0",
+    "tsx": "^4.7.0",
     "uuid": "^9.0.0"
   },
   "devDependencies": {
@@ -40,7 +41,6 @@
     "@types/pg": "^8.20.0",
     "@types/uuid": "^10.0.0",
     "concurrently": "^9.2.1",
-    "tsx": "^4.7.0",
     "typescript": "^5.3.3"
   }
 }
