@@ -63,7 +63,7 @@ export function UploadLesson({ unitId, onSuccess }: UploadLessonProps) {
       formData.append('description', description);
       formData.append('unitId', unitId);
 
-      const uploadUrl = 'http://localhost:3001/api/lessons/upload-pdf';
+      const uploadUrl = `${import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api'}/lessons/upload-pdf`;
       
       console.log('🚀 [UPLOAD_START_UPLOADLESSON] About to upload to:', uploadUrl);
       console.log('📝 [FORM_DATA_UPLOADLESSON]', {

@@ -1,5 +1,7 @@
 import { authFetch } from './authFetch';
 
+const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api';
+
 export interface LaboratoryProgress {
   id: string;
   user_id: string;
@@ -51,7 +53,6 @@ export async function getLaboratoryProgress(unitId: string): Promise<{
   try {
     const token = await getAuthToken();
 
-    const API_BASE = 'http://localhost:3001/api';
     const response = await fetch(`${API_BASE}/laboratories/${unitId}/progress`, {
       method: 'GET',
       headers: {
@@ -135,7 +136,6 @@ async function getAuthToken(): Promise<string> {
 
   try {
     console.log('🔄 [AUTH] Calling refresh endpoint...');
-    const API_BASE = 'http://localhost:3001/api';
     const response = await fetch(`${API_BASE}/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -214,7 +214,6 @@ export async function updatePhaseProgress(
     console.log('📤 [LAB_PROGRESS] Sending payload:', payload);
 
     // DIRECT FETCH - with explicit Authorization header
-    const API_BASE = 'http://localhost:3001/api';
     const response = await fetch(`${API_BASE}/laboratories/phase-progress`, {
       method: 'POST',
       headers: {
@@ -299,7 +298,6 @@ export async function getPhaseProgressDetails(unitId: string): Promise<PhaseProg
   try {
     const token = await getAuthToken();
 
-    const API_BASE = 'http://localhost:3001/api';
     const response = await fetch(`${API_BASE}/laboratories/${unitId}/phase-details`, {
       method: 'GET',
       headers: {
@@ -327,7 +325,6 @@ export async function getLabStatistics(): Promise<LabStatistics> {
   try {
     const token = await getAuthToken();
 
-    const API_BASE = 'http://localhost:3001/api';
     const response = await fetch(`${API_BASE}/laboratories/stats`, {
       method: 'GET',
       headers: {
@@ -355,7 +352,6 @@ export async function completeLaboratory(unitId: string): Promise<LaboratoryProg
   try {
     const token = await getAuthToken();
 
-    const API_BASE = 'http://localhost:3001/api';
     const response = await fetch(`${API_BASE}/laboratories/complete`, {
       method: 'POST',
       headers: {

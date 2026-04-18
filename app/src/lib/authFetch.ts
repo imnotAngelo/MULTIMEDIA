@@ -1,4 +1,16 @@
-const API_BASE = 'http://localhost:3001/api';
+const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api';
+
+const normalizeUrl = (url: string) => {
+  if (url.startsWith('http://localhost:3001/api')) {
+    return url.replace(/^http:\/\/localhost:3001\/api/, API_BASE);
+  }
+
+  if (url.startsWith('https://localhost:3001/api')) {
+    return url.replace(/^https:\/\/localhost:3001\/api/, API_BASE);
+  }
+
+  return url.startsWith('http') ? url : `${API_BASE}${url}`;
+};
 
 /**
  * A fetch wrapper that automatically refreshes the JWT access token
@@ -9,9 +21,7 @@ export async function authFetch(
   options: RequestInit = {}
 ): Promise<Response> {
   const token = localStorage.getItem('access_token');
-
-  // Prepend API_BASE if URL is relative
-  const fullUrl = url.startsWith('http') ? url : `${API_BASE}${url}`;
+  const fullUrl = normalizeUrl(url);
 
   const headers: Record<string, string> = {
     ...(typeof options.headers === 'object' && options.headers !== null ? options.headers as Record<string, string> : {}),

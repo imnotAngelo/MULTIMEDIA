@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { AlertCircle, CheckCircle, XCircle } from 'lucide-react';
 
+const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api';
+
 type StoredUser = {
   email?: string;
   role?: string;
@@ -24,7 +26,7 @@ export function AuthDiagnostic() {
 
   async function testAPIConnection() {
     try {
-      const response = await fetch('http://localhost:3001/api/health', {
+      const response = await fetch(`${API_BASE}/health`, {
         method: 'GET',
       }).catch(() => null);
 
@@ -138,7 +140,7 @@ export function AuthDiagnostic() {
           </div>
           <div className="text-xs text-slate-400">
             {apiStatus === 'ok'
-              ? 'http://localhost:3001 ✓'
+              ? `${API_BASE} ✓`
               : 'Not available'}
           </div>
         </div>

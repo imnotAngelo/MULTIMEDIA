@@ -4,6 +4,6 @@
   "installCommand": "npm install",
   "outputDirectory": "dist",
   "env": {
-    "VITE_API_URL": "https://multimedia-0ovu.onrender.com/api"
+    "VITE_API_URL": "https://multimedia-2-x7ol.onrender.com/api"
   }
 }
