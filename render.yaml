@@ -14,15 +14,19 @@ services:
       - key: FRONTEND_URL
         value: https://multimedia-learning.vercel.app
       - key: SUPABASE_URL
-        scope: backend
+        value: https://ciopmrwvmgqsbapyljih.supabase.co
       - key: SUPABASE_ANON_KEY
-        scope: backend
+        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNpb3Btcnd2bWdxc2JhcHlsamloIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4ODM2NzYsImV4cCI6MjA5MTQ1OTY3Nn0.GDEKVlXCaHNYvh3gjgNmfZ_IhiPS88_d4e4WNvJVF0U
       - key: SUPABASE_SERVICE_KEY
-        scope: backend
+        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNpb3Btcnd2bWdxc2JhcHlsamloIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTg4MzY3NiwiZXhwIjoyMDkxNDU5Njc2fQ.D-hbJKTyAn4QISrU1n8XxnM6BEMJCEBp3SvpTwFtR9k
       - key: JWT_SECRET
-        scope: backend
+        value: xhQxarDk2erbZN6v0GPHQo/FmEMa5M8Me0jzn9qmS5NAOgXKnuVa8tJzMvO61vepiUx5bQ62RTrkRRN79Dg3DA==
       - key: JWT_REFRESH_SECRET
-        scope: backend
+        value: kL9mP2qR5sT8uV1wX4yZ7aB0cD3eF6gH9iJ2kL5mN8oP1qR4sT7uV0wX3yZ6aC9dE2fG5hI8jK1lM4nO7pQ
+      - key: JWT_EXPIRATION
+        value: 24h
+      - key: JWT_REFRESH_EXPIRATION
+        value: 30d
       - key: JWT_EXPIRATION
         value: "3600"
       - key: JWT_REFRESH_EXPIRATION
