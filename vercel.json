@@ -1,8 +1,8 @@
 {
-  "buildCommand": "npm run build",
-  "devCommand": "npm run dev",
-  "installCommand": "npm install",
-  "outputDirectory": "dist",
+  "buildCommand": "cd app && npm run build",
+  "devCommand": "cd app && npm run dev",
+  "installCommand": "cd app && npm install",
+  "outputDirectory": "app/dist",
   "env": {
     "VITE_API_URL": "https://multimedia-2-x7ol.onrender.com/api"
   },
