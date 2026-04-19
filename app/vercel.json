@@ -8,8 +8,25 @@
   },
   "rewrites": [
     {
-      "source": "/((?!api/|assets/|_next/|favicon|.*\\.).*)",
-      "destination": "/index.html"
+      "source": "/(.*)",
+      "destination": "/index.html",
+      "conditions": [
+        {
+          "key": "pathname",
+          "operator": "notStartsWith",
+          "value": "/api"
+        },
+        {
+          "key": "pathname",
+          "operator": "notStartsWith",
+          "value": "/assets"
+        },
+        {
+          "key": "pathname",
+          "operator": "notStartsWith",
+          "value": "/favicon"
+        }
+      ]
     }
   ]
 }
