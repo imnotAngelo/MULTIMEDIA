@@ -5,5 +5,11 @@
   "outputDirectory": "dist",
   "env": {
     "VITE_API_URL": "https://multimedia-2-x7ol.onrender.com/api"
-  }
+  },
+  "rewrites": [
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
+  ]
 }
