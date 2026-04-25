@@ -54,7 +54,7 @@ const studentNavItems: NavItem[] = [
 const instructorNavItems: NavItem[] = [
   { label: 'Dashboard', href: '/instructor/dashboard', icon: LayoutDashboard },
   { label: 'Units', href: '/instructor/courses', icon: BookOpen },
-  { label: 'Canva Submissions', href: '/instructor/canva-submissions', icon: Palette },
+  { label: 'Laboratory Submissions', href: '/instructor/laboratory-submissions', icon: Palette },
   { 
     label: 'Assessments', 
     href: '/instructor/assessments', 

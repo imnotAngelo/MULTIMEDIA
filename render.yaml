@@ -12,7 +12,7 @@ services:
       - key: PORT
         generateValue: true
       - key: FRONTEND_URL
-        value: https://multimedia-learning.vercel.app
+        value: https://multimedia-learning.vercel.app,http://localhost:5173,http://127.0.0.1:5173
       - key: SUPABASE_URL
         value: https://ciopmrwvmgqsbapyljih.supabase.co
       - key: SUPABASE_ANON_KEY

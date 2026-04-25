@@ -5,8 +5,8 @@ import { authFetch } from '@/lib/authFetch';
 import {
   getSubmissions,
   updateSubmission,
-  type CanvaSubmission,
-} from '@/lib/canvaSubmissionService';
+  type LaboratorySubmission,
+} from '@/lib/laboratorySubmissionService';
 import { ExternalLink, Loader2, Save } from 'lucide-react';
 
 type Unit = { id: string; title?: string; name?: string };
@@ -17,7 +17,7 @@ export function CanvaSubmissions() {
   const [loadingUnits, setLoadingUnits] = useState(true);
   const [loadingSubs, setLoadingSubs] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [submissions, setSubmissions] = useState<CanvaSubmission[]>([]);
+  const [submissions, setSubmissions] = useState<LaboratorySubmission[]>([]);
 
   const selectedUnit = useMemo(
     () => units.find((u) => u.id === selectedUnitId) ?? null,
@@ -76,9 +76,9 @@ export function CanvaSubmissions() {
       <Card className="bg-slate-900/60 border-slate-800 p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-xl font-semibold text-slate-100">Canva Submissions</h1>
+            <h1 className="text-xl font-semibold text-slate-100">Laboratory Submissions</h1>
             <p className="text-sm text-slate-400">
-              Review and grade student Canva project links per laboratory/unit.
+              Review and grade student laboratory submissions per unit.
             </p>
           </div>
 
@@ -137,7 +137,7 @@ function SubmissionCard({
   submission,
   onSave,
 }: {
-  submission: CanvaSubmission;
+  submission: LaboratorySubmission;
   onSave: (id: string, patch: { grade?: number; instructorFeedback?: string; status?: string }) => Promise<void>;
 }) {
   const [grade, setGrade] = useState<number>(submission.grade ?? 0);
@@ -172,11 +172,11 @@ function SubmissionCard({
           <Button asChild variant="outline" className="border-slate-700 text-slate-200">
             <a href={canvaUrl} target="_blank" rel="noreferrer">
               <ExternalLink className="w-4 h-4 mr-2" />
-              Open design
+              Open submission
             </a>
           </Button>
         ) : (
-          <div className="text-xs text-slate-500">No Canva link</div>
+          <div className="text-xs text-slate-500">No link</div>
         )}
       </div>
 

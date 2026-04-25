@@ -22,7 +22,7 @@ import { ThreeJsLearning } from '@/components/laboratories/ThreeJsLearning';
 import { Building3DSimulator } from '@/components/laboratories/Building3DSimulator';
 import { authFetch } from '@/lib/authFetch';
 import { updatePhaseProgress } from '@/lib/laboratoryProgressService';
-import { CanvaSubmissionForm } from '@/components/CanvaSubmissionForm';
+import { LaboratorySubmissionForm } from '@/components/LaboratorySubmissionForm';
 
 interface LabModule {
   id: string;
@@ -825,18 +825,14 @@ function CreativePhase({ module, onComplete }: PhaseProps) {
           <h4 className="font-semibold text-yellow-300 mb-1">Instructor Instructions</h4>
           <p className="text-xs sm:text-sm text-yellow-200">Explain the creative project requirements and provide examples. Encourage students to express their understanding creatively. Review submissions and give constructive feedback.</p>
         </div>
-        <div className="bg-slate-800 rounded-lg p-6 text-center text-slate-400">
-          <p className="mb-2">Creative project submission area will appear here.</p>
-          <p className="text-xs">(This replaces the previous Canva integration.)</p>
+        <div className="bg-slate-800/60 border border-slate-700 rounded-lg p-4 sm:p-6">
+          <LaboratorySubmissionForm
+            laboratoryId={module.unitId}
+            phaseId={4}
+            onSuccess={() => onComplete()}
+          />
         </div>
       </Card>
-      <Button
-        onClick={onComplete}
-        className="w-full bg-gradient-to-r from-pink-600 to-pink-500 hover:from-pink-700 hover:to-pink-600 py-5 sm:py-6 text-sm sm:text-base"
-      >
-        <Palette className="w-4 h-4 mr-2" />
-        Submit Creative Project - Earn {module.xpReward} XP
-      </Button>
       {module.status === 'completed' && (
         <div className="text-center text-xs text-green-400 font-semibold">✓ Progress Saved</div>
       )}

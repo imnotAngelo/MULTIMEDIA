@@ -32,6 +32,7 @@ interface Unit {
   title: string;
   description: string;
   createdAt: string;
+  labExists?: boolean;
 }
 
 interface Lesson {
@@ -95,6 +96,7 @@ function UnitSection({
   onToggle,
   onLessonClick,
   onUploadClick,
+  onCreateLaboratory,
 }: {
   unit: Unit;
   lessons: Lesson[];
@@ -103,6 +105,7 @@ function UnitSection({
   onToggle: () => void;
   onLessonClick: (lessonId: string) => void;
   onUploadClick: (unitId: string) => void;
+  onCreateLaboratory: (unitId: string) => void;
 }) {
   const unitLessons = lessons.filter(l => l.unitId === unit.id);
 
@@ -160,14 +163,24 @@ function UnitSection({
           )}
 
           <div className="border-t border-slate-800 p-2">
-            <Button
-              onClick={() => onUploadClick(unit.id)}
-              variant="outline"
-              className="w-full text-xs border-slate-700 text-slate-300 hover:bg-slate-800/50"
-            >
-              <Upload className="w-3 h-3 mr-1" />
-              Add Lesson
-            </Button>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <Button
+                onClick={() => onUploadClick(unit.id)}
+                variant="outline"
+                className="w-full text-xs border-slate-700 text-slate-300 hover:bg-slate-800/50"
+              >
+                <Upload className="w-3 h-3 mr-1" />
+                Add Lesson
+              </Button>
+              <Button
+                onClick={() => onCreateLaboratory(unit.id)}
+                disabled={unit.labExists || unitLessons.length === 0}
+                className="w-full text-xs bg-violet-600 hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                title={unitLessons.length === 0 ? 'Upload at least one lesson first' : undefined}
+              >
+                {unit.labExists ? 'Laboratory created' : 'Create laboratory'}
+              </Button>
+            </div>
           </div>
         </div>
       )}
@@ -204,17 +217,33 @@ export function CoursesManagement() {
       setLoading(true);
       console.log('📚 Fetching units from API...');
       
-      const unitsResponse = await authFetch('http://localhost:3001/api/units');
+      const unitsResponse = await authFetch('/units');
       const unitsData = await unitsResponse.json();
       console.log('✅ Units fetched:', unitsData.data || []);
 
       const unitList: Unit[] = unitsData.success ? (unitsData.data || []) : [];
-      setUnits(unitList);
+      
+      // Check which units already have laboratories created
+      const unitListWithLabs: Unit[] = [];
+      for (const unit of unitList) {
+        try {
+          const existsRes = await authFetch(`/laboratories/exists/${unit.id}`);
+          const existsJson = await existsRes.json();
+          unitListWithLabs.push({
+            ...unit,
+            labExists: !!existsJson?.data?.exists,
+          });
+        } catch {
+          unitListWithLabs.push({ ...unit, labExists: false });
+        }
+      }
+
+      setUnits(unitListWithLabs);
 
       const allLessons: Lesson[] = [];
 
-      for (const unit of unitList) {
-        const lessonsResponse = await authFetch(`http://localhost:3001/api/units/${unit.id}/lessons`);
+      for (const unit of unitListWithLabs) {
+        const lessonsResponse = await authFetch(`/units/${unit.id}/lessons`);
         const lessonsData = await lessonsResponse.json();
         if (lessonsData.success) {
           const lessons = lessonsData.data || [];
@@ -284,6 +313,24 @@ export function CoursesManagement() {
       toast.error('Failed to create unit');
     } finally {
       setCreatingUnit(false);
+    }
+  };
+
+  const handleCreateLaboratory = async (unitId: string) => {
+    try {
+      const res = await authFetch('/laboratories/create-from-unit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ unitId }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json?.success) {
+        throw new Error(json?.error?.message || 'Failed to create laboratory');
+      }
+      toast.success('Laboratory created');
+      setUnits((prev) => prev.map((u) => (u.id === unitId ? { ...u, labExists: true } : u)));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to create laboratory');
     }
   };
 
@@ -466,6 +513,7 @@ export function CoursesManagement() {
                     setSelectedUnitForUpload(unitId);
                     setShowUploadDialog(true);
                   }}
+                  onCreateLaboratory={handleCreateLaboratory}
                 />
               ))}
             </div>

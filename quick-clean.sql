@@ -1,0 +1,2 @@
+-- QUICK CLEAN COMMAND (Copy and paste this single line into Supabase SQL Editor)
+DELETE FROM assessment_submissions; DELETE FROM assessments; DELETE FROM lesson_comments; DELETE FROM lesson_slides; DELETE FROM lessons; DELETE FROM modules; DELETE FROM courses; DELETE FROM laboratory_progress; DELETE FROM laboratory_phase_progress; DELETE FROM canva_submissions; DELETE FROM laboratories;

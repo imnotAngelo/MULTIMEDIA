@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { getSubmissions, updateSubmission } from "@/lib/canvaSubmissionService";
+import { getSubmissions, updateSubmission } from "@/lib/laboratorySubmissionService";
 import "./InstructorReview.css";
 
 interface InstructorReviewProps {
@@ -12,13 +12,13 @@ interface InstructorReviewProps {
 interface Submission {
   id: string;
   project_title: string;
-  canva_url: string;
-  file_name: string;
+  canva_url?: string;
+  file_name?: string;
   submitted_at: string;
   status: string;
-  grade: number;
-  time_spent_minutes: number;
-  instructor_feedback: string;
+  grade?: number;
+  time_spent_minutes?: number;
+  instructor_feedback?: string;
   student?: {
     display_name: string;
     email: string;

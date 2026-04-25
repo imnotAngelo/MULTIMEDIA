@@ -1,5 +1,6 @@
-export const API_BASE_URL =
-  import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api';
+import { API_BASE_URL } from '@/lib/apiConfig';
+
+export { API_BASE_URL };
 
 interface ApiResponse<T> {
   success: boolean;
@@ -78,7 +79,10 @@ class ApiService {
       let errorCode = 'API_ERROR';
 
       if (err.message.includes('Failed to fetch') || err.message.includes('Network')) {
-        errorMessage = `Cannot connect to API server at ${API_BASE_URL}. Make sure the backend is running on port 3001.`;
+        const proxied = !API_BASE_URL.startsWith('http');
+        errorMessage = proxied
+          ? 'Cannot reach the API. Start the backend (port 3001), e.g. from the repo: npm run dev --prefix backend, or: npm run dev (root) with both app and API.'
+          : `Cannot connect to the API at ${API_BASE_URL}. If it should be local, start the backend on port 3001.`;
         errorCode = 'CONNECTION_ERROR';
       }
 

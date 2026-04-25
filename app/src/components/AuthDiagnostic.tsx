@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AlertCircle, CheckCircle, XCircle } from 'lucide-react';
 
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api';
+import { API_BASE_URL as API_BASE } from '@/lib/apiConfig';
 
 type StoredUser = {
   email?: string;

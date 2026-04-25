@@ -1,0 +1,11 @@
+{
+  "name": "interactive-learning",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -k -n api,web -c blue,magenta \"npm run dev --prefix backend\" \"npm run dev --prefix app\"",
+    "dev:web-online": "concurrently -k -n api,web -c blue,magenta \"npm run dev --prefix backend\" \"npm run dev:online --prefix app\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

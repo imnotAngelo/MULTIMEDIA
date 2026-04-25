@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { authFetch } from '@/lib/authFetch';
+import { API_BASE_URL } from '@/lib/apiConfig';
 
 interface UploadLessonProps {
   unitId: string;
@@ -63,7 +64,7 @@ export function UploadLesson({ unitId, onSuccess }: UploadLessonProps) {
       formData.append('description', description);
       formData.append('unitId', unitId);
 
-      const uploadUrl = `${import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api'}/lessons/upload-pdf`;
+      const uploadUrl = `${API_BASE_URL}/lessons/upload-pdf`;
       
       console.log('🚀 [UPLOAD_START_UPLOADLESSON] About to upload to:', uploadUrl);
       console.log('📝 [FORM_DATA_UPLOADLESSON]', {

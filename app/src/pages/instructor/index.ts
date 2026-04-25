@@ -7,4 +7,4 @@ export { QuizManagement } from './QuizManagement';
 export { QuizMethodPicker } from './QuizMethodPicker';
 export { CreateQuiz } from './CreateQuiz';
 export { AutoGenerateQuiz } from './AutoGenerateQuiz';
-export { CanvaSubmissions } from './CanvaSubmissions';
+export { LaboratorySubmissions } from './LaboratorySubmissions';

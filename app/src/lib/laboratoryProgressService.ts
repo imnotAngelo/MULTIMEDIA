@@ -1,6 +1,5 @@
+import { API_BASE_URL as API_BASE } from './apiConfig';
 import { authFetch } from './authFetch';
-
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api';
 
 export interface LaboratoryProgress {
   id: string;

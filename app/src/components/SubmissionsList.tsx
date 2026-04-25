@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { getSubmissions, deleteSubmission } from "@/lib/canvaSubmissionService";
+import { getSubmissions, deleteSubmission } from "@/lib/laboratorySubmissionService";
 import "./SubmissionsList.css";
 
 interface SubmissionsListProps {
@@ -11,12 +11,12 @@ interface SubmissionsListProps {
 interface Submission {
   id: string;
   project_title: string;
-  canva_url: string;
-  file_name: string;
+  canva_url?: string;
+  file_name?: string;
   submitted_at: string;
   status: string;
-  grade: number;
-  time_spent_minutes: number;
+  grade?: number;
+  time_spent_minutes?: number;
   student?: {
     display_name: string;
     email: string;
@@ -74,7 +74,7 @@ export const SubmissionsList: React.FC<SubmissionsListProps> = ({
     return <span className={statusClass}>{statusLabel}</span>;
   };
 
-  const getGradeDisplay = (grade: number | null) => {
+  const getGradeDisplay = (grade: number | null | undefined) => {
     if (grade === null || grade === undefined) return "—";
     return `${grade}%`;
   };

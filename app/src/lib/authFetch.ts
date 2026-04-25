@@ -1,15 +1,16 @@
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api';
+import { API_BASE_URL as API_BASE } from './apiConfig';
+
+const LOCAL_3001_API = /^https?:\/\/(localhost|127\.0\.0\.1):3001\/api/;
 
 const normalizeUrl = (url: string) => {
-  if (url.startsWith('http://localhost:3001/api')) {
-    return url.replace(/^http:\/\/localhost:3001\/api/, API_BASE);
+  if (LOCAL_3001_API.test(url)) {
+    return url.replace(LOCAL_3001_API, API_BASE);
   }
 
-  if (url.startsWith('https://localhost:3001/api')) {
-    return url.replace(/^https:\/\/localhost:3001\/api/, API_BASE);
+  if (url.startsWith('http')) {
+    return url;
   }
-
-  return url.startsWith('http') ? url : `${API_BASE}${url}`;
+  return `${API_BASE}${url.startsWith('/') ? url : `/${url}`}`;
 };
 
 /**

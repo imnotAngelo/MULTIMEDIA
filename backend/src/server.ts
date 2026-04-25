@@ -8,25 +8,63 @@ import lessonRoutes from './routes/lessons.js';
 import unitsRoutes from './routes/units.js';
 import assessmentRoutes from './routes/assessments.js';
 import laboratoryRoutes from './routes/laboratories.js';
-import canvaSubmissionRoutes from './routes/canvaSubmissions.js';
+import laboratorySubmissionRoutes from './routes/laboratorySubmissions.js';
 import { errorHandler } from './middleware/auth.js';
 import { supabase } from './config/supabase.js';
 
 dotenv.config();
 
 const app: Express = express();
-const PORT = process.env.PORT || 3001;
+const PORT = Number(process.env.PORT) || 3001;
+/** Bind address: 0.0.0.0 for Render/Docker; override with HOST=127.0.0.1 if needed */
+const HOST = process.env.HOST || '0.0.0.0';
 
-// Middleware
-// Allow localhost on any port for development, use FRONTEND_URL in production
-const corsOrigin = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' 
-  ? 'http://localhost:5173' 
-  : /^http:\/\/localhost:\d+$/);
+function isLocalDevOrigin(origin: string): boolean {
+  return /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+}
 
-app.use(cors({
-  origin: corsOrigin,
-  credentials: true,
-}));
+function parseAllowedOrigins(): Set<string> {
+  const raw =
+    process.env.ALLOWED_ORIGINS?.trim() ||
+    process.env.FRONTEND_URL?.trim() ||
+    '';
+  if (!raw) return new Set();
+  return new Set(
+    raw
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+  );
+}
+
+// CORS: comma-separated FRONTEND_URL or ALLOWED_ORIGINS; in non-production, localhost is always allowed
+const allowedOrigins = parseAllowedOrigins();
+
+const corsOriginResolver = (
+  origin: string | undefined,
+  callback: (err: Error | null, allow?: boolean) => void
+) => {
+  if (!origin) {
+    callback(null, true);
+    return;
+  }
+  if (allowedOrigins.has(origin)) {
+    callback(null, true);
+    return;
+  }
+  if (process.env.NODE_ENV !== 'production' && isLocalDevOrigin(origin)) {
+    callback(null, true);
+    return;
+  }
+  callback(null, false);
+};
+
+app.use(
+  cors({
+    origin: corsOriginResolver,
+    credentials: true,
+  })
+);
 
 // Apply JSON parser everywhere EXCEPT multipart upload routes
 // Skip for /api/lessons/upload-pdf so multer can handle multipart/form-data
@@ -56,7 +94,10 @@ app.use('/api/lessons', lessonRoutes);
 app.use('/api/units', unitsRoutes);
 app.use('/api/assessments', assessmentRoutes);
 app.use('/api/laboratories', laboratoryRoutes);
-app.use('/api/canva-submissions', canvaSubmissionRoutes);
+// Laboratory submissions (new canonical path)
+app.use('/api/laboratory-submissions', laboratorySubmissionRoutes);
+// Backward-compatible alias (old Canva path)
+app.use('/api/canva-submissions', laboratorySubmissionRoutes);
 console.log('✅ All routes registered');
 
 // Health check
@@ -104,9 +145,12 @@ async function startServer() {
       console.warn('⚠️ Could not verify table:', dbError.message);
     }
     
-    // Start listening
-    app.listen(PORT, () => {
-      console.log(`Server is running on http://localhost:${PORT}`);
+    app.listen(PORT, HOST, () => {
+      const where = HOST === '0.0.0.0' ? 'all interfaces' : HOST;
+      console.log(`Server is running on port ${PORT} (${where})`);
+      if (HOST === '0.0.0.0') {
+        console.log(`  Local: http://127.0.0.1:${PORT}  http://localhost:${PORT}`);
+      }
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);

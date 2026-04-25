@@ -1,4 +1,6 @@
-const API_BASE_URL = `${import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api'}/assessments`;
+import { API_BASE_URL as API_BASE } from '@/lib/apiConfig';
+
+const API_BASE_URL = `${API_BASE}/assessments`;
 
 export interface Assessment {
   id: string;

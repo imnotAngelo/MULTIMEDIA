@@ -13,7 +13,7 @@ import { StudentLayout, InstructorLayout } from '@/components/layout';
 import { StudentDashboard, Lessons, Assessments, StudentQuizTaker, Laboratories, Portfolio } from '@/pages/student';
 
 // Instructor Pages
-import { InstructorDashboard, UnitsManagement, ViewLesson, InstructorAssessments, CreateAssessment, QuizManagement, QuizMethodPicker, CreateQuiz, AutoGenerateQuiz, CanvaSubmissions } from '@/pages/instructor';
+import { InstructorDashboard, UnitsManagement, ViewLesson, InstructorAssessments, CreateAssessment, QuizManagement, QuizMethodPicker, CreateQuiz, AutoGenerateQuiz, LaboratorySubmissions } from '@/pages/instructor';
 
 
 export function App() {
@@ -101,7 +101,9 @@ export function App() {
           <Route path="/instructor/assessments" element={<InstructorAssessments />} />
           <Route path="/instructor/assessments/create" element={<CreateAssessment />} />
           <Route path="/instructor/quizzes" element={<QuizManagement />} />
-          <Route path="/instructor/canva-submissions" element={<CanvaSubmissions />} />
+          <Route path="/instructor/laboratory-submissions" element={<LaboratorySubmissions />} />
+          {/* Backward-compatible route */}
+          <Route path="/instructor/canva-submissions" element={<LaboratorySubmissions />} />
         </Route>
 
         {/* Default Route */}

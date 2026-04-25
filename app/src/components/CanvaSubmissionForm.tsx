@@ -1,12 +1,11 @@
-// [REMOVED: Canva submission form no longer used]
 import React, { useState } from "react";
-import { createSubmission, updateSubmission, type CanvaSubmission } from "@/lib/canvaSubmissionService";
+import { createSubmission, updateSubmission, type LaboratorySubmission } from "@/lib/laboratorySubmissionService";
 import "./CanvaSubmissionForm.css";
 
 interface CanvaSubmissionFormProps {
   laboratoryId: string;
   phaseId: number;
-  onSuccess?: (submission: CanvaSubmission) => void;
+  onSuccess?: (submission: LaboratorySubmission) => void;
   onCancel?: () => void;
 }
 
@@ -43,12 +42,7 @@ export const CanvaSubmissionForm: React.FC<CanvaSubmissionFormProps> = ({
 
   const handleSubmitLink = async () => {
     if (!canvaUrl.trim()) {
-      setError("Please enter a Canva project URL");
-      return;
-    }
-
-    if (!isValidCanvaUrl(canvaUrl)) {
-      setError("Please enter a valid Canva project URL");
+      setError("Please enter a submission URL");
       return;
     }
 
@@ -58,7 +52,7 @@ export const CanvaSubmissionForm: React.FC<CanvaSubmissionFormProps> = ({
         laboratoryId,
         phaseId,
         projectTitle: projectTitle || "Untitled Project",
-        canvaUrl,
+        submissionUrl: canvaUrl,
         startTime,
       });
 
@@ -106,28 +100,16 @@ export const CanvaSubmissionForm: React.FC<CanvaSubmissionFormProps> = ({
     }
   };
 
-  const isValidCanvaUrl = (url: string): boolean => {
-    try {
-      const urlObj = new URL(url);
-      return (
-        urlObj.hostname === "www.canva.com" ||
-        urlObj.hostname === "canva.com"
-      );
-    } catch {
-      return false;
-    }
-  };
-
   return (
     <div className="canva-submission-form">
       <div className="form-header">
-        <h3>Submit Your Canva Project</h3>
+        <h3>Submit Laboratory Work</h3>
         <button
           className="btn-open-canva"
           onClick={handleOpenCanva}
           disabled={isLoading}
         >
-          🎨 Open Canva Website
+          🌐 Open Website
         </button>
       </div>
 
@@ -169,7 +151,7 @@ export const CanvaSubmissionForm: React.FC<CanvaSubmissionFormProps> = ({
         {activeTab === "link" && (
           <>
             <div className="form-group">
-              <label>Canva Project URL *</label>
+              <label>Submission URL *</label>
               <input
                 type="url"
                 placeholder="https://www.canva.com/design/DAF..."
@@ -178,17 +160,17 @@ export const CanvaSubmissionForm: React.FC<CanvaSubmissionFormProps> = ({
                 disabled={isLoading}
               />
               <small>
-                Copy the link from your Canva project. Make sure it's shareable!
+                Paste a shareable link to your work (Drive, GitHub, Canva, etc.).
               </small>
             </div>
 
             <div className="instructions">
-              <h4>How to get your Canva project link:</h4>
+              <h4>How to share your work:</h4>
               <ol>
-                <li>Open your Canva project</li>
-                <li>Click "Share" button in top right</li>
-                <li>Make sure "Anyone with the link" is enabled</li>
-                <li>Copy the link and paste it above</li>
+                <li>Open your work</li>
+                <li>Choose “Share”</li>
+                <li>Enable “Anyone with the link” (or equivalent)</li>
+                <li>Copy/paste the link above</li>
               </ol>
             </div>
 
@@ -197,7 +179,7 @@ export const CanvaSubmissionForm: React.FC<CanvaSubmissionFormProps> = ({
               onClick={handleSubmitLink}
               disabled={isLoading || !canvaUrl.trim()}
             >
-              {isLoading ? "Submitting..." : "Submit Project Link"}
+              {isLoading ? "Submitting..." : "Submit Link"}
             </button>
           </>
         )}
