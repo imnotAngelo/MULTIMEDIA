@@ -37,15 +37,7 @@ const studentNavItems: NavItem[] = [
   { label: 'Lessons', href: '/lessons', icon: BookOpen },
   { label: 'Laboratories', href: '/laboratories', icon: Layers },
   { label: 'Portfolio', href: '/portfolio', icon: Image },
-  { 
-    label: 'Assessments', 
-    href: '/assessments', 
-    icon: ClipboardCheck,
-    subItems: [
-      { label: 'My Assessments', href: '/assessments', icon: Eye },
-      { label: 'Submissions', href: '/assessments?tab=submissions', icon: CheckSquare },
-    ]
-  },
+  { label: 'Quizzes', href: '/quizzes', icon: Zap },
   { label: 'Progress', href: '/progress', icon: TrendingUp },
   { label: 'Forum', href: '/forum', icon: MessageSquare, badge: 3 },
   { label: 'Achievements', href: '/achievements', icon: Award },
@@ -56,13 +48,12 @@ const instructorNavItems: NavItem[] = [
   { label: 'Units', href: '/instructor/courses', icon: BookOpen },
   { label: 'Laboratory Submissions', href: '/instructor/laboratory-submissions', icon: Palette },
   { 
-    label: 'Assessments', 
-    href: '/instructor/assessments', 
-    icon: ClipboardCheck,
+    label: 'Laboratories', 
+    href: '/instructor/laboratories', 
+    icon: Layers,
     subItems: [
-      { label: 'All Assessments', href: '/instructor/assessments', icon: Eye },
-      { label: 'Create Assessment', href: '/instructor/assessments/create', icon: Plus },
-      { label: 'Submissions', href: '/instructor/assessments?tab=submissions', icon: CheckSquare },
+      { label: 'All Laboratories', href: '/instructor/laboratories', icon: Eye },
+      { label: 'Create Laboratory', href: '/instructor/laboratories/create', icon: Plus },
     ]
   },
   { 
@@ -97,7 +88,7 @@ export function Sidebar({
   xp = 0 
 }: SidebarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [expandedItems, setExpandedItems] = useState<string[]>(['Assessments']);
+  const [expandedItems, setExpandedItems] = useState<string[]>(['Laboratories']);
   const location = useLocation();
   const navigate = useNavigate();
   const { logout } = useAuthStore();

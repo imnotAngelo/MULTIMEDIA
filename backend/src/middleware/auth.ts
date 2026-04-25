@@ -22,10 +22,7 @@ export const authMiddleware = (req: AuthRequest, res: Response, next: NextFuncti
     console.error('❌ No token provided');
     return res.status(401).json({
       success: false,
-      error: {
-        code: 'NO_TOKEN',
-        message: 'Authorization token not provided',
-      },
+      error: 'Authorization token not provided',
     });
   }
 
@@ -42,10 +39,7 @@ export const authMiddleware = (req: AuthRequest, res: Response, next: NextFuncti
     console.error('❌ Token (first 100 chars):', token.substring(0, 100));
     return res.status(401).json({
       success: false,
-      error: {
-        code: 'INVALID_TOKEN',
-        message: `Invalid or expired token: ${error.message}`,
-      },
+      error: `Invalid or expired token: ${error.message}`,
     });
   }
 };

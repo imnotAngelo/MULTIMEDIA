@@ -1,6 +1,7 @@
 import express, { Express, Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
 import courseRoutes from './routes/courses.js';
@@ -66,12 +67,17 @@ app.use(
   })
 );
 
+// Serve uploaded files statically (images/videos submitted by students)
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
 // Apply JSON parser everywhere EXCEPT multipart upload routes
-// Skip for /api/lessons/upload-pdf so multer can handle multipart/form-data
 app.use((req, res, next) => {
-  // Skip JSON parsing for multipart form data uploads
   console.log(`🔍 [MIDDLEWARE_CHECK] Path: ${req.path}, Method: ${req.method}, Content-Type: ${req.headers['content-type']}`);
-  if (req.path.includes('/upload-pdf') || req.path.includes('/upload')) {
+  if (
+    req.path.includes('/upload-pdf') ||
+    req.path.includes('/upload-file') ||
+    req.path.includes('/upload')
+  ) {
     console.log(`✅ [SKIP_JSON] Skipping JSON parsing for upload route`);
     return next();
   }
@@ -107,6 +113,7 @@ app.get('/api/health', (req: Request, res: Response) => {
 
 // 404 handler
 app.use((req: Request, res: Response) => {
+  console.log(`❌ 404: ${req.method} ${req.path}`);
   res.status(404).json({
     success: false,
     error: {

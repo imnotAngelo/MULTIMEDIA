@@ -10,10 +10,10 @@ import { LoginPage, SignupPage } from '@/pages/auth';
 import { StudentLayout, InstructorLayout } from '@/components/layout';
 
 // Student Pages
-import { StudentDashboard, Lessons, Assessments, StudentQuizTaker, Laboratories, Portfolio } from '@/pages/student';
+import { StudentDashboard, Lessons, Assessments, StudentQuizTaker, Laboratories, Portfolio, StudentQuizzes } from '@/pages/student';
 
 // Instructor Pages
-import { InstructorDashboard, UnitsManagement, ViewLesson, InstructorAssessments, CreateAssessment, QuizManagement, QuizMethodPicker, CreateQuiz, AutoGenerateQuiz, LaboratorySubmissions } from '@/pages/instructor';
+import { InstructorDashboard, UnitsManagement, ViewLesson, InstructorAssessments, CreateAssessment, QuizManagement, QuizMethodPicker, CreateQuiz, AutoGenerateQuiz, LaboratorySubmissions, LaboratoriesManagement } from '@/pages/instructor';
 
 
 export function App() {
@@ -84,6 +84,7 @@ export function App() {
           <Route path="/laboratories" element={<Laboratories />} />
           <Route path="/portfolio" element={<Portfolio />} />
           <Route path="/assessments" element={<Assessments />} />
+          <Route path="/quizzes" element={<StudentQuizzes />} />
           <Route path="/assessment/:id" element={<StudentQuizTaker />} />
         </Route>
 
@@ -102,6 +103,8 @@ export function App() {
           <Route path="/instructor/assessments/create" element={<CreateAssessment />} />
           <Route path="/instructor/quizzes" element={<QuizManagement />} />
           <Route path="/instructor/laboratory-submissions" element={<LaboratorySubmissions />} />
+          <Route path="/instructor/laboratories" element={<LaboratoriesManagement />} />
+          <Route path="/instructor/laboratories/create" element={<LaboratoriesManagement />} />
           {/* Backward-compatible route */}
           <Route path="/instructor/canva-submissions" element={<LaboratorySubmissions />} />
         </Route>
