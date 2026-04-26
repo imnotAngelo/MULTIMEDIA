@@ -1,4 +1,4 @@
-import { Bell, Search, Sparkles, LogOut as LogOutIcon, Check } from 'lucide-react';
+import { Bell, Search, Sparkles, LogOut as LogOutIcon, CheckCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -11,7 +11,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useAuthStore } from '@/stores/authStore';
 import { useNotificationStore } from '@/stores/notificationStore';
+import { authFetch } from '@/lib/authFetch';
 import { useNavigate } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
 
 interface HeaderProps {
   title?: string;
@@ -23,7 +25,52 @@ export function Header({ title, subtitle }: HeaderProps) {
   const notifications = useNotificationStore((state) => state.notifications);
   const unreadCount = useNotificationStore((state) => state.getUnreadCount());
   const markAsRead = useNotificationStore((state) => state.markAsRead);
+  const markAllRead = useNotificationStore((state) => state.markAllRead);
+  const setFromApi = useNotificationStore((state) => state.setFromApi);
   const navigate = useNavigate();
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await authFetch('/notifications');
+      if (res.ok) {
+        const rows = await res.json();
+        setFromApi(rows);
+      } else {
+        const text = await res.text().catch(() => '');
+        console.error('[notify] Fetch failed:', res.status, text);
+      }
+    } catch (err) {
+      console.error('[notify] Fetch error:', err);
+    }
+  };
+
+  // Poll for new notifications every 30 seconds
+  useEffect(() => {
+    fetchNotifications();
+    pollRef.current = setInterval(fetchNotifications, 30_000);
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, []);
+
+  const handleMarkAllRead = async () => {
+    markAllRead();
+    try {
+      await authFetch('/notifications/read-all', { method: 'PATCH' });
+    } catch {
+      // Silent
+    }
+  };
+
+  const handleMarkOneRead = async (id: string) => {
+    markAsRead(id);
+    try {
+      await authFetch(`/notifications/${id}/read`, { method: 'PATCH' });
+    } catch {
+      // Silent
+    }
+  };
 
   const handleLogout = () => {
     logout();
@@ -32,17 +79,48 @@ export function Header({ title, subtitle }: HeaderProps) {
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
-      case 'lesson':
-        return <span className="text-lg">📖</span>;
-      case 'unit':
-        return <span className="text-lg">📚</span>;
-      case 'assignment':
-        return <span className="text-lg">✏️</span>;
-      case 'achievement':
-        return <span className="text-lg">🎉</span>;
-      default:
-        return <Sparkles className="w-4 h-4 text-yellow-400" />;
+      case 'lesson':     return <span className="text-lg">📖</span>;
+      case 'unit':       return <span className="text-lg">📚</span>;
+      case 'quiz':       return <span className="text-lg">📝</span>;
+      case 'lab':        return <span className="text-lg">🧪</span>;
+      case 'assignment': return <span className="text-lg">✏️</span>;
+      case 'achievement':return <span className="text-lg">🎉</span>;
+      case 'announcement': return <span className="text-lg">📢</span>;
+      default:           return <Sparkles className="w-4 h-4 text-yellow-400" />;
     }
+  };
+
+  /**
+   * Map notification type → destination route based on the user's role.
+   * Returns null if there's no sensible destination.
+   */
+  const getNotificationDestination = (type: string): string | null => {
+    const isInstructor = user?.role === 'instructor';
+    switch (type) {
+      case 'announcement':
+        return isInstructor ? '/instructor/announcements' : '/announcements';
+      case 'lesson':
+      case 'unit':
+        return isInstructor ? '/instructor/courses' : '/lessons';
+      case 'quiz':
+        return isInstructor ? '/instructor/quizzes' : '/quizzes';
+      case 'lab':
+        return isInstructor ? '/instructor/laboratories' : '/laboratories';
+      case 'assignment':
+        return isInstructor ? '/instructor/assessments' : '/assessments';
+      case 'achievement':
+        return isInstructor ? null : '/achievements';
+      default:
+        return null;
+    }
+  };
+
+  const handleNotificationClick = (notification: { id: string; type: string }) => {
+    // Mark as read locally + on the server
+    handleMarkOneRead(notification.id);
+    // Navigate to the relevant page
+    const dest = getNotificationDestination(notification.type);
+    if (dest) navigate(dest);
   };
 
   const formatTime = (timestamp: number) => {
@@ -99,32 +177,53 @@ export function Header({ title, subtitle }: HeaderProps) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-80 bg-slate-900 border-slate-800">
-            <DropdownMenuLabel className="text-slate-200">
-              Notifications {unreadCount > 0 && <span className="text-red-400">({unreadCount})</span>}
+            <DropdownMenuLabel className="flex items-center justify-between text-slate-200">
+              <span>Notifications {unreadCount > 0 && <span className="text-red-400">({unreadCount})</span>}</span>
+              {unreadCount > 0 && (
+                <button
+                  onClick={handleMarkAllRead}
+                  className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-200 font-normal"
+                >
+                  <CheckCheck className="w-3.5 h-3.5" />
+                  Mark all read
+                </button>
+              )}
             </DropdownMenuLabel>
             <DropdownMenuSeparator className="bg-slate-800" />
             <div className="max-h-96 overflow-y-auto">
               {notifications.length === 0 ? (
-                <div className="p-4 text-center text-slate-400">
+                <div className="p-6 text-center text-slate-400">
+                  <Bell className="w-8 h-8 mx-auto mb-2 opacity-30" />
                   <p className="text-sm">No notifications yet</p>
                 </div>
               ) : (
                 notifications.map((notification) => (
                   <DropdownMenuItem
                     key={notification.id}
-                    onClick={() => markAsRead(notification.id)}
+                    onClick={() => handleNotificationClick(notification)}
                     className={`flex flex-col items-start gap-1 p-3 cursor-pointer hover:bg-slate-800 ${
                       !notification.read ? 'bg-slate-800/50' : ''
                     }`}
                   >
                     <div className="flex items-center gap-2 w-full">
                       {getNotificationIcon(notification.type)}
-                      <span className="text-sm font-medium text-slate-200 flex-1">{notification.title}</span>
+                      <span className="text-sm font-medium text-slate-200 flex-1 leading-tight">{notification.title}</span>
                       {!notification.read && (
-                        <span className="w-2 h-2 bg-blue-500 rounded-full" />
+                        <span className="w-2 h-2 bg-blue-500 rounded-full shrink-0" />
                       )}
                     </div>
-                    <p className="text-xs text-slate-400">{notification.message}</p>
+                    <p className="text-xs text-slate-400 leading-snug">{notification.message}</p>
+                    {notification.attachmentUrl && (
+                      <a
+                        href={notification.attachmentUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center gap-1.5 mt-1 px-2 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-xs text-amber-400 hover:text-amber-300 transition-colors"
+                      >
+                        📎 {notification.attachmentName ?? 'View attachment'}
+                      </a>
+                    )}
                     <span className="text-xs text-slate-500">{formatTime(notification.timestamp)}</span>
                   </DropdownMenuItem>
                 ))

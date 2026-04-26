@@ -113,7 +113,7 @@ export function CreateQuiz() {
       if (!response.ok) {
         throw new Error(data.error?.message || 'Failed to create quiz');
       }
-      notificationService.notifyUnitAdded(formData.title);
+      notificationService.notifyQuizAdded(formData.title);
       navigate('/instructor/quizzes');
     } catch (err: any) {
       alert('Failed to create quiz: ' + err.message);

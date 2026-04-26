@@ -10,6 +10,7 @@ import unitsRoutes from './routes/units.js';
 import assessmentRoutes from './routes/assessments.js';
 import laboratoryRoutes from './routes/laboratories.js';
 import laboratorySubmissionRoutes from './routes/laboratorySubmissions.js';
+import notificationRoutes from './routes/notifications.js';
 import { errorHandler } from './middleware/auth.js';
 import { supabase } from './config/supabase.js';
 
@@ -104,6 +105,8 @@ app.use('/api/laboratories', laboratoryRoutes);
 app.use('/api/laboratory-submissions', laboratorySubmissionRoutes);
 // Backward-compatible alias (old Canva path)
 app.use('/api/canva-submissions', laboratorySubmissionRoutes);
+// Notifications
+app.use('/api/notifications', notificationRoutes);
 console.log('✅ All routes registered');
 
 // Health check

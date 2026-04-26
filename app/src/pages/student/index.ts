@@ -5,3 +5,4 @@ export { StudentQuizTaker } from './StudentQuizTaker';
 export { StudentQuizzes } from './StudentQuizzes';
 export { Laboratories } from './Laboratories';
 export { Portfolio } from './Portfolio';
+export { Announcements } from './Announcements';

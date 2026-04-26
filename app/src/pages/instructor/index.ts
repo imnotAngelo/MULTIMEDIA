@@ -9,3 +9,4 @@ export { CreateQuiz } from './CreateQuiz';
 export { AutoGenerateQuiz } from './AutoGenerateQuiz';
 export { LaboratorySubmissions } from './LaboratorySubmissions';
 export { LaboratoriesManagement } from './LaboratoriesManagement';
+export { AnnouncementsManagement } from './AnnouncementsManagement';

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
+import { notificationService } from '@/services/notificationService';
 import { Button } from '@/components/ui/button';
 import {
   Plus,
@@ -219,6 +220,17 @@ export function LaboratoriesManagement() {
       const updated = [newLab, ...laboratories];
       setLaboratories(updated);
       saveToStorage(updated);
+      notificationService.notifyLabAdded(newLab.title, newLab.platform);
+
+      // Auto-open the selected platform/project so the instructor can start preparing it
+      const launchUrl = (newLab.platformUrl || PLATFORM_URLS[newLab.platform] || '').trim();
+      if (launchUrl) {
+        try {
+          window.open(launchUrl, '_blank', 'noopener,noreferrer');
+        } catch {
+          // Pop-up blocked — silent fail; the link is still saved on the card.
+        }
+      }
     }
 
     handleCloseForm();

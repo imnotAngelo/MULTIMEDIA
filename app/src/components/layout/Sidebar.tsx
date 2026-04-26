@@ -3,7 +3,8 @@ import {
   LayoutDashboard, 
   BookOpen, 
   ClipboardCheck, 
-  TrendingUp, 
+  Megaphone, 
+  TrendingUp,
   MessageSquare, 
   Award,
   Palette,
@@ -39,7 +40,7 @@ const studentNavItems: NavItem[] = [
   { label: 'Portfolio', href: '/portfolio', icon: Image },
   { label: 'Quizzes', href: '/quizzes', icon: Zap },
   { label: 'Progress', href: '/progress', icon: TrendingUp },
-  { label: 'Forum', href: '/forum', icon: MessageSquare, badge: 3 },
+  { label: 'Announcements', href: '/announcements', icon: Megaphone },
   { label: 'Achievements', href: '/achievements', icon: Award },
 ];
 
@@ -65,7 +66,7 @@ const instructorNavItems: NavItem[] = [
       { label: 'Create Quiz', href: '/instructor/quiz/create', icon: Plus },
     ]
   },
-  { label: 'Analytics', href: '/instructor/analytics', icon: TrendingUp },
+  { label: 'Announcements', href: '/instructor/announcements', icon: Megaphone },
   { label: 'Messages', href: '/instructor/messages', icon: MessageSquare, badge: 2 },
 ];
 
