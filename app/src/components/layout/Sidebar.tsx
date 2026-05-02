@@ -4,12 +4,8 @@ import {
   BookOpen, 
   ClipboardCheck, 
   Megaphone, 
-  TrendingUp,
   MessageSquare, 
-  Award,
   Palette,
-  Settings,
-  HelpCircle,
   LogOut,
   Menu,
   X,
@@ -18,7 +14,8 @@ import {
   CheckSquare,
   Zap,
   Layers,
-  Image
+  Image,
+  Settings
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -39,9 +36,9 @@ const studentNavItems: NavItem[] = [
   { label: 'Laboratories', href: '/laboratories', icon: Layers },
   { label: 'Portfolio', href: '/portfolio', icon: Image },
   { label: 'Quizzes', href: '/quizzes', icon: Zap },
-  { label: 'Progress', href: '/progress', icon: TrendingUp },
+  { label: 'Message', href: '/chatbox', icon: MessageSquare },
   { label: 'Announcements', href: '/announcements', icon: Megaphone },
-  { label: 'Achievements', href: '/achievements', icon: Award },
+  { label: 'Settings', href: '/settings', icon: Settings },
 ];
 
 const instructorNavItems: NavItem[] = [
@@ -67,13 +64,11 @@ const instructorNavItems: NavItem[] = [
     ]
   },
   { label: 'Announcements', href: '/instructor/announcements', icon: Megaphone },
-  { label: 'Messages', href: '/instructor/messages', icon: MessageSquare, badge: 2 },
+  { label: 'Messages', href: '/instructor/messages', icon: MessageSquare },
+  { label: 'Settings', href: '/instructor/settings', icon: Settings },
 ];
 
-const bottomNavItems: NavItem[] = [
-  { label: 'Settings', href: '/settings', icon: Settings },
-  { label: 'Help', href: '/help', icon: HelpCircle },
-];
+const bottomNavItems: NavItem[] = [];
 
 interface SidebarProps {
   userRole?: 'student' | 'instructor' | 'admin';

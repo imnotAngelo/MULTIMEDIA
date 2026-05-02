@@ -158,13 +158,15 @@ class ApiService {
     return this.request('/users/profile');
   }
 
-  async updateProfile(fullName: string, avatarUrl: string) {
+  async updateProfile(updates: {
+    full_name?: string;
+    avatar_url?: string;
+    year_level?: 1 | 2 | 3 | 4 | null;
+    teaching_year_levels?: (1 | 2 | 3 | 4)[];
+  }) {
     return this.request('/users/profile', {
       method: 'PUT',
-      body: JSON.stringify({
-        full_name: fullName,
-        avatar_url: avatarUrl,
-      }),
+      body: JSON.stringify(updates),
     });
   }
 

@@ -6,3 +6,5 @@ export { StudentQuizzes } from './StudentQuizzes';
 export { Laboratories } from './Laboratories';
 export { Portfolio } from './Portfolio';
 export { Announcements } from './Announcements';
+export { Chatbox } from './Chatbox';
+export { StudentSettings } from './Settings';

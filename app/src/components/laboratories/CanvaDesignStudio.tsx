@@ -1,6 +1,7 @@
 // [REMOVED: Canva integration component no longer used]
 import { useState, useRef, useEffect } from 'react';
 import { Download, Share2, Save, Loader2, CheckCircle } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -52,15 +53,12 @@ export function CanvaDesignStudio({ designPrompt, onDesignComplete }: CanvaDesig
 
   const handleDesignComplete = async () => {
     if (!designTitle.trim()) {
-      alert('Please give your design a title');
+      toast.error('Please give your design a title');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      // Simulate saving design
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
       const design = {
         title: designTitle,
         prompt: designPrompt,
@@ -73,25 +71,31 @@ export function CanvaDesignStudio({ designPrompt, onDesignComplete }: CanvaDesig
       saveDesign(design);
 
       setIsCompleted(true);
+      toast.success('Design saved to your portfolio');
       onDesignComplete?.();
     } catch (error) {
       console.error('Error saving design:', error);
-      alert('Failed to save design. Please try again.');
+      toast.error('Failed to save design. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleDownload = () => {
-    // In production, this would trigger Canva export
-    alert('Design download initiated. Check your downloads folder.');
+    // Canva renders the actual export inside its own SDK; trigger user download here when available
+    toast.info('Use the download option inside the Canva editor to export your design.');
   };
 
   const handleShare = () => {
-    // In production, this would generate shareable link
     const shareUrl = `${window.location.origin}/portfolio/${designTitle.replace(/\s+/g, '-')}`;
-    navigator.clipboard.writeText(shareUrl);
-    alert('Share link copied to clipboard!');
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard
+        .writeText(shareUrl)
+        .then(() => toast.success('Share link copied to clipboard'))
+        .catch(() => toast.error('Could not copy link'));
+    } else {
+      toast.info(shareUrl);
+    }
   };
 
   return (

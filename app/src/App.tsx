@@ -10,10 +10,10 @@ import { LoginPage, SignupPage } from '@/pages/auth';
 import { StudentLayout, InstructorLayout } from '@/components/layout';
 
 // Student Pages
-import { StudentDashboard, Lessons, Assessments, StudentQuizTaker, Laboratories, Portfolio, StudentQuizzes, Announcements } from '@/pages/student';
+import { StudentDashboard, Lessons, Assessments, StudentQuizTaker, Laboratories, Portfolio, StudentQuizzes, Announcements, Chatbox, StudentSettings } from '@/pages/student';
 
 // Instructor Pages
-import { InstructorDashboard, UnitsManagement, ViewLesson, InstructorAssessments, CreateAssessment, QuizManagement, QuizMethodPicker, CreateQuiz, AutoGenerateQuiz, LaboratorySubmissions, LaboratoriesManagement, AnnouncementsManagement } from '@/pages/instructor';
+import { InstructorDashboard, UnitsManagement, ViewLesson, InstructorAssessments, CreateAssessment, QuizManagement, QuizMethodPicker, CreateQuiz, AutoGenerateQuiz, LaboratorySubmissions, LaboratoriesManagement, AnnouncementsManagement, InstructorMessages, InstructorSettings } from '@/pages/instructor';
 
 
 export function App() {
@@ -86,6 +86,8 @@ export function App() {
           <Route path="/assessments" element={<Assessments />} />
           <Route path="/quizzes" element={<StudentQuizzes />} />
           <Route path="/announcements" element={<Announcements />} />
+          <Route path="/chatbox" element={<Chatbox />} />
+          <Route path="/settings" element={<StudentSettings />} />
           <Route path="/assessment/:id" element={<StudentQuizTaker />} />
         </Route>
 
@@ -107,6 +109,8 @@ export function App() {
           <Route path="/instructor/laboratories" element={<LaboratoriesManagement />} />
           <Route path="/instructor/laboratories/create" element={<LaboratoriesManagement />} />
           <Route path="/instructor/announcements" element={<AnnouncementsManagement />} />
+          <Route path="/instructor/messages" element={<InstructorMessages />} />
+          <Route path="/instructor/settings" element={<InstructorSettings />} />
           {/* Backward-compatible route */}
           <Route path="/instructor/canva-submissions" element={<LaboratorySubmissions />} />
         </Route>

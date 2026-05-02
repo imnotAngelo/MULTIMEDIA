@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Share2, Download, Trash2, Eye, Loader2, Beaker, Calendar, FileVideo, ImageIcon } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -84,12 +85,35 @@ export function Portfolio() {
 
   const handleShare = (design: PortfolioDesign) => {
     const shareUrl = `${window.location.origin}/portfolio/${design.id}`;
-    navigator.clipboard.writeText(shareUrl);
-    alert('Portfolio link copied to clipboard!');
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard
+        .writeText(shareUrl)
+        .then(() => toast.success('Portfolio link copied to clipboard'))
+        .catch(() => toast.error('Could not copy link — please copy manually'));
+    } else {
+      toast.info(shareUrl);
+    }
   };
 
   const handleDownload = (design: PortfolioDesign) => {
-    alert(`Downloading ${design.title}...`);
+    try {
+      const url = design.thumbnail || design.url;
+      if (!url) {
+        toast.error('Nothing to download for this design');
+        return;
+      }
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${design.title || 'portfolio-design'}.png`;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      toast.success(`Downloading "${design.title}"`);
+    } catch (err: any) {
+      toast.error(err?.message ?? 'Download failed');
+    }
   };
 
   const filteredDesigns = designs.filter(design => {

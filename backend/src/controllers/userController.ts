@@ -18,7 +18,7 @@ export const getProfile = async (req: AuthRequest, res: Response) => {
 
     const { data: user, error } = await supabase
       .from('users')
-      .select('id, email, full_name, avatar_url, role, xp_total, streak_days, created_at, last_active')
+      .select('id, email, full_name, avatar_url, role, xp_total, streak_days, year_level, teaching_year_levels, created_at, last_active')
       .eq('id', userId)
       .single();
 
@@ -51,7 +51,7 @@ export const getProfile = async (req: AuthRequest, res: Response) => {
 export const updateProfile = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
-    const { full_name, avatar_url } = req.body;
+    const { full_name, avatar_url, year_level, teaching_year_levels } = req.body;
 
     if (!userId) {
       return res.status(401).json({
@@ -63,15 +63,50 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    const updates: Record<string, any> = {
+      updated_at: new Date().toISOString(),
+    };
+    if (typeof full_name === 'string') updates.full_name = full_name;
+    if (typeof avatar_url === 'string') updates.avatar_url = avatar_url;
+    if (year_level === null || year_level === undefined) {
+      // skip
+    } else {
+      const yl = Number(year_level);
+      if (!Number.isInteger(yl) || yl < 1 || yl > 4) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'INVALID_YEAR_LEVEL', message: 'year_level must be 1, 2, 3, or 4' },
+        });
+      }
+      updates.year_level = yl;
+    }
+    if (teaching_year_levels !== undefined) {
+      if (!Array.isArray(teaching_year_levels)) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'INVALID_TEACHING_YEARS', message: 'teaching_year_levels must be an array' },
+        });
+      }
+      const cleaned: number[] = [];
+      for (const v of teaching_year_levels) {
+        const n = Number(v);
+        if (!Number.isInteger(n) || n < 1 || n > 4) {
+          return res.status(400).json({
+            success: false,
+            error: { code: 'INVALID_TEACHING_YEARS', message: 'Each teaching year must be 1, 2, 3, or 4' },
+          });
+        }
+        if (!cleaned.includes(n)) cleaned.push(n);
+      }
+      cleaned.sort((a, b) => a - b);
+      updates.teaching_year_levels = cleaned;
+    }
+
     const { data: user, error } = await supabase
       .from('users')
-      .update({
-        full_name,
-        avatar_url,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updates)
       .eq('id', userId)
-      .select('id, full_name, avatar_url, updated_at');
+      .select('id, email, full_name, avatar_url, role, xp_total, streak_days, year_level, teaching_year_levels, created_at, last_active');
 
     if (error) throw error;
 

@@ -7,6 +7,8 @@ export interface User {
   role: 'student' | 'instructor' | 'admin';
   xp_total: number;
   streak_days: number;
+  year_level?: 1 | 2 | 3 | 4 | null;
+  teaching_year_levels?: (1 | 2 | 3 | 4)[];
   last_active?: string;
   created_at: string;
 }
