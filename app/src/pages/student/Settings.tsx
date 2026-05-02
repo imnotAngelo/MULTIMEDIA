@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { GraduationCap, Save, Loader2, User as UserIcon, Flame, Trophy, Calendar, Image as ImageIcon } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { GraduationCap, Save, Loader2, User as UserIcon, Flame, Trophy, Calendar, Image as ImageIcon, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/stores/authStore';
@@ -40,6 +40,36 @@ export function StudentSettings() {
   const [fullName, setFullName] = useState(user?.full_name ?? '');
   const [avatarUrl, setAvatarUrl] = useState(initialAvatar);
   const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleAvatarFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please choose an image file.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image is too large (max 5 MB).');
+      return;
+    }
+    setUploadingAvatar(true);
+    try {
+      const res: any = await api.uploadAvatar(file);
+      const newUrl: string = res?.data?.avatar_url ?? '';
+      const updatedUser = res?.data?.user;
+      if (!newUrl) throw new Error('Upload returned no URL');
+      setAvatarUrl(newUrl);
+      setUser({ ...(user as any), ...(updatedUser ?? { avatar_url: newUrl }) });
+      toast.success('Avatar uploaded.');
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to upload avatar.');
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
 
   useEffect(() => {
     setYearLevel((user?.year_level ?? null) as 1 | 2 | 3 | 4 | null);
@@ -213,21 +243,57 @@ export function StudentSettings() {
           />
         </div>
 
-        {/* Avatar URL */}
+        {/* Avatar uploader */}
         <div>
           <label className="block text-sm font-medium text-slate-300 mb-1.5">
-            Avatar URL
+            Profile photo
           </label>
-          <input
-            type="url"
-            value={avatarUrl}
-            placeholder="https://..."
-            onChange={(e) => setAvatarUrl(e.target.value)}
-            className="w-full rounded-lg bg-slate-800/60 border border-white/10 px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/40 focus:border-violet-500/40"
-          />
-          <p className="mt-2 text-xs text-slate-500">
-            Paste a link to an image. Leave blank to show your initials.
-          </p>
+          <div className="flex items-center gap-4">
+            <div className="shrink-0">
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt="avatar preview"
+                  className="w-16 h-16 rounded-xl object-cover border border-white/10 bg-slate-800"
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-white text-xl font-semibold">
+                  {getInitials(fullName)}
+                </div>
+              )}
+            </div>
+            <div className="flex-1">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+                className="hidden"
+                onChange={handleAvatarFile}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingAvatar}
+                className="border-white/15 bg-slate-800/40 hover:bg-slate-800/70 text-slate-200"
+              >
+                {uploadingAvatar ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4 mr-2" />
+                    Upload photo
+                  </>
+                )}
+              </Button>
+              <p className="mt-2 text-xs text-slate-500">
+                JPEG, PNG, WEBP, or GIF · up to 5 MB.
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Year level */}

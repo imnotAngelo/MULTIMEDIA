@@ -170,6 +170,25 @@ class ApiService {
     });
   }
 
+  async uploadAvatar(file: File) {
+    const token = localStorage.getItem('access_token');
+    const form = new FormData();
+    form.append('avatar', file);
+    const url = `${API_BASE_URL}/users/avatar`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      body: form,
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data?.success) {
+      throw new Error(data?.error?.message || 'Failed to upload avatar');
+    }
+    return data as ApiResponse<{ avatar_url: string; user: any }>;
+  }
+
   async getProgress(userId: string) {
     return this.request(`/users/${userId}/progress`);
   }
