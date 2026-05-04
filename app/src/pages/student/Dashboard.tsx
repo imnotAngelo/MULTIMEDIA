@@ -28,6 +28,7 @@ export function Dashboard() {
   const navigate = useNavigate();
   const [units, setUnits] = useState<Unit[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [completedCount, setCompletedCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -67,6 +68,19 @@ export function Dashboard() {
 
       console.log('🎓 Total lessons loaded:', allLessons.length);
       setLessons(allLessons);
+
+      // Fetch this student's completed-lesson count
+      try {
+        const lpResp = await authFetch('http://localhost:3001/api/users/lesson-progress/me');
+        const lpData = await lpResp.json();
+        if (lpData?.success) {
+          const total = Number(lpData.data?.total ?? 0);
+          setCompletedCount(total);
+          console.log(`✅ Lessons completed by me: ${total}`);
+        }
+      } catch (err) {
+        console.error('❌ Failed to load my lesson progress:', err);
+      }
     } catch (error) {
       console.error('❌ Failed to load units and lessons:', error);
     } finally {
@@ -105,7 +119,7 @@ export function Dashboard() {
               <GraduationCap className="w-4.5 h-4.5 text-violet-400" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-white">0</div>
+          <div className="text-2xl font-bold text-white">{completedCount}</div>
           <p className="text-slate-500 text-xs mt-1">Lessons Completed</p>
         </div>
         <div className="group bg-slate-900/60 border border-slate-800/60 rounded-xl p-5 hover:border-emerald-500/30 transition-all">

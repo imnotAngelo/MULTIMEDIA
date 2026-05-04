@@ -1,4 +1,4 @@
-import { Bell, Search, Sparkles, LogOut as LogOutIcon, CheckCheck } from 'lucide-react';
+import { Bell, Search, Sparkles, LogOut as LogOutIcon, CheckCheck, BookOpen, FileText, ClipboardList, Layers, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -13,7 +13,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { authFetch } from '@/lib/authFetch';
 import { useNavigate } from 'react-router-dom';
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 interface HeaderProps {
   title?: string;
@@ -29,6 +29,130 @@ export function Header({ title, subtitle }: HeaderProps) {
   const setFromApi = useNotificationStore((state) => state.setFromApi);
   const navigate = useNavigate();
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // ----- Search -----
+  type SearchItem = {
+    id: string;
+    type: 'unit' | 'lesson' | 'assessment';
+    title: string;
+    subtitle?: string;
+    path: string;
+  };
+  const [query, setQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchIndex, setSearchIndex] = useState<SearchItem[]>([]);
+  const [indexLoaded, setIndexLoaded] = useState(false);
+  const searchBoxRef = useRef<HTMLDivElement | null>(null);
+  const isInstructor = user?.role === 'instructor';
+
+  // Build search index lazily on first focus / keystroke
+  const buildIndex = async () => {
+    if (indexLoaded) return;
+    setSearchLoading(true);
+    try {
+      const items: SearchItem[] = [];
+
+      // Units + lessons
+      try {
+        const unitsRes = await authFetch('http://localhost:3001/api/units');
+        const unitsJson = await unitsRes.json();
+        const units: any[] = unitsJson?.success ? unitsJson.data ?? [] : [];
+        for (const u of units) {
+          items.push({
+            id: `unit:${u.id}`,
+            type: 'unit',
+            title: u.title,
+            subtitle: u.description,
+            path: isInstructor ? '/instructor/courses' : '/lessons',
+          });
+          try {
+            const lr = await authFetch(`http://localhost:3001/api/units/${u.id}/lessons`);
+            const lj = await lr.json();
+            const lessons: any[] = lj?.success ? lj.data ?? [] : [];
+            for (const l of lessons) {
+              items.push({
+                id: `lesson:${l.id}`,
+                type: 'lesson',
+                title: l.title,
+                subtitle: u.title,
+                path: isInstructor
+                  ? `/instructor/lessons/${l.id}/view`
+                  : `/lessons/${l.id}`,
+              });
+            }
+          } catch { /* ignore single-unit failure */ }
+        }
+      } catch { /* ignore units failure */ }
+
+      // Assessments
+      try {
+        const url = isInstructor
+          ? 'http://localhost:3001/api/assessments/instructor/all'
+          : 'http://localhost:3001/api/assessments';
+        const ar = await authFetch(url);
+        const aj = await ar.json();
+        const list: any[] = aj?.success ? aj.data ?? [] : Array.isArray(aj) ? aj : [];
+        for (const a of list) {
+          items.push({
+            id: `assessment:${a.id}`,
+            type: 'assessment',
+            title: a.title || 'Untitled assessment',
+            subtitle: a.type || a.assessment_type,
+            path: isInstructor ? '/instructor/assessments' : '/assessments',
+          });
+        }
+      } catch { /* ignore */ }
+
+      setSearchIndex(items);
+      setIndexLoaded(true);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  const filteredResults = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    return searchIndex
+      .filter((it) =>
+        it.title.toLowerCase().includes(q) ||
+        (it.subtitle ?? '').toLowerCase().includes(q)
+      )
+      .slice(0, 12);
+  }, [query, searchIndex]);
+
+  // Close on outside click / Escape
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      if (!searchBoxRef.current) return;
+      if (!searchBoxRef.current.contains(e.target as Node)) setSearchOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSearchOpen(false);
+    };
+    document.addEventListener('mousedown', onClick);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onClick);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, []);
+
+  const handleSelectResult = (item: SearchItem) => {
+    setSearchOpen(false);
+    setQuery('');
+    navigate(item.path);
+  };
+
+  const renderResultIcon = (type: SearchItem['type']) => {
+    switch (type) {
+      case 'unit': return <Layers className="w-4 h-4 text-violet-400" />;
+      case 'lesson': return <BookOpen className="w-4 h-4 text-blue-400" />;
+      case 'assessment': return <ClipboardList className="w-4 h-4 text-amber-400" />;
+      default: return <FileText className="w-4 h-4 text-slate-400" />;
+    }
+  };
 
   const fetchNotifications = async () => {
     try {
@@ -151,13 +275,66 @@ export function Header({ title, subtitle }: HeaderProps) {
       {/* Right Section */}
       <div className="flex items-center gap-4">
         {/* Search */}
-        <div className="hidden md:flex items-center relative">
-          <Search className="absolute left-3 w-4 h-4 text-slate-400" />
+        <div
+          ref={searchBoxRef}
+          className="hidden md:flex items-center relative"
+        >
+          <Search className="absolute left-3 w-4 h-4 text-slate-400 pointer-events-none" />
           <Input
             type="search"
-            placeholder="Search..."
-            className="w-64 pl-10 bg-slate-800/50 border-slate-700 text-slate-200 placeholder:text-slate-500 focus-visible:ring-violet-500"
+            placeholder="Search units, lessons, assessments..."
+            value={query}
+            onFocus={() => { setSearchOpen(true); buildIndex(); }}
+            onChange={(e) => { setQuery(e.target.value); setSearchOpen(true); if (!indexLoaded) buildIndex(); }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && filteredResults.length > 0) {
+                e.preventDefault();
+                handleSelectResult(filteredResults[0]);
+              }
+            }}
+            className="w-72 pl-10 pr-9 bg-slate-800/50 border-slate-700 text-slate-200 placeholder:text-slate-500 focus-visible:ring-violet-500"
           />
+          {query && (
+            <button
+              type="button"
+              aria-label="Clear search"
+              onClick={() => { setQuery(''); setSearchOpen(true); }}
+              className="absolute right-2 p-1 rounded hover:bg-slate-700/50 text-slate-400 hover:text-slate-200"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+
+          {searchOpen && (query.trim().length > 0 || searchLoading) && (
+            <div className="absolute top-full left-0 right-0 mt-2 bg-slate-900 border border-slate-800 rounded-lg shadow-xl overflow-hidden z-40">
+              {searchLoading && !indexLoaded ? (
+                <div className="p-4 text-xs text-slate-400">Indexing your content…</div>
+              ) : filteredResults.length === 0 ? (
+                <div className="p-4 text-xs text-slate-400">No results for “{query}”</div>
+              ) : (
+                <ul className="max-h-96 overflow-y-auto py-1">
+                  {filteredResults.map((item) => (
+                    <li key={item.id}>
+                      <button
+                        type="button"
+                        onClick={() => handleSelectResult(item)}
+                        className="w-full flex items-start gap-3 px-3 py-2 text-left hover:bg-slate-800/70 transition-colors"
+                      >
+                        <span className="mt-0.5">{renderResultIcon(item.type)}</span>
+                        <span className="flex-1 min-w-0">
+                          <span className="block text-sm text-slate-200 truncate">{item.title}</span>
+                          {item.subtitle && (
+                            <span className="block text-xs text-slate-500 truncate">{item.subtitle}</span>
+                          )}
+                        </span>
+                        <span className="text-[10px] uppercase tracking-wide text-slate-500 mt-1">{item.type}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Notifications */}

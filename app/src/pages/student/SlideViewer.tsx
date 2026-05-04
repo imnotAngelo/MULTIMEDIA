@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { ChevronLeft, ChevronRight, MessageCircle, ThumbsUp, Lock, Download } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MessageCircle, ThumbsUp, Lock, Download, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { authFetch } from '@/lib/authFetch';
 import { downloadLessonAsPDF } from '@/lib/downloadUtils';
+import { useAuthStore } from '@/stores/authStore';
+import { toast } from 'sonner';
 
 interface Slide {
   id?: string;
@@ -40,6 +42,54 @@ export function SlideViewer({ lessonId, lessonTitle }: SlideViewerProps) {
   const [error, setError] = useState('');
   const [showComments, setShowComments] = useState(false);
   const [lesson, setLesson] = useState<any>(null);
+  const { user } = useAuthStore();
+  const completionKey = user?.id ? `lesson-completed:${user.id}:${lessonId}` : '';
+  const [completed, setCompleted] = useState(false);
+
+  useEffect(() => {
+    if (!completionKey) return;
+    // Optimistic from cache
+    setCompleted(localStorage.getItem(completionKey) === 'true');
+    // Authoritative from backend
+    (async () => {
+      try {
+        const r = await authFetch('http://localhost:3001/api/users/lesson-progress/me');
+        const j = await r.json();
+        if (j?.success) {
+          const ids: string[] = j.data?.lessonIds ?? [];
+          const isDone = ids.includes(lessonId);
+          setCompleted(isDone);
+          if (isDone) localStorage.setItem(completionKey, 'true');
+        }
+      } catch {
+        /* keep cached value */
+      }
+    })();
+  }, [completionKey, lessonId]);
+
+  const handleMarkDone = async () => {
+    if (!completionKey) {
+      toast.error('You must be signed in to mark this lesson as done');
+      return;
+    }
+    // Optimistic UI
+    localStorage.setItem(completionKey, 'true');
+    localStorage.setItem(`${completionKey}:at`, new Date().toISOString());
+    setCompleted(true);
+    try {
+      const r = await authFetch('http://localhost:3001/api/users/lesson-progress', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lessonId, completed: true }),
+      });
+      const j = await r.json();
+      if (!j?.success) throw new Error(j?.error?.message || 'Failed to save');
+      toast.success('Lesson marked as completed!');
+    } catch (err: any) {
+      console.error('Save lesson progress failed:', err);
+      toast.error('Saved locally, but couldn\u2019t reach the server');
+    }
+  };
 
   useEffect(() => {
     loadSlides();
@@ -237,8 +287,13 @@ export function SlideViewer({ lessonId, lessonTitle }: SlideViewerProps) {
             <div className="flex items-center justify-between mb-4 gap-4">
               <div className="flex-1">
                 <h2 className="text-3xl font-bold text-white mb-3">{slide.title}</h2>
-                <div className="text-sm text-slate-400">
-                  Slide {currentSlide + 1} of {slides.length} • {lessonTitle}
+                <div className="text-sm text-slate-400 flex items-center gap-2 flex-wrap">
+                  <span>Slide {currentSlide + 1} of {slides.length} • {lessonTitle}</span>
+                  {completed && (
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-green-400 bg-green-500/10 border border-green-500/20 px-2 py-0.5 rounded-full">
+                      <CheckCircle2 className="w-3 h-3" /> Completed
+                    </span>
+                  )}
                 </div>
               </div>
               <Button
@@ -319,6 +374,25 @@ export function SlideViewer({ lessonId, lessonTitle }: SlideViewerProps) {
             <ChevronRight className="w-4 h-4 ml-2" />
           </Button>
         </div>
+
+        {/* Done Button (shown on last slide) */}
+        {currentSlide === slides.length - 1 && (
+          <div className="flex justify-center">
+            <Button
+              onClick={handleMarkDone}
+              disabled={completed}
+              size="lg"
+              className={
+                completed
+                  ? 'bg-green-600/30 text-green-300 border border-green-500/30 cursor-not-allowed gap-2'
+                  : 'bg-green-600 hover:bg-green-700 text-white gap-2'
+              }
+            >
+              <CheckCircle2 className="w-5 h-5" />
+              {completed ? 'Lesson Completed' : 'Mark as Done'}
+            </Button>
+          </div>
+        )}
 
         {/* Progress */}
         <div className="text-center text-sm text-slate-400">

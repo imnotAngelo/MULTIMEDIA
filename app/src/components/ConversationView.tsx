@@ -47,6 +47,23 @@ function relativeShort(iso: string | null | undefined) {
   return new Date(iso).toLocaleDateString();
 }
 
+function RoleBadge({ role, size = 'sm' }: { role?: string; size?: 'xs' | 'sm' }) {
+  const r = (role || '').toLowerCase();
+  const isInstructor = r === 'instructor';
+  const isStudent = r === 'student';
+  if (!isInstructor && !isStudent) return null;
+  const label = isInstructor ? 'Instructor' : 'Student';
+  const tone = isInstructor
+    ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+    : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30';
+  const pad = size === 'xs' ? 'px-1.5 py-[1px] text-[10px]' : 'px-2 py-0.5 text-[11px]';
+  return (
+    <span className={`inline-flex items-center font-medium uppercase tracking-wide rounded-full border ${tone} ${pad}`}>
+      {label}
+    </span>
+  );
+}
+
 export function ConversationView({
   title,
   subtitle,
@@ -305,9 +322,12 @@ export function ConversationView({
                           </div>
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center justify-between gap-2">
-                              <span className="text-sm font-medium text-white truncate">
-                                {c.full_name}
-                              </span>
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-sm font-medium text-white truncate">
+                                  {c.full_name}
+                                </span>
+                                <RoleBadge role={c.role} size="xs" />
+                              </div>
                               <span className="text-[11px] text-slate-500 shrink-0">
                                 {relativeShort(c.last_message?.created_at)}
                               </span>
@@ -346,9 +366,12 @@ export function ConversationView({
                   {activeContact.full_name.charAt(0).toUpperCase()}
                 </div>
                 <div>
-                  <p className="text-white text-sm font-medium leading-tight">
-                    {activeContact.full_name}
-                  </p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-white text-sm font-medium leading-tight">
+                      {activeContact.full_name}
+                    </p>
+                    <RoleBadge role={activeContact.role} />
+                  </div>
                   <p className="text-slate-500 text-xs capitalize">{activeContact.role}</p>
                 </div>
               </header>

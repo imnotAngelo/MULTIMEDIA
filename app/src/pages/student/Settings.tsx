@@ -5,13 +5,6 @@ import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/stores/authStore';
 import { api } from '@/services/api';
 
-const YEAR_LABELS: Record<number, string> = {
-  1: '1st Year',
-  2: '2nd Year',
-  3: '3rd Year',
-  4: '4th Year',
-};
-
 function getInitials(name: string) {
   if (!name) return '?';
   const parts = name.trim().split(/\s+/);
@@ -33,10 +26,8 @@ function formatDate(iso?: string) {
 
 export function StudentSettings() {
   const { user, setUser } = useAuthStore();
-  const initialYear = (user?.year_level ?? null) as 1 | 2 | 3 | 4 | null;
   const initialAvatar = user?.avatar_url ?? '';
 
-  const [yearLevel, setYearLevel] = useState<1 | 2 | 3 | 4 | null>(initialYear);
   const [fullName, setFullName] = useState(user?.full_name ?? '');
   const [avatarUrl, setAvatarUrl] = useState(initialAvatar);
   const [saving, setSaving] = useState(false);
@@ -72,13 +63,11 @@ export function StudentSettings() {
   };
 
   useEffect(() => {
-    setYearLevel((user?.year_level ?? null) as 1 | 2 | 3 | 4 | null);
     setFullName(user?.full_name ?? '');
     setAvatarUrl(user?.avatar_url ?? '');
   }, [user]);
 
   const dirty =
-    yearLevel !== initialYear ||
     fullName.trim() !== (user?.full_name ?? '').trim() ||
     avatarUrl.trim() !== (user?.avatar_url ?? '').trim();
 
@@ -93,7 +82,6 @@ export function StudentSettings() {
       const res: any = await api.updateProfile({
         full_name: fullName.trim(),
         avatar_url: avatarUrl.trim(),
-        year_level: yearLevel,
       });
       if (!res?.success) {
         throw new Error(res?.error?.message || 'Failed to save settings');
@@ -121,7 +109,7 @@ export function StudentSettings() {
         <div>
           <h1 className="text-white text-xl font-semibold leading-tight">Settings</h1>
           <p className="text-slate-400 text-sm">
-            Manage your profile, avatar, and academic year level.
+            Manage your profile and avatar.
           </p>
         </div>
       </div>
@@ -163,15 +151,6 @@ export function StudentSettings() {
               <span className="inline-flex items-center gap-1 rounded-full bg-violet-500/15 border border-violet-500/30 px-2.5 py-0.5 text-xs font-medium text-violet-200">
                 {roleLabel}
               </span>
-              {yearLevel ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-fuchsia-500/15 border border-fuchsia-500/30 px-2.5 py-0.5 text-xs font-medium text-fuchsia-200">
-                  {YEAR_LABELS[yearLevel]}
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 rounded-full bg-slate-700/40 border border-white/10 px-2.5 py-0.5 text-xs font-medium text-slate-300">
-                  Year level not set
-                </span>
-              )}
             </div>
           </div>
         </div>
@@ -294,37 +273,6 @@ export function StudentSettings() {
               </p>
             </div>
           </div>
-        </div>
-
-        {/* Year level */}
-        <div>
-          <label className="block text-sm font-medium text-slate-300 mb-2">
-            Year level
-          </label>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {[1, 2, 3, 4].map((y) => {
-              const selected = yearLevel === y;
-              return (
-                <button
-                  key={y}
-                  type="button"
-                  onClick={() => setYearLevel(y as 1 | 2 | 3 | 4)}
-                  className={
-                    'rounded-lg border px-3 py-3 text-sm font-medium transition ' +
-                    (selected
-                      ? 'border-violet-500/60 bg-violet-500/15 text-white shadow shadow-violet-500/20'
-                      : 'border-white/10 bg-slate-800/40 text-slate-300 hover:border-white/20 hover:bg-slate-800/70')
-                  }
-                >
-                  {YEAR_LABELS[y]}
-                </button>
-              );
-            })}
-          </div>
-          <p className="mt-2 text-xs text-slate-500">
-            Choose your current year level. You can upgrade this anytime (e.g. from
-            1st Year to 2nd Year when you advance).
-          </p>
         </div>
 
         {/* Save */}

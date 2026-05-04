@@ -196,6 +196,238 @@ export const getAchievements = async (req: AuthRequest, res: Response) => {
   }
 };
 
+/**
+ * GET /api/users/students
+ * Instructor-only. Returns all users with role='student' plus an "active" count.
+ * A student is "active" if last_active is within the last 30 days.
+ */
+export const getStudents = async (req: AuthRequest, res: Response) => {
+  try {
+    if (req.user?.role !== 'instructor') {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'Instructor role required' },
+      });
+    }
+
+    const { data: students, error } = await supabase
+      .from('users')
+      .select('id, email, full_name, avatar_url, xp_total, streak_days, last_active, created_at')
+      .eq('role', 'student')
+      .order('last_active', { ascending: false, nullsFirst: false });
+
+    if (error) throw error;
+
+    const now = Date.now();
+    const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
+    const list = students ?? [];
+    const activeList = list.filter((s) => {
+      if (!s.last_active) return false;
+      const t = new Date(s.last_active).getTime();
+      return Number.isFinite(t) && now - t <= THIRTY_DAYS;
+    });
+
+    return res.json({
+      success: true,
+      data: {
+        total: list.length,
+        active: activeList.length,
+        students: list,
+      },
+    });
+  } catch (error: any) {
+    console.error('Get students error:', error);
+    return res.status(500).json({
+      success: false,
+      error: { code: 'FETCH_FAILED', message: error.message },
+    });
+  }
+};
+
+/**
+ * GET /api/users/submissions/stats
+ * Instructor-only. Returns total submission counts across all students,
+ * combining canva/laboratory link submissions and file submissions.
+ */
+export const getSubmissionStats = async (req: AuthRequest, res: Response) => {
+  try {
+    if (req.user?.role !== 'instructor') {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'Instructor role required' },
+      });
+    }
+
+    const [canvaResult, fileResult] = await Promise.all([
+      supabase
+        .from('canva_submissions')
+        .select('id', { count: 'exact', head: true }),
+      supabase
+        .from('lab_file_submissions')
+        .select('id', { count: 'exact', head: true }),
+    ]);
+
+    const canvaCount = canvaResult.error ? 0 : canvaResult.count ?? 0;
+    const fileCount = fileResult.error ? 0 : fileResult.count ?? 0;
+
+    if (canvaResult.error) {
+      console.warn('canva_submissions count error:', canvaResult.error.message);
+    }
+    if (fileResult.error) {
+      console.warn('lab_file_submissions count error:', fileResult.error.message);
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        total: canvaCount + fileCount,
+        canva: canvaCount,
+        files: fileCount,
+      },
+    });
+  } catch (error: any) {
+    console.error('Get submission stats error:', error);
+    return res.status(500).json({
+      success: false,
+      error: { code: 'FETCH_FAILED', message: error.message },
+    });
+  }
+};
+
+/**
+ * POST /api/users/lesson-progress
+ * Body: { lessonId: string, completed?: boolean }
+ * Marks a lesson as completed (or un-completed) for the authenticated student.
+ */
+export const upsertLessonProgress = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED' } });
+    }
+    const { lessonId, completed = true } = req.body ?? {};
+    if (!lessonId) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'MISSING_FIELDS', message: 'lessonId is required' },
+      });
+    }
+
+    const nowIso = new Date().toISOString();
+    const { data, error } = await supabase
+      .from('lesson_progress')
+      .upsert(
+        {
+          student_id: userId,
+          lesson_id: lessonId,
+          completed: !!completed,
+          completed_at: completed ? nowIso : null,
+          updated_at: nowIso,
+        },
+        { onConflict: 'student_id,lesson_id' }
+      )
+      .select()
+      .single();
+
+    if (error) throw error;
+    return res.json({ success: true, data });
+  } catch (error: any) {
+    console.error('Upsert lesson progress error:', error);
+    return res.status(500).json({
+      success: false,
+      error: { code: 'SAVE_FAILED', message: error.message },
+    });
+  }
+};
+
+/**
+ * GET /api/users/lesson-progress/me
+ * Returns the authenticated student's completed lesson IDs.
+ */
+export const getMyLessonProgress = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED' } });
+    }
+    const { data, error } = await supabase
+      .from('lesson_progress')
+      .select('lesson_id, completed, completed_at')
+      .eq('student_id', userId)
+      .eq('completed', true);
+
+    if (error) throw error;
+    const list = data ?? [];
+    return res.json({
+      success: true,
+      data: {
+        total: list.length,
+        lessonIds: list.map((r) => r.lesson_id),
+        items: list,
+      },
+    });
+  } catch (error: any) {
+    console.error('Get my lesson progress error:', error);
+    return res.status(500).json({
+      success: false,
+      error: { code: 'FETCH_FAILED', message: error.message },
+    });
+  }
+};
+
+/**
+ * GET /api/users/lesson-progress/stats
+ * Instructor-only. Returns total completion count across all students,
+ * plus distinct lessons that have at least one completion.
+ */
+export const getLessonProgressStats = async (req: AuthRequest, res: Response) => {
+  try {
+    if (req.user?.role !== 'instructor') {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'Instructor role required' },
+      });
+    }
+
+    const [totalRes, rowsRes] = await Promise.all([
+      supabase
+        .from('lesson_progress')
+        .select('id', { count: 'exact', head: true })
+        .eq('completed', true),
+      supabase
+        .from('lesson_progress')
+        .select('lesson_id, student_id')
+        .eq('completed', true),
+    ]);
+
+    if (totalRes.error) {
+      console.warn('lesson_progress count error:', totalRes.error.message);
+    }
+    if (rowsRes.error) {
+      console.warn('lesson_progress rows error:', rowsRes.error.message);
+    }
+
+    const rows = rowsRes.data ?? [];
+    const distinctLessons = new Set(rows.map((r) => r.lesson_id)).size;
+    const distinctStudents = new Set(rows.map((r) => r.student_id)).size;
+
+    return res.json({
+      success: true,
+      data: {
+        totalCompletions: totalRes.count ?? rows.length,
+        distinctLessonsCompleted: distinctLessons,
+        distinctStudentsWithCompletions: distinctStudents,
+      },
+    });
+  } catch (error: any) {
+    console.error('Lesson progress stats error:', error);
+    return res.status(500).json({
+      success: false,
+      error: { code: 'FETCH_FAILED', message: error.message },
+    });
+  }
+};
+
 export const getLeaderboard = async (req: AuthRequest, res: Response) => {
   try {
     const { period = 'all-time', limit = 10 } = req.query;
