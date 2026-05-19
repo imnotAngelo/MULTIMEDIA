@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Megaphone, RefreshCw, FileText, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { authFetch } from '@/lib/authFetch';
+import { resolveBackendAssetUrl } from '@/lib/apiConfig';
 import { useNotificationStore } from '@/stores/notificationStore';
 
 interface AnnouncementRow {
@@ -161,7 +162,7 @@ export function Announcements() {
                   </p>
                   {a.attachment_url && (
                     <a
-                      href={a.attachment_url}
+                      href={resolveBackendAssetUrl(a.attachment_url)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-2 mt-3 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-sm text-amber-400 hover:text-amber-300 transition-colors"

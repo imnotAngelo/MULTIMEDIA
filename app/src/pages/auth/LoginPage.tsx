@@ -5,22 +5,36 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Eye, EyeOff, Mail, Lock, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, Loader2, GraduationCap, Presentation } from 'lucide-react';
+
+type Role = 'student' | 'instructor';
 
 export function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState<Role>('student');
   const [showPassword, setShowPassword] = useState(false);
-  const { loginAsync, isLoading, error, user } = useAuthStore();
+  const [roleMismatch, setRoleMismatch] = useState<string>('');
+  const { loginAsync, logout, isLoading, error, user } = useAuthStore();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setRoleMismatch('');
     const success = await loginAsync(email, password);
     if (success) {
-      // Redirect based on user role
+      // Validate role selection matches the account, then redirect
       setTimeout(() => {
         const currentUser = useAuthStore.getState().user;
+        if (currentUser && currentUser.role !== role) {
+          setRoleMismatch(
+            `This account is registered as ${currentUser.role}. Please select "${
+              currentUser.role === 'instructor' ? 'Instructor' : 'Student'
+            }" to sign in.`
+          );
+          logout();
+          return;
+        }
         if (currentUser?.role === 'instructor') {
           navigate('/instructor/dashboard');
         } else {
@@ -57,6 +71,40 @@ export function LoginPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-slate-300 text-sm">Sign in as</Label>
+                <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Sign in as">
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={role === 'student'}
+                    onClick={() => setRole('student')}
+                    className={`flex items-center justify-center gap-2 h-11 rounded-md border text-sm font-medium transition-all ${
+                      role === 'student'
+                        ? 'border-violet-500/60 bg-violet-500/10 text-white shadow-sm shadow-violet-500/20'
+                        : 'border-slate-700 bg-slate-800/40 text-slate-300 hover:bg-slate-800/70 hover:text-white'
+                    }`}
+                  >
+                    <GraduationCap className="w-4 h-4 text-violet-400" />
+                    Student
+                  </button>
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={role === 'instructor'}
+                    onClick={() => setRole('instructor')}
+                    className={`flex items-center justify-center gap-2 h-11 rounded-md border text-sm font-medium transition-all ${
+                      role === 'instructor'
+                        ? 'border-fuchsia-500/60 bg-fuchsia-500/10 text-white shadow-sm shadow-fuchsia-500/20'
+                        : 'border-slate-700 bg-slate-800/40 text-slate-300 hover:bg-slate-800/70 hover:text-white'
+                    }`}
+                  >
+                    <Presentation className="w-4 h-4 text-fuchsia-400" />
+                    Instructor
+                  </button>
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-slate-300 text-sm">
                   Email
@@ -103,6 +151,12 @@ export function LoginPage() {
               {error && (
                 <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 text-sm text-red-400">
                   {error}
+                </div>
+              )}
+
+              {roleMismatch && (
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 text-sm text-amber-400">
+                  {roleMismatch}
                 </div>
               )}
 

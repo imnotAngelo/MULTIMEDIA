@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Eye, EyeOff, Mail, Lock, User, Loader2, GraduationCap, Presentation } from 'lucide-react';
 
 export function SignupPage() {
@@ -106,25 +105,36 @@ export function SignupPage() {
                 <Label htmlFor="role" className="text-slate-300 text-sm">
                   I am a
                 </Label>
-                <Select value={role} onValueChange={(value: any) => setRole(value)}>
-                  <SelectTrigger className="bg-slate-800/60 border-slate-700 text-white h-11 focus:ring-violet-500/50">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-slate-800 border-slate-700">
-                    <SelectItem value="student">
-                      <span className="flex items-center gap-2">
-                        <GraduationCap className="w-4 h-4 text-violet-400" />
-                        Student
-                      </span>
-                    </SelectItem>
-                    <SelectItem value="instructor">
-                      <span className="flex items-center gap-2">
-                        <Presentation className="w-4 h-4 text-fuchsia-400" />
-                        Instructor
-                      </span>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Account type">
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={role === 'student'}
+                    onClick={() => setRole('student')}
+                    className={`flex items-center justify-center gap-2 h-11 rounded-md border text-sm font-medium transition-all ${
+                      role === 'student'
+                        ? 'border-violet-500/60 bg-violet-500/10 text-white shadow-sm shadow-violet-500/20'
+                        : 'border-slate-700 bg-slate-800/40 text-slate-300 hover:bg-slate-800/70 hover:text-white'
+                    }`}
+                  >
+                    <GraduationCap className="w-4 h-4 text-violet-400" />
+                    Student
+                  </button>
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={role === 'instructor'}
+                    onClick={() => setRole('instructor')}
+                    className={`flex items-center justify-center gap-2 h-11 rounded-md border text-sm font-medium transition-all ${
+                      role === 'instructor'
+                        ? 'border-fuchsia-500/60 bg-fuchsia-500/10 text-white shadow-sm shadow-fuchsia-500/20'
+                        : 'border-slate-700 bg-slate-800/40 text-slate-300 hover:bg-slate-800/70 hover:text-white'
+                    }`}
+                  >
+                    <Presentation className="w-4 h-4 text-fuchsia-400" />
+                    Instructor
+                  </button>
+                </div>
               </div>
 
               <div className="space-y-2">

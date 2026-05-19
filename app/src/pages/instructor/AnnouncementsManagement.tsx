@@ -3,6 +3,7 @@ import { Megaphone, Send, Trash2, Loader2, Clock, Paperclip, X, FileText } from 
 import { Button } from '@/components/ui/button';
 import { notificationService } from '@/services/notificationService';
 import { authFetch } from '@/lib/authFetch';
+import { resolveBackendAssetUrl } from '@/lib/apiConfig';
 import { useAuthStore } from '@/stores/authStore';
 
 interface Announcement {
@@ -263,7 +264,7 @@ export function AnnouncementsManagement() {
                     <p className="text-sm text-slate-300 whitespace-pre-wrap">{a.message}</p>
                     {a.attachmentUrl && (
                       <a
-                        href={a.attachmentUrl}
+                        href={resolveBackendAssetUrl(a.attachmentUrl)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-2 mt-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-sm text-amber-400 hover:text-amber-300 transition-colors"
