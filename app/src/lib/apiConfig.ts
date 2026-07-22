@@ -1,12 +1,14 @@
 /**
- * Base path/URL for API calls. In Vite dev, defaults to same-origin "/api" so the dev
- * server can proxy to the Express backend (see vite.config.ts) — the browser no longer
- * must open a direct TCP connection to port 3001, which is more reliable on some setups.
- * Override with VITE_API_URL in .env files (e.g. full Render URL for `npm run dev:online`).
+ * Base path/URL for API calls.
+ *
+ * In local development, prefer the running Express backend directly on port 3001 so
+ * browser requests do not depend on the Vite proxy. If a deployment-specific override
+ * is provided via VITE_API_URL, that value still wins.
  */
-export const API_BASE_URL =
-  import.meta.env.VITE_API_URL?.trim() ||
-  '/api';
+const configuredApiUrl = import.meta.env.VITE_API_URL?.trim();
+const localDevApiUrl = 'http://127.0.0.1:3001/api';
+
+export const API_BASE_URL = configuredApiUrl || localDevApiUrl;
 
 /**
  * Resolve a backend-relative path (e.g. "/uploads/announcements/x.pdf") to a

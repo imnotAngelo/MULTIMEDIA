@@ -1,16 +1,17 @@
 import { API_BASE_URL as API_BASE } from './apiConfig';
 
+const FALLBACK_API_BASE = 'http://127.0.0.1:3001/api';
 const LOCAL_3001_API = /^https?:\/\/(localhost|127\.0\.0\.1):3001\/api/;
 
 const normalizeUrl = (url: string) => {
   if (LOCAL_3001_API.test(url)) {
-    return url.replace(LOCAL_3001_API, API_BASE);
+    return url.replace(LOCAL_3001_API, API_BASE || FALLBACK_API_BASE);
   }
 
   if (url.startsWith('http')) {
     return url;
   }
-  return `${API_BASE}${url.startsWith('/') ? url : `/${url}`}`;
+  return `${API_BASE || FALLBACK_API_BASE}${url.startsWith('/') ? url : `/${url}`}`;
 };
 
 /**
@@ -27,9 +28,18 @@ export async function authFetch(
   const headers: Record<string, string> = {
     ...(typeof options.headers === 'object' && options.headers !== null ? options.headers as Record<string, string> : {}),
   };
-  
+
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  // Skip authenticated requests when the user is not signed in.
+  if (!token && !url.startsWith('/auth/')) {
+    const fallbackResponse = new Response(JSON.stringify({ success: false, error: { code: 'UNAUTHORIZED', message: 'Not authenticated' } }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' },
+    });
+    return fallbackResponse;
   }
 
   // Don't force Content-Type for FormData - let browser set it
@@ -45,7 +55,7 @@ export async function authFetch(
     const refreshToken = localStorage.getItem('refresh_token');
     if (refreshToken) {
       try {
-        const refreshRes = await fetch(`${API_BASE}/auth/refresh`, {
+        const refreshRes = await fetch(`${API_BASE || FALLBACK_API_BASE}/auth/refresh`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ refresh_token: refreshToken }),

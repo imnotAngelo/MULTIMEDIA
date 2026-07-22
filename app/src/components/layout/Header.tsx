@@ -157,15 +157,29 @@ export function Header({ title, subtitle }: HeaderProps) {
   const fetchNotifications = async () => {
     try {
       const res = await authFetch('/notifications');
-      if (res.ok) {
-        const rows = await res.json();
-        setFromApi(rows);
-      } else {
+      if (!res.ok) {
         const text = await res.text().catch(() => '');
         console.error('[notify] Fetch failed:', res.status, text);
+        setFromApi([]);
+        return;
+      }
+
+      const text = await res.text().catch(() => '');
+      if (!text) {
+        setFromApi([]);
+        return;
+      }
+
+      try {
+        const rows = JSON.parse(text);
+        setFromApi(Array.isArray(rows) ? rows : []);
+      } catch (parseErr) {
+        console.error('[notify] Invalid notification payload:', parseErr);
+        setFromApi([]);
       }
     } catch (err) {
       console.error('[notify] Fetch error:', err);
+      setFromApi([]);
     }
   };
 

@@ -1,0 +1,57 @@
+[
+  {
+    "id": "seed-quiz-001",
+    "created_by": "local-instructor",
+    "title": "Quick Quiz: Intro to Digital Media",
+    "description": "A starter quiz that should appear immediately when the database is unavailable.",
+    "type": "quiz",
+    "due_date": null,
+    "total_points": 20,
+    "module_id": "local-module-1",
+    "status": "published",
+    "questions_data": [
+      {
+        "id": "q1",
+        "prompt": "What is the main purpose of a storyboard?",
+        "options": [
+          "Plan visuals",
+          "Delete files",
+          "Change color mode"
+        ],
+        "correctAnswer": 0
+      },
+      {
+        "id": "q2",
+        "prompt": "Which tool is commonly used for compositing?",
+        "options": [
+          "Brush",
+          "Mixer",
+          "Alpha compositing"
+        ],
+        "correctAnswer": 2
+      }
+    ],
+    "time_limit": 10,
+    "shuffle_questions": false,
+    "show_correct_answers": true,
+    "created_at": "2026-07-22T04:50:50.755Z",
+    "updated_at": "2026-07-22T04:50:50.757Z"
+  },
+  {
+    "id": "seed-assignment-001",
+    "created_by": "local-instructor",
+    "title": "Short Reflection Assignment",
+    "description": "A sample assignment used as a fallback when the database is unavailable.",
+    "type": "assignment",
+    "due_date": "2026-07-29T04:50:50.757Z",
+    "total_points": 50,
+    "module_id": "local-module-1",
+    "status": "published",
+    "questions_data": [],
+    "time_limit": null,
+    "shuffle_questions": false,
+    "show_correct_answers": false,
+    "created_at": "2026-07-22T04:50:50.757Z",
+    "updated_at": "2026-07-22T04:50:50.757Z"
+  }
+]

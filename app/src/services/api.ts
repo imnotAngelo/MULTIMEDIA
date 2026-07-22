@@ -2,6 +2,13 @@ import { API_BASE_URL } from '@/lib/apiConfig';
 
 export { API_BASE_URL };
 
+function buildApiUrl(endpoint: string): string {
+  const base = (API_BASE_URL || '/api').trim();
+  const normalizedBase = base.endsWith('/') ? base.slice(0, -1) : base;
+  const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  return `${normalizedBase}${normalizedEndpoint}`;
+}
+
 interface ApiResponse<T> {
   success: boolean;
   data?: T;
@@ -26,7 +33,7 @@ class ApiService {
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
     try {
-      const url = `${API_BASE_URL}${endpoint}`;
+      const url = buildApiUrl(endpoint);
       console.log('API Request to:', url);
       console.log('Request Options:', options);
       
@@ -174,7 +181,7 @@ class ApiService {
     const token = localStorage.getItem('access_token');
     const form = new FormData();
     form.append('avatar', file);
-    const url = `${API_BASE_URL}/users/avatar`;
+    const url = buildApiUrl('/users/avatar');
     const response = await fetch(url, {
       method: 'POST',
       headers: {

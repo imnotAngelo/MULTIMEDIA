@@ -9,5 +9,27 @@
     "xp_total": 0,
     "streak_days": 0,
     "created_at": "2026-07-22T02:05:36.752Z"
+  },
+  "lib@gmail.com": {
+    "id": "08cd6d03-0ed2-4431-83f4-5d16ad55e7c5",
+    "email": "lib@gmail.com",
+    "password_hash": "$2a$10$QDrL2pP3BE0JoSX3zS/pjeo3ezSS1Zn5iTWoF/SE5D1DiFiFrmoLG",
+    "full_name": "sdds",
+    "role": "student",
+    "avatar_url": "https://api.dicebear.com/7.x/avataaars/svg?seed=lib@gmail.com",
+    "xp_total": 0,
+    "streak_days": 0,
+    "created_at": "2026-07-22T03:54:30.771Z"
+  },
+  "test@gmail.com": {
+    "id": "11f9a7cd-3350-48a5-a944-ef3f9eee5ad5",
+    "email": "test@gmail.com",
+    "password_hash": "$2a$10$8nEGXwAc7cCxb.XEIOP5qen7WJMazplH9q6x5EA8wSSwFJ6GU43Je",
+    "full_name": "test",
+    "role": "instructor",
+    "avatar_url": "https://api.dicebear.com/7.x/avataaars/svg?seed=test@gmail.com",
+    "xp_total": 0,
+    "streak_days": 0,
+    "created_at": "2026-07-22T04:37:31.520Z"
   }
 }

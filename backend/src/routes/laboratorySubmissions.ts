@@ -31,18 +31,10 @@ const labUpload = multer({
   },
 });
 
-/**
- * Canonical "laboratory submissions" router.
- *
- * Note: For compatibility with existing data, this still stores in the existing
- * `canva_submissions` table / `canva_url` column. The API/UX is renamed to
- * "laboratory submissions" and accepts either `submissionUrl` or legacy `canvaUrl`.
- */
 const router = Router();
 
 /**
  * GET /api/laboratory-submissions/my-files
- * Returns the authenticated student's file submissions keyed by lab_id.
  */
 router.get(
   "/my-files",
@@ -51,6 +43,8 @@ router.get(
     try {
       const studentId = req.user?.id;
       if (!studentId) return res.status(401).json({ error: "Unauthorized" });
+
+      if (!supabase) return res.status(500).json({ error: "Database client not initialized" });
 
       const { data, error } = await supabase
         .from("lab_file_submissions")
@@ -82,20 +76,20 @@ router.get(
 
 /**
  * POST /api/laboratory-submissions/upload-file
- * Student submits a photo/video file for an instructor-assigned lab.
- * Accepts multipart/form-data with fields: file, labId, labTitle, note.
  */
 router.post("/upload-file", authMiddleware, async (req: AuthRequest, res: Response) => {
   console.log("🚀 upload-file handler called, user:", req.user?.id);
-  // Parse multipart body with multer
+
   const multerErr = await new Promise<Error | null>((resolve) => {
     labUpload.single("file")(req as any, res as any, (err: any) => resolve(err ?? null));
   });
+
   if (multerErr) {
     return res.status(400).json({ error: multerErr.message });
   }
 
   const file = (req as any).file as Express.Multer.File | undefined;
+
   try {
     const { labId, labTitle, note } = req.body ?? {};
     const studentId = req.user?.id;
@@ -105,9 +99,11 @@ router.post("/upload-file", authMiddleware, async (req: AuthRequest, res: Respon
       return res.status(400).json({ error: "Missing labId or file" });
     }
 
+    if (!supabase) return res.status(500).json({ error: "Database client not initialized" });
+
     const filePath = `lab-submissions/${file.filename}`;
 
-    // Remove previous submission file if one exists
+    // Remove previous submission if exists
     const { data: existing } = await supabase
       .from("lab_file_submissions")
       .select("id, file_path")
@@ -159,7 +155,6 @@ router.post("/upload-file", authMiddleware, async (req: AuthRequest, res: Respon
 
 /**
  * GET /api/laboratory-submissions/stats/:laboratoryId
- * Get submission statistics for a laboratory
  */
 router.get(
   "/stats/:laboratoryId",
@@ -168,6 +163,8 @@ router.get(
     try {
       const { laboratoryId } = req.params;
       const userId = req.user?.id;
+
+      if (!supabase) return res.status(500).json({ error: "Database client not initialized" });
 
       const { data: lab } = await supabase
         .from("laboratories")
@@ -208,8 +205,6 @@ router.get(
 
 /**
  * GET /api/laboratory-submissions/all-files
- * Instructor-only: returns every file submission across all labs,
- * joined with basic student info from the users table.
  */
 router.get(
   "/all-files",
@@ -218,6 +213,8 @@ router.get(
     try {
       const userId = req.user?.id;
       if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+      if (!supabase) return res.status(500).json({ error: "Database client not initialized" });
 
       const { data, error } = await supabase
         .from("lab_file_submissions")
@@ -240,11 +237,11 @@ router.get(
 
       if (error) throw error;
 
-      // Fetch student info separately to avoid FK constraint dependency
       const studentIds = [...new Set((data ?? []).map((r: any) => r.student_id))];
       const { data: users } = studentIds.length
         ? await supabase.from("users").select("id, email, full_name").in("id", studentIds)
         : { data: [] };
+
       const userMap: Record<string, any> = {};
       for (const u of users ?? []) userMap[u.id] = u;
 
@@ -276,7 +273,6 @@ router.get(
 
 /**
  * PATCH /api/laboratory-submissions/grade-file/:id
- * Instructor grades a file submission in lab_file_submissions.
  */
 router.patch(
   "/grade-file/:id",
@@ -287,6 +283,8 @@ router.patch(
       const { grade, feedback, status } = req.body ?? {};
       const userId = req.user?.id;
       if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+      if (!supabase) return res.status(500).json({ error: "Database client not initialized" });
 
       const updateData: any = { updated_at: new Date().toISOString() };
       if (grade !== undefined) updateData.grade = grade;
@@ -312,7 +310,7 @@ router.patch(
 );
 
 /**
- * Get all submissions for a laboratory (student sees own, instructor sees all)
+ * GET /api/laboratory-submissions/:laboratoryId
  */
 router.get(
   "/:laboratoryId",
@@ -322,7 +320,8 @@ router.get(
       const { laboratoryId } = req.params;
       const userId = req.user?.id;
 
-      // Get laboratory to check if current user is instructor
+      if (!supabase) return res.status(500).json({ error: "Database client not initialized" });
+
       const { data: lab } = await supabase
         .from("laboratories")
         .select("instructor_id")
@@ -361,7 +360,6 @@ router.get(
 
 /**
  * POST /api/laboratory-submissions
- * Create a new laboratory submission (link and/or file metadata)
  */
 router.post("/", authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
@@ -370,7 +368,7 @@ router.post("/", authMiddleware, async (req: AuthRequest, res: Response) => {
       phaseId,
       projectTitle,
       submissionUrl,
-      canvaUrl, // legacy
+      canvaUrl,
       startTime,
     } = req.body ?? {};
     const studentId = req.user?.id;
@@ -378,6 +376,8 @@ router.post("/", authMiddleware, async (req: AuthRequest, res: Response) => {
     if (!laboratoryId || !phaseId || !studentId) {
       return res.status(400).json({ error: "Missing required fields" });
     }
+
+    if (!supabase) return res.status(500).json({ error: "Database client not initialized" });
 
     const url: string | undefined =
       typeof submissionUrl === "string" && submissionUrl.trim()
@@ -395,13 +395,11 @@ router.post("/", authMiddleware, async (req: AuthRequest, res: Response) => {
       start_time: startTime,
     };
 
-    // Store as canva_url for DB compatibility, regardless of UI naming
     if (url) {
       submissionData.canva_url = url;
       submissionData.submission_method = "link";
     }
 
-    // Calculate time spent if start_time provided
     if (startTime) {
       const startMs = new Date(startTime).getTime();
       const endMs = new Date().getTime();
@@ -417,7 +415,6 @@ router.post("/", authMiddleware, async (req: AuthRequest, res: Response) => {
 
     if (error) throw error;
 
-    // Mark this phase as complete in laboratory_progress
     await supabase
       .from("laboratory_progress")
       .update({
@@ -439,7 +436,6 @@ router.post("/", authMiddleware, async (req: AuthRequest, res: Response) => {
 
 /**
  * PATCH /api/laboratory-submissions/:submissionId
- * Update submission with file metadata or instructor feedback
  */
 router.patch(
   "/:submissionId",
@@ -456,6 +452,8 @@ router.patch(
         status,
       } = req.body ?? {};
       const userId = req.user?.id;
+
+      if (!supabase) return res.status(500).json({ error: "Database client not initialized" });
 
       const { data: submission } = await supabase
         .from("canva_submissions")
@@ -518,7 +516,6 @@ router.patch(
 
 /**
  * DELETE /api/laboratory-submissions/:submissionId
- * Delete a submission (student can only delete own, before it's reviewed)
  */
 router.delete(
   "/:submissionId",
@@ -527,6 +524,8 @@ router.delete(
     try {
       const { submissionId } = req.params;
       const userId = req.user?.id;
+
+      if (!supabase) return res.status(500).json({ error: "Database client not initialized" });
 
       const { data: submission } = await supabase
         .from("canva_submissions")
@@ -557,4 +556,3 @@ router.delete(
 );
 
 export default router;
-

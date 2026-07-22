@@ -7,6 +7,14 @@ import { supabase } from '../config/supabase.js';
 
 const router = Router();
 
+function isSupabaseUnavailableError(error: any): boolean {
+  return !error || !supabase || error?.code === 'PGRST116' || error?.message?.includes('does not exist') || error?.message?.includes('relation') || error?.message?.includes('not found');
+}
+
+function logNotificationFallback(reason: string, details?: unknown) {
+  console.warn(`[notifications] ${reason}`, details ?? '');
+}
+
 // --- Multer setup for announcement attachments ---
 const announcementUploadsDir = path.join(process.cwd(), 'uploads', 'announcements');
 if (!fs.existsSync(announcementUploadsDir)) {
@@ -35,6 +43,11 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
+    if (!supabase) {
+      logNotificationFallback('Supabase is not configured; returning an empty notification list.');
+      return res.json([]);
+    }
+
     const { data, error } = await supabase
       .from('notifications')
       .select('*')
@@ -42,10 +55,18 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
       .order('created_at', { ascending: false })
       .limit(50);
 
-    if (error) throw error;
+    if (error) {
+      if (isSupabaseUnavailableError(error)) {
+        logNotificationFallback('Notifications table is unavailable; returning an empty notification list.', error.message);
+        return res.json([]);
+      }
+      throw error;
+    }
+
     res.json(data ?? []);
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    logNotificationFallback('Failed to load notifications; returning an empty notification list.', err?.message);
+    res.json([]);
   }
 });
 
@@ -62,6 +83,11 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
     const { type, title, message, recipientRole = 'student', attachmentUrl, attachmentName } = req.body ?? {};
     if (!type || !title || !message) {
       return res.status(400).json({ error: 'type, title, and message are required' });
+    }
+
+    if (!supabase) {
+      logNotificationFallback('Supabase is not configured; skipping notification creation.');
+      return res.json({ sent: 0, skipped: true });
     }
 
     // Fetch all target recipients
@@ -85,12 +111,18 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
     if (rows.length === 0) return res.json({ sent: 0 });
 
     const { error: insErr } = await supabase.from('notifications').insert(rows);
-    if (insErr) throw insErr;
+    if (insErr) {
+      if (isSupabaseUnavailableError(insErr)) {
+        logNotificationFallback('Could not create notification because the notifications table is unavailable.', insErr.message);
+        return res.json({ sent: 0, skipped: true });
+      }
+      throw insErr;
+    }
 
     res.json({ sent: rows.length });
   } catch (err: any) {
-    console.error('Error creating notification:', err);
-    res.status(500).json({ error: err.message });
+    logNotificationFallback('Error creating notification; returning a no-op response.', err?.message);
+    res.json({ sent: 0, skipped: true });
   }
 });
 
@@ -124,6 +156,11 @@ router.post(
           attachmentName = req.file.originalname;
         }
 
+        if (!supabase) {
+          logNotificationFallback('Supabase is not configured; skipping announcement creation.');
+          return res.json({ sent: 0, skipped: true, attachmentUrl, attachmentName });
+        }
+
         // Fetch all students
         const { data: recipients, error: rErr } = await supabase
           .from('users')
@@ -144,12 +181,18 @@ router.post(
         if (rows.length === 0) return res.json({ sent: 0, attachmentUrl, attachmentName });
 
         const { error: insErr } = await supabase.from('notifications').insert(rows);
-        if (insErr) throw insErr;
+        if (insErr) {
+          if (isSupabaseUnavailableError(insErr)) {
+            logNotificationFallback('Could not create announcement because the notifications table is unavailable.', insErr.message);
+            return res.json({ sent: 0, skipped: true, attachmentUrl, attachmentName });
+          }
+          throw insErr;
+        }
 
         res.json({ sent: rows.length, attachmentUrl, attachmentName });
       } catch (err: any) {
-        console.error('Error creating announcement:', err);
-        res.status(500).json({ error: err.message });
+        logNotificationFallback('Error creating announcement; returning a no-op response.', err?.message);
+        res.json({ sent: 0, skipped: true });
       }
     });
   }
@@ -164,16 +207,28 @@ router.patch('/read-all', authMiddleware, async (req: AuthRequest, res: Response
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
+    if (!supabase) {
+      logNotificationFallback('Supabase is not configured; skipping mark-all-read operation.');
+      return res.json({ success: true, skipped: true });
+    }
+
     const { error } = await supabase
       .from('notifications')
       .update({ read: true })
       .eq('recipient_id', userId)
       .eq('read', false);
 
-    if (error) throw error;
+    if (error) {
+      if (isSupabaseUnavailableError(error)) {
+        logNotificationFallback('Could not mark notifications as read because the notifications table is unavailable.', error.message);
+        return res.json({ success: true, skipped: true });
+      }
+      throw error;
+    }
     res.json({ success: true });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    logNotificationFallback('Failed to mark notifications as read; returning a no-op response.', err?.message);
+    res.json({ success: true, skipped: true });
   }
 });
 
@@ -186,6 +241,11 @@ router.patch('/:id/read', authMiddleware, async (req: AuthRequest, res: Response
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
+    if (!supabase) {
+      logNotificationFallback('Supabase is not configured; skipping mark-one-read operation.');
+      return res.json({ success: true, skipped: true });
+    }
+
     const { id } = req.params;
     const { error } = await supabase
       .from('notifications')
@@ -193,10 +253,17 @@ router.patch('/:id/read', authMiddleware, async (req: AuthRequest, res: Response
       .eq('id', id)
       .eq('recipient_id', userId);
 
-    if (error) throw error;
+    if (error) {
+      if (isSupabaseUnavailableError(error)) {
+        logNotificationFallback('Could not mark the notification as read because the notifications table is unavailable.', error.message);
+        return res.json({ success: true, skipped: true });
+      }
+      throw error;
+    }
     res.json({ success: true });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    logNotificationFallback('Failed to mark the notification as read; returning a no-op response.', err?.message);
+    res.json({ success: true, skipped: true });
   }
 });
 
