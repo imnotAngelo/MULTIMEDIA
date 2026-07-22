@@ -4,6 +4,22 @@ import { supabase } from '../config/supabase.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
+import { createUser, findUserByEmail } from '../lib/userStore.js';
+
+function isTransientAuthError(error: any): boolean {
+  const message = `${error?.message || ''} ${error?.code || ''}`.toLowerCase();
+  return [
+    'fetch failed',
+    'network',
+    'socket hang up',
+    'econnrefused',
+    'etimedout',
+    'timed out',
+    'temporarily unavailable',
+    'supabase unavailable',
+    'missing supabase',
+  ].some((fragment) => message.includes(fragment));
+}
 
 export const register = async (req: AuthRequest, res: Response) => {
   try {
@@ -20,30 +36,89 @@ export const register = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Check if user exists
-    const { data: existingUser } = await supabase
-      .from('users')
-      .select('id')
-      .eq('email', email)
-      .single();
+    try {
+      if (!supabase) {
+        throw new Error('Supabase unavailable');
+      }
 
-    if (existingUser) {
-      return res.status(409).json({
-        success: false,
-        error: {
-          code: 'USER_EXISTS',
-          message: 'User already exists',
-        },
-      });
+      const { data: existingUser, error: existingUserError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', email)
+        .single();
+
+      if (existingUserError && existingUserError.code !== 'PGRST116') {
+        throw existingUserError;
+      }
+
+      if (existingUser) {
+        return res.status(409).json({
+          success: false,
+          error: {
+            code: 'USER_EXISTS',
+            message: 'User already exists',
+          },
+        });
+      }
+    } catch (error: any) {
+      if (!isTransientAuthError(error)) {
+        throw error;
+      }
+
+      const fallbackUser = findUserByEmail(email);
+      if (fallbackUser) {
+        return res.status(409).json({
+          success: false,
+          error: {
+            code: 'USER_EXISTS',
+            message: 'User already exists',
+          },
+        });
+      }
     }
 
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create user
-    const { data: user, error } = await supabase
-      .from('users')
-      .insert({
+    try {
+      if (!supabase) {
+        throw new Error('Supabase unavailable');
+      }
+
+      const { data: user, error } = await supabase
+        .from('users')
+        .insert({
+          id: uuidv4(),
+          email,
+          password_hash: hashedPassword,
+          full_name,
+          role,
+          avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
+          xp_total: 0,
+          streak_days: 0,
+        })
+        .select();
+
+      if (error) throw error;
+
+      return res.status(201).json({
+        success: true,
+        data: {
+          user: {
+            id: user[0].id,
+            email: user[0].email,
+            full_name: user[0].full_name,
+            role: user[0].role,
+          },
+          message: 'Registration successful',
+        },
+      });
+    } catch (error: any) {
+      if (!isTransientAuthError(error)) {
+        throw error;
+      }
+
+      const fallbackUser = createUser({
         id: uuidv4(),
         email,
         password_hash: hashedPassword,
@@ -52,23 +127,21 @@ export const register = async (req: AuthRequest, res: Response) => {
         avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
         xp_total: 0,
         streak_days: 0,
-      })
-      .select();
+      });
 
-    if (error) throw error;
-
-    return res.status(201).json({
-      success: true,
-      data: {
-        user: {
-          id: user[0].id,
-          email: user[0].email,
-          full_name: user[0].full_name,
-          role: user[0].role,
+      return res.status(201).json({
+        success: true,
+        data: {
+          user: {
+            id: fallbackUser.id,
+            email: fallbackUser.email,
+            full_name: fallbackUser.full_name,
+            role: fallbackUser.role,
+          },
+          message: 'Registration successful',
         },
-        message: 'Registration successful',
-      },
-    });
+      });
+    }
   } catch (error: any) {
     console.error('Register error:', error);
     return res.status(500).json({
@@ -97,14 +170,36 @@ export const login = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Get user
-    const { data: user, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('email', email)
-      .single();
+    let user: any = null;
 
-    if (error || !user) {
+    try {
+      if (!supabase) {
+        throw new Error('Supabase unavailable');
+      }
+
+      const { data: dbUser, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', email)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        throw error;
+      }
+
+      user = dbUser;
+    } catch (error: any) {
+      if (!isTransientAuthError(error)) {
+        throw error;
+      }
+
+      const fallbackUser = findUserByEmail(email);
+      if (fallbackUser) {
+        user = fallbackUser;
+      }
+    }
+
+    if (!user) {
       console.error('❌ User not found:', email);
       return res.status(401).json({
         success: false,

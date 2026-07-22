@@ -1,0 +1,13 @@
+{
+  "copilot-verify-e01d8958b86b48d18c492fdcd02c02e5@example.com": {
+    "id": "8e6c3b71-21ba-432f-8b67-f3dc537cbc74",
+    "email": "copilot-verify-e01d8958b86b48d18c492fdcd02c02e5@example.com",
+    "password_hash": "$2a$10$bhiPmIJ4O80tX.cmObUZVeJN1rYZE8KSh5Mihm9ycUp8Ra8HhPSUm",
+    "full_name": "Copilot Verify",
+    "role": "student",
+    "avatar_url": "https://api.dicebear.com/7.x/avataaars/svg?seed=copilot-verify-e01d8958b86b48d18c492fdcd02c02e5@example.com",
+    "xp_total": 0,
+    "streak_days": 0,
+    "created_at": "2026-07-22T02:05:36.752Z"
+  }
+}

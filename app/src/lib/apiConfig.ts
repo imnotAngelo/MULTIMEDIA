@@ -6,7 +6,7 @@
  */
 export const API_BASE_URL =
   import.meta.env.VITE_API_URL?.trim() ||
-  (import.meta.env.DEV ? '/api' : 'http://127.0.0.1:3001/api');
+  '/api';
 
 /**
  * Resolve a backend-relative path (e.g. "/uploads/announcements/x.pdf") to a

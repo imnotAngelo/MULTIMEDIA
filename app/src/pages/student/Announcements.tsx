@@ -11,6 +11,7 @@ interface AnnouncementRow {
   message: string;
   created_at: string;
   read: boolean;
+  type?: string;
   attachment_url?: string | null;
   attachment_name?: string | null;
 }
@@ -31,9 +32,7 @@ export function Announcements() {
       // Sync with the bell-icon store too
       setFromApi(rows);
       // Filter to announcements only and keep newest first
-      const onlyAnnouncements = (rows as AnnouncementRow[])
-        .filter((r) => r.type === 'announcement' as any || true)
-        .filter((r: any) => r.type === 'announcement');
+      const onlyAnnouncements = (rows as AnnouncementRow[]).filter((r) => !r.type || r.type === 'announcement');
       setItems(onlyAnnouncements);
     } catch (err: any) {
       setError(err?.message ?? 'Failed to load announcements.');

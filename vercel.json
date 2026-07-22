@@ -8,6 +8,10 @@
   },
   "rewrites": [
     {
+      "source": "/api/(.*)",
+      "destination": "https://multimedia-2-x7ol.onrender.com/api/$1"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
