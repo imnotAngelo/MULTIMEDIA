@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "dev:online": "vite --mode online",
-    "build": "tsc -b && vite build",
+    "build": "chmod +x node_modules/.bin/vite && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
