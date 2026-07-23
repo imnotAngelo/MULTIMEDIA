@@ -3,10 +3,13 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": "20.x"
+  },
   "scripts": {
     "dev": "vite",
     "dev:online": "vite --mode online",
-    "build": "chmod +x node_modules/.bin/vite && vite build"
+    "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
