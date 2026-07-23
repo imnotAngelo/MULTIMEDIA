@@ -15,17 +15,20 @@ export function LoginPage() {
   const [role, setRole] = useState<Role>('student');
   const [showPassword, setShowPassword] = useState(false);
   const [roleMismatch, setRoleMismatch] = useState<string>('');
-  const { loginAsync, logout, isLoading, error, user } = useAuthStore();
+  
+  const { loginAsync, logout, isLoading, error } = useAuthStore();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setRoleMismatch('');
+
     const success = await loginAsync(email, password);
+
     if (success) {
-      // Validate role selection matches the account, then redirect
       setTimeout(() => {
         const currentUser = useAuthStore.getState().user;
+        
         if (currentUser && currentUser.role !== role) {
           setRoleMismatch(
             `This account is registered as ${currentUser.role}. Please select "${
@@ -35,6 +38,7 @@ export function LoginPage() {
           logout();
           return;
         }
+
         if (currentUser?.role === 'instructor') {
           navigate('/instructor/dashboard');
         } else {

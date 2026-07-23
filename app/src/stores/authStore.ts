@@ -27,7 +27,7 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       isAuthenticated: false,
       isLoading: false,
@@ -35,44 +35,31 @@ export const useAuthStore = create<AuthState>()(
       error: null,
 
       setUser: (user) => set({ user, isAuthenticated: !!user }),
-      
       setAuthenticated: (value) => set({ isAuthenticated: value }),
-      
       setLoading: (value) => set({ isLoading: value }),
-      
       setError: (error) => set({ error }),
-
       setHydrated: (value) => set({ isHydrated: value }),
 
       loginAsync: async (email: string, password: string) => {
         set({ isLoading: true, error: null });
+
         try {
           console.log('🔐 [AUTH] Starting login for:', email);
+
           const response = await api.login(email, password);
           
-          console.log('🔐 [AUTH] Login response:', {
-            success: response.success,
-            hasData: !!response.data,
-            dataKeys: response.data ? Object.keys(response.data) : [],
-            error: response.error,
-          });
+          // Debug: Log raw response
+          console.log('🔐 [AUTH] Raw API response:', response);
+
+          if (!response) {
+            throw new Error("No response from server");
+          }
 
           if (response.success && response.data) {
             const { user, access_token, refresh_token } = response.data as any;
-            
-            console.log('🔐 [AUTH] Extracted from response:', {
-              hasUser: !!user,
-              hasAccessToken: !!access_token,
-              hasRefreshToken: !!refresh_token,
-              accessTokenPrefix: access_token ? access_token.substring(0, 20) : 'MISSING',
-              refreshTokenPrefix: refresh_token ? refresh_token.substring(0, 20) : 'MISSING',
-            });
 
             if (!access_token || !refresh_token) {
-              console.error('❌ [AUTH] Tokens missing in response:', {
-                access_token: !!access_token,
-                refresh_token: !!refresh_token,
-              });
+              console.error('❌ [AUTH] Tokens missing in response');
               set({ 
                 error: 'Login failed: Missing authentication tokens',
                 isLoading: false 
@@ -80,17 +67,9 @@ export const useAuthStore = create<AuthState>()(
               return false;
             }
 
-            console.log('🔐 [AUTH] Saving tokens to localStorage...');
+            // Save tokens
             localStorage.setItem('access_token', access_token);
             localStorage.setItem('refresh_token', refresh_token);
-            
-            // Verify tokens were saved
-            const saved_access = localStorage.getItem('access_token');
-            const saved_refresh = localStorage.getItem('refresh_token');
-            console.log('🔐 [AUTH] Verification - tokens saved:', {
-              access_token_saved: !!saved_access,
-              refresh_token_saved: !!saved_refresh,
-            });
 
             set({ 
               user: user as User,
@@ -98,18 +77,18 @@ export const useAuthStore = create<AuthState>()(
               isLoading: false,
               error: null
             });
-            
+
             console.log('✅ [AUTH] Login successful!');
             return true;
           } else {
-            const errorMsg = response.error?.message || 'Login failed';
+            const errorMsg = response.error?.message || response.message || 'Invalid email or password';
             console.error('❌ [AUTH] Login failed:', errorMsg);
             set({ error: errorMsg, isLoading: false });
             return false;
           }
         } catch (err: any) {
-          const errorMsg = err.message || 'Login failed';
-          console.error('❌ [AUTH] Exception during login:', errorMsg);
+          const errorMsg = err.message || 'Login failed. Please try again.';
+          console.error('❌ [AUTH] Exception during login:', err);
           set({ error: errorMsg, isLoading: false });
           return false;
         }
@@ -119,6 +98,7 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true, error: null });
         try {
           const response = await api.register(email, password, fullName, role);
+          
           if (response.success) {
             set({ isLoading: false, error: null });
             return true;
@@ -134,11 +114,7 @@ export const useAuthStore = create<AuthState>()(
         }
       },
       
-      login: (user) => set({ 
-        user, 
-        isAuthenticated: true, 
-        error: null 
-      }),
+      login: (user) => set({ user, isAuthenticated: true, error: null }),
       
       logout: () => {
         localStorage.removeItem('access_token');
@@ -156,62 +132,32 @@ export const useAuthStore = create<AuthState>()(
       
       addXP: (amount) => set((state) => ({
         user: state.user 
-          ? { ...state.user, xp_total: state.user.xp_total + amount }
+          ? { ...state.user, xp_total: (state.user.xp_total || 0) + amount }
           : null
       })),
 
       verifySession: async () => {
-        console.log('🔐 [AUTH] verifySession called');
-        
-        // Check tokens directly in localStorage
         const accessToken = localStorage.getItem('access_token');
         const refreshToken = localStorage.getItem('refresh_token');
         
-        console.log('🔐 [AUTH] Token check:', {
-          accessToken: !!accessToken,
-          refreshToken: !!refreshToken,
-          accessTokenPrefix: accessToken ? accessToken.substring(0, 20) : 'NONE',
-          refreshTokenPrefix: refreshToken ? refreshToken.substring(0, 20) : 'NONE',
-        });
+        const state = get();
 
-        // Check if user is already authenticated (restored from localStorage by persist middleware)
-        const state = useAuthStore.getState();
-        
-        console.log('🔐 [AUTH] Current auth state:', {
-          isAuthenticated: state.isAuthenticated,
-          hasUser: !!state.user,
-          userId: state.user?.id,
-        });
-        
-        // If already authenticated and user exists, session is valid
         if (state.isAuthenticated && state.user && accessToken) {
-          console.log('✅ [AUTH] Session is valid (authenticated + user + token)');
           set({ isHydrated: true });
           return true;
         }
-        
-        // If tokens exist but user not in state, restore from tokens
-        if (accessToken && refreshToken && !state.user) {
-          console.log('✅ [AUTH] Tokens exist, restoring session');
+
+        if (accessToken && refreshToken) {
           set({ isHydrated: true, isAuthenticated: true });
           return true;
         }
-        
-        // If no tokens, clear auth state
-        if (!accessToken || !refreshToken) {
-          console.warn('⚠️ [AUTH] No tokens in localStorage, clearing auth');
-          set({ 
-            user: null, 
-            isAuthenticated: false, 
-            isHydrated: true,
-            error: null 
-          });
-          return false;
-        }
-        
-        console.log('✅ [AUTH] Session verified');
-        set({ isHydrated: true });
-        return true;
+
+        set({ 
+          user: null, 
+          isAuthenticated: false, 
+          isHydrated: true 
+        });
+        return false;
       },
     }),
     {
@@ -221,9 +167,7 @@ export const useAuthStore = create<AuthState>()(
         isAuthenticated: state.isAuthenticated 
       }),
       onRehydrateStorage: () => (state) => {
-        if (state) {
-          state.setHydrated(true);
-        }
+        if (state) state.setHydrated(true);
       },
     }
   )
