@@ -8,6 +8,7 @@ export interface AuthUserRecord {
   password_hash: string;
   full_name: string;
   role: string;
+  approval_status?: 'pending' | 'approved' | 'rejected';
   avatar_url?: string | null;
   xp_total: number;
   streak_days: number;
@@ -56,6 +57,11 @@ export function findUserByEmail(email: string): AuthUserRecord | null {
   return user ?? null;
 }
 
+export function findUserById(userId: string): AuthUserRecord | null {
+  const store = readStore();
+  return Object.values(store).find((entry) => entry.id === userId) ?? null;
+}
+
 export function createUser(user: Omit<AuthUserRecord, 'created_at'>): AuthUserRecord {
   const store = readStore();
   const createdAt = new Date().toISOString();
@@ -67,4 +73,28 @@ export function createUser(user: Omit<AuthUserRecord, 'created_at'>): AuthUserRe
   store[record.email.toLowerCase()] = record;
   writeStore(store);
   return record;
+}
+
+export function listUsers(): AuthUserRecord[] {
+  return Object.values(readStore()).sort((a, b) => a.created_at.localeCompare(b.created_at));
+}
+
+export function updateUser(userId: string, updates: Partial<AuthUserRecord>): AuthUserRecord | null {
+  const store = readStore();
+  const entries = Object.entries(store);
+  const matchIndex = entries.findIndex(([, entry]) => entry.id === userId || entry.email.toLowerCase() === userId.toLowerCase());
+
+  if (matchIndex === -1) {
+    return null;
+  }
+
+  const [key, existing] = entries[matchIndex];
+  const updated = {
+    ...existing,
+    ...updates,
+  };
+
+  store[key] = updated;
+  writeStore(store);
+  return updated;
 }

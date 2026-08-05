@@ -31,5 +31,16 @@
     "xp_total": 0,
     "streak_days": 0,
     "created_at": "2026-07-22T04:37:31.520Z"
+  },
+  "nana@gmail.com": {
+    "id": "3c0842ce-70e3-4b83-9465-4d827b7f3ef0",
+    "email": "nana@gmail.com",
+    "password_hash": "$2a$10$wuORSD5OQ3Ndphdapyuj8u6r5MnctaaLPJ/sF62Qn1F7MsUke4gnC",
+    "full_name": "nanana",
+    "role": "student",
+    "avatar_url": "https://api.dicebear.com/7.x/avataaars/svg?seed=nana@gmail.com",
+    "xp_total": 0,
+    "streak_days": 0,
+    "created_at": "2026-08-04T04:26:39.920Z"
   }
 }

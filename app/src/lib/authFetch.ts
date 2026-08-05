@@ -1,17 +1,20 @@
 import { API_BASE_URL as API_BASE } from './apiConfig';
 
 const FALLBACK_API_BASE = 'http://127.0.0.1:3001/api';
-const LOCAL_3001_API = /^https?:\/\/(localhost|127\.0\.0\.1):3001\/api/;
+const LOCAL_3001_API = /^https?:\/\/(localhost|127\.0\.0\.1):3001\/api(?:\/|$)/;
 
 const normalizeUrl = (url: string) => {
+  const baseUrl = (API_BASE || FALLBACK_API_BASE).replace(/\/$/, '');
+
   if (LOCAL_3001_API.test(url)) {
-    return url.replace(LOCAL_3001_API, API_BASE || FALLBACK_API_BASE);
+    const suffix = url.replace(/^https?:\/\/(localhost|127\.0\.0\.1):3001\/api/, '') || '/';
+    return `${baseUrl}${suffix.startsWith('/') ? suffix : `/${suffix}`}`;
   }
 
   if (url.startsWith('http')) {
     return url;
   }
-  return `${API_BASE || FALLBACK_API_BASE}${url.startsWith('/') ? url : `/${url}`}`;
+  return `${baseUrl}${url.startsWith('/') ? url : `/${url}`}`;
 };
 
 /**

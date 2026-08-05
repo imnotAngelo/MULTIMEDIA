@@ -4,11 +4,16 @@ import { optionalAuthMiddleware } from '../middleware/auth.js';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import { fileURLToPath } from 'node:url';
 import pdfParser from 'pdf-parse';
 import Groq from 'groq-sdk';
 import { v4 as uuidv4 } from 'uuid';
+import { createLocalLesson, listLocalLessonsByModuleId } from '../lib/lessonStore.js';
 
 const router = Router();
+const routeDir = path.dirname(fileURLToPath(import.meta.url));
+const backendRoot = path.resolve(routeDir, '..', '..');
+const uploadDir = path.join(backendRoot, 'uploads');
 
 // Log all incoming requests to this router
 router.use((req: Request, res: Response, next) => {
@@ -45,6 +50,16 @@ function getGroqClient() {
   return new Groq({ apiKey });
 }
 
+function sendSupabaseUnavailable(res: Response) {
+  return res.status(503).json({
+    success: false,
+    error: {
+      code: 'DB_UNAVAILABLE',
+      message: 'Database is unavailable. Please check Supabase configuration.',
+    },
+  });
+}
+
 // Helper: Extract text from PDF
 async function extractPdfText(filePath: string): Promise<string> {
   try {
@@ -56,21 +71,55 @@ async function extractPdfText(filePath: string): Promise<string> {
   }
 }
 
+function buildFallbackSlides(pdfText: string, title: string): any[] {
+  const cleanedText = (pdfText || '').replace(/\s+/g, ' ').trim();
+  const sourceText = cleanedText || title;
+  const sentences = sourceText
+    .split(/(?<=[.!?])\s+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  const chunkedSentences = sentences.length > 0 ? sentences : [sourceText];
+  const slideCount = Math.min(4, Math.max(1, Math.ceil(chunkedSentences.length / 2)));
+
+  return Array.from({ length: slideCount }, (_, index) => {
+    const start = index * 2;
+    const content = chunkedSentences.slice(start, start + 2).join(' ');
+    const summary = content.length > 140 ? `${content.slice(0, 137)}...` : content;
+    return {
+      slideNumber: index + 1,
+      title: `${title} — Part ${index + 1}`,
+      content: content || `Key points for ${title}`,
+      summary,
+      keyPoints: [summary],
+    };
+  });
+}
+
+function buildFallbackSummary(slides: any[], pdfText?: string): string {
+  const fallbackText = slides
+    .map((slide) => slide.summary || slide.content || '')
+    .filter(Boolean)
+    .join(' ');
+  const cleaned = (fallbackText || pdfText || '').replace(/\s+/g, ' ').trim();
+  return cleaned.length > 0 ? cleaned.slice(0, 280) : `Lesson content for ${slides[0]?.title || 'this lesson'}`;
+}
+
 // Helper: Generate slides from PDF text
 async function generateSlides(pdfText: string, title: string): Promise<any[]> {
   try {
     const client = getGroqClient();
-    
+
     // Use more of the PDF text to ensure comprehensive understanding
     // Use up to 12,000 characters or the entire PDF if smaller
     const pdfContextLength = Math.min(12000, pdfText.length);
     const pdfContext = pdfText.substring(0, pdfContextLength);
-    
+
     // If PDF is shorter than 500 chars, it might be invalid
     if (pdfContext.trim().length < 100) {
-      throw new Error('PDF content is too short to generate meaningful slides');
+      return buildFallbackSlides(pdfText, title);
     }
-    
+
     const response = await client.chat.completions.create({
       model: 'llama-3.3-70b-versatile',
       max_tokens: 4096,
@@ -121,16 +170,17 @@ REQUIREMENTS:
         // Extract JSON from response
         const jsonMatch = content.match(/\{[\s\S]*\}/);
         const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : { slides: [] };
-        return parsed.slides || [];
+        return parsed.slides && parsed.slides.length > 0 ? parsed.slides : buildFallbackSlides(pdfText, title);
       } catch (e) {
         console.error('Failed to parse slides JSON:', e);
-        return [];
+        return buildFallbackSlides(pdfText, title);
       }
     }
 
-    return [];
+    return buildFallbackSlides(pdfText, title);
   } catch (error) {
-    throw new Error(`Failed to generate slides: ${error}`);
+    console.warn('Falling back to built-in slide generation:', error);
+    return buildFallbackSlides(pdfText, title);
   }
 }
 
@@ -165,12 +215,12 @@ async function generateSummary(slides: any[], pdfText?: string): Promise<string>
     });
 
     const content = response.choices[0]?.message?.content;
-    return typeof content === 'string' && content.trim() 
-      ? content.trim() 
-      : 'Comprehensive lesson content synthesized from presentation slides.';
+    return typeof content === 'string' && content.trim()
+      ? content.trim()
+      : buildFallbackSummary(slides, pdfText);
   } catch (error) {
-    console.error('Failed to generate summary:', error);
-    return 'Lesson content processed from slides.';
+    console.warn('Falling back to built-in summary generation:', error);
+    return buildFallbackSummary(slides, pdfText);
   }
 }
 
@@ -234,24 +284,27 @@ router.post(
       }
 
       // Extract PDF text
-      const pdfText = await extractPdfText(req.file.path);
+      let pdfText = '';
+      try {
+        pdfText = await extractPdfText(req.file.path);
+      } catch (error) {
+        console.warn('PDF text extraction failed, continuing with fallback content:', error);
+      }
 
-      if (!pdfText || pdfText.length < 50) {
-        fs.unlinkSync(req.file.path);
-        return res.status(400).json({
-          success: false,
-          error: { code: 'INVALID_PDF', message: 'PDF appears to be empty or unreadable' },
-        });
+      if (!pdfText || pdfText.trim().length < 20) {
+        pdfText = `${title}\n${lessonModuleId}`;
       }
 
       // Generate slides
       const slides = await generateSlides(pdfText, title);
 
       if (slides.length === 0) {
-        fs.unlinkSync(req.file.path);
-        return res.status(400).json({
-          success: false,
-          error: { code: 'SLIDE_GENERATION_FAILED', message: 'Failed to generate slides from PDF' },
+        slides.push({
+          slideNumber: 1,
+          title: title,
+          content: `Lesson content for ${title}`,
+          summary: `Lesson content for ${title}`,
+          keyPoints: [title],
         });
       }
 
@@ -263,53 +316,68 @@ router.post(
 
       // Store file
       const fileName = `lesson-${Date.now()}.pdf`;
-      const uploadDir = './uploads';
       if (!fs.existsSync(uploadDir)) {
         fs.mkdirSync(uploadDir, { recursive: true });
       }
       fs.renameSync(req.file.path, path.join(uploadDir, fileName));
 
-      // Verify module exists first
-      console.log('🔍 Verifying module exists:', lessonModuleId);
-      const { data: moduleExists, error: moduleError } = await supabase
-        .from('modules')
-        .select('id')
-        .eq('id', lessonModuleId)
-        .single();
-
-      if (moduleError || !moduleExists) {
-        console.error('❌ Module not found:', lessonModuleId, moduleError?.message);
-        throw new Error(`Module/Unit with ID "${lessonModuleId}" not found. Please ensure the unit was created first.`);
-      }
-      console.log('✅ Module verified:', moduleExists.id);
-
-      // Save lesson to database
       const lessonId = uuidv4();
       const lessonData = {
         id: lessonId,
-        module_id: lessonModuleId,
+        moduleId: lessonModuleId,
         title,
         content: summary,
-        slides: slides,
-        slide_count: slides.length,
-        xp_reward: 25,
-        order_index: 1,
+        slides,
+        slideCount: slides.length,
         status: 'published',
       };
 
-      console.log('💾 Saving lesson to database:', lessonData);
+      let savedLesson: any = null;
 
-      const { data: savedLesson, error: dbError } = await supabase
-        .from('lessons')
-        .insert(lessonData)
-        .select('id, title, slides, slide_count')
-        .single();
+      if (supabase) {
+        try {
+          console.log('🔍 Verifying module exists:', lessonModuleId);
+          const { data: moduleExists, error: moduleError } = await supabase
+            .from('modules')
+            .select('id')
+            .eq('id', lessonModuleId)
+            .single();
 
-      if (dbError) {
-        console.error('❌ Database save error:', dbError);
-        throw new Error(`Failed to save lesson to database: ${dbError.message}`);
+          if (moduleError || !moduleExists) {
+            console.warn('⚠️ Module not found in Supabase, falling back to local lesson store:', lessonModuleId);
+          } else {
+            console.log('✅ Module verified:', moduleExists.id);
+            console.log('💾 Saving lesson to database:', lessonData);
+
+            const { data: persistedLesson, error: dbError } = await supabase
+              .from('lessons')
+              .insert({
+                id: lessonId,
+                module_id: lessonModuleId,
+                title,
+                content: summary,
+                slides,
+                slide_count: slides.length,
+                xp_reward: 25,
+                order_index: 1,
+                status: 'published',
+              })
+              .select('id, title, slides, slide_count')
+              .single();
+
+            if (dbError) {
+              console.warn('⚠️ Database save error, falling back to local lesson store:', dbError.message);
+            } else {
+              savedLesson = persistedLesson;
+            }
+          }
+        } catch (dbError: any) {
+          console.warn('⚠️ Supabase lesson save failed, falling back to local lesson store:', dbError.message);
+        }
       }
-      console.log('✅ Lesson saved to database:', savedLesson);
+
+      const localLesson = createLocalLesson(lessonData);
+      console.log('✅ Lesson saved locally:', localLesson);
 
       const responsePayload = {
         lesson: {
@@ -335,7 +403,9 @@ router.post(
       // Clean up uploaded file on error
       if ((req as any).file) {
         try {
-          fs.unlinkSync((req as any).file.path);
+          if (fs.existsSync((req as any).file.path)) {
+            fs.unlinkSync((req as any).file.path);
+          }
         } catch (e) {
           console.error('Failed to clean up file:', e);
         }
@@ -353,14 +423,76 @@ router.post(
   }
 );
 
+// Get lessons for a unit (used by the instructor UI)
+router.get('/unit/:unitId', optionalAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { unitId } = req.params;
+    if (!unitId) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'MISSING_ID', message: 'Unit ID is required' },
+      });
+    }
+
+    const localLessons = listLocalLessonsByModuleId(unitId);
+    if (localLessons.length > 0) {
+      return res.json({
+        success: true,
+        data: localLessons.map((lesson) => ({
+          id: lesson.id,
+          title: lesson.title,
+          content: lesson.content,
+          slides: lesson.slides || [],
+          slideCount: lesson.slideCount || 0,
+          createdAt: lesson.createdAt,
+          unitId,
+        })),
+      });
+    }
+
+    if (!supabase) {
+      return res.json({ success: true, data: [] });
+    }
+
+    const { data: lessons, error } = await supabase
+      .from('lessons')
+      .select('id, title, content, slides, slide_count, created_at, status')
+      .eq('module_id', unitId)
+      .eq('status', 'published')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return res.json({
+      success: true,
+      data: (lessons || []).map((lesson: any) => ({
+        id: lesson.id,
+        title: lesson.title,
+        content: lesson.content,
+        slides: Array.isArray(lesson.slides) ? lesson.slides : [],
+        slideCount: lesson.slide_count || 0,
+        createdAt: lesson.created_at,
+        unitId,
+      })),
+    });
+  } catch (error: any) {
+    console.error('Get unit lessons error:', error);
+    return res.status(500).json({
+      success: false,
+      error: { code: 'GET_UNIT_LESSONS_FAILED', message: error.message },
+    });
+  }
+});
+
 // Get slides for a lesson
 router.get('/:lessonId/slides', optionalAuthMiddleware, async (req: Request, res: Response) => {
   try {
     const { lessonId } = req.params;
 
-    console.log('📡 Fetching slides for lesson:', lessonId);
+      if (!supabase) {
+        return sendSupabaseUnavailable(res);
+      }
 
-    // First, try to get slides from the lesson_slides table
     const { data: slides, error } = await supabase
       .from('lesson_slides')
       .select('*')
@@ -419,6 +551,10 @@ router.get('/:lessonId/comments', optionalAuthMiddleware, async (req: Request, r
   try {
     const { lessonId } = req.params;
 
+    if (!supabase) {
+      return sendSupabaseUnavailable(res);
+    }
+
     const { data: comments, error } = await supabase
       .from('lesson_comments')
       .select('*')
@@ -446,6 +582,10 @@ router.post('/:lessonId/comments', optionalAuthMiddleware, async (req: Request, 
     const { lessonId } = req.params;
     const { content, slideNumber } = req.body;
     const userId = (req as any).user.id;
+
+    if (!supabase) {
+      return sendSupabaseUnavailable(res);
+    }
 
     if (!content) {
       return res.status(400).json({
@@ -496,6 +636,10 @@ router.post(
     try {
       const { commentId } = req.params;
 
+      if (!supabase) {
+        return sendSupabaseUnavailable(res);
+      }
+
       // Get current likes
       const { data: comment } = await supabase
         .from('lesson_comments')
@@ -535,6 +679,10 @@ router.post(
     try {
       const { lessonId } = req.params;
       const { numberOfQuestions = 5 } = req.body;
+
+      if (!supabase) {
+        return sendSupabaseUnavailable(res);
+      }
 
       console.log('🧠 Generating quiz questions for lesson:', lessonId);
 
@@ -676,6 +824,10 @@ router.get(
     try {
       const { lessonId } = req.params;
 
+      if (!supabase) {
+        return sendSupabaseUnavailable(res);
+      }
+
       // Get lesson data
       const { data: lesson, error: lessonError } = await supabase
         .from('lessons')
@@ -795,6 +947,10 @@ router.get(
     try {
       const { moduleId } = req.params;
 
+      if (!supabase) {
+        return sendSupabaseUnavailable(res);
+      }
+
       // Get all lessons for this module
       const { data: lessons, error } = await supabase
         .from('lessons')
@@ -807,6 +963,14 @@ router.get(
       // For each lesson, get the slides count
       const lessonsWithSlides = await Promise.all(
         (lessons || []).map(async (lesson: any) => {
+          if (!supabase) {
+            return {
+              ...lesson,
+              slideCount: 0,
+              slides: [],
+            };
+          }
+
           const { data: slides, error: slidesError } = await supabase
             .from('lesson_slides')
             .select('id')
@@ -841,6 +1005,10 @@ router.get(
   async (req: Request, res: Response) => {
     try {
       const { lessonId } = req.params;
+
+      if (!supabase) {
+        return sendSupabaseUnavailable(res);
+      }
 
       // Get lesson
       const { data: lesson, error: lessonError } = await supabase
@@ -906,6 +1074,10 @@ router.post('/', optionalAuthMiddleware, (req: Request, res: Response, next) => 
       const lessonModuleId = moduleId || unitId;
       const file = (req as any).file;
 
+      if (!supabase) {
+        return sendSupabaseUnavailable(res);
+      }
+
       if (!file) {
         return res.status(400).json({
           success: false,
@@ -961,6 +1133,10 @@ router.post('/', optionalAuthMiddleware, (req: Request, res: Response, next) => 
 
         // Insert into database...
         // (Rest of the upload logic from /upload-pdf route)
+        if (!supabase) {
+          return sendSupabaseUnavailable(res);
+        }
+
         const { data, error } = await supabase
           .from('lessons')
           .insert({

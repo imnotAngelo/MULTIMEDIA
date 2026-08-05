@@ -1,0 +1,69 @@
+[
+  {
+    "id": "586764dd-cf00-4e08-996d-43edac005379",
+    "moduleId": "906f3c11-7b61-49ee-991c-04b1488d7f92",
+    "title": "Live Lesson Test",
+    "content": "Unfortunately, the provided lesson slides do not contain sufficient information to create a meaningful summary. The topic and key points appear to be placeholders or test data, and do not convey any actual concepts or learning outcomes. However, I can suggest a generic summary that could be used if more information becomes available: This lesson introduces students to a new topic, covering key points and concepts that will be explored in more depth. By the end of the lesson, students will have a basic understanding of the subject matter and be prepared for further learning. The lesson aims to engage students and provide a foundation for future lessons. Additionally, students will learn how to apply the concepts to real-world scenarios.",
+    "slides": [
+      {
+        "slideNumber": 1,
+        "title": "Live Lesson Test — Part 1",
+        "content": "Live Lesson Test 906f3c11-7b61-49ee-991c-04b1488d7f92",
+        "summary": "Live Lesson Test 906f3c11-7b61-49ee-991c-04b1488d7f92",
+        "keyPoints": [
+          "Live Lesson Test 906f3c11-7b61-49ee-991c-04b1488d7f92"
+        ]
+      }
+    ],
+    "slideCount": 1,
+    "status": "published",
+    "createdAt": "2026-08-04T03:35:52.714Z"
+  },
+  {
+    "id": "44a7edfe-7c4c-4a1b-8813-4beca5012576",
+    "moduleId": "b652caa1-23b6-47ef-b150-d4ef816a6e64",
+    "title": "cbcn",
+    "content": "look up a value in O(1) time - i.e., constant time, assuming a well-designed hash function.\nKey Points: Instead of searching through a list (O(n)) or even a sorted list (O(log n)), a hash table can often  look up a value in O(1) time - ...\nSummary: Instead of searching through a list (O(n)) or even a sorted list (O(log n)), a hash table can often  look up a value in O(1) time - ...\n\nTopic: cbcn — Part 4\nCommon uses of hash tables include database indexing, fast lookup, and caching. \nKey Points: Common uses of hash tables include database indexing, fast lookup, and caching. \nSummary: Common uses of hash tables include database indexing, fast lookup, and caching. \n\nNote: All four parts will help the students understand what a hash table is,  how it works, how it is used in real-world scenarios.\n\nThe overall lesson covered the main concepts of hash tables, including their definition, functionality, and applications. By the end of this lesson, students should have a solid understanding of what hash tables are and how they are used in various contexts. This lesson also highlighted the benefits of using hash tables, such as efficient lookup times, and discussed common use cases.",
+    "slides": [
+      {
+        "slideNumber": 1,
+        "title": "cbcn — Part 1",
+        "content": "Page 1 of 4 Unit 4: Hash Tables 4.1 What is a Hash Table? A hash table (also known as a hash map, dictionary, or associative array) is a data structure that implements an associative array abstract data type, a structure that can map keys to values.",
+        "summary": "Page 1 of 4 Unit 4: Hash Tables 4.1 What is a Hash Table? A hash table (also known as a hash map, dictionary, or associative array) is a ...",
+        "keyPoints": [
+          "Page 1 of 4 Unit 4: Hash Tables 4.1 What is a Hash Table? A hash table (also known as a hash map, dictionary, or associative array) is a ..."
+        ]
+      },
+      {
+        "slideNumber": 2,
+        "title": "cbcn — Part 2",
+        "content": "A hash table uses a hash function to compute an index into an array of buckets or slots, from which the desired value can be found. Think of it like a super-fast lookup table.",
+        "summary": "A hash table uses a hash function to compute an index into an array of buckets or slots, from which the desired value can be found. Think...",
+        "keyPoints": [
+          "A hash table uses a hash function to compute an index into an array of buckets or slots, from which the desired value can be found. Think..."
+        ]
+      },
+      {
+        "slideNumber": 3,
+        "title": "cbcn — Part 3",
+        "content": "Instead of searching through a list (O(n)) or even a sorted list (O(log n)), a hash table can often \u0000nd what you're looking for in O(1) time on average. Key Components: Keys: The unique identi\u0000ers you use to store and retrieve data (e.g., a person's name, a product ID).",
+        "summary": "Instead of searching through a list (O(n)) or even a sorted list (O(log n)), a hash table can often \u0000nd what you're looking for in O(1) t...",
+        "keyPoints": [
+          "Instead of searching through a list (O(n)) or even a sorted list (O(log n)), a hash table can often \u0000nd what you're looking for in O(1) t..."
+        ]
+      },
+      {
+        "slideNumber": 4,
+        "title": "cbcn — Part 4",
+        "content": "Values: The data associated with the keys (e.g., a person's phone number, a product description). Hash Function: A function that takes a key and converts it into an index (an integer) in the underlying array.",
+        "summary": "Values: The data associated with the keys (e.g., a person's phone number, a product description). Hash Function: A function that takes a ...",
+        "keyPoints": [
+          "Values: The data associated with the keys (e.g., a person's phone number, a product description). Hash Function: A function that takes a ..."
+        ]
+      }
+    ],
+    "slideCount": 4,
+    "status": "published",
+    "createdAt": "2026-08-04T03:37:49.512Z"
+  }
+]

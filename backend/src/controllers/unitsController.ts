@@ -2,9 +2,39 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth.js';
 import { supabase } from '../config/supabase.js';
 import { v4 as uuidv4 } from 'uuid';
+import { createLocalUnit, listLocalUnits } from '../lib/unitStore.js';
+import { listLocalLessonsByModuleId } from '../lib/lessonStore.js';
 
 // Use a consistent default instructor ID for unauthenticated requests (proper UUID)
 const DEFAULT_INSTRUCTOR_ID = '12345678-1234-4234-8234-123456789012';
+
+function isSupabaseTransientError(error: any): boolean {
+  const message = `${error?.message || ''} ${error?.code || ''}`.toLowerCase();
+  return [
+    'fetch failed',
+    'network',
+    'socket hang up',
+    'econnrefused',
+    'etimedout',
+    'temporarily unavailable',
+    'supabase unavailable',
+    'missing supabase',
+  ].some((fragment) => message.includes(fragment));
+}
+
+async function safeSupabaseCall<T>(operation: () => Promise<T>, fallback: T): Promise<T> {
+  try {
+    if (!supabase) {
+      throw new Error('Supabase unavailable');
+    }
+    return await operation();
+  } catch (error: any) {
+    if (isSupabaseTransientError(error)) {
+      return fallback;
+    }
+    throw error;
+  }
+}
 
 // Get or create default instructor user
 async function getOrCreateDefaultInstructor() {
@@ -121,35 +151,58 @@ export const createUnit = async (req: AuthRequest, res: Response) => {
 
     console.log('📝 Creating unit:', { title, description, userId: userId || 'anonymous' });
 
-    const courseId = await getOrCreateDefaultCourse(userId);
-    console.log('💾 Using course:', courseId);
-
-    // Create module (unit)
     const unitId = uuidv4();
-    const { data: unit, error } = await supabase
-      .from('modules')
-      .insert({
-        id: unitId,
-        course_id: courseId,
-        title,
-        description: description || '',
-        order_index: 0,
-        status: 'active',
-      })
-      .select('id, title, description, created_at')
-      .single();
 
-    if (error) throw error;
+    const unitFromDb = await safeSupabaseCall(async () => {
+      const courseId = await getOrCreateDefaultCourse(userId);
+      console.log('💾 Using course:', courseId);
 
-    console.log('✅ Unit created:', unit);
+      const { data: unit, error } = await supabase
+        .from('modules')
+        .insert({
+          id: unitId,
+          course_id: courseId,
+          title,
+          description: description || '',
+          order_index: 0,
+          status: 'active',
+        })
+        .select('id, title, description, created_at')
+        .single();
 
+      if (error) throw error;
+      return unit;
+    }, null as any);
+
+    if (unitFromDb) {
+      console.log('✅ Unit created:', unitFromDb);
+      return res.status(201).json({
+        success: true,
+        data: {
+          id: unitFromDb.id,
+          title: unitFromDb.title,
+          description: unitFromDb.description,
+          createdAt: unitFromDb.created_at,
+        },
+      });
+    }
+
+    const localUnit = createLocalUnit({
+      id: unitId,
+      courseId: 'local-course',
+      title,
+      description: description || '',
+      status: 'active',
+    });
+
+    console.log('✅ Unit saved locally:', localUnit);
     return res.status(201).json({
       success: true,
       data: {
-        id: unit.id,
-        title: unit.title,
-        description: unit.description,
-        createdAt: unit.created_at,
+        id: localUnit.id,
+        title: localUnit.title,
+        description: localUnit.description,
+        createdAt: localUnit.createdAt,
       },
     });
   } catch (error: any) {
@@ -167,43 +220,62 @@ export const createUnit = async (req: AuthRequest, res: Response) => {
 // Get all units (modules)
 export const getUnits = async (req: AuthRequest, res: Response) => {
   try {
-    // Get all courses to find all modules
-    const { data: courses, error: coursesError } = await supabase
-      .from('courses')
-      .select('id')
-      .eq('status', 'published');
+    const localUnits = listLocalUnits();
 
-    if (coursesError) throw coursesError;
+    const unitsFromDb = await safeSupabaseCall(async () => {
+      if (!supabase) {
+        throw new Error('Supabase unavailable');
+      }
 
-    if (!courses || courses.length === 0) {
+      // Get all courses to find all modules
+      const { data: courses, error: coursesError } = await supabase
+        .from('courses')
+        .select('id')
+        .eq('status', 'published');
+
+      if (coursesError) throw coursesError;
+
+      if (!courses || courses.length === 0) {
+        return [] as Array<{ id: string; title: string; description: string; created_at: string }>;
+      }
+
+      const courseIds = courses.map(c => c.id);
+
+      // Get all modules for those courses
+      const { data: units, error } = await supabase
+        .from('modules')
+        .select('id, title, description, created_at')
+        .in('course_id', courseIds)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      return (units || []) as Array<{ id: string; title: string; description: string; created_at: string }>;
+    }, null as any);
+
+    if (unitsFromDb && Array.isArray(unitsFromDb) && unitsFromDb.length > 0) {
+      console.log('📚 Units fetched:', unitsFromDb.length);
       return res.json({
         success: true,
-        data: [],
+        data: unitsFromDb.map((u) => ({
+          id: u.id,
+          title: u.title,
+          description: u.description,
+          lessonCount: 0, // Will be updated when fetching lessons
+          createdAt: u.created_at,
+        })),
       });
     }
 
-    const courseIds = courses.map(c => c.id);
-
-    // Get all modules for those courses
-    const { data: units, error } = await supabase
-      .from('modules')
-      .select('id, title, description, created_at')
-      .in('course_id', courseIds)
-      .eq('status', 'active')
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-
-    console.log('📚 Units fetched:', units?.length || 0);
-
     return res.json({
       success: true,
-      data: (units || []).map(u => ({
+      data: localUnits.map((u) => ({
         id: u.id,
         title: u.title,
         description: u.description,
-        lessonCount: 0, // Will be updated when fetching lessons
-        createdAt: u.created_at,
+        lessonCount: 0,
+        createdAt: u.createdAt,
       })),
     });
   } catch (error: any) {
@@ -230,30 +302,41 @@ export const getUnitLessons = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const { data: lessons, error } = await supabase
-      .from('lessons')
-      .select('id, title, content, slides, slide_count, created_at, status')
-      .eq('module_id', unitId)
-      .eq('status', 'published')
-      .order('created_at', { ascending: false });
+    const lessonsFromDb = await safeSupabaseCall(async () => {
+      if (!supabase) {
+        throw new Error('Supabase unavailable');
+      }
 
-    if (error) throw error;
+      const { data: lessons, error } = await supabase
+        .from('lessons')
+        .select('id, title, content, slides, slide_count, created_at, status')
+        .eq('module_id', unitId)
+        .eq('status', 'published')
+        .order('created_at', { ascending: false });
 
-    console.log(`📖 Lessons for unit ${unitId}:`, lessons?.length || 0);
-    if (lessons && lessons.length > 0) {
-      console.log('📊 First lesson data:', JSON.stringify(lessons[0], null, 2));
+      if (error) throw error;
+      return lessons || [];
+    }, [] as Array<any>);
+
+    const localLessons = listLocalLessonsByModuleId(unitId);
+    const allLessons = [...(lessonsFromDb || []), ...localLessons];
+
+    console.log(`📖 Lessons for unit ${unitId}:`, allLessons.length);
+    if (allLessons.length > 0) {
+      console.log('📊 First lesson data:', JSON.stringify(allLessons[0], null, 2));
     }
 
     return res.json({
       success: true,
-      data: (lessons || []).map(l => {
+      data: allLessons.map((l: any) => {
         const mappedLesson = {
           id: l.id,
           title: l.title,
           content: l.content,
           slides: Array.isArray(l.slides) ? l.slides : (typeof l.slides === 'string' ? JSON.parse(l.slides) : []),
-          slideCount: l.slide_count || 0,
-          createdAt: l.created_at,
+          slideCount: l.slide_count || l.slideCount || 0,
+          createdAt: l.created_at || l.createdAt,
+          unitId,
         };
         console.log('📝 Mapped lesson:', { id: mappedLesson.id, title: mappedLesson.title, slidesCount: mappedLesson.slides.length });
         return mappedLesson;

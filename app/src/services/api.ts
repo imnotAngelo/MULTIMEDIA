@@ -160,6 +160,22 @@ class ApiService {
     });
   }
 
+  async getPendingInstructors() {
+    return this.request('/auth/admin/pending-instructors');
+  }
+
+  async approveInstructor(userId: string) {
+    return this.request(`/auth/admin/pending-instructors/${userId}/approve`, {
+      method: 'POST',
+    });
+  }
+
+  async rejectInstructor(userId: string) {
+    return this.request(`/auth/admin/pending-instructors/${userId}/reject`, {
+      method: 'POST',
+    });
+  }
+
   // User endpoints
   async getProfile() {
     return this.request('/users/profile');

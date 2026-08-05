@@ -41,6 +41,10 @@ const studentNavItems: NavItem[] = [
   { label: 'Settings', href: '/settings', icon: Settings },
 ];
 
+const adminNavItems: NavItem[] = [
+  { label: 'Approvals', href: '/admin/approvals', icon: CheckSquare },
+];
+
 const instructorNavItems: NavItem[] = [
   { label: 'Dashboard', href: '/instructor/dashboard', icon: LayoutDashboard },
   { label: 'Units', href: '/instructor/courses', icon: BookOpen },
@@ -89,7 +93,11 @@ export function Sidebar({
   const navigate = useNavigate();
   const { logout } = useAuthStore();
 
-  const navItems = userRole === 'student' ? studentNavItems : instructorNavItems;
+  const navItems = userRole === 'student'
+    ? studentNavItems
+    : userRole === 'admin'
+      ? adminNavItems
+      : instructorNavItems;
 
   const handleLogout = () => {
     logout();

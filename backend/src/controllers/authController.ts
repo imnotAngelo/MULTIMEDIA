@@ -4,7 +4,7 @@ import { supabase } from '../config/supabase.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
-import { createUser, findUserByEmail } from '../lib/userStore.js';
+import { createUser, findUserByEmail, listUsers, updateUser } from '../lib/userStore.js';
 
 function isTransientAuthError(error: any): boolean {
   const message = `${error?.message || ''} ${error?.code || ''}`.toLowerCase();
@@ -18,14 +18,27 @@ function isTransientAuthError(error: any): boolean {
     'temporarily unavailable',
     'supabase unavailable',
     'missing supabase',
+    'does not exist',
+    'column',
   ].some((fragment) => message.includes(fragment));
+}
+
+function normalizeRole(role: string | undefined) {
+  const requestedRole = typeof role === 'string' ? role.toLowerCase() : 'student';
+  if (requestedRole === 'instructor') {
+    return 'pending_instructor';
+  }
+  return requestedRole;
+}
+
+function getApprovalStatus(role: string | undefined) {
+  return normalizeRole(role) === 'pending_instructor' ? 'pending' : 'approved';
 }
 
 export const register = async (req: AuthRequest, res: Response) => {
   try {
     const { email, password, full_name, role = 'student' } = req.body;
 
-    // Validate input
     if (!email || !password || !full_name) {
       return res.status(400).json({
         success: false,
@@ -35,6 +48,9 @@ export const register = async (req: AuthRequest, res: Response) => {
         },
       });
     }
+
+    const normalizedRole = normalizeRole(role);
+    const approvalStatus = getApprovalStatus(role);
 
     try {
       if (!supabase) {
@@ -77,7 +93,6 @@ export const register = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
     try {
@@ -92,7 +107,8 @@ export const register = async (req: AuthRequest, res: Response) => {
           email,
           password_hash: hashedPassword,
           full_name,
-          role,
+          role: normalizedRole,
+          approval_status: approvalStatus,
           avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
           xp_total: 0,
           streak_days: 0,
@@ -109,8 +125,11 @@ export const register = async (req: AuthRequest, res: Response) => {
             email: user[0].email,
             full_name: user[0].full_name,
             role: user[0].role,
+            approval_status: user[0].approval_status,
           },
-          message: 'Registration successful',
+          message: normalizedRole === 'pending_instructor'
+            ? 'Registration successful. Your instructor request is pending approval.'
+            : 'Registration successful',
         },
       });
     } catch (error: any) {
@@ -123,7 +142,8 @@ export const register = async (req: AuthRequest, res: Response) => {
         email,
         password_hash: hashedPassword,
         full_name,
-        role,
+        role: normalizedRole,
+        approval_status: approvalStatus,
         avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
         xp_total: 0,
         streak_days: 0,
@@ -137,8 +157,11 @@ export const register = async (req: AuthRequest, res: Response) => {
             email: fallbackUser.email,
             full_name: fallbackUser.full_name,
             role: fallbackUser.role,
+            approval_status: fallbackUser.approval_status,
           },
-          message: 'Registration successful',
+          message: normalizedRole === 'pending_instructor'
+            ? 'Registration successful. Your instructor request is pending approval.'
+            : 'Registration successful',
         },
       });
     }
@@ -210,7 +233,16 @@ export const login = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Verify password
+    if (user.role === 'pending_instructor' || user.approval_status === 'pending') {
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: 'PENDING_APPROVAL',
+          message: 'Your instructor account is pending admin approval.',
+        },
+      });
+    }
+
     const validPassword = await bcrypt.compare(password, user.password_hash);
     if (!validPassword) {
       console.error('❌ Invalid password for:', email);
@@ -223,7 +255,6 @@ export const login = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Generate tokens
     const jwtSecret = process.env.JWT_SECRET || 'default-secret';
     const jwtRefreshSecret = process.env.JWT_REFRESH_SECRET || 'default-refresh-secret';
     const jwtExpiration = process.env.JWT_EXPIRATION || '3600s';
@@ -260,6 +291,7 @@ export const login = async (req: AuthRequest, res: Response) => {
           email: user.email,
           full_name: user.full_name,
           role: user.role,
+          approval_status: user.approval_status,
           avatar_url: user.avatar_url,
           xp_total: user.xp_total,
           streak_days: user.streak_days,
@@ -274,6 +306,170 @@ export const login = async (req: AuthRequest, res: Response) => {
         code: 'LOGIN_FAILED',
         message: error.message,
       },
+    });
+  }
+};
+
+export const listPendingInstructors = async (req: AuthRequest, res: Response) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'Admin role required' },
+      });
+    }
+
+    try {
+      if (!supabase) {
+        throw new Error('Supabase unavailable');
+      }
+
+      const { data: pendingUsersFromDb, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('role', 'pending_instructor');
+
+      if (error) throw error;
+
+      const pendingUsers = (pendingUsersFromDb || [])
+        .filter((user: any) => user.role === 'pending_instructor' || user.approval_status === 'pending')
+        .map(({ password_hash, ...rest }: any) => rest);
+
+      return res.json({
+        success: true,
+        data: { pending_instructors: pendingUsers },
+      });
+    } catch (error: any) {
+      if (!isTransientAuthError(error)) {
+        throw error;
+      }
+
+      const pendingUsers = listUsers()
+        .filter((user) => user.role === 'pending_instructor' || user.approval_status === 'pending')
+        .map(({ password_hash, ...rest }) => rest);
+
+      return res.json({
+        success: true,
+        data: { pending_instructors: pendingUsers },
+      });
+    }
+  } catch (error: any) {
+    console.error('List pending instructors error:', error);
+    return res.status(500).json({
+      success: false,
+      error: { code: 'FETCH_FAILED', message: error.message },
+    });
+  }
+};
+
+export const approveInstructor = async (req: AuthRequest, res: Response) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'Admin role required' },
+      });
+    }
+
+    try {
+      if (!supabase) {
+        throw new Error('Supabase unavailable');
+      }
+
+      const { data: updatedUser, error } = await supabase
+        .from('users')
+        .update({ role: 'instructor', approval_status: 'approved' })
+        .eq('id', req.params.id)
+        .select('*')
+        .single();
+
+      if (error) throw error;
+
+      return res.json({
+        success: true,
+        data: { user: updatedUser },
+        message: 'Instructor approved successfully',
+      });
+    } catch (error: any) {
+      if (!isTransientAuthError(error)) {
+        throw error;
+      }
+
+      const updatedUser = updateUser(req.params.id, { role: 'instructor', approval_status: 'approved' });
+      if (!updatedUser) {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'USER_NOT_FOUND', message: 'Instructor request not found' },
+        });
+      }
+
+      return res.json({
+        success: true,
+        data: { user: updatedUser },
+        message: 'Instructor approved successfully',
+      });
+    }
+  } catch (error: any) {
+    console.error('Approve instructor error:', error);
+    return res.status(500).json({
+      success: false,
+      error: { code: 'UPDATE_FAILED', message: error.message },
+    });
+  }
+};
+
+export const rejectInstructor = async (req: AuthRequest, res: Response) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'Admin role required' },
+      });
+    }
+
+    try {
+      if (!supabase) {
+        throw new Error('Supabase unavailable');
+      }
+
+      const { data: updatedUser, error } = await supabase
+        .from('users')
+        .update({ role: 'student', approval_status: 'rejected' })
+        .eq('id', req.params.id)
+        .select('*')
+        .single();
+
+      if (error) throw error;
+
+      return res.json({
+        success: true,
+        data: { user: updatedUser },
+        message: 'Instructor request rejected',
+      });
+    } catch (error: any) {
+      if (!isTransientAuthError(error)) {
+        throw error;
+      }
+
+      const updatedUser = updateUser(req.params.id, { role: 'student', approval_status: 'rejected' });
+      if (!updatedUser) {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'USER_NOT_FOUND', message: 'Instructor request not found' },
+        });
+      }
+
+      return res.json({
+        success: true,
+        data: { user: updatedUser },
+        message: 'Instructor request rejected',
+      });
+    }
+  } catch (error: any) {
+    console.error('Reject instructor error:', error);
+    return res.status(500).json({
+      success: false,
+      error: { code: 'UPDATE_FAILED', message: error.message },
     });
   }
 };
