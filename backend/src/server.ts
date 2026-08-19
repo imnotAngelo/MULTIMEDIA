@@ -44,22 +44,38 @@ function parseAllowedOrigins(): Set<string> {
 // CORS: comma-separated FRONTEND_URL or ALLOWED_ORIGINS; in non-production, localhost is always allowed
 const allowedOrigins = parseAllowedOrigins();
 
+// Log allowed origins on startup (helpful for debugging)
+console.log('🌐 Allowed CORS origins:', [...allowedOrigins]);
+
 const corsOriginResolver = (
   origin: string | undefined,
   callback: (err: Error | null, allow?: boolean) => void
 ) => {
+  // Allow requests with no origin (like mobile apps or curl)
   if (!origin) {
     callback(null, true);
     return;
   }
+
+  // Allow if origin is in the allowed list
   if (allowedOrigins.has(origin)) {
     callback(null, true);
     return;
   }
+
+  // Always allow localhost in development
   if (process.env.NODE_ENV !== 'production' && isLocalDevOrigin(origin)) {
     callback(null, true);
     return;
   }
+
+  // Also allow localhost even in production (useful for testing)
+  if (isLocalDevOrigin(origin)) {
+    callback(null, true);
+    return;
+  }
+
+  console.warn(`🚫 CORS blocked origin: ${origin}`);
   callback(null, false);
 };
 
@@ -67,6 +83,8 @@ app.use(
   cors({
     origin: corsOriginResolver,
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
 
@@ -92,6 +110,25 @@ app.use((req, res, next) => {
 app.use((req, res, next) => {
   console.log(`📡 ${new Date().toISOString()} ${req.method} ${req.path}`);
   next();
+});
+
+// ========== NEW: Base /api route so frontend connection check succeeds ==========
+app.get('/api', (req: Request, res: Response) => {
+  res.json({
+    success: true,
+    message: 'Interactive Multimedia Learning System API',
+    version: '1.0.0',
+    endpoints: {
+      health: '/api/health',
+      auth: '/api/auth',
+      users: '/api/users',
+      courses: '/api/courses',
+      lessons: '/api/lessons',
+      units: '/api/units',
+      assessments: '/api/assessments',
+      laboratories: '/api/laboratories',
+    },
+  });
 });
 
 // Routes
