@@ -65,5 +65,52 @@
     "slideCount": 4,
     "status": "published",
     "createdAt": "2026-08-04T03:37:49.512Z"
+  },
+  {
+    "id": "8acfb0b5-7afb-4a31-b57b-d06d6c64f2f3",
+    "moduleId": "906f3c11-7b61-49ee-991c-04b1488d7f92",
+    "title": "lesson 1",
+    "content": "PASSI CITY COLLEGE City of Passi, Iloilo SCHOOL OF INFORMATION AND COMMUNICATION TECHNOLOGY SMART LIBRARY SYSTEM A Capstone Project Prese... H., Porras, Chester J. 2026 PASSI CITY COLLEGE City of Passi, Iloilo SCHOOL OF INFORMATION AND COMMUNICATION TECHNOLOGY ii APPROVAL SHEET..",
+    "slides": [
+      {
+        "slideNumber": 1,
+        "title": "lesson 1 — Part 1",
+        "content": "PASSI CITY COLLEGE City of Passi, Iloilo SCHOOL OF INFORMATION AND COMMUNICATION TECHNOLOGY SMART LIBRARY SYSTEM A Capstone Project Present to the Faculty of the School of Information and Communication Technology Passi City College City of Passi, Iloilo In Partial Fulfillment of the Requirements for the Degree Bachelor of Science in Information Technology by: Lago, Krisha Lyne P., Labiaga, Jharaia Camille L., Jagolingay, Wilson Jr. L., Lasap, Russel Jr.",
+        "summary": "PASSI CITY COLLEGE City of Passi, Iloilo SCHOOL OF INFORMATION AND COMMUNICATION TECHNOLOGY SMART LIBRARY SYSTEM A Capstone Project Prese...",
+        "keyPoints": [
+          "PASSI CITY COLLEGE City of Passi, Iloilo SCHOOL OF INFORMATION AND COMMUNICATION TECHNOLOGY SMART LIBRARY SYSTEM A Capstone Project Prese..."
+        ]
+      },
+      {
+        "slideNumber": 2,
+        "title": "lesson 1 — Part 2",
+        "content": "H., Porras, Chester J. 2026 PASSI CITY COLLEGE City of Passi, Iloilo SCHOOL OF INFORMATION AND COMMUNICATION TECHNOLOGY ii APPROVAL SHEET The Research/Capstone Project Study entitled “SMART LIBRARY SYSTEM”, prepared and submitted by: Wilson Jagolingay Jr., Jharaia Camille Labiaga, Krisha Lyne Lago, Russel Lasap Jr., and Chester Porras in partial fulfillment of the requirements of the degree Bachelor of Science in Information Technology, has been examined and approved as requirements for GRADUATION.",
+        "summary": "H., Porras, Chester J. 2026 PASSI CITY COLLEGE City of Passi, Iloilo SCHOOL OF INFORMATION AND COMMUNICATION TECHNOLOGY ii APPROVAL SHEET...",
+        "keyPoints": [
+          "H., Porras, Chester J. 2026 PASSI CITY COLLEGE City of Passi, Iloilo SCHOOL OF INFORMATION AND COMMUNICATION TECHNOLOGY ii APPROVAL SHEET..."
+        ]
+      },
+      {
+        "slideNumber": 3,
+        "title": "lesson 1 — Part 3",
+        "content": "PANEL OF EXAMINERS JERAHMEEL P. CANTOS, RECE, MIT Chairman ACCEPTED and APPROVED in partial fulfillment of the requirements for the degree Bachelor of Science in Information Technology, May 2026 MYLEN B.",
+        "summary": "PANEL OF EXAMINERS JERAHMEEL P. CANTOS, RECE, MIT Chairman ACCEPTED and APPROVED in partial fulfillment of the requirements for the degre...",
+        "keyPoints": [
+          "PANEL OF EXAMINERS JERAHMEEL P. CANTOS, RECE, MIT Chairman ACCEPTED and APPROVED in partial fulfillment of the requirements for the degre..."
+        ]
+      },
+      {
+        "slideNumber": 4,
+        "title": "lesson 1 — Part 4",
+        "content": "PADERES, RECE, MEng’g Dean, School of Information and Communication Technology JANICE JENNIFER P. PALMARES, DPA College Administrator/College President FRANCIS RAY P.",
+        "summary": "PADERES, RECE, MEng’g Dean, School of Information and Communication Technology JANICE JENNIFER P. PALMARES, DPA College Administrator/Col...",
+        "keyPoints": [
+          "PADERES, RECE, MEng’g Dean, School of Information and Communication Technology JANICE JENNIFER P. PALMARES, DPA College Administrator/Col..."
+        ]
+      }
+    ],
+    "slideCount": 4,
+    "status": "published",
+    "createdAt": "2026-08-19T11:03:21.442Z"
   }
 ]
