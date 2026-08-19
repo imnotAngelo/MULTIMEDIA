@@ -81,7 +81,7 @@ const corsOriginResolver = (
 
 app.use(
   cors({
-    origin: corsOriginResolver,
+    origin: true, // Allow all origins (temporary but will fix the problem)
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
