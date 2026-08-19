@@ -20,99 +20,70 @@ dotenv.config();
 
 const app: Express = express();
 const PORT = Number(process.env.PORT) || 3001;
-/** Bind address: 0.0.0.0 for Render/Docker; override with HOST=127.0.0.1 if needed */
 const HOST = process.env.HOST || '0.0.0.0';
 
-function isLocalDevOrigin(origin: string): boolean {
-  return /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
-}
+// =====================================================
+// FORCE CORS - This will fix the "Failed to fetch" error
+// =====================================================
+app.use((req, res, next) => {
+  const origin = req.headers.origin as string | undefined;
 
-function parseAllowedOrigins(): Set<string> {
-  const raw =
-    process.env.ALLOWED_ORIGINS?.trim() ||
-    process.env.FRONTEND_URL?.trim() ||
-    '';
-  if (!raw) return new Set();
-  return new Set(
-    raw
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean)
+  // Always set CORS headers
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader(
+    'Access-Control-Allow-Methods',
+    'GET, POST, PUT, PATCH, DELETE, OPTIONS'
   );
-}
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'Content-Type, Authorization, X-Requested-With'
+  );
 
-// CORS: comma-separated FRONTEND_URL or ALLOWED_ORIGINS; in non-production, localhost is always allowed
-const allowedOrigins = parseAllowedOrigins();
-
-// Log allowed origins on startup (helpful for debugging)
-console.log('🌐 Allowed CORS origins:', [...allowedOrigins]);
-
-const corsOriginResolver = (
-  origin: string | undefined,
-  callback: (err: Error | null, allow?: boolean) => void
-) => {
-  // Allow requests with no origin (like mobile apps or curl)
-  if (!origin) {
-    callback(null, true);
-    return;
+  // Handle preflight request
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
   }
 
-  // Allow if origin is in the allowed list
-  if (allowedOrigins.has(origin)) {
-    callback(null, true);
-    return;
-  }
+  next();
+});
 
-  // Always allow localhost in development
-  if (process.env.NODE_ENV !== 'production' && isLocalDevOrigin(origin)) {
-    callback(null, true);
-    return;
-  }
-
-  // Also allow localhost even in production (useful for testing)
-  if (isLocalDevOrigin(origin)) {
-    callback(null, true);
-    return;
-  }
-
-  console.warn(`🚫 CORS blocked origin: ${origin}`);
-  callback(null, false);
-};
-
+// Also keep the cors package as backup
 app.use(
   cors({
-    origin: true, // Allow all origins (temporary but will fix the problem)
+    origin: true,
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
+// =====================================================
 
-// Serve uploaded files statically (images/videos submitted by students)
+// Serve uploaded files statically
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // Apply JSON parser everywhere EXCEPT multipart upload routes
 app.use((req, res, next) => {
-  console.log(`🔍 [MIDDLEWARE_CHECK] Path: ${req.path}, Method: ${req.method}, Content-Type: ${req.headers['content-type']}`);
   if (
     req.path.includes('/upload-pdf') ||
     req.path.includes('/upload-file') ||
     req.path.includes('/upload')
   ) {
-    console.log(`✅ [SKIP_JSON] Skipping JSON parsing for upload route`);
     return next();
   }
-  console.log(`📝 [APPLY_JSON] Applying JSON middleware`);
   express.json()(req, res, next);
 });
 
-// Debug middleware - log all requests BEFORE routes
+// Debug middleware
 app.use((req, res, next) => {
   console.log(`📡 ${new Date().toISOString()} ${req.method} ${req.path}`);
   next();
 });
 
-// ========== NEW: Base /api route so frontend connection check succeeds ==========
+// Base /api route
 app.get('/api', (req: Request, res: Response) => {
   res.json({
     success: true,
@@ -140,15 +111,10 @@ app.use('/api/lessons', lessonRoutes);
 app.use('/api/units', unitsRoutes);
 app.use('/api/assessments', assessmentRoutes);
 app.use('/api/laboratories', laboratoryRoutes);
-// Laboratory submissions (new canonical path)
 app.use('/api/laboratory-submissions', laboratorySubmissionRoutes);
-// Backward-compatible alias (old Canva path)
 app.use('/api/canva-submissions', laboratorySubmissionRoutes);
-// Notifications
 app.use('/api/notifications', notificationRoutes);
-// Direct messages (student <-> instructor)
 app.use('/api/messages', messageRoutes);
-// Avatar upload (multipart)
 app.use('/api/users/avatar', avatarRoutes);
 console.log('✅ All routes registered');
 
@@ -175,35 +141,25 @@ app.use(errorHandler);
 // Start server
 async function startServer() {
   try {
-    // Verify table exists (optional check)
     console.log('🔄 Checking database...');
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('laboratory_phase_progress')
         .select('id')
         .limit(1);
-      
+
       if (!error) {
         console.log('✅ laboratory_phase_progress table exists');
       } else if (error.code === 'PGRST116') {
         console.warn('⚠️ laboratory_phase_progress table NOT FOUND');
-        console.warn('\n📝 TO CREATE THE TABLE:');
-        console.warn('1. Get your Supabase database password from:');
-        console.warn('   https://app.supabase.com/project/ciopmrwvmgqsbapyljih/settings/database');
-        console.warn('2. Add to .env: SUPABASE_DB_PASSWORD=<your_password>');
-        console.warn('3. Run: npm run setup');
-        console.warn('\n⚠️ Progress saving will not work until table is created');
       }
     } catch (dbError: any) {
       console.warn('⚠️ Could not verify table:', dbError.message);
     }
-    
+
     app.listen(PORT, HOST, () => {
-      const where = HOST === '0.0.0.0' ? 'all interfaces' : HOST;
-      console.log(`Server is running on port ${PORT} (${where})`);
-      if (HOST === '0.0.0.0') {
-        console.log(`  Local: http://127.0.0.1:${PORT}  http://localhost:${PORT}`);
-      }
+      console.log(`✅ Server is running on port ${PORT}`);
+      console.log(`🌐 CORS is forced open for all origins`);
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);
