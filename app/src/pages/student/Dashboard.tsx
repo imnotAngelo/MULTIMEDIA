@@ -3,7 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { authFetch } from '@/lib/authFetch';
 import { Button } from '@/components/ui/button';
-import { BookOpen, Clock, ArrowRight, RefreshCw, FileText, ClipboardList, Beaker, Layers, GraduationCap, Flame, Sparkles, Loader2 } from 'lucide-react';
+import {
+  BookOpen,
+  Clock,
+  ArrowRight,
+  RefreshCw,
+  FileText,
+  ClipboardList,
+  Beaker,
+  Layers,
+  GraduationCap,
+  Loader2,
+} from 'lucide-react';
 
 interface Unit {
   id: string;
@@ -23,6 +34,8 @@ interface Lesson {
   slides?: any[];
 }
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+
 export function Dashboard() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
@@ -39,30 +52,33 @@ export function Dashboard() {
     try {
       setLoading(true);
       console.log('📚 Fetching units from API...');
-      
-      // Fetch units from API
-      const unitsResponse = await authFetch('http://localhost:3001/api/units');
 
+      // Fetch units from API
+      const unitsResponse = await authFetch(`${API_URL}/units`);
       const unitsData = await unitsResponse.json();
       console.log('✅ Units fetched:', unitsData.data || []);
-      
-      const unitList: Unit[] = unitsData.success ? (unitsData.data || []) : [];
+
+      const unitList: Unit[] = unitsData.success ? unitsData.data || [] : [];
       setUnits(unitList);
 
       // Fetch all lessons from all units
       const allLessons: Lesson[] = [];
-      
-      for (const unit of unitList) {
-        const lessonsResponse = await authFetch(`http://localhost:3001/api/units/${unit.id}/lessons`);
 
+      for (const unit of unitList) {
+        const lessonsResponse = await authFetch(
+          `${API_URL}/units/${unit.id}/lessons`
+        );
         const lessonsData = await lessonsResponse.json();
+
         if (lessonsData.success) {
-          const lessons = lessonsData.data || [];
-          console.log(`✅ Lessons for unit "${unit.title}": ${lessons.length}`);
-          allLessons.push(...lessons.map((l: any) => ({
-            ...l,
-            unitId: unit.id,
-          })));
+          const unitLessons = lessonsData.data || [];
+          console.log(`✅ Lessons for unit "${unit.title}": ${unitLessons.length}`);
+          allLessons.push(
+            ...unitLessons.map((l: any) => ({
+              ...l,
+              unitId: unit.id,
+            }))
+          );
         }
       }
 
@@ -71,7 +87,7 @@ export function Dashboard() {
 
       // Fetch this student's completed-lesson count
       try {
-        const lpResp = await authFetch('http://localhost:3001/api/users/lesson-progress/me');
+        const lpResp = await authFetch(`${API_URL}/users/lesson-progress/me`);
         const lpData = await lpResp.json();
         if (lpData?.success) {
           const total = Number(lpData.data?.total ?? 0);
@@ -98,7 +114,9 @@ export function Dashboard() {
           <h1 className="text-2xl font-semibold text-white">
             Welcome back, <span className="gradient-text">{user?.full_name}</span>
           </h1>
-          <p className="text-slate-400 mt-1 text-sm">Continue your multimedia learning journey</p>
+          <p className="text-slate-400 mt-1 text-sm">
+            Continue your multimedia learning journey
+          </p>
         </div>
         <Button
           onClick={loadUnitsAndLessons}
@@ -111,8 +129,9 @@ export function Dashboard() {
         </Button>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Stats Cards - Only Lessons Completed + Available Lessons */}
+      <div className="grid grid-cols-2 gap-4">
+        {/* Lessons Completed */}
         <div className="group bg-slate-900/60 border border-slate-800/60 rounded-xl p-5 hover:border-violet-500/30 transition-all">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-9 h-9 rounded-lg bg-violet-500/10 flex items-center justify-center">
@@ -122,24 +141,8 @@ export function Dashboard() {
           <div className="text-2xl font-bold text-white">{completedCount}</div>
           <p className="text-slate-500 text-xs mt-1">Lessons Completed</p>
         </div>
-        <div className="group bg-slate-900/60 border border-slate-800/60 rounded-xl p-5 hover:border-emerald-500/30 transition-all">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-              <Sparkles className="w-4.5 h-4.5 text-emerald-400" />
-            </div>
-          </div>
-          <div className="text-2xl font-bold text-white">{user?.xp_total || 0}</div>
-          <p className="text-slate-500 text-xs mt-1">Total XP</p>
-        </div>
-        <div className="group bg-slate-900/60 border border-slate-800/60 rounded-xl p-5 hover:border-amber-500/30 transition-all">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center">
-              <Flame className="w-4.5 h-4.5 text-amber-400" />
-            </div>
-          </div>
-          <div className="text-2xl font-bold text-white">{user?.streak_days || 0}</div>
-          <p className="text-slate-500 text-xs mt-1">Day Streak</p>
-        </div>
+
+        {/* Available Lessons */}
         <div className="group bg-slate-900/60 border border-slate-800/60 rounded-xl p-5 hover:border-blue-500/30 transition-all">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center">
@@ -180,7 +183,7 @@ export function Dashboard() {
               </span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {units.map(unit => (
+              {units.map((unit) => (
                 <button
                   key={unit.id}
                   onClick={() => navigate('/lessons')}
@@ -213,7 +216,6 @@ export function Dashboard() {
             </div>
           </div>
 
-
           {/* Assessment Quick Access */}
           <div>
             <div className="flex items-center justify-between mb-4">
@@ -240,10 +242,14 @@ export function Dashboard() {
                   <div className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center">
                     <FileText className="w-4.5 h-4.5 text-blue-400" />
                   </div>
-                  <span className="text-xs font-medium text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded">Assignments</span>
+                  <span className="text-xs font-medium text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded">
+                    Assignments
+                  </span>
                 </div>
                 <h3 className="text-white font-medium text-sm mb-1">Assignments</h3>
-                <p className="text-slate-500 text-xs">Apply your learning with practical tasks</p>
+                <p className="text-slate-500 text-xs">
+                  Apply your learning with practical tasks
+                </p>
               </button>
 
               <button
@@ -254,10 +260,14 @@ export function Dashboard() {
                   <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center">
                     <ClipboardList className="w-4.5 h-4.5 text-amber-400" />
                   </div>
-                  <span className="text-xs font-medium text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded">Quizzes</span>
+                  <span className="text-xs font-medium text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded">
+                    Quizzes
+                  </span>
                 </div>
                 <h3 className="text-white font-medium text-sm mb-1">Quizzes</h3>
-                <p className="text-slate-500 text-xs">Test your knowledge with quick assessments</p>
+                <p className="text-slate-500 text-xs">
+                  Test your knowledge with quick assessments
+                </p>
               </button>
 
               <button
@@ -268,7 +278,9 @@ export function Dashboard() {
                   <div className="w-9 h-9 rounded-lg bg-purple-500/10 flex items-center justify-center">
                     <Beaker className="w-4.5 h-4.5 text-purple-400" />
                   </div>
-                  <span className="text-xs font-medium text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded">Labs</span>
+                  <span className="text-xs font-medium text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded">
+                    Labs
+                  </span>
                 </div>
                 <h3 className="text-white font-medium text-sm mb-1">Laboratories</h3>
                 <p className="text-slate-500 text-xs">Hands-on experimental learning</p>
