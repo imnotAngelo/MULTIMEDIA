@@ -12,4 +12,3 @@ export { LaboratoriesManagement } from './LaboratoriesManagement';
 export { AnnouncementsManagement } from './AnnouncementsManagement';
 export { InstructorMessages } from './InstructorMessages';
 export { InstructorSettings } from './Settings';
-export { AdminApprovalsPage } from './AdminApprovalsPage';

@@ -8,12 +8,10 @@ export function InstructorLayout() {
 
   if (!user) return null;
 
-  const role = user.role === 'admin' ? 'admin' : 'instructor';
-
   return (
     <div className="min-h-screen bg-slate-950">
       <Sidebar
-        userRole={role}
+        userRole="instructor"
         userName={user.full_name}
         userAvatar={user.avatar_url}
         xp={user.xp_total}

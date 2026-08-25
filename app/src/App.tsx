@@ -13,7 +13,7 @@ import { StudentLayout, InstructorLayout } from '@/components/layout';
 import { StudentDashboard, Lessons, Assessments, StudentQuizTaker, Laboratories, Portfolio, StudentQuizzes, Announcements, Chatbox, StudentSettings } from '@/pages/student';
 
 // Instructor Pages
-import { InstructorDashboard, UnitsManagement, ViewLesson, InstructorAssessments, CreateAssessment, QuizManagement, QuizMethodPicker, CreateQuiz, AutoGenerateQuiz, LaboratorySubmissions, LaboratoriesManagement, AnnouncementsManagement, InstructorMessages, InstructorSettings, AdminApprovalsPage } from '@/pages/instructor';
+import { InstructorDashboard, UnitsManagement, ViewLesson, InstructorAssessments, CreateAssessment, QuizManagement, QuizMethodPicker, CreateQuiz, AutoGenerateQuiz, LaboratorySubmissions, LaboratoriesManagement, AnnouncementsManagement, InstructorMessages, InstructorSettings } from '@/pages/instructor';
 
 
 export function App() {
@@ -91,17 +91,6 @@ export function App() {
           <Route path="/assessment/:id" element={<StudentQuizTaker />} />
         </Route>
 
-        {/* Admin Routes with Layout */}
-        <Route
-          element={
-            <ProtectedRoute requiredRole="admin">
-              <InstructorLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route path="/admin/approvals" element={<AdminApprovalsPage />} />
-        </Route>
-
         {/* Instructor Routes with Layout */}
         <Route
           element={
@@ -133,8 +122,6 @@ export function App() {
             isAuthenticated ? (
               user?.role === 'student' ? (
                 <Navigate to="/dashboard" replace />
-              ) : user?.role === 'admin' ? (
-                <Navigate to="/admin/approvals" replace />
               ) : (
                 <Navigate to="/instructor/dashboard" replace />
               )
