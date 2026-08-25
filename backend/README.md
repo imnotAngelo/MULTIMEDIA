@@ -55,6 +55,12 @@ Base URL: `http://localhost:3001/api`
 - `GET /users/:id/achievements` - Get user achievements
 - `GET /users/leaderboard` - Get leaderboard
 
+### Administration
+- `GET /admin/instructor-requests` - List pending instructor accounts (admin only)
+- `PATCH /admin/instructor-requests/:id/approve` - Approve an instructor account (admin only)
+
+Run `add-instructor-approval.sql` in Supabase before using instructor approval in the database.
+
 ### Courses
 - `GET /courses` - List courses
 - `GET /courses/:id` - Get course details

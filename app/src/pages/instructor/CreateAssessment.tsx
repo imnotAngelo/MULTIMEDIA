@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Loader2 } from 'lucide-react';
+import { Plus } from 'lucide-react';
+import { AetherSpinner } from '@/components/AetherSpinner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -86,7 +87,7 @@ export function CreateAssessment() {
         </div>
         {loading ? (
           <div className="flex flex-col items-center justify-center py-16 gap-3">
-            <Loader2 className="w-6 h-6 text-violet-400 animate-spin" />
+            <AetherSpinner className="w-6 h-6 text-violet-400" />
             <p className="text-slate-400">Loading units...</p>
           </div>
         ) : (

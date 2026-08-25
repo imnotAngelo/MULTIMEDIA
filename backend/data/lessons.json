@@ -1,116 +1,88 @@
 [
   {
-    "id": "586764dd-cf00-4e08-996d-43edac005379",
-    "moduleId": "906f3c11-7b61-49ee-991c-04b1488d7f92",
-    "title": "Live Lesson Test",
-    "content": "Unfortunately, the provided lesson slides do not contain sufficient information to create a meaningful summary. The topic and key points appear to be placeholders or test data, and do not convey any actual concepts or learning outcomes. However, I can suggest a generic summary that could be used if more information becomes available: This lesson introduces students to a new topic, covering key points and concepts that will be explored in more depth. By the end of the lesson, students will have a basic understanding of the subject matter and be prepared for further learning. The lesson aims to engage students and provide a foundation for future lessons. Additionally, students will learn how to apply the concepts to real-world scenarios.",
+    "id": "ea947762-b7f8-4fe9-9dd3-33a70f9eeb8d",
+    "moduleId": "cda56c0c-e888-4af0-bfab-bb0922e998f1",
+    "title": "Lesson 1",
+    "content": "Part 1: Lesson 1 cda56c0c-e888-4af0-bfab-bb0922e998f1",
     "slides": [
       {
         "slideNumber": 1,
-        "title": "Live Lesson Test — Part 1",
-        "content": "Live Lesson Test 906f3c11-7b61-49ee-991c-04b1488d7f92",
-        "summary": "Live Lesson Test 906f3c11-7b61-49ee-991c-04b1488d7f92",
+        "title": "Lesson 1 cda56c0c-e888-4af0-bfab-bb0922e998f1",
+        "content": "Lesson 1 cda56c0c-e888-4af0-bfab-bb0922e998f1",
+        "summary": "Lesson 1 cda56c0c-e888-4af0-bfab-bb0922e998f1",
         "keyPoints": [
-          "Live Lesson Test 906f3c11-7b61-49ee-991c-04b1488d7f92"
-        ]
-      }
-    ],
-    "slideCount": 1,
-    "status": "published",
-    "createdAt": "2026-08-04T03:35:52.714Z"
-  },
-  {
-    "id": "44a7edfe-7c4c-4a1b-8813-4beca5012576",
-    "moduleId": "b652caa1-23b6-47ef-b150-d4ef816a6e64",
-    "title": "cbcn",
-    "content": "look up a value in O(1) time - i.e., constant time, assuming a well-designed hash function.\nKey Points: Instead of searching through a list (O(n)) or even a sorted list (O(log n)), a hash table can often  look up a value in O(1) time - ...\nSummary: Instead of searching through a list (O(n)) or even a sorted list (O(log n)), a hash table can often  look up a value in O(1) time - ...\n\nTopic: cbcn — Part 4\nCommon uses of hash tables include database indexing, fast lookup, and caching. \nKey Points: Common uses of hash tables include database indexing, fast lookup, and caching. \nSummary: Common uses of hash tables include database indexing, fast lookup, and caching. \n\nNote: All four parts will help the students understand what a hash table is,  how it works, how it is used in real-world scenarios.\n\nThe overall lesson covered the main concepts of hash tables, including their definition, functionality, and applications. By the end of this lesson, students should have a solid understanding of what hash tables are and how they are used in various contexts. This lesson also highlighted the benefits of using hash tables, such as efficient lookup times, and discussed common use cases.",
-    "slides": [
-      {
-        "slideNumber": 1,
-        "title": "cbcn — Part 1",
-        "content": "Page 1 of 4 Unit 4: Hash Tables 4.1 What is a Hash Table? A hash table (also known as a hash map, dictionary, or associative array) is a data structure that implements an associative array abstract data type, a structure that can map keys to values.",
-        "summary": "Page 1 of 4 Unit 4: Hash Tables 4.1 What is a Hash Table? A hash table (also known as a hash map, dictionary, or associative array) is a ...",
-        "keyPoints": [
-          "Page 1 of 4 Unit 4: Hash Tables 4.1 What is a Hash Table? A hash table (also known as a hash map, dictionary, or associative array) is a ..."
-        ]
+          "Lesson 1 cda56c0c-e888-4af0-bfab-bb0922e998f1"
+        ],
+        "sourcePage": 1
       },
       {
         "slideNumber": 2,
-        "title": "cbcn — Part 2",
-        "content": "A hash table uses a hash function to compute an index into an array of buckets or slots, from which the desired value can be found. Think of it like a super-fast lookup table.",
-        "summary": "A hash table uses a hash function to compute an index into an array of buckets or slots, from which the desired value can be found. Think...",
+        "title": "Lesson Summary",
+        "content": "Part 1: Lesson 1 cda56c0c-e888-4af0-bfab-bb0922e998f1",
+        "summary": "Part 1: Lesson 1 cda56c0c-e888-4af0-bfab-bb0922e998f1",
         "keyPoints": [
-          "A hash table uses a hash function to compute an index into an array of buckets or slots, from which the desired value can be found. Think..."
-        ]
+          "Summary of the complete lesson content"
+        ],
+        "isSummary": true
+      }
+    ],
+    "slideCount": 2,
+    "status": "published",
+    "createdAt": "2026-08-25T06:17:43.494Z"
+  },
+  {
+    "id": "5a3029fe-67a8-4c4f-93de-78c44f395e13",
+    "moduleId": "cda56c0c-e888-4af0-bfab-bb0922e998f1",
+    "title": "Lesson 2 test",
+    "content": "Part 1: EcoPoints: A Smart Waste Collection and Reward Redemption System Waste mismanagement poses a critical global challenge, exacerbating environmental pollution, public health risks... Part 2: The primary objective is to develop a reward - driven platform that incentivizes responsible behavior by awarding EcoPoints redeemable for tangible incentives through points red... Part 3: This targeted approach not only streamlines data processing to minimize errors but also supports scalability through modular hardware and clo ud - based storage.",
+    "slides": [
+      {
+        "slideNumber": 1,
+        "title": "EcoPoints: A Smart Waste Collection and Reward Redemption System Wa...",
+        "content": "EcoPoints: A Smart Waste Collection and Reward Redemption System Waste mismanagement poses a critical global challenge, exacerbating environmental pollution, public health risks, and inefficient recycling due to low public engagement and lack of incentives for proper segregation and disposal. This capstone project introduces EcoPoints , an innovative IoT - based system designed to foster sustainable waste practices through technology and gamification. Utilizing ESP32 microcontrollers integrated with sensors (e.g., ESP32 camera module for enhanced functionality), the system automates real - time waste tracking, capturing data on disposal type and quantity, which is transmitted to a user - friendly web dashboard for monitoring and analysis.",
+        "summary": "EcoPoints: A Smart Waste Collection and Reward Redemption System Waste mismanagement poses a critical global challenge, exacerbating environmental pollution, public health risks...",
+        "keyPoints": [
+          "EcoPoints: A Smart Waste Collection and Reward Redemption System Waste mismanagement poses a critical global challenge, exacerbating environmental pollution, public health risks, and inefficient recycling due to low public engagement and lack of incentives for proper segregation and disposal.",
+          "This capstone project introduces EcoPoints , an innovative IoT - based system designed to foster sustainable waste practices through technology and gamification.",
+          "Utilizing ESP32 microcontrollers integrated with sensors (e.g., ESP32 camera module for enhanced functionality), the system automates real - time waste tracking, capturing data on disposal type and quantity, which is transmitted to a user - friendly web dashboard for monitoring and analysis."
+        ],
+        "sourcePage": 1
+      },
+      {
+        "slideNumber": 2,
+        "title": "The primary objective is to develop a reward - driven platform that...",
+        "content": "The primary objective is to develop a reward - driven platform that incentivizes responsible behavior by awarding EcoPoints redeemable for tangible incentives through points redemption , and every 100 (one hundred) points is equivalent to 1 (one) peso . A nd then the redemption of your converted points, it will serve you for a free printing (as payment) at SOICT office , thereby enhancing efficiency, transparency, and community participation. By evaluating current practices and integrating smart sensors with a reward model, EcoPoints automates waste detection and quantification to assign points dynamically (e.g., 10 points per piece of recyclables), enabling users to view personalized progress reports, leaderboards for gamified competition, and educational modules on segregation benefits via the dashboard.",
+        "summary": "The primary objective is to develop a reward - driven platform that incentivizes responsible behavior by awarding EcoPoints redeemable for tangible incentives through points red...",
+        "keyPoints": [
+          "The primary objective is to develop a reward - driven platform that incentivizes responsible behavior by awarding EcoPoints redeemable for tangible incentives through points redemption , and every 100 (one hundred) points is equivalent to 1 (one) peso .",
+          "A nd then the redemption of your converted points, it will serve you for a free printing (as payment) at SOICT office , thereby enhancing efficiency, transparency, and community participation.",
+          "By evaluating current practices and integrating smart sensors with a reward model, EcoPoints automates waste detection and quantification to assign points dynamically (e.g., 10 points per piece of recyclables), enabling users to view personalized progress reports, leaderboards for gamified competition, and educational modules on segregation benefits via the dashboard."
+        ],
+        "sourcePage": 1
       },
       {
         "slideNumber": 3,
-        "title": "cbcn — Part 3",
-        "content": "Instead of searching through a list (O(n)) or even a sorted list (O(log n)), a hash table can often \u0000nd what you're looking for in O(1) time on average. Key Components: Keys: The unique identi\u0000ers you use to store and retrieve data (e.g., a person's name, a product ID).",
-        "summary": "Instead of searching through a list (O(n)) or even a sorted list (O(log n)), a hash table can often \u0000nd what you're looking for in O(1) t...",
+        "title": "This targeted approach not only streamlines data processing to mini...",
+        "content": "This targeted approach not only streamlines data processing to minimize errors but also supports scalability through modular hardware and clo ud - based storage.",
+        "summary": "This targeted approach not only streamlines data processing to minimize errors but also supports scalability through modular hardware and clo ud - based storage.",
         "keyPoints": [
-          "Instead of searching through a list (O(n)) or even a sorted list (O(log n)), a hash table can often \u0000nd what you're looking for in O(1) t..."
-        ]
+          "This targeted approach not only streamlines data processing to minimize errors but also supports scalability through modular hardware and clo ud - based storage."
+        ],
+        "sourcePage": 1
       },
       {
         "slideNumber": 4,
-        "title": "cbcn — Part 4",
-        "content": "Values: The data associated with the keys (e.g., a person's phone number, a product description). Hash Function: A function that takes a key and converts it into an index (an integer) in the underlying array.",
-        "summary": "Values: The data associated with the keys (e.g., a person's phone number, a product description). Hash Function: A function that takes a ...",
+        "title": "Lesson Summary",
+        "content": "Part 1: EcoPoints: A Smart Waste Collection and Reward Redemption System Waste mismanagement poses a critical global challenge, exacerbating environmental pollution, public health risks... Part 2: The primary objective is to develop a reward - driven platform that incentivizes responsible behavior by awarding EcoPoints redeemable for tangible incentives through points red... Part 3: This targeted approach not only streamlines data processing to minimize errors but also supports scalability through modular hardware and clo ud - based storage.",
+        "summary": "Part 1: EcoPoints: A Smart Waste Collection and Reward Redemption System Waste mismanagement poses a critical global challenge, exacerbating environmental pollution, public health risks... Part 2: The primary objective is to develop a reward - driven platform that incentivizes responsible behavior by awarding EcoPoints redeemable for tangible incentives through points red... Part 3: This targeted approach not only streamlines data processing to minimize errors but also supports scalability through modular hardware and clo ud - based storage.",
         "keyPoints": [
-          "Values: The data associated with the keys (e.g., a person's phone number, a product description). Hash Function: A function that takes a ..."
-        ]
+          "Summary of the complete lesson content"
+        ],
+        "isSummary": true
       }
     ],
     "slideCount": 4,
     "status": "published",
-    "createdAt": "2026-08-04T03:37:49.512Z"
-  },
-  {
-    "id": "8acfb0b5-7afb-4a31-b57b-d06d6c64f2f3",
-    "moduleId": "906f3c11-7b61-49ee-991c-04b1488d7f92",
-    "title": "lesson 1",
-    "content": "PASSI CITY COLLEGE City of Passi, Iloilo SCHOOL OF INFORMATION AND COMMUNICATION TECHNOLOGY SMART LIBRARY SYSTEM A Capstone Project Prese... H., Porras, Chester J. 2026 PASSI CITY COLLEGE City of Passi, Iloilo SCHOOL OF INFORMATION AND COMMUNICATION TECHNOLOGY ii APPROVAL SHEET..",
-    "slides": [
-      {
-        "slideNumber": 1,
-        "title": "lesson 1 — Part 1",
-        "content": "PASSI CITY COLLEGE City of Passi, Iloilo SCHOOL OF INFORMATION AND COMMUNICATION TECHNOLOGY SMART LIBRARY SYSTEM A Capstone Project Present to the Faculty of the School of Information and Communication Technology Passi City College City of Passi, Iloilo In Partial Fulfillment of the Requirements for the Degree Bachelor of Science in Information Technology by: Lago, Krisha Lyne P., Labiaga, Jharaia Camille L., Jagolingay, Wilson Jr. L., Lasap, Russel Jr.",
-        "summary": "PASSI CITY COLLEGE City of Passi, Iloilo SCHOOL OF INFORMATION AND COMMUNICATION TECHNOLOGY SMART LIBRARY SYSTEM A Capstone Project Prese...",
-        "keyPoints": [
-          "PASSI CITY COLLEGE City of Passi, Iloilo SCHOOL OF INFORMATION AND COMMUNICATION TECHNOLOGY SMART LIBRARY SYSTEM A Capstone Project Prese..."
-        ]
-      },
-      {
-        "slideNumber": 2,
-        "title": "lesson 1 — Part 2",
-        "content": "H., Porras, Chester J. 2026 PASSI CITY COLLEGE City of Passi, Iloilo SCHOOL OF INFORMATION AND COMMUNICATION TECHNOLOGY ii APPROVAL SHEET The Research/Capstone Project Study entitled “SMART LIBRARY SYSTEM”, prepared and submitted by: Wilson Jagolingay Jr., Jharaia Camille Labiaga, Krisha Lyne Lago, Russel Lasap Jr., and Chester Porras in partial fulfillment of the requirements of the degree Bachelor of Science in Information Technology, has been examined and approved as requirements for GRADUATION.",
-        "summary": "H., Porras, Chester J. 2026 PASSI CITY COLLEGE City of Passi, Iloilo SCHOOL OF INFORMATION AND COMMUNICATION TECHNOLOGY ii APPROVAL SHEET...",
-        "keyPoints": [
-          "H., Porras, Chester J. 2026 PASSI CITY COLLEGE City of Passi, Iloilo SCHOOL OF INFORMATION AND COMMUNICATION TECHNOLOGY ii APPROVAL SHEET..."
-        ]
-      },
-      {
-        "slideNumber": 3,
-        "title": "lesson 1 — Part 3",
-        "content": "PANEL OF EXAMINERS JERAHMEEL P. CANTOS, RECE, MIT Chairman ACCEPTED and APPROVED in partial fulfillment of the requirements for the degree Bachelor of Science in Information Technology, May 2026 MYLEN B.",
-        "summary": "PANEL OF EXAMINERS JERAHMEEL P. CANTOS, RECE, MIT Chairman ACCEPTED and APPROVED in partial fulfillment of the requirements for the degre...",
-        "keyPoints": [
-          "PANEL OF EXAMINERS JERAHMEEL P. CANTOS, RECE, MIT Chairman ACCEPTED and APPROVED in partial fulfillment of the requirements for the degre..."
-        ]
-      },
-      {
-        "slideNumber": 4,
-        "title": "lesson 1 — Part 4",
-        "content": "PADERES, RECE, MEng’g Dean, School of Information and Communication Technology JANICE JENNIFER P. PALMARES, DPA College Administrator/College President FRANCIS RAY P.",
-        "summary": "PADERES, RECE, MEng’g Dean, School of Information and Communication Technology JANICE JENNIFER P. PALMARES, DPA College Administrator/Col...",
-        "keyPoints": [
-          "PADERES, RECE, MEng’g Dean, School of Information and Communication Technology JANICE JENNIFER P. PALMARES, DPA College Administrator/Col..."
-        ]
-      }
-    ],
-    "slideCount": 4,
-    "status": "published",
-    "createdAt": "2026-08-19T11:03:21.442Z"
+    "createdAt": "2026-08-25T06:25:59.043Z"
   }
 ]

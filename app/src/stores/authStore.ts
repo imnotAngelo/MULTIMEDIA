@@ -17,7 +17,7 @@ interface AuthState {
   setError: (error: string | null) => void;
   setHydrated: (value: boolean) => void;
   loginAsync: (email: string, password: string) => Promise<boolean>;
-  registerAsync: (email: string, password: string, fullName: string, role?: 'student' | 'instructor') => Promise<boolean>;
+  registerAsync: (email: string, password: string, fullName: string, role: 'student' | 'instructor', yearLevel: 1 | 2 | 3 | 4, section: string) => Promise<boolean>;
   login: (user: User) => void;
   logout: () => void;
   updateUser: (updates: Partial<User>) => void;
@@ -94,10 +94,10 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      registerAsync: async (email: string, password: string, fullName: string, role: 'student' | 'instructor' = 'student') => {
+      registerAsync: async (email: string, password: string, fullName: string, role: 'student' | 'instructor' = 'student', yearLevel: 1 | 2 | 3 | 4 = 1, section = '') => {
         set({ isLoading: true, error: null });
         try {
-          const response = await api.register(email, password, fullName, role);
+          const response = await api.register(email, password, fullName, role, yearLevel, section);
           
           if (response.success) {
             set({ isLoading: false, error: null });

@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { authFetch } from '@/lib/authFetch';
 import { API_BASE_URL } from '@/lib/apiConfig';
+import { FileToPptxUploader } from '../../components/FileToPptxUploader';
 
 interface UploadLessonProps {
   unitId: string;
@@ -128,6 +129,7 @@ export function UploadLesson({ unitId, onSuccess }: UploadLessonProps) {
   };
 
   return (
+    <div className="space-y-5">
     <Card className="p-6 bg-slate-900/60 border-slate-800">
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
@@ -227,5 +229,7 @@ export function UploadLesson({ unitId, onSuccess }: UploadLessonProps) {
         </Button>
       </form>
     </Card>
+    <FileToPptxUploader />
+    </div>
   );
 }

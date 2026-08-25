@@ -12,6 +12,8 @@ import { Button } from '@/components/ui/button';
 import { authFetch } from '@/lib/authFetch';
 import { SlideViewer } from './SlideViewer';
 import { cn } from '@/lib/utils';
+import { useAuthStore } from '@/stores/authStore';
+import { AetherLoader } from '@/components/AetherLoader';
 
 interface Unit {
   id: string;
@@ -19,6 +21,8 @@ interface Unit {
   description: string;
   lessonCount: number;
   createdAt: string;
+  yearLevel?: number;
+  section?: string;
 }
 
 interface Lesson {
@@ -153,6 +157,7 @@ function UnitSection({
 }
 
 export function Lessons() {
+  const { user } = useAuthStore();
   const [units, setUnits] = useState<Unit[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [expandedUnits, setExpandedUnits] = useState<string[]>([]);
@@ -175,25 +180,21 @@ export function Lessons() {
       const unitsData = await unitsResponse.json();
       console.log('✅ Units fetched:', unitsData.data || []);
 
-      const unitList: Unit[] = unitsData.success ? (unitsData.data || []) : [];
+      const allUnits: Unit[] = unitsData.success ? (unitsData.data || []) : [];
+      const unitList = allUnits.filter((unit) =>
+        (!unit.yearLevel && !unit.section) ||
+        (unit.yearLevel === user?.year_level && unit.section?.toLowerCase() === user?.section?.toLowerCase())
+      );
       setUnits(unitList);
 
-      // Fetch all lessons from all units
-      const allLessons: Lesson[] = [];
-
-      for (const unit of unitList) {
+      const lessonResults = await Promise.all(unitList.map(async (unit) => {
         const lessonsResponse = await authFetch(`http://localhost:3001/api/units/${unit.id}/lessons`);
-
         const lessonsData = await lessonsResponse.json();
-        if (lessonsData.success) {
-          const lessons = lessonsData.data || [];
-          console.log(`✅ Lessons for unit "${unit.title}": ${lessons.length}`);
-          allLessons.push(...lessons.map((l: any) => ({
-            ...l,
-            unitId: unit.id,
-          })));
-        }
-      }
+        const unitLessons = lessonsData.success ? lessonsData.data || [] : [];
+        console.log(`✅ Lessons for unit "${unit.title}": ${unitLessons.length}`);
+        return unitLessons.map((lesson: any) => ({ ...lesson, unitId: unit.id }));
+      }));
+      const allLessons: Lesson[] = lessonResults.flat();
 
       console.log('✅ Total lessons loaded:', allLessons.length, allLessons);
       
@@ -225,9 +226,7 @@ export function Lessons() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-12">
-        <p className="text-slate-400">Loading lessons...</p>
-      </div>
+      <AetherLoader label="Arranging your lessons" />
     );
   }
 
@@ -254,6 +253,11 @@ export function Lessons() {
         <div>
           <h1 className="text-3xl font-bold text-white">Lessons</h1>
           <p className="text-slate-400 mt-2">Explore and learn from your unit lessons</p>
+          {user?.year_level && user.section && (
+            <p className="text-violet-300 text-sm mt-2">
+              Showing learning materials for Year {user.year_level}, Section {user.section}
+            </p>
+          )}
         </div>
         <Button
           onClick={loadData}

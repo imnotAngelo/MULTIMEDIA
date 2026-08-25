@@ -4,7 +4,7 @@ import { supabase } from '../config/supabase.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
-import { createUser, findUserByEmail } from '../lib/userStore.js';
+import { findUserByEmail } from '../lib/userStore.js';
 
 function isTransientAuthError(error: any): boolean {
   const message = `${error?.message || ''} ${error?.code || ''}`.toLowerCase();
@@ -23,7 +23,29 @@ function isTransientAuthError(error: any): boolean {
 
 export const register = async (req: AuthRequest, res: Response) => {
   try {
-    const { email, password, full_name, role = 'student' } = req.body;
+    const { email, password, full_name, role = 'student', year_level, section } = req.body;
+
+    if (role !== 'student' && role !== 'instructor') {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_ROLE', message: 'Only student and instructor registration is allowed' },
+      });
+    }
+
+    const parsedYear = Number(year_level);
+    if (!Number.isInteger(parsedYear) || parsedYear < 1 || parsedYear > 4) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_YEAR_LEVEL', message: 'Year level must be 1, 2, 3, or 4' },
+      });
+    }
+
+    if (typeof section !== 'string' || !section.trim() || section.trim().length > 50) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_SECTION', message: 'Section is required and must be 50 characters or fewer' },
+      });
+    }
 
     // Validate input
     if (!email || !password || !full_name) {
@@ -93,6 +115,11 @@ export const register = async (req: AuthRequest, res: Response) => {
           password_hash: hashedPassword,
           full_name,
           role,
+          instructor_approved: role !== 'instructor',
+          student_approved: role !== 'student',
+          year_level: parsedYear,
+          teaching_year_levels: role === 'instructor' ? [parsedYear] : [],
+          section: section.trim(),
           avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
           xp_total: 0,
           streak_days: 0,
@@ -118,27 +145,11 @@ export const register = async (req: AuthRequest, res: Response) => {
         throw error;
       }
 
-      const fallbackUser = createUser({
-        id: uuidv4(),
-        email,
-        password_hash: hashedPassword,
-        full_name,
-        role,
-        avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
-        xp_total: 0,
-        streak_days: 0,
-      });
-
-      return res.status(201).json({
-        success: true,
-        data: {
-          user: {
-            id: fallbackUser.id,
-            email: fallbackUser.email,
-            full_name: fallbackUser.full_name,
-            role: fallbackUser.role,
-          },
-          message: 'Registration successful',
+      return res.status(503).json({
+        success: false,
+        error: {
+          code: 'DB_UNAVAILABLE',
+          message: 'Registration could not be saved because Supabase is unavailable.',
         },
       });
     }
@@ -223,6 +234,20 @@ export const login = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    if (user.role === 'instructor' && user.instructor_approved === false) {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'INSTRUCTOR_PENDING_APPROVAL', message: 'Your instructor account is waiting for administrator approval.' },
+      });
+    }
+
+    if (user.role === 'student' && user.student_approved === false) {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'STUDENT_PENDING_APPROVAL', message: 'Your account is waiting for approval from your section\'s instructor.' },
+      });
+    }
+
     // Generate tokens
     const jwtSecret = process.env.JWT_SECRET || 'default-secret';
     const jwtRefreshSecret = process.env.JWT_REFRESH_SECRET || 'default-refresh-secret';
@@ -235,7 +260,14 @@ export const login = async (req: AuthRequest, res: Response) => {
     console.log('   JWT_REFRESH_EXPIRATION:', jwtRefreshExpiration);
 
     const accessToken = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
+      {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        year_level: user.year_level,
+        teaching_year_levels: user.teaching_year_levels,
+        section: user.section,
+      },
       jwtSecret as any,
       { expiresIn: jwtExpiration } as any
     );
@@ -260,6 +292,11 @@ export const login = async (req: AuthRequest, res: Response) => {
           email: user.email,
           full_name: user.full_name,
           role: user.role,
+          instructor_approved: user.instructor_approved !== false,
+          student_approved: user.student_approved !== false,
+          year_level: user.year_level,
+          teaching_year_levels: user.teaching_year_levels,
+          section: user.section,
           avatar_url: user.avatar_url,
           xp_total: user.xp_total,
           streak_days: user.streak_days,
@@ -314,7 +351,14 @@ export const refresh = async (req: AuthRequest, res: Response) => {
     }
 
     const newAccessToken = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
+      {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        year_level: user.year_level,
+        teaching_year_levels: user.teaching_year_levels,
+        section: user.section,
+      },
       (process.env.JWT_SECRET || 'default-secret') as any,
       { expiresIn: process.env.JWT_EXPIRATION || '3600s' } as any
     );

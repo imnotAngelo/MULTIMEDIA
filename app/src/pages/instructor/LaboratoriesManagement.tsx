@@ -20,6 +20,7 @@ import {
   Monitor,
   Layers,
 } from 'lucide-react';
+import { AetherLoader } from '@/components/AetherLoader';
 
 interface Laboratory {
   id: string;
@@ -500,10 +501,7 @@ export function LaboratoriesManagement() {
 
       {/* List */}
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-16 gap-3">
-          <Loader2 className="w-6 h-6 text-violet-400 animate-spin" />
-          <p className="text-slate-500 text-sm">Loading laboratories...</p>
-        </div>
+        <AetherLoader label="Opening your laboratory network" />
       ) : laboratories.length === 0 ? (
         <div className="bg-slate-900/40 border border-slate-800/60 rounded-xl p-12 text-center">
           <div className="w-16 h-16 rounded-2xl bg-slate-800/60 flex items-center justify-center mx-auto mb-4">

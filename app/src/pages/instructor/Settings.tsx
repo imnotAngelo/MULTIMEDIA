@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { GraduationCap, Save, Loader2, User as UserIcon, Trophy, Calendar, Image as ImageIcon, Upload } from 'lucide-react';
+import { GraduationCap, Save, User as UserIcon, Trophy, Calendar, Image as ImageIcon, Upload } from 'lucide-react';
+import { AetherSpinner } from '@/components/AetherSpinner';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/stores/authStore';
@@ -241,7 +242,7 @@ export function InstructorSettings() {
               >
                 {uploadingAvatar ? (
                   <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    <AetherSpinner className="w-4 h-4 mr-2" />
                     Uploading...
                   </>
                 ) : (
@@ -266,7 +267,7 @@ export function InstructorSettings() {
           >
             {saving ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <AetherSpinner className="w-4 h-4 mr-2" />
                 Saving...
               </>
             ) : (

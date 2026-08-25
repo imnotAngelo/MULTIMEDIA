@@ -5,10 +5,13 @@ export interface User {
   full_name: string;
   avatar_url?: string;
   role: 'student' | 'instructor' | 'admin';
+  instructor_approved?: boolean;
+  student_approved?: boolean;
   xp_total: number;
   streak_days: number;
   year_level?: 1 | 2 | 3 | 4 | null;
   teaching_year_levels?: (1 | 2 | 3 | 4)[];
+  section?: string | null;
   last_active?: string;
   created_at: string;
 }

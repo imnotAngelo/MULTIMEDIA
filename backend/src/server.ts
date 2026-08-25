@@ -13,6 +13,9 @@ import laboratorySubmissionRoutes from './routes/laboratorySubmissions.js';
 import notificationRoutes from './routes/notifications.js';
 import messageRoutes from './routes/messages.js';
 import avatarRoutes from './routes/avatar.js';
+import adminRoutes from './routes/admin.js';
+import studentApprovalRoutes from './routes/studentApprovals.js';
+import convertRoutes from './routes/convert.js';
 import { errorHandler } from './middleware/auth.js';
 import { supabase } from './config/supabase.js';
 
@@ -116,6 +119,9 @@ app.use('/api/canva-submissions', laboratorySubmissionRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/users/avatar', avatarRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/instructor', studentApprovalRoutes);
+app.use('/api/convert', convertRoutes);
 console.log('✅ All routes registered');
 
 // Health check

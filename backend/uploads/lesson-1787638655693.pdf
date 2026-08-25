@@ -1,0 +1,166 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>UNIT 1</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #333;
+      line-height: 1.6;
+    }
+    page {
+      display: block;
+      page-break-after: always;
+      padding: 40px;
+      min-height: 900px;
+      background: white;
+    }
+    .title-page {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      min-height: 900px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      page-break-after: always;
+    }
+    .title-page h1 {
+      font-size: 48px;
+      margin-bottom: 30px;
+      font-weight: bold;
+    }
+    .title-page .meta {
+      font-size: 18px;
+      opacity: 0.9;
+    }
+    .slide {
+      padding: 40px;
+    }
+    .slide h2 {
+      color: #667eea;
+      font-size: 32px;
+      margin-bottom: 30px;
+      border-bottom: 3px solid #667eea;
+      padding-bottom: 15px;
+    }
+    .slide-content {
+      font-size: 14px;
+      margin-bottom: 30px;
+      whitespace: pre-wrap;
+      word-wrap: break-word;
+    }
+    .summary {
+      background-color: #f0f4ff;
+      border-left: 4px solid #667eea;
+      padding: 20px;
+      margin: 30px 0;
+      border-radius: 4px;
+    }
+    .summary strong {
+      color: #667eea;
+    }
+    .key-points {
+      margin: 30px 0;
+    }
+    .key-points strong {
+      color: #667eea;
+      font-size: 16px;
+      display: block;
+      margin-bottom: 15px;
+    }
+    .key-points ul {
+      list-style-position: inside;
+      padding-left: 20px;
+    }
+    .key-points li {
+      margin-bottom: 10px;
+      padding-left: 10px;
+    }
+    @media print {
+      page { page-break-after: always; }
+      .title-page { page-break-after: always; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Title Page -->
+  <page class="title-page">
+    <h1>UNIT 1</h1>
+    <div class="meta">
+      <p>Created: 4/11/2026</p>
+      <p>Total Slides: 5</p>
+    </div>
+  </page>
+
+  <page class="slide">
+    <h2>Slide 1: Introduction to Smart Library System</h2>
+    <div class="slide-content">The Smart Library System is a capstone project presented to the Faculty of the School of Information and Communication Technology at Passi City College. The project aims to develop an innovative library system that utilizes technology to improve the overall library experience. The system is designed to streamline library operations, enhance user experience, and provide a more efficient way of managing library resources.</div>
+    <div class="summary"><strong>Summary:</strong><br/>The Smart Library System is an innovative project that aims to improve the library experience through technology.</div>
+    <div class="key-points">
+            <strong>Key Points:</strong>
+            <ul>
+              <li>The Smart Library System is a capstone project for the Bachelor of Science in Information Technology degree</li><li>The project aims to improve the overall library experience through technology</li><li>The system is designed to streamline library operations and enhance user experience</li>
+            </ul>
+          </div>
+  </page>
+
+  <page class="slide">
+    <h2>Slide 2: Project Development and Approval</h2>
+    <div class="slide-content">The Smart Library System project was developed by a team of students, including Krisha Lyne Lago, Jharaia Camille Labiaga, Wilson Jagolingay Jr., Russel Lasap Jr., and Chester Porras, under the guidance of their capstone project adviser, Instr. Rodeline A. De Juan. The project was approved by a panel of examiners, including Jerahmeel P. Cantos, Mylen B. Paderes, and Janice Jennifer P. Palmares, in partial fulfillment of the requirements for the degree Bachelor of Science in Information Technology.</div>
+    <div class="summary"><strong>Summary:</strong><br/>The Smart Library System project was developed by a team of students and approved by a panel of examiners.</div>
+    <div class="key-points">
+            <strong>Key Points:</strong>
+            <ul>
+              <li>The project was developed by a team of students under the guidance of their capstone project adviser</li><li>The project was approved by a panel of examiners, including the chairman, dean, and college administrator</li><li>The project was approved in partial fulfillment of the requirements for the degree Bachelor of Science in Information Technology</li>
+            </ul>
+          </div>
+  </page>
+
+  <page class="slide">
+    <h2>Slide 3: Acknowledgement and Appreciation</h2>
+    <div class="slide-content">The researchers extended their heartfelt appreciation to all individuals who contributed to the successful completion of the study, including their capstone project adviser, Instr. Rodeline A. De Juan, and other mentors who provided guidance, dedication, and encouragement throughout the project development.</div>
+    <div class="summary"><strong>Summary:</strong><br/>The researchers acknowledged and appreciated the contributions of individuals who helped in the project's completion.</div>
+    <div class="key-points">
+            <strong>Key Points:</strong>
+            <ul>
+              <li>The researchers appreciated the contributions of their capstone project adviser, Instr. Rodeline A. De Juan</li><li>The researchers acknowledged the guidance, dedication, and encouragement provided by their mentors</li><li>The researchers extended their appreciation to all individuals who contributed to the project's successful completion</li>
+            </ul>
+          </div>
+  </page>
+
+  <page class="slide">
+    <h2>Slide 4: Project Significance and Impact</h2>
+    <div class="slide-content">The Smart Library System project has significant implications for the improvement of library services and operations. The project's innovative approach to library management can serve as a model for other libraries, and its successful implementation can have a positive impact on the library community. The project's development and implementation demonstrate the potential of technology to enhance the library experience and improve the overall quality of library services.</div>
+    <div class="summary"><strong>Summary:</strong><br/>The Smart Library System project has significant implications for the improvement of library services and operations.</div>
+    <div class="key-points">
+            <strong>Key Points:</strong>
+            <ul>
+              <li>The project has significant implications for the improvement of library services and operations</li><li>The project's innovative approach to library management can serve as a model for other libraries</li><li>The project's successful implementation can have a positive impact on the library community</li>
+            </ul>
+          </div>
+  </page>
+
+  <page class="slide">
+    <h2>Slide 5: Conclusion and Future Directions</h2>
+    <div class="slide-content">In conclusion, the Smart Library System project is an innovative and significant contribution to the field of library science. The project's development and implementation demonstrate the potential of technology to enhance the library experience and improve the overall quality of library services. Future directions for the project include further refinement and expansion of the system, as well as exploration of new technologies and approaches to library management.</div>
+    <div class="summary"><strong>Summary:</strong><br/>The Smart Library System project is an innovative contribution to the field of library science with potential for future refinement and expansion.</div>
+    <div class="key-points">
+            <strong>Key Points:</strong>
+            <ul>
+              <li>The Smart Library System project is an innovative contribution to the field of library science</li><li>The project demonstrates the potential of technology to enhance the library experience</li><li>Future directions for the project include refinement, expansion, and exploration of new technologies and approaches</li>
+            </ul>
+          </div>
+  </page>
+
+</body>
+</html>
+  

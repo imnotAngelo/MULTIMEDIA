@@ -1,4 +1,5 @@
-import { Bell, Search, Sparkles, LogOut as LogOutIcon, CheckCheck, BookOpen, FileText, ClipboardList, Layers, X } from 'lucide-react';
+import { Bell, Search, Sparkles, LogOut as LogOutIcon, CheckCheck, BookOpen, FileText, ClipboardList, Layers, X, ChevronDown } from 'lucide-react';
+import { AetherSpinner } from '@/components/AetherSpinner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -275,7 +276,7 @@ export function Header({ title, subtitle }: HeaderProps) {
   };
 
   return (
-    <header className="h-14 border-b border-slate-800/60 bg-slate-950/80 backdrop-blur-xl flex items-center justify-between px-6 sticky top-0 z-30">
+    <header className="h-14 border-b border-indigo-400/20 bg-slate-950/65 backdrop-blur-xl flex items-center justify-between px-6 sticky top-0 z-30 aether-header">
       {/* Left Section */}
       <div className="flex items-center gap-4">
         {title && (
@@ -322,7 +323,10 @@ export function Header({ title, subtitle }: HeaderProps) {
           {searchOpen && (query.trim().length > 0 || searchLoading) && (
             <div className="absolute top-full left-0 right-0 mt-2 bg-slate-900 border border-slate-800 rounded-lg shadow-xl overflow-hidden z-40">
               {searchLoading && !indexLoaded ? (
-                <div className="p-4 text-xs text-slate-400">Indexing your content…</div>
+                <div className="p-4 flex items-center gap-2 text-xs text-slate-400">
+                  <AetherSpinner className="w-3.5 h-3.5" />
+                  Indexing your content…
+                </div>
               ) : filteredResults.length === 0 ? (
                 <div className="p-4 text-xs text-slate-400">No results for “{query}”</div>
               ) : (
@@ -426,12 +430,18 @@ export function Header({ title, subtitle }: HeaderProps) {
         {/* User Menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center">
-                <span className="text-white font-semibold text-sm">
-                  {user?.full_name?.charAt(0).toUpperCase() || 'S'}
-                </span>
+            <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0 header-user-trigger" aria-label="Open user menu">
+              <span className="header-user-ring" />
+              <div className="header-user-avatar">
+                {user?.avatar_url ? (
+                  <img src={user.avatar_url} alt="" className="h-full w-full rounded-full object-cover" />
+                ) : (
+                  <span className="text-white font-semibold text-sm">
+                    {user?.full_name?.charAt(0).toUpperCase() || 'S'}
+                  </span>
+                )}
               </div>
+              <ChevronDown className="header-user-chevron" aria-hidden="true" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="bg-slate-900 border-slate-800">

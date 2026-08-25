@@ -4,6 +4,7 @@ import { Plus, BookOpen, Users, FileText, ClipboardList, Zap, ArrowRight, Layers
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { authFetch } from '@/lib/authFetch';
+import { AetherLoader } from '@/components/AetherLoader';
 
 interface Unit {
   id: string;
@@ -219,10 +220,7 @@ export function InstructorDashboard() {
       </div>
 
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-16 gap-3">
-          <Loader2 className="w-6 h-6 text-violet-400 animate-spin" />
-          <p className="text-slate-500 text-sm">Loading your content...</p>
-        </div>
+        <AetherLoader label="Mapping your instructor workspace" />
       ) : (
         <>
           {/* Quick Actions */}

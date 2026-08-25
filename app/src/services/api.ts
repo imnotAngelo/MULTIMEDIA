@@ -86,10 +86,7 @@ class ApiService {
       let errorCode = 'API_ERROR';
 
       if (err.message.includes('Failed to fetch') || err.message.includes('Network')) {
-        const proxied = !API_BASE_URL.startsWith('http');
-        errorMessage = proxied
-          ? 'Cannot reach the API. Start the backend (port 3001), e.g. from the repo: npm run dev --prefix backend, or: npm run dev (root) with both app and API.'
-          : `Cannot connect to the API at ${API_BASE_URL}. If it should be local, start the backend on port 3001.`;
+        errorMessage = `Cannot connect to the API at ${API_BASE_URL}. Start the backend on port 3001 with: npm run dev --prefix backend`;
         errorCode = 'CONNECTION_ERROR';
       }
 
@@ -112,7 +109,7 @@ class ApiService {
   }
 
   // Auth endpoints
-  async register(email: string, password: string, fullName: string, role: 'student' | 'instructor' = 'student') {
+  async register(email: string, password: string, fullName: string, role: 'student' | 'instructor' = 'student', yearLevel: 1 | 2 | 3 | 4 = 1, section = '') {
     return this.request('/auth/register', {
       method: 'POST',
       body: JSON.stringify({
@@ -120,6 +117,8 @@ class ApiService {
         password,
         full_name: fullName,
         role,
+        year_level: yearLevel,
+        section,
       }),
     });
   }

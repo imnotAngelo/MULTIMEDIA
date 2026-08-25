@@ -17,6 +17,7 @@ import {
   CheckCircle2,
   Clock,
 } from 'lucide-react';
+import { AetherLoader } from '@/components/AetherLoader';
 
 interface Quiz {
   id: string;
@@ -258,10 +259,7 @@ export function QuizManagement() {
       </div>
 
       {loading && (
-        <div className="flex flex-col items-center justify-center py-16 gap-3">
-          <Loader2 className="w-6 h-6 text-violet-400 animate-spin" />
-          <p className="text-slate-500 text-sm">Loading quizzes...</p>
-        </div>
+        <AetherLoader label="Calibrating your quiz library" />
       )}
 
       {/* Quizzes List */}

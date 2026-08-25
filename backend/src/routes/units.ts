@@ -15,11 +15,18 @@ const router = Router();
 router.post('/', optionalAuthMiddleware, createUnit);
 
 // Get all units
-router.get('/', getUnits);
+router.get('/', optionalAuthMiddleware, getUnits);
 
 // DEBUG: Get ALL lessons in database (no filtering)
 router.get('/debug/all-lessons', async (req, res) => {
   try {
+    if (!supabase) {
+      return res.status(503).json({
+        success: false,
+        error: 'Supabase is unavailable',
+      });
+    }
+
     const { data: lessons, error } = await supabase
       .from('lessons')
       .select('id, title, module_id, status, slide_count, created_at')
@@ -78,6 +85,13 @@ router.get('/debug/all-lessons', async (req, res) => {
 // FIX: Link all orphaned lessons to a unit
 router.post('/debug/fix-orphaned-lessons', async (req, res) => {
   try {
+    if (!supabase) {
+      return res.status(503).json({
+        success: false,
+        error: 'Supabase is unavailable',
+      });
+    }
+
     // Get all orphaned lessons (no module_id)
     const { data: orphanedLessons, error: fetchError } = await supabase
       .from('lessons')

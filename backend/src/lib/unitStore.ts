@@ -8,6 +8,8 @@ interface LocalUnit {
   title: string;
   description?: string;
   status?: string;
+  yearLevel?: number;
+  section?: string;
   createdAt?: string;
 }
 

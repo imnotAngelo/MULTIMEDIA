@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { AetherLoader } from '@/components/AetherLoader';
 import { Card } from '@/components/ui/card';
 
 interface H5PActivityProps {
@@ -77,10 +78,7 @@ export function H5PActivity({ activityId, onComplete }: H5PActivityProps) {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center p-12">
-        <Loader2 className="w-8 h-8 animate-spin text-violet-400" />
-        <span className="ml-3 text-slate-300">Loading interactive activity...</span>
-      </div>
+      <AetherLoader compact label="Loading interactive activity" />
     );
   }
 

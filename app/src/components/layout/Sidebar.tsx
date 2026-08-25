@@ -16,11 +16,13 @@ import {
   Layers,
   Image,
   Settings
+  ,UserCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { useAuthStore } from '@/stores/authStore';
+import { AetherLogo } from '@/components/AetherLogo';
 
 interface NavItem {
   label: string;
@@ -64,8 +66,13 @@ const instructorNavItems: NavItem[] = [
     ]
   },
   { label: 'Announcements', href: '/instructor/announcements', icon: Megaphone },
+  { label: 'Student approvals', href: '/instructor/student-approvals', icon: UserCheck },
   { label: 'Messages', href: '/instructor/messages', icon: MessageSquare },
   { label: 'Settings', href: '/instructor/settings', icon: Settings },
+];
+
+const adminNavItems: NavItem[] = [
+  { label: 'Instructor approvals', href: '/admin/instructors', icon: UserCheck },
 ];
 
 const bottomNavItems: NavItem[] = [];
@@ -89,7 +96,11 @@ export function Sidebar({
   const navigate = useNavigate();
   const { logout } = useAuthStore();
 
-  const navItems = userRole === 'student' ? studentNavItems : instructorNavItems;
+  const navItems = userRole === 'student'
+    ? studentNavItems
+    : userRole === 'admin'
+      ? adminNavItems
+      : instructorNavItems;
 
   const handleLogout = () => {
     logout();
@@ -106,13 +117,11 @@ export function Sidebar({
   };
 
   const SidebarContent = () => (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col aether-sidebar">
       {/* Logo */}
       <div className="flex h-16 items-center px-6 border-b border-slate-800/60">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-violet-500/15">
-            <span className="text-white font-bold text-sm">M</span>
-          </div>
+          <AetherLogo compact />
           <div>
             <h1 className="text-white font-semibold text-sm leading-tight">Multimedia</h1>
             <p className="text-slate-500 text-[11px] leading-tight">Learning System</p>
@@ -131,7 +140,7 @@ export function Sidebar({
 
             return (
               <div key={item.label}>
-                <div className="flex">
+                <div className="flex aether-orbit">
                   <NavLink
                     to={item.href}
                     onClick={() => setIsMobileMenuOpen(false)}
@@ -144,7 +153,7 @@ export function Sidebar({
                       )
                     }
                   >
-                    <item.icon className="w-5 h-5" />
+                    <item.icon className="w-5 h-5 aether-icon" />
                     <span className="flex-1">{item.label}</span>
                     {item.badge && (
                       <span className="bg-violet-500 text-white text-xs font-medium px-2 py-0.5 rounded-full">
@@ -263,7 +272,7 @@ export function Sidebar({
       </button>
 
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex w-64 flex-col bg-slate-900/95 backdrop-blur-xl border-r border-slate-800 fixed h-full">
+      <aside className="hidden lg:flex w-64 flex-col bg-slate-950/75 backdrop-blur-xl border-r border-indigo-400/20 fixed h-full aether-panel">
         <SidebarContent />
       </aside>
 
@@ -274,7 +283,7 @@ export function Sidebar({
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
             onClick={() => setIsMobileMenuOpen(false)}
           />
-          <aside className="absolute left-0 top-0 h-full w-64 bg-slate-900 border-r border-slate-800">
+          <aside className="absolute left-0 top-0 h-full w-64 bg-slate-950/90 border-r border-indigo-400/20 aether-panel">
             <SidebarContent />
           </aside>
         </div>

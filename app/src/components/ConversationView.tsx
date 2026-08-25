@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
-import { MessageSquare, Send, Search, RefreshCw, Loader2 } from 'lucide-react';
+import { MessageSquare, Send, Search, RefreshCw } from 'lucide-react';
+import { AetherSpinner } from './AetherSpinner';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/stores/authStore';
 import {
@@ -294,7 +295,7 @@ export function ConversationView({
           <div className="flex-1 overflow-y-auto">
             {contactsLoading ? (
               <div className="flex items-center justify-center h-32 text-slate-400 text-sm">
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Loading...
+                <AetherSpinner className="w-4 h-4 mr-2" /> Loading...
               </div>
             ) : contactsError ? (
               <div className="p-4 text-rose-300 text-sm">{contactsError}</div>
@@ -379,7 +380,7 @@ export function ConversationView({
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
                 {threadLoading ? (
                   <div className="flex items-center justify-center h-24 text-slate-400 text-sm">
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Loading messages...
+                    <AetherSpinner className="w-4 h-4 mr-2" /> Loading messages...
                   </div>
                 ) : threadError ? (
                   <div className="text-rose-300 text-sm">{threadError}</div>
@@ -444,7 +445,7 @@ export function ConversationView({
                   className="bg-gradient-to-br from-violet-500 to-fuchsia-500 hover:from-violet-600 hover:to-fuchsia-600 text-white"
                 >
                   {sending ? (
-                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                    <AetherSpinner className="w-4 h-4 mr-1" />
                   ) : (
                     <Send className="w-4 h-4 mr-1" />
                   )}

@@ -2,8 +2,9 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth.js';
 import { supabase } from '../config/supabase.js';
 import { v4 as uuidv4 } from 'uuid';
-import { createLocalUnit, listLocalUnits } from '../lib/unitStore.js';
+import { listLocalUnits } from '../lib/unitStore.js';
 import { listLocalLessonsByModuleId } from '../lib/lessonStore.js';
+import { findUserById } from '../lib/userStore.js';
 
 // Use a consistent default instructor ID for unauthenticated requests (proper UUID)
 const DEFAULT_INSTRUCTOR_ID = '12345678-1234-4234-8234-123456789012';
@@ -16,6 +17,7 @@ function isSupabaseTransientError(error: any): boolean {
     'socket hang up',
     'econnrefused',
     'etimedout',
+    'timed out',
     'temporarily unavailable',
     'supabase unavailable',
     'missing supabase',
@@ -27,12 +29,60 @@ async function safeSupabaseCall<T>(operation: () => Promise<T>, fallback: T): Pr
     if (!supabase) {
       throw new Error('Supabase unavailable');
     }
-    return await operation();
+    const timeout = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('Supabase request timed out')), 3000);
+    });
+    return await Promise.race([operation(), timeout]);
   } catch (error: any) {
     if (isSupabaseTransientError(error)) {
       return fallback;
     }
     throw error;
+  }
+}
+
+// Verify a user ID exists in Supabase's users table; sync it from the local
+// auth store if we know about it locally, otherwise fall back to the default instructor.
+async function ensureUserExistsInSupabase(userId: string): Promise<string> {
+  try {
+    const { data: existingUser, error } = await supabase
+      .from('users')
+      .select('id')
+      .eq('id', userId)
+      .single();
+
+    if (existingUser) {
+      return userId;
+    }
+
+    if (error && error.code !== 'PGRST116') throw error;
+
+    const localUser = findUserById(userId);
+    if (localUser) {
+      console.warn('⚠️ Syncing locally-known user into Supabase before creating course:', userId);
+      const { error: insertError } = await supabase
+        .from('users')
+        .insert({
+          id: localUser.id,
+          email: localUser.email,
+          full_name: localUser.full_name,
+          role: localUser.role,
+          xp_total: localUser.xp_total || 0,
+          streak_days: localUser.streak_days || 0,
+        });
+
+      if (!insertError) {
+        return userId;
+      }
+      console.warn('⚠️ Could not sync local user into Supabase, falling back to default instructor:', insertError.message);
+    } else {
+      console.warn('⚠️ Authenticated user not found in Supabase or local store, falling back to default instructor:', userId);
+    }
+
+    return getOrCreateDefaultInstructor();
+  } catch (error: any) {
+    console.warn('⚠️ Error verifying user in Supabase, falling back to default instructor:', error.message);
+    return getOrCreateDefaultInstructor();
   }
 }
 
@@ -92,12 +142,17 @@ async function getOrCreateDefaultInstructor() {
 async function getOrCreateDefaultCourse(userId?: string) {
   try {
     let instructorId = userId;
-    
+
     // If no user ID provided, use/create default instructor
     if (!instructorId) {
       instructorId = await getOrCreateDefaultInstructor();
+    } else {
+      // The JWT may reference a user created under a previous/different Supabase
+      // project. Verify the user actually exists here (or sync it from the local
+      // auth store) before using it as a foreign key, otherwise fall back.
+      instructorId = await ensureUserExistsInSupabase(instructorId);
     }
-    
+
     console.log('📚 Getting/creating course for instructor:', instructorId);
     
     // Try to get existing default course
@@ -141,6 +196,8 @@ export const createUnit = async (req: AuthRequest, res: Response) => {
   try {
     const userId = (req as any).user?.id; // Optional auth, may be undefined
     const { title, description } = req.body;
+    const yearLevel = req.user?.year_level;
+    const section = req.user?.section;
 
     if (!title) {
       return res.status(400).json({
@@ -164,10 +221,12 @@ export const createUnit = async (req: AuthRequest, res: Response) => {
           course_id: courseId,
           title,
           description: description || '',
+          year_level: yearLevel || null,
+          section: section || null,
           order_index: 0,
           status: 'active',
         })
-        .select('id, title, description, created_at')
+        .select('id, title, description, year_level, section, created_at')
         .single();
 
       if (error) throw error;
@@ -182,27 +241,18 @@ export const createUnit = async (req: AuthRequest, res: Response) => {
           id: unitFromDb.id,
           title: unitFromDb.title,
           description: unitFromDb.description,
+          yearLevel: unitFromDb.year_level,
+          section: unitFromDb.section,
           createdAt: unitFromDb.created_at,
         },
       });
     }
 
-    const localUnit = createLocalUnit({
-      id: unitId,
-      courseId: 'local-course',
-      title,
-      description: description || '',
-      status: 'active',
-    });
-
-    console.log('✅ Unit saved locally:', localUnit);
-    return res.status(201).json({
-      success: true,
-      data: {
-        id: localUnit.id,
-        title: localUnit.title,
-        description: localUnit.description,
-        createdAt: localUnit.createdAt,
+    return res.status(503).json({
+      success: false,
+      error: {
+        code: 'DB_UNAVAILABLE',
+        message: 'Unit could not be saved because Supabase is unavailable.',
       },
     });
   } catch (error: any) {
@@ -244,7 +294,7 @@ export const getUnits = async (req: AuthRequest, res: Response) => {
       // Get all modules for those courses
       const { data: units, error } = await supabase
         .from('modules')
-        .select('id, title, description, created_at')
+        .select('id, title, description, year_level, section, created_at')
         .in('course_id', courseIds)
         .eq('status', 'active')
         .order('created_at', { ascending: false });
@@ -254,8 +304,10 @@ export const getUnits = async (req: AuthRequest, res: Response) => {
       return (units || []) as Array<{ id: string; title: string; description: string; created_at: string }>;
     }, null as any);
 
-    if (unitsFromDb && Array.isArray(unitsFromDb) && unitsFromDb.length > 0) {
-      console.log('📚 Units fetched:', unitsFromDb.length);
+    // `unitsFromDb` is `null` only when Supabase was unreachable/errored (see safeSupabaseCall).
+    // A successful call that legitimately found zero units returns `[]`, which must NOT fall back to stale local data.
+    if (unitsFromDb !== null) {
+      console.log('📚 Units fetched from Supabase:', unitsFromDb.length);
       return res.json({
         success: true,
         data: unitsFromDb.map((u) => ({
@@ -264,10 +316,13 @@ export const getUnits = async (req: AuthRequest, res: Response) => {
           description: u.description,
           lessonCount: 0, // Will be updated when fetching lessons
           createdAt: u.created_at,
+          yearLevel: u.year_level,
+          section: u.section,
         })),
       });
     }
 
+    console.warn('⚠️ Supabase unreachable, falling back to local units store');
     return res.json({
       success: true,
       data: localUnits.map((u) => ({
@@ -276,6 +331,8 @@ export const getUnits = async (req: AuthRequest, res: Response) => {
         description: u.description,
         lessonCount: 0,
         createdAt: u.createdAt,
+        yearLevel: u.yearLevel,
+        section: u.section,
       })),
     });
   } catch (error: any) {
@@ -302,6 +359,22 @@ export const getUnitLessons = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    const localLessons = listLocalLessonsByModuleId(unitId);
+    if (localLessons.length > 0) {
+      return res.json({
+        success: true,
+        data: localLessons.map((lesson: any) => ({
+          id: lesson.id,
+          title: lesson.title,
+          content: lesson.content,
+          slides: lesson.slides || [],
+          slideCount: lesson.slide_count || lesson.slideCount || 0,
+          createdAt: lesson.created_at || lesson.createdAt,
+          unitId,
+        })),
+      });
+    }
+
     const lessonsFromDb = await safeSupabaseCall(async () => {
       if (!supabase) {
         throw new Error('Supabase unavailable');
@@ -318,7 +391,6 @@ export const getUnitLessons = async (req: AuthRequest, res: Response) => {
       return lessons || [];
     }, [] as Array<any>);
 
-    const localLessons = listLocalLessonsByModuleId(unitId);
     const allLessons = [...(lessonsFromDb || []), ...localLessons];
 
     console.log(`📖 Lessons for unit ${unitId}:`, allLessons.length);

@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Eye, EyeOff, Mail, Lock, User, Loader2, GraduationCap, Presentation } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, GraduationCap, Presentation } from 'lucide-react';
+import { AetherSpinner } from '@/components/AetherSpinner';
 
 export function SignupPage() {
   const [fullName, setFullName] = useState('');
@@ -13,6 +14,8 @@ export function SignupPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState<'student' | 'instructor'>('student');
+  const [yearLevel, setYearLevel] = useState<1 | 2 | 3 | 4>(1);
+  const [section, setSection] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [validationError, setValidationError] = useState('');
   const { registerAsync, isLoading, error } = useAuthStore();
@@ -32,7 +35,12 @@ export function SignupPage() {
       return;
     }
 
-    const success = await registerAsync(email, password, fullName, role);
+    if (!section.trim()) {
+      setValidationError('Section is required');
+      return;
+    }
+
+    const success = await registerAsync(email, password, fullName, role, yearLevel, section.trim());
     if (success) {
       navigate('/login');
     }
@@ -80,6 +88,45 @@ export function SignupPage() {
                     required
                     className="pl-10 bg-slate-800/60 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-violet-500/50 focus-visible:border-violet-500/50 h-11"
                   />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="yearLevel" className="text-slate-300 text-sm">
+                    {role === 'instructor' ? 'Teaching Year' : 'Year Level'}
+                  </Label>
+                  <select
+                    id="yearLevel"
+                    value={yearLevel}
+                    onChange={(e) => setYearLevel(Number(e.target.value) as 1 | 2 | 3 | 4)}
+                    className="h-11 w-full rounded-md border border-slate-700 bg-slate-800/60 px-3 text-sm text-white focus:border-violet-500/50 focus:outline-none focus:ring-2 focus:ring-violet-500/30"
+                  >
+                    <option value={1}>1st Year</option>
+                    <option value={2}>2nd Year</option>
+                    <option value={3}>3rd Year</option>
+                    <option value={4}>4th Year</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="section" className="text-slate-300 text-sm">
+                    Section
+                  </Label>
+                  <Input
+                    id="section"
+                    type="text"
+                    placeholder="e.g. A"
+                    value={section}
+                    onChange={(e) => setSection(e.target.value)}
+                    maxLength={50}
+                    required
+                    className="bg-slate-800/60 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-violet-500/50 focus-visible:border-violet-500/50 h-11"
+                  />
+                  {role === 'student' && (
+                    <p className="text-xs text-slate-500">
+                      Your account will need approval from the instructor assigned to this section and year before you can sign in.
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -201,7 +248,7 @@ export function SignupPage() {
               >
                 {isLoading ? (
                   <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    <AetherSpinner className="w-4 h-4 mr-2" />
                     Creating account...
                   </>
                 ) : (

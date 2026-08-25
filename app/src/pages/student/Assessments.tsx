@@ -15,6 +15,7 @@ import {
   Calendar,
   Loader2,
 } from 'lucide-react';
+import { AetherLoader } from '@/components/AetherLoader';
 
 interface Assessment {
   id: string;
@@ -319,10 +320,7 @@ export function Assessments() {
 
       {/* Assessments List */}
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-16 gap-3">
-          <Loader2 className="w-6 h-6 text-violet-400 animate-spin" />
-          <p className="text-slate-500 text-sm">Loading assessments...</p>
-        </div>
+        <AetherLoader label="Preparing your assessments" />
       ) : (
         <>
           {filteredAssessments.length === 0 ? (

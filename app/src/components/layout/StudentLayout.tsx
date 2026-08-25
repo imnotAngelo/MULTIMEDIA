@@ -9,7 +9,7 @@ export function StudentLayout() {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-slate-950 aether-shell">
       <Sidebar 
         userRole={user.role}
         userName={user.full_name}

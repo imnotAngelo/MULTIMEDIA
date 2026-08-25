@@ -9,7 +9,7 @@ export function InstructorLayout() {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-slate-950 aether-shell">
       <Sidebar
         userRole="instructor"
         userName={user.full_name}
@@ -17,7 +17,12 @@ export function InstructorLayout() {
         xp={user.xp_total}
       />
       <div className="lg:ml-64 min-h-screen flex flex-col">
-        <Header title="Instructor Dashboard" subtitle="Manage your courses and content" />
+        <Header
+          title="Instructor Dashboard"
+          subtitle={user.year_level && user.section
+            ? `Managing Year ${user.year_level}, Section ${user.section}`
+            : 'Manage your courses and content'}
+        />
         <main className="flex-1 p-6">
           <Outlet />
         </main>

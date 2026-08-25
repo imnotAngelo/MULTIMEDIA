@@ -6,6 +6,9 @@ export interface AuthRequest extends Request {
     id: string;
     email: string;
     role: string;
+    year_level?: number;
+    teaching_year_levels?: number[];
+    section?: string;
   };
 }
 

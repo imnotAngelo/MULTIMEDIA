@@ -1,18 +1,1 @@
-[
-  {
-    "id": "906f3c11-7b61-49ee-991c-04b1488d7f92",
-    "courseId": "local-course",
-    "title": "Live Unit Test",
-    "description": "Created from terminal",
-    "status": "active",
-    "createdAt": "2026-08-04T03:07:29.080Z"
-  },
-  {
-    "id": "b652caa1-23b6-47ef-b150-d4ef816a6e64",
-    "courseId": "local-course",
-    "title": "Unit I",
-    "description": "intro to computing",
-    "status": "active",
-    "createdAt": "2026-08-04T03:10:51.283Z"
-  }
-]
+[]

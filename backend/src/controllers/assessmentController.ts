@@ -2,7 +2,7 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth.js';
 import { supabase } from '../config/supabase.js';
 import { v4 as uuidv4 } from 'uuid';
-import { createLocalAssessment, getLocalAssessmentById, listLocalAssessments } from '../lib/assessmentStore.js';
+import { getLocalAssessmentById, listLocalAssessments } from '../lib/assessmentStore.js';
 
 function isSupabaseTransientError(error: any): boolean {
   const message = `${error?.message || ''} ${error?.code || ''}`.toLowerCase();
@@ -190,21 +190,17 @@ export const createAssessment = async (req: AuthRequest, res: Response) => {
       null as any
     );
 
-    const assessment = createResult || createLocalAssessment({
-      id: assessmentId,
-      created_by: userId,
-      title,
-      description: description || '',
-      type,
-      due_date: dueDate || null,
-      total_points: totalPoints || 100,
-      module_id: moduleId,
-      status: 'published',
-      questions_data: questionsData,
-      time_limit: timeLimit || null,
-      shuffle_questions: shuffleQuestions || false,
-      show_correct_answers: showCorrectAnswers || false,
-    });
+    if (!createResult) {
+      return res.status(503).json({
+        success: false,
+        error: {
+          code: 'DB_UNAVAILABLE',
+          message: 'Assessment could not be saved because Supabase is unavailable.',
+        },
+      });
+    }
+
+    const assessment = createResult;
 
     console.log('📝 Created assessment:', assessment?.id, '- questions_data:', assessment?.questions_data ? 'present' : 'null');
 

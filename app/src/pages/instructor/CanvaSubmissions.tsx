@@ -7,7 +7,8 @@ import {
   updateSubmission,
   type LaboratorySubmission,
 } from '@/lib/laboratorySubmissionService';
-import { ExternalLink, Loader2, Save } from 'lucide-react';
+import { ExternalLink, Save } from 'lucide-react';
+import { AetherSpinner } from '@/components/AetherSpinner';
 
 type Unit = { id: string; title?: string; name?: string };
 
@@ -113,7 +114,7 @@ export function CanvaSubmissions() {
           </h2>
           {loadingSubs && (
             <div className="flex items-center gap-2 text-slate-400 text-sm">
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <AetherSpinner className="w-4 h-4" />
               Loading…
             </div>
           )}
@@ -224,7 +225,7 @@ function SubmissionCard({
           >
             {saving ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <AetherSpinner className="w-4 h-4 mr-2" />
                 Saving…
               </>
             ) : (

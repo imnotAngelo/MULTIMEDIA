@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import pdfParser from 'pdf-parse';
 import Groq from 'groq-sdk';
 import { v4 as uuidv4 } from 'uuid';
-import { createLocalLesson, listLocalLessonsByModuleId } from '../lib/lessonStore.js';
+import { getLocalLessonById, listLocalLessonsByModuleId } from '../lib/lessonStore.js';
 
 const router = Router();
 const routeDir = path.dirname(fileURLToPath(import.meta.url));
@@ -60,168 +60,136 @@ function sendSupabaseUnavailable(res: Response) {
   });
 }
 
-// Helper: Extract text from PDF
-async function extractPdfText(filePath: string): Promise<string> {
+interface ParsedPdf {
+  text: string;
+  pages: string[];
+}
+
+// Extract the complete document while retaining page boundaries for slide conversion.
+async function extractPdf(filePath: string): Promise<ParsedPdf> {
   try {
     const dataBuffer = fs.readFileSync(filePath);
-    const data = await pdfParser(dataBuffer);
-    return data.text;
+    const pages: string[] = [];
+    const data = await pdfParser(dataBuffer, {
+      pagerender: async (pageData: any) => {
+        const textContent = await pageData.getTextContent();
+        const lines: string[] = [];
+        let currentLine = '';
+        let currentY: number | null = null;
+        for (const item of textContent.items) {
+          const text = String(item.str || '').trim();
+          if (!text) continue;
+          const itemY = Array.isArray(item.transform) ? Number(item.transform[5]) : null;
+          if (currentLine && currentY !== null && itemY !== null && Math.abs(itemY - currentY) > 2) {
+            lines.push(currentLine.trim());
+            currentLine = '';
+          }
+          currentLine += `${currentLine ? ' ' : ''}${text}`;
+          currentY = itemY ?? currentY;
+        }
+        if (currentLine) lines.push(currentLine.trim());
+        const pageText = lines.join('\n').replace(/[ \t]+/g, ' ').trim();
+        pages.push(pageText);
+        return pageText;
+      },
+    } as any);
+    return { text: data.text || pages.join('\n\n'), pages };
   } catch (error) {
     throw new Error(`Failed to parse PDF: ${error}`);
   }
 }
 
-function buildFallbackSlides(pdfText: string, title: string): any[] {
-  const cleanedText = (pdfText || '').replace(/\s+/g, ' ').trim();
-  const sourceText = cleanedText || title;
-  const sentences = sourceText
-    .split(/(?<=[.!?])\s+/)
-    .map((part) => part.trim())
+function splitForReadableSlides(text: string, maxCharacters = 900): string[] {
+  const sourceText = text.trim();
+  const paragraphs = text
+    .replace(/\r\n/g, '\n')
+    .split(/\n\s*\n/)
+    .map((part) => part.replace(/[ \t]+/g, ' ').replace(/\n/g, ' ').trim())
     .filter(Boolean);
+  const chunks: string[] = [];
 
-  const chunkedSentences = sentences.length > 0 ? sentences : [sourceText];
-  const slideCount = Math.min(4, Math.max(1, Math.ceil(chunkedSentences.length / 2)));
+  for (const paragraph of paragraphs.length > 0 ? paragraphs : [sourceText]) {
+    if (paragraph.length <= maxCharacters) {
+      chunks.push(paragraph);
+      continue;
+    }
 
-  return Array.from({ length: slideCount }, (_, index) => {
-    const start = index * 2;
-    const content = chunkedSentences.slice(start, start + 2).join(' ');
-    const summary = content.length > 140 ? `${content.slice(0, 137)}...` : content;
+    const sentences = paragraph.split(/(?<=[.!?])\s+/).filter(Boolean);
+    let current = '';
+    for (const sentence of sentences.length > 0 ? sentences : [paragraph]) {
+      if (sentence.length > maxCharacters) {
+        if (current) {
+          chunks.push(current);
+          current = '';
+        }
+        for (let start = 0; start < sentence.length; start += maxCharacters) {
+          chunks.push(sentence.slice(start, start + maxCharacters).trim());
+        }
+        continue;
+      }
+      if (current && `${current} ${sentence}`.length > maxCharacters) {
+        chunks.push(current);
+        current = sentence;
+      } else {
+        current = current ? `${current} ${sentence}` : sentence;
+      }
+    }
+    if (current) chunks.push(current);
+  }
+
+  return chunks;
+}
+
+function buildFallbackSlides(pdfText: string, title: string, pages?: string[]): any[] {
+  const sourcePages = pages && pages.length > 0 ? pages : [pdfText];
+  const pageChunks = sourcePages.flatMap((pageText, pageIndex) =>
+    splitForReadableSlides(pageText || `${title} (page ${pageIndex + 1})`).map((content) => ({ content, pageIndex }))
+  );
+  const chunks = pageChunks.length > 0 ? pageChunks : [{ content: title, pageIndex: 0 }];
+
+  return chunks.map(({ content, pageIndex }, index) => {
+    const firstLine = content.split(/[.!?]/)[0].trim();
+    const slideTitle = firstLine.length > 70 ? `${firstLine.slice(0, 67)}...` : firstLine;
+    const summary = content.length > 180 ? `${content.slice(0, 177)}...` : content;
+    const keyPoints = content
+      .split(/(?<=[.!?])\s+/)
+      .filter(Boolean)
+      .slice(0, 4);
     return {
       slideNumber: index + 1,
-      title: `${title} — Part ${index + 1}`,
-      content: content || `Key points for ${title}`,
+      title: slideTitle || `${title} — Page ${pageIndex + 1}`,
+      content,
       summary,
-      keyPoints: [summary],
+      keyPoints: keyPoints.length > 0 ? keyPoints : [content],
+      sourcePage: pageIndex + 1,
     };
   });
 }
 
 function buildFallbackSummary(slides: any[], pdfText?: string): string {
   const fallbackText = slides
-    .map((slide) => slide.summary || slide.content || '')
+    .filter((slide) => !slide.isSummary)
+    .map((slide, index) => `Part ${index + 1}: ${slide.summary || slide.content || ''}`)
     .filter(Boolean)
     .join(' ');
   const cleaned = (fallbackText || pdfText || '').replace(/\s+/g, ' ').trim();
-  return cleaned.length > 0 ? cleaned.slice(0, 280) : `Lesson content for ${slides[0]?.title || 'this lesson'}`;
+  return cleaned.length > 1800
+    ? `${cleaned.slice(0, 1797)}...`
+    : cleaned || `Lesson content for ${slides[0]?.title || 'this lesson'}`;
 }
 
 // Helper: Generate slides from PDF text
-async function generateSlides(pdfText: string, title: string): Promise<any[]> {
-  try {
-    const client = getGroqClient();
-
-    // Use more of the PDF text to ensure comprehensive understanding
-    // Use up to 12,000 characters or the entire PDF if smaller
-    const pdfContextLength = Math.min(12000, pdfText.length);
-    const pdfContext = pdfText.substring(0, pdfContextLength);
-
-    // If PDF is shorter than 500 chars, it might be invalid
-    if (pdfContext.trim().length < 100) {
-      return buildFallbackSlides(pdfText, title);
-    }
-
-    const response = await client.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
-      max_tokens: 4096,
-      messages: [
-        {
-          role: 'user',
-          content: `You are an expert instructor. Convert the EXACT content from this PDF into comprehensive presentation slides.
-
-LESSON TITLE: "${title}"
-
-PDF CONTENT TO CONVERT:
-${pdfContext}
-
-CRITICAL INSTRUCTIONS:
-- Create slides that DIRECTLY reflect the PDF content provided
-- Do NOT generate generic or unrelated content
-- Extract key topics, concepts, and information from the PDF
-- Create exactly 6-8 slides based on the PDF material
-- Each slide MUST be tied to specific content from the PDF above
-
-Please create detailed slides in JSON format with this structure:
-{
-  "slides": [
-    {
-      "slideNumber": 1,
-      "title": "Slide Title (directly from PDF content)",
-      "content": "Detailed explanation (3-4 sentences) derived DIRECTLY from the PDF content above",
-      "summary": "One-sentence summary of this specific slide's content from the PDF",
-      "keyPoints": ["point directly from PDF", "another point from PDF", "third point from PDF", "fourth point from PDF"]
-    }
-  ]
-}
-
-REQUIREMENTS:
-- Each slide title and content MUST be based on the PDF material provided
-- Key points must be specific facts or concepts from the PDF
-- Content should be 150-300 words per slide
-- Key points must be informative and specific, not generic
-- Build logical progression through the actual PDF topics
-- If the PDF discusses topics A, B, and C, structure slides around those exact topics`,
-        },
-      ],
-    });
-
-    const content = response.choices[0]?.message?.content;
-    if (content && typeof content === 'string') {
-      try {
-        // Extract JSON from response
-        const jsonMatch = content.match(/\{[\s\S]*\}/);
-        const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : { slides: [] };
-        return parsed.slides && parsed.slides.length > 0 ? parsed.slides : buildFallbackSlides(pdfText, title);
-      } catch (e) {
-        console.error('Failed to parse slides JSON:', e);
-        return buildFallbackSlides(pdfText, title);
-      }
-    }
-
-    return buildFallbackSlides(pdfText, title);
-  } catch (error) {
-    console.warn('Falling back to built-in slide generation:', error);
-    return buildFallbackSlides(pdfText, title);
-  }
+async function generateSlides(pdfText: string, title: string, pages?: string[]): Promise<any[]> {
+  // Keep the complete extracted text in the deck. AI-generated slides are
+  // intentionally avoided here because model context/output limits can omit
+  // source material; summaries remain AI-assisted below.
+  return buildFallbackSlides(pdfText, title, pages);
 }
 
 // Helper: Generate summary from slides (only covers topics that will be discussed)
 async function generateSummary(slides: any[], pdfText?: string): Promise<string> {
-  try {
-    const client = getGroqClient();
-
-    // Build a comprehensive text representation of the slide content
-    const slidesText = slides
-      .map((s) => {
-        let slideContent = `Topic: ${s.title}\n${s.content}`;
-        if (s.keyPoints && Array.isArray(s.keyPoints)) {
-          slideContent += '\nKey Points: ' + s.keyPoints.join('; ');
-        }
-        if (s.summary) {
-          slideContent += `\nSummary: ${s.summary}`;
-        }
-        return slideContent;
-      })
-      .join('\n\n');
-
-    const response = await client.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
-      max_tokens: 500,
-      messages: [
-        {
-          role: 'user',
-          content: `Write a clear, concise 3-4 sentence lesson summary based on these presentation slides. The summary should capture the main topics, concepts, and learning outcomes covered in the lesson.\n\nLesson Slides:\n${slidesText.substring(0, 3000)}`,
-        },
-      ],
-    });
-
-    const content = response.choices[0]?.message?.content;
-    return typeof content === 'string' && content.trim()
-      ? content.trim()
-      : buildFallbackSummary(slides, pdfText);
-  } catch (error) {
-    console.warn('Falling back to built-in summary generation:', error);
-    return buildFallbackSummary(slides, pdfText);
-  }
+  // Build from every source slide so the final summary cannot omit later pages.
+  return buildFallbackSummary(slides, pdfText);
 }
 
 // Upload and process PDF
@@ -285,18 +253,33 @@ router.post(
 
       // Extract PDF text
       let pdfText = '';
+      let parsedPdfPages: string[] = [];
+      let extractionError: any = null;
       try {
-        pdfText = await extractPdfText(req.file.path);
+        const parsedPdf = await extractPdf(req.file.path);
+        pdfText = parsedPdf.text;
+        parsedPdfPages = parsedPdf.pages;
       } catch (error) {
-        console.warn('PDF text extraction failed, continuing with fallback content:', error);
+        extractionError = error;
+        console.error('❌ PDF text extraction failed:', {
+          file: req.file?.originalname,
+          size: req.file?.size,
+          error: String(error)
+        });
       }
 
       if (!pdfText || pdfText.trim().length < 20) {
-        pdfText = `${title}\n${lessonModuleId}`;
+        const fileInfo = req.file?.originalname || 'lesson.pdf';
+        const notExtractedMsg = extractionError 
+          ? `\n\n⚠️ **Automatic text extraction failed:**\n${String(extractionError)}\n\nPlease manually create slides or contact support.`
+          : '\n\n⚠️ **PDF was uploaded but contains no readable text.** This may be a scanned document, image-only PDF, or password-protected file.';
+        
+        pdfText = `# ${title}\n\nFile: ${fileInfo}\nModule: ${lessonModuleId}${notExtractedMsg}`;
+        console.warn(`📄 Using fallback content for lesson "${title}" - file uploaded but not extracted`);
       }
 
       // Generate slides
-      const slides = await generateSlides(pdfText, title);
+      const slides = await generateSlides(pdfText, title, parsedPdfPages);
 
       if (slides.length === 0) {
         slides.push({
@@ -313,6 +296,14 @@ router.post(
 
       // Generate summary from the slides (only covers discussed topics)
       const summary = await generateSummary(slides, pdfText);
+      slides.push({
+        slideNumber: slides.length + 1,
+        title: 'Lesson Summary',
+        content: summary,
+        summary,
+        keyPoints: ['Summary of the complete lesson content'],
+        isSummary: true,
+      });
 
       // Store file
       const fileName = `lesson-${Date.now()}.pdf`;
@@ -376,8 +367,15 @@ router.post(
         }
       }
 
-      const localLesson = createLocalLesson(lessonData);
-      console.log('✅ Lesson saved locally:', localLesson);
+      if (!savedLesson) {
+        return res.status(503).json({
+          success: false,
+          error: {
+            code: 'DB_UNAVAILABLE',
+            message: 'Lesson could not be saved because Supabase is unavailable or the unit does not exist there.',
+          },
+        });
+      }
 
       const responsePayload = {
         lesson: {
@@ -680,18 +678,42 @@ router.post(
       const { lessonId } = req.params;
       const { numberOfQuestions = 5 } = req.body;
 
-      if (!supabase) {
-        return sendSupabaseUnavailable(res);
-      }
-
       console.log('🧠 Generating quiz questions for lesson:', lessonId);
 
       // Get lesson with content and slides
-      const { data: lesson, error: lessonError } = await supabase
-        .from('lessons')
-        .select('id, title, content, slides')
-        .eq('id', lessonId)
-        .single();
+      let lesson: any = getLocalLessonById(lessonId);
+      let lessonError: any = null;
+      let dbUnavailable = false;
+
+      if (!lesson && supabase) {
+        try {
+          const result = await Promise.race([
+            supabase
+              .from('lessons')
+              .select('id, title, content, slides')
+              .eq('id', lessonId)
+              .single(),
+            new Promise<never>((_, reject) =>
+              setTimeout(() => reject(new Error('Supabase request timed out')), 5000)
+            ),
+          ]);
+          lesson = result.data;
+          lessonError = result.error;
+        } catch (error: any) {
+          lessonError = error;
+          dbUnavailable = true;
+          console.error('❌ Supabase unreachable while fetching lesson for quiz generation:', error?.message || error);
+        }
+      } else if (!lesson && !supabase) {
+        dbUnavailable = true;
+      }
+
+      if (dbUnavailable) {
+        return res.status(503).json({
+          success: false,
+          error: { code: 'DB_UNAVAILABLE', message: 'Database is unavailable. Please check Supabase configuration and try again.' },
+        });
+      }
 
       if (lessonError || !lesson) {
         return res.status(404).json({
@@ -1109,7 +1131,8 @@ router.post('/', optionalAuthMiddleware, (req: Request, res: Response, next) => 
 
       // Now call the same processing logic as /upload-pdf
       // Extract PDF text
-      extractPdfText(file.path).then(async (pdfText) => {
+      extractPdf(file.path).then(async (parsedPdf) => {
+        const pdfText = parsedPdf.text;
         if (!pdfText || pdfText.length < 50) {
           fs.unlinkSync(file.path);
           return res.status(400).json({
@@ -1119,7 +1142,7 @@ router.post('/', optionalAuthMiddleware, (req: Request, res: Response, next) => 
         }
 
         // Generate slides
-        const slides = await generateSlides(pdfText, title);
+        const slides = await generateSlides(pdfText, title, parsedPdf.pages);
 
         if (slides.length === 0) {
           fs.unlinkSync(file.path);
@@ -1130,6 +1153,16 @@ router.post('/', optionalAuthMiddleware, (req: Request, res: Response, next) => 
         }
 
         console.log('✅ Slides generated:', slides.length);
+
+        const summary = await generateSummary(slides, pdfText);
+        slides.push({
+          slideNumber: slides.length + 1,
+          title: 'Lesson Summary',
+          content: summary,
+          summary,
+          keyPoints: ['Summary of the complete lesson content'],
+          isSummary: true,
+        });
 
         // Insert into database...
         // (Rest of the upload logic from /upload-pdf route)
@@ -1143,7 +1176,7 @@ router.post('/', optionalAuthMiddleware, (req: Request, res: Response, next) => 
             id: uuidv4(),
             module_id: lessonModuleId,
             title,
-            content: description || `PDF lesson - ${slides.length} slides generated automatically`,
+            content: description || summary,
             slides: slides,
             slide_count: slides.length,
             status: 'published',

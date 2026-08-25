@@ -8,6 +8,7 @@ import { authFetch } from '@/lib/authFetch';
 import { downloadLessonAsPDF } from '@/lib/downloadUtils';
 import { useAuthStore } from '@/stores/authStore';
 import { toast } from 'sonner';
+import { AetherLoader } from '@/components/AetherLoader';
 
 interface Slide {
   id?: string;
@@ -250,9 +251,7 @@ export function SlideViewer({ lessonId, lessonTitle }: SlideViewerProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-12">
-        <p className="text-slate-400">Loading slides...</p>
-      </div>
+      <AetherLoader label="Projecting your lesson slides" />
     );
   }
 

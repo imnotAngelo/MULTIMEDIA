@@ -5,7 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Eye, EyeOff, Mail, Lock, Loader2, GraduationCap, Presentation } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, GraduationCap, Presentation } from 'lucide-react';
+import { AetherSpinner } from '@/components/AetherSpinner';
+import { AetherLogo } from '@/components/AetherLogo';
 
 type Role = 'student' | 'instructor';
 
@@ -29,7 +31,7 @@ export function LoginPage() {
       setTimeout(() => {
         const currentUser = useAuthStore.getState().user;
         
-        if (currentUser && currentUser.role !== role) {
+        if (currentUser && currentUser.role !== 'admin' && currentUser.role !== role) {
           setRoleMismatch(
             `This account is registered as ${currentUser.role}. Please select "${
               currentUser.role === 'instructor' ? 'Instructor' : 'Student'
@@ -41,6 +43,8 @@ export function LoginPage() {
 
         if (currentUser?.role === 'instructor') {
           navigate('/instructor/dashboard');
+        } else if (currentUser?.role === 'admin') {
+          navigate('/admin/instructors');
         } else {
           navigate('/dashboard');
         }
@@ -59,9 +63,7 @@ export function LoginPage() {
       <div className="w-full max-w-md relative z-10 animate-fade-in">
         {/* Logo / Brand */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 mb-4 shadow-lg shadow-violet-500/20">
-            <span className="text-white font-bold text-2xl">M</span>
-          </div>
+          <div className="inline-flex mb-4"><AetherLogo /></div>
           <h1 className="text-2xl font-bold text-white">Multimedia Learning</h1>
           <p className="text-slate-400 text-sm mt-1">Interactive Visual Effects Education</p>
         </div>
@@ -171,7 +173,7 @@ export function LoginPage() {
               >
                 {isLoading ? (
                   <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    <AetherSpinner className="w-4 h-4 mr-2" />
                     Signing in...
                   </>
                 ) : (

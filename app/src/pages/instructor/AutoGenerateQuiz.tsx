@@ -2,7 +2,8 @@
 import { useNavigate } from 'react-router-dom';
 import { authFetch } from '@/lib/authFetch';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Trash2, Loader2, Sparkles, Settings2, BookOpen, Wand2, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Trash2, Sparkles, Settings2, BookOpen, Wand2, CheckCircle2 } from 'lucide-react';
+import { AetherSpinner } from '@/components/AetherSpinner';
 
 interface Unit {
   id: string;
@@ -301,7 +302,7 @@ export function AutoGenerateQuiz() {
                 <label className="block text-sm font-medium text-slate-300 mb-2">Select Unit *</label>
                 {loadingUnits ? (
                   <div className="flex items-center gap-2 text-slate-400 py-2">
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <AetherSpinner className="w-4 h-4" />
                     <span className="text-sm">Loading units...</span>
                   </div>
                 ) : (
@@ -416,7 +417,7 @@ export function AutoGenerateQuiz() {
                 >
                   {generating ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <AetherSpinner className="w-4 h-4" />
                       Generating Questions...
                     </>
                   ) : (
@@ -567,7 +568,7 @@ export function AutoGenerateQuiz() {
               >
                 {loading ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <AetherSpinner className="w-4 h-4" />
                     Creating Quiz...
                   </>
                 ) : (

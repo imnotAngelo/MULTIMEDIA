@@ -15,6 +15,7 @@ import {
   GraduationCap,
   Loader2,
 } from 'lucide-react';
+import { AetherLoader } from '@/components/AetherLoader';
 
 interface Unit {
   id: string;
@@ -61,26 +62,14 @@ export function Dashboard() {
       const unitList: Unit[] = unitsData.success ? unitsData.data || [] : [];
       setUnits(unitList);
 
-      // Fetch all lessons from all units
-      const allLessons: Lesson[] = [];
-
-      for (const unit of unitList) {
-        const lessonsResponse = await authFetch(
-          `${API_URL}/units/${unit.id}/lessons`
-        );
+      const lessonResults = await Promise.all(unitList.map(async (unit) => {
+        const lessonsResponse = await authFetch(`${API_URL}/units/${unit.id}/lessons`);
         const lessonsData = await lessonsResponse.json();
-
-        if (lessonsData.success) {
-          const unitLessons = lessonsData.data || [];
-          console.log(`✅ Lessons for unit "${unit.title}": ${unitLessons.length}`);
-          allLessons.push(
-            ...unitLessons.map((l: any) => ({
-              ...l,
-              unitId: unit.id,
-            }))
-          );
-        }
-      }
+        const unitLessons = lessonsData.success ? lessonsData.data || [] : [];
+        console.log(`✅ Lessons for unit "${unit.title}": ${unitLessons.length}`);
+        return unitLessons.map((lesson: any) => ({ ...lesson, unitId: unit.id }));
+      }));
+      const allLessons: Lesson[] = lessonResults.flat();
 
       console.log('🎓 Total lessons loaded:', allLessons.length);
       setLessons(allLessons);
@@ -155,10 +144,7 @@ export function Dashboard() {
       </div>
 
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-16 gap-3">
-          <Loader2 className="w-6 h-6 text-violet-400 animate-spin" />
-          <p className="text-slate-500 text-sm">Loading your content...</p>
-        </div>
+        <AetherLoader label="Tuning your learning constellation" />
       ) : units.length === 0 ? (
         <div className="bg-slate-900/40 border border-slate-800/60 rounded-xl p-12 text-center">
           <div className="w-16 h-16 rounded-2xl bg-slate-800/60 flex items-center justify-center mx-auto mb-4">

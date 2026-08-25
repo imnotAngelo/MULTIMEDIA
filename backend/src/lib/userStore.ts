@@ -8,6 +8,10 @@ export interface AuthUserRecord {
   password_hash: string;
   full_name: string;
   role: string;
+  instructor_approved?: boolean;
+  year_level?: number | null;
+  teaching_year_levels?: number[];
+  section?: string | null;
   avatar_url?: string | null;
   xp_total: number;
   streak_days: number;
@@ -56,6 +60,12 @@ export function findUserByEmail(email: string): AuthUserRecord | null {
   return user ?? null;
 }
 
+export function findUserById(id: string): AuthUserRecord | null {
+  const store = readStore();
+  const user = Object.values(store).find((entry) => entry.id === id);
+  return user ?? null;
+}
+
 export function createUser(user: Omit<AuthUserRecord, 'created_at'>): AuthUserRecord {
   const store = readStore();
   const createdAt = new Date().toISOString();
@@ -67,4 +77,20 @@ export function createUser(user: Omit<AuthUserRecord, 'created_at'>): AuthUserRe
   store[record.email.toLowerCase()] = record;
   writeStore(store);
   return record;
+}
+
+export function listUsersByRole(role: string): AuthUserRecord[] {
+  return Object.values(readStore()).filter((user) => user.role === role);
+}
+
+export function updateUser(id: string, updates: Partial<AuthUserRecord>): AuthUserRecord | null {
+  const store = readStore();
+  const entry = Object.entries(store).find(([, user]) => user.id === id);
+  if (!entry) return null;
+
+  const [key, user] = entry;
+  const updatedUser = { ...user, ...updates };
+  store[key] = updatedUser;
+  writeStore(store);
+  return updatedUser;
 }

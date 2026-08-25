@@ -7,7 +7,8 @@ import {
   updateSubmission,
   type LaboratorySubmission,
 } from '@/lib/laboratorySubmissionService';
-import { ExternalLink, Loader2, Save, Beaker, ImageIcon, FileVideo, Eye, X, Calendar, User, Star, CheckCircle, Clock, XCircle } from 'lucide-react';
+import { ExternalLink, Save, Beaker, ImageIcon, FileVideo, Eye, X, Calendar, User, Star, CheckCircle, Clock, XCircle } from 'lucide-react';
+import { AetherSpinner } from '@/components/AetherSpinner';
 
 interface FileSubmission {
   id: string;
@@ -226,7 +227,7 @@ export function LaboratorySubmissions() {
                   disabled={savingGrade}
                   onClick={handleSaveGrade}
                 >
-                  {savingGrade ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : <Save className="w-4 h-4 mr-1.5" />}
+                  {savingGrade ? <AetherSpinner className="w-4 h-4 mr-1.5" /> : <Save className="w-4 h-4 mr-1.5" />}
                   Save Grade
                 </Button>
               </div>
@@ -324,7 +325,7 @@ export function LaboratorySubmissions() {
         <Card className="bg-slate-900/60 border-slate-800 p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-slate-100">Instructor-Assigned Lab Files</h2>
-            {loadingFileSubs && <Loader2 className="w-4 h-4 animate-spin text-slate-400" />}
+            {loadingFileSubs && <AetherSpinner className="w-4 h-4 text-slate-400" />}
           </div>
 
           {!loadingFileSubs && fileSubs.length === 0 && (
@@ -440,7 +441,7 @@ export function LaboratorySubmissions() {
               </h2>
               {loadingSubs && (
                 <div className="flex items-center gap-2 text-slate-400 text-sm">
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <AetherSpinner className="w-4 h-4" />
                   Loading…
                 </div>
               )}
@@ -547,7 +548,7 @@ function SubmissionCard({
           >
             {saving ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <AetherSpinner className="w-4 h-4 mr-2" />
                 Saving…
               </>
             ) : (

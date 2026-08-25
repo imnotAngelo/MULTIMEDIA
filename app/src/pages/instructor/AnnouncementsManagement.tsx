@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Megaphone, Send, Trash2, Loader2, Clock, Paperclip, X, FileText } from 'lucide-react';
+import { Megaphone, Send, Trash2, Clock, Paperclip, X, FileText } from 'lucide-react';
+import { AetherSpinner } from '@/components/AetherSpinner';
 import { Button } from '@/components/ui/button';
 import { notificationService } from '@/services/notificationService';
 import { authFetch } from '@/lib/authFetch';
@@ -223,7 +224,7 @@ export function AnnouncementsManagement() {
           >
             {sending ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <AetherSpinner className="w-4 h-4 mr-2" />
                 Sending...
               </>
             ) : (

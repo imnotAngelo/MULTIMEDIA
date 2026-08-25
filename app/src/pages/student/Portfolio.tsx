@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Share2, Download, Trash2, Eye, Loader2, Beaker, Calendar, FileVideo, ImageIcon } from 'lucide-react';
+import { Share2, Download, Trash2, Eye, Beaker, Calendar, FileVideo, ImageIcon } from 'lucide-react';
+import { AetherSpinner } from '@/components/AetherSpinner';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -173,7 +174,7 @@ export function Portfolio() {
 
         {labsLoading ? (
           <div className="flex items-center gap-2 text-slate-400 text-sm py-4">
-            <Loader2 className="w-4 h-4 animate-spin" /> Loading submissions…
+            <AetherSpinner className="w-4 h-4" /> Loading submissions…
           </div>
         ) : labSubmissions.length === 0 ? (
           <Card className="bg-slate-900/60 border-slate-800 p-6 text-center">
@@ -297,7 +298,7 @@ export function Portfolio() {
         {/* Content */}
         {isLoading ? (
         <div className="flex items-center justify-center p-12">
-          <Loader2 className="w-8 h-8 animate-spin text-violet-400" />
+          <AetherSpinner className="w-8 h-8 text-violet-400" />
           <span className="ml-3 text-slate-300">Loading portfolio...</span>
         </div>
       ) : filteredDesigns.length === 0 ? (

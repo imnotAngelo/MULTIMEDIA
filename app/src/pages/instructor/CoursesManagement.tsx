@@ -7,10 +7,10 @@ import {
   RefreshCw,
   Upload,
   Plus,
-  Loader2,
   Eye,
   Clock
 } from 'lucide-react';
+import { AetherSpinner } from '@/components/AetherSpinner';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,6 +26,7 @@ import {
 import { authFetch } from '@/lib/authFetch';
 import { notificationService } from '@/services/notificationService';
 import { cn } from '@/lib/utils';
+import { AetherLoader } from '@/components/AetherLoader';
 
 interface Unit {
   id: string;
@@ -33,6 +34,8 @@ interface Unit {
   description: string;
   createdAt: string;
   labExists?: boolean;
+  yearLevel?: number;
+  section?: string;
 }
 
 interface Lesson {
@@ -223,37 +226,26 @@ export function CoursesManagement() {
 
       const unitList: Unit[] = unitsData.success ? (unitsData.data || []) : [];
       
-      // Check which units already have laboratories created
-      const unitListWithLabs: Unit[] = [];
-      for (const unit of unitList) {
+      const unitListWithLabs = await Promise.all(unitList.map(async (unit) => {
         try {
           const existsRes = await authFetch(`/laboratories/exists/${unit.id}`);
           const existsJson = await existsRes.json();
-          unitListWithLabs.push({
-            ...unit,
-            labExists: !!existsJson?.data?.exists,
-          });
+          return { ...unit, labExists: !!existsJson?.data?.exists };
         } catch {
-          unitListWithLabs.push({ ...unit, labExists: false });
+          return { ...unit, labExists: false };
         }
-      }
+      }));
 
       setUnits(unitListWithLabs);
 
-      const allLessons: Lesson[] = [];
-
-      for (const unit of unitListWithLabs) {
+      const lessonResults = await Promise.all(unitListWithLabs.map(async (unit) => {
         const lessonsResponse = await authFetch(`/units/${unit.id}/lessons`);
         const lessonsData = await lessonsResponse.json();
-        if (lessonsData.success) {
-          const lessons = lessonsData.data || [];
-          console.log(`✅ Lessons for unit "${unit.title}": ${lessons.length}`);
-          allLessons.push(...lessons.map((l: any) => ({
-            ...l,
-            unitId: unit.id,
-          })));
-        }
-      }
+        const unitLessons = lessonsData.success ? lessonsData.data || [] : [];
+        console.log(`✅ Lessons for unit "${unit.title}": ${unitLessons.length}`);
+        return unitLessons.map((lesson: any) => ({ ...lesson, unitId: unit.id }));
+      }));
+      const allLessons: Lesson[] = lessonResults.flat();
 
       console.log('✅ Total lessons loaded:', allLessons.length);
       setLessons(allLessons);
@@ -299,18 +291,19 @@ export function CoursesManagement() {
 
       const data = await response.json();
 
-      if (data.success) {
+      if (response.ok && data.success) {
         notificationService.notifyUnitAdded(newUnitTitle);
         setNewUnitTitle('');
         setNewUnitDescription('');
         setShowCreateUnitDialog(false);
         await loadData();
       } else {
-        toast.error(data.message || 'Failed to create unit');
+        console.error('❌ Create unit failed:', response.status, JSON.stringify(data.error || data));
+        toast.error(data.error?.message || data.message || `Failed to create unit (status ${response.status})`);
       }
     } catch (error) {
       console.error('❌ Failed to create unit:', error);
-      toast.error('Failed to create unit');
+      toast.error(error instanceof Error ? error.message : 'Failed to create unit');
     } finally {
       setCreatingUnit(false);
     }
@@ -364,9 +357,9 @@ export function CoursesManagement() {
       });
 
       const data = await response.json();
-      console.log('[UPLOAD_RESPONSE]', data);
+      console.log('[UPLOAD_RESPONSE]', response.status, data);
 
-      if (data.success) {
+      if (response.ok && data.success) {
         console.log('[UPLOAD_SUCCESS] Lesson uploaded');
         toast.success('Lesson uploaded! Processing...');
 
@@ -394,11 +387,12 @@ export function CoursesManagement() {
         await loadData();
         console.log('[RELOAD_COMPLETE] Course data reloaded');
       } else {
-        toast.error(data.message || 'Failed to upload lesson');
+        console.error('❌ Upload failed:', response.status, JSON.stringify(data.error || data));
+        toast.error(data.error?.message || data.message || `Failed to upload lesson (status ${response.status})`);
       }
     } catch (error) {
       console.error('❌ Failed to upload lesson:', error);
-      toast.error('Failed to upload lesson');
+      toast.error(error instanceof Error ? error.message : 'Failed to upload lesson');
     } finally {
       setUploadingLesson(false);
     }
@@ -409,7 +403,7 @@ export function CoursesManagement() {
   if (loading) {
     return (
       <div className="flex items-center justify-center p-12">
-        <p className="text-slate-400">Loading your courses...</p>
+        <AetherLoader label="Arranging your courses" />
       </div>
     );
   }
@@ -418,7 +412,7 @@ export function CoursesManagement() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-white">My Courses</h1>
+          <h1 className="text-3xl font-bold text-white">UNIT MANAGEMENT</h1>
           <p className="text-slate-400 mt-2">Manage your units and lessons</p>
         </div>
         <div className="flex gap-2">
@@ -477,7 +471,7 @@ export function CoursesManagement() {
                     disabled={creatingUnit}
                     className="bg-violet-600 hover:bg-violet-700"
                   >
-                    {creatingUnit && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                    {creatingUnit && <AetherSpinner className="w-4 h-4 mr-2" />}
                     Create Unit
                   </Button>
                 </div>
@@ -632,7 +626,7 @@ export function CoursesManagement() {
                 disabled={uploadingLesson}
                 className="bg-violet-600 hover:bg-violet-700"
               >
-                {uploadingLesson && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {uploadingLesson && <AetherSpinner className="w-4 h-4 mr-2" />}
                 Upload Lesson
               </Button>
             </div>

@@ -1,6 +1,7 @@
 // [REMOVED: Canva integration component no longer used]
 import { useState, useRef, useEffect } from 'react';
-import { Download, Share2, Save, Loader2, CheckCircle } from 'lucide-react';
+import { Download, Share2, Save, CheckCircle } from 'lucide-react';
+import { AetherSpinner } from '../AetherSpinner';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -125,7 +126,7 @@ export function CanvaDesignStudio({ designPrompt, onDesignComplete }: CanvaDesig
               </div>
             ) : (
               <div className="flex items-center justify-center space-x-2 text-slate-400">
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <AetherSpinner className="w-5 h-5" />
                 <span className="text-sm">Loading Canva...</span>
               </div>
             )}
@@ -231,7 +232,7 @@ export function CanvaDesignStudio({ designPrompt, onDesignComplete }: CanvaDesig
         >
           {isSubmitting ? (
             <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              <AetherSpinner className="w-4 h-4 mr-2" />
               Saving Your Design...
             </>
           ) : (

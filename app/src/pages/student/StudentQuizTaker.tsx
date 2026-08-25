@@ -12,6 +12,7 @@ import {
   Send,
   RefreshCw,
 } from 'lucide-react';
+import { AetherLoader } from '@/components/AetherLoader';
 
 interface QuestionOption {
   id: string;
@@ -234,12 +235,7 @@ export function StudentQuizTaker() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-950">
-        <div className="text-center">
-          <p className="text-slate-400 mb-4">Loading quiz...</p>
-          <RefreshCw className="w-8 h-8 text-slate-500 animate-spin mx-auto" />
-        </div>
-      </div>
+      <div className="flex items-center justify-center min-h-screen bg-slate-950"><AetherLoader label="Loading your quiz" /></div>
     );
   }
 

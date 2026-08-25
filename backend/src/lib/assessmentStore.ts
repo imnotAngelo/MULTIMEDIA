@@ -81,14 +81,14 @@ function readStore(): LocalAssessmentRecord[] {
   try {
     const raw = fs.readFileSync(assessmentStorePath, 'utf8');
     const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.length > 0) {
+    if (Array.isArray(parsed)) {
       return parsed as LocalAssessmentRecord[];
     }
   } catch {
     // fall through to seeded data
   }
 
-  return [...seedAssessments];
+  return [];
 }
 
 function writeStore(records: LocalAssessmentRecord[]) {

@@ -42,5 +42,31 @@
     "xp_total": 0,
     "streak_days": 0,
     "created_at": "2026-08-04T04:26:39.920Z"
+  },
+  "kill@gmail.com": {
+    "id": "f8279a10-d159-4002-803c-0e7043bf65cf",
+    "email": "kill@gmail.com",
+    "password_hash": "$2a$10$Ixhbv2IBLDwXk9M39wAEquG7N1dtTwZAP347n67lMqrZ/C4Ux5iK.",
+    "full_name": "killll",
+    "role": "student",
+    "instructor_approved": true,
+    "year_level": 1,
+    "teaching_year_levels": [],
+    "section": "G",
+    "avatar_url": "https://api.dicebear.com/7.x/avataaars/svg?seed=kill@gmail.com",
+    "xp_total": 0,
+    "streak_days": 0,
+    "created_at": "2026-08-25T02:46:22.165Z"
+  },
+  "admin@quicklearn.local": {
+    "id": "c4854211-d393-456a-bda9-179f820bc7f5",
+    "email": "admin@quicklearn.local",
+    "password_hash": "$2a$10$wIE6PPTalCNCFBsm.6hbM.LYb/8JhtsivNXljQphGb9QyNYWSVSEO",
+    "full_name": "System Admin",
+    "role": "admin",
+    "avatar_url": "https://api.dicebear.com/7.x/avataaars/svg?seed=admin@quicklearn.local",
+    "xp_total": 0,
+    "streak_days": 0,
+    "created_at": "2026-08-25T08:28:01.171Z"
   }
 }

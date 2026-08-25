@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Loader2, AlertCircle, RotateCw, ZoomIn, ZoomOut } from 'lucide-react';
+import { AetherLoader } from '@/components/AetherLoader';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import * as THREE from 'three';
@@ -67,10 +68,7 @@ export function ThreeJsLearning({ sceneType = 'default', onInteractionComplete }
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center p-12">
-        <Loader2 className="w-8 h-8 animate-spin text-purple-400" />
-        <span className="ml-3 text-slate-300">Initializing 3D scene...</span>
-      </div>
+      <AetherLoader compact label="Initializing 3D scene" />
     );
   }
 
