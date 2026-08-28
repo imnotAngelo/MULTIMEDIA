@@ -7,8 +7,8 @@ const router = Router();
 
 router.use(authMiddleware, instructorMiddleware);
 
-// List pending students for the instructor's own section + teaching year levels
-router.get('/student-requests', async (req: AuthRequest, res: Response) => {
+// List all students assigned to the instructor's section and teaching years.
+router.get('/students', async (req: AuthRequest, res: Response) => {
   try {
     const section = req.user?.section;
     const teachingYearLevels = req.user?.teaching_year_levels || [];
@@ -28,10 +28,52 @@ router.get('/student-requests', async (req: AuthRequest, res: Response) => {
       .from('users')
       .select('id, email, full_name, avatar_url, created_at, year_level, section, student_approved')
       .eq('role', 'student')
-      .eq('student_approved', false)
       .eq('section', section)
       .in('year_level', teachingYearLevels)
+      .order('year_level', { ascending: true })
+      .order('full_name', { ascending: true });
+
+    if (error) throw error;
+    return res.json({ success: true, data: data || [] });
+  } catch (error: any) {
+    console.error('Get all students error:', error);
+    return res.status(500).json({
+      success: false,
+      error: { code: 'STUDENTS_FAILED', message: error.message },
+    });
+  }
+});
+
+// List pending students for the instructor's own section + teaching year levels
+router.get('/student-requests', async (req: AuthRequest, res: Response) => {
+  try {
+    const section = req.user?.section;
+    const teachingYearLevels = req.user?.teaching_year_levels || [];
+
+    if (!section || teachingYearLevels.length === 0) {
+      return res.json({ success: true, data: [] });
+    }
+
+    if (!supabase) {
+      return res.status(503).json({
+        success: false,
+        error: { code: 'DB_UNAVAILABLE', message: 'Database is unavailable.' },
+      });
+    }
+
+    let query = supabase
+      .from('users')
+      .select('id, email, full_name, avatar_url, created_at, year_level, section, student_approved')
+      .eq('role', 'student')
+      .eq('section', section)
       .order('created_at', { ascending: true });
+
+    if (req.query.includeAll !== 'true') {
+      query = query.eq('student_approved', false);
+    }
+    query = query.in('year_level', teachingYearLevels);
+
+    const { data, error } = await query;
 
     if (error) throw error;
     return res.json({ success: true, data: data || [] });

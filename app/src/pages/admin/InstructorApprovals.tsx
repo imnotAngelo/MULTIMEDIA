@@ -11,10 +11,15 @@ interface InstructorRequest {
   email: string;
   full_name: string;
   created_at: string;
+  section?: string | null;
+  year_level?: number | null;
+  teaching_year_levels?: number[] | null;
+  instructor_approved?: boolean;
 }
 
 export function InstructorApprovals() {
   const [requests, setRequests] = useState<InstructorRequest[]>([]);
+  const [instructors, setInstructors] = useState<InstructorRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [approvingId, setApprovingId] = useState<string | null>(null);
@@ -23,12 +28,27 @@ export function InstructorApprovals() {
     setLoading(true);
     setError('');
     try {
-      const response = await authFetch('/admin/instructor-requests');
-      const payload = await response.json();
-      if (!response.ok || !payload.success) {
+      const [requestsResponse, instructorsResponse] = await Promise.all([
+        authFetch('/admin/instructor-requests'),
+        authFetch('/admin/instructors'),
+      ]);
+      const payload = await requestsResponse.json();
+      let instructorsPayload = await instructorsResponse.json();
+      let instructorsLoaded = instructorsResponse.ok;
+      if (!instructorsResponse.ok) {
+        const fallbackResponse = await authFetch('/admin/instructor-requests?includeAll=true');
+        const fallbackPayload = await fallbackResponse.json();
+        instructorsPayload = fallbackPayload;
+        instructorsLoaded = fallbackResponse.ok;
+      }
+      if (!requestsResponse.ok || !payload.success) {
         throw new Error(payload.error?.message || 'Could not load instructor requests');
       }
+      if (!instructorsLoaded || !instructorsPayload.success) {
+        throw new Error(instructorsPayload.error?.message || 'Could not load instructors');
+      }
       setRequests(payload.data || []);
+      setInstructors(instructorsPayload.data || []);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Could not load instructor requests');
     } finally {
@@ -102,6 +122,40 @@ export function InstructorApprovals() {
                     {approvingId === request.id ? <AetherSpinner className="mr-2 h-4 w-4" /> : <Check className="mr-2 h-4 w-4" />}
                     Approve account
                   </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="border-slate-800 bg-slate-900/70">
+        <CardHeader className="border-b border-slate-800">
+          <CardTitle className="flex items-center gap-3 text-white">
+            <Users className="h-5 w-5 text-emerald-400" />
+            All instructors
+            <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-sm text-emerald-300">{instructors.length}</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          {instructors.length === 0 ? (
+            <p className="p-8 text-center text-sm text-slate-400">No instructor accounts found.</p>
+          ) : (
+            <div className="divide-y divide-slate-800">
+              {instructors.map((instructor) => (
+                <div key={instructor.id} className="flex flex-col gap-2 p-5 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h2 className="font-semibold text-white">{instructor.full_name}</h2>
+                    <p className="text-sm text-slate-400">{instructor.email}</p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Section: {instructor.section || 'Not assigned'}
+                      {' | '}
+                      Teaching years: {instructor.teaching_year_levels?.join(', ') || 'Not assigned'}
+                    </p>
+                  </div>
+                  <span className={`w-fit rounded-full border px-2.5 py-1 text-xs ${instructor.instructor_approved === false ? 'border-amber-500/30 bg-amber-500/10 text-amber-300' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'}`}>
+                    {instructor.instructor_approved === false ? 'Pending approval' : 'Approved'}
+                  </span>
                 </div>
               ))}
             </div>

@@ -51,6 +51,23 @@ async function resolveSender(user: NonNullable<AuthRequest['user']>) {
   return syncedUser || { id: localUser.id, email: localUser.email, full_name: localUser.full_name, role: localUser.role };
 }
 
+function isStudentAllowedToContact(student: any, instructor: any) {
+  const studentSection = String(student.section || '').trim().toLowerCase();
+  const instructorSection = String(instructor.section || '').trim().toLowerCase();
+  const studentYear = Number(student.year_level);
+  const teachingYears = Array.isArray(instructor.teaching_year_levels)
+    ? instructor.teaching_year_levels.map(Number)
+    : [];
+
+  return Boolean(
+    studentSection &&
+    instructorSection &&
+    studentSection === instructorSection &&
+    Number.isInteger(studentYear) &&
+    teachingYears.includes(studentYear)
+  );
+}
+
 /**
  * GET /api/messages/contacts
  * Returns a list of users the caller can message:
@@ -63,17 +80,24 @@ router.get('/contacts', authMiddleware, async (req: AuthRequest, res: Response) 
     const me = req.user;
     if (!me) return res.status(401).json({ error: 'Unauthorized' });
 
+    const sender = await resolveSender(me);
+    if (!sender) return res.status(401).json({ error: 'Your account is not available in the application database. Please sign in again.' });
+
     const targetRole = me.role === 'instructor' ? 'student' : 'instructor';
 
     const { data: contacts, error: cErr } = await supabase
       .from('users')
-      .select('id, email, full_name, role, avatar_url')
+      .select('id, email, full_name, role, avatar_url, section, year_level, teaching_year_levels')
       .eq('role', targetRole);
     if (cErr) throw cErr;
 
-    if (!contacts || contacts.length === 0) return res.json([]);
+    const permittedContacts = sender.role === 'student'
+      ? contacts.filter((contact: any) => isStudentAllowedToContact(sender, contact))
+      : contacts;
 
-    const contactIds = contacts.map((c: any) => c.id);
+    if (permittedContacts.length === 0) return res.json([]);
+
+    const contactIds = permittedContacts.map((c: any) => c.id);
 
     // Fetch messages I sent to any contact, and messages any contact sent to me.
     // Two simple queries are far more reliable than a nested .or(and(...)) filter,
@@ -82,14 +106,14 @@ router.get('/contacts', authMiddleware, async (req: AuthRequest, res: Response) 
       supabase
         .from('messages')
         .select('id, sender_id, recipient_id, body, read_at, created_at')
-        .eq('sender_id', me.id)
+        .eq('sender_id', sender.id)
         .in('recipient_id', contactIds)
         .order('created_at', { ascending: false })
         .limit(500),
       supabase
         .from('messages')
         .select('id, sender_id, recipient_id, body, read_at, created_at')
-        .eq('recipient_id', me.id)
+        .eq('recipient_id', sender.id)
         .in('sender_id', contactIds)
         .order('created_at', { ascending: false })
         .limit(500),
@@ -107,14 +131,14 @@ router.get('/contacts', authMiddleware, async (req: AuthRequest, res: Response) 
     const unreadByContact = new Map<string, number>();
 
     for (const m of msgs) {
-      const otherId = m.sender_id === me.id ? m.recipient_id : m.sender_id;
+      const otherId = m.sender_id === sender.id ? m.recipient_id : m.sender_id;
       if (!lastByContact.has(otherId)) lastByContact.set(otherId, m);
-      if (m.recipient_id === me.id && m.read_at == null) {
+      if (m.recipient_id === sender.id && m.read_at == null) {
         unreadByContact.set(otherId, (unreadByContact.get(otherId) ?? 0) + 1);
       }
     }
 
-    const enriched = contacts
+    const enriched = permittedContacts
       .map((c: any) => ({
         id: c.id,
         email: c.email,
@@ -146,8 +170,21 @@ router.get('/thread/:userId', authMiddleware, async (req: AuthRequest, res: Resp
     const me = req.user;
     if (!me) return res.status(401).json({ error: 'Unauthorized' });
     const otherId = req.params.userId;
-    if (!otherId || otherId === me.id) {
+    const sender = await resolveSender(me);
+    if (!sender) return res.status(401).json({ error: 'Your account is not available in the application database. Please sign in again.' });
+    if (!otherId || otherId === sender.id) {
       return res.status(400).json({ error: 'Invalid recipient' });
+    }
+
+    const { data: threadRecipient, error: threadRecipientError } = await supabase
+      .from('users')
+      .select('id, role, section, year_level, teaching_year_levels')
+      .eq('id', otherId)
+      .maybeSingle();
+    if (threadRecipientError) throw threadRecipientError;
+    if (!threadRecipient) return res.status(404).json({ error: 'Recipient not found' });
+    if (sender.role === 'student' && !isStudentAllowedToContact(sender, threadRecipient)) {
+      return res.status(403).json({ error: 'You can only message your section adviser.' });
     }
 
     // Two simple queries are more reliable than nested .or(and(...)) filters.
@@ -155,7 +192,7 @@ router.get('/thread/:userId', authMiddleware, async (req: AuthRequest, res: Resp
       supabase
         .from('messages')
         .select('id, sender_id, recipient_id, body, read_at, created_at')
-        .eq('sender_id', me.id)
+        .eq('sender_id', sender.id)
         .eq('recipient_id', otherId)
         .order('created_at', { ascending: true })
         .limit(500),
@@ -163,7 +200,7 @@ router.get('/thread/:userId', authMiddleware, async (req: AuthRequest, res: Resp
         .from('messages')
         .select('id, sender_id, recipient_id, body, read_at, created_at')
         .eq('sender_id', otherId)
-        .eq('recipient_id', me.id)
+        .eq('recipient_id', sender.id)
         .order('created_at', { ascending: true })
         .limit(500),
     ]);
@@ -210,11 +247,15 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
     // Verify recipient exists
     const { data: recipient, error: rErr } = await supabase
       .from('users')
-      .select('id, role')
+      .select('id, role, section, year_level, teaching_year_levels')
       .eq('id', recipientId)
       .maybeSingle();
     if (rErr) throw rErr;
     if (!recipient) return res.status(404).json({ error: 'Recipient not found' });
+
+    if (sender.role === 'student' && !isStudentAllowedToContact(sender, recipient)) {
+      return res.status(403).json({ error: 'You can only message your section adviser.' });
+    }
 
     // Restrict cross-role messaging to student <-> instructor
     const allowed =
@@ -252,12 +293,14 @@ router.post('/thread/:userId/read', authMiddleware, async (req: AuthRequest, res
     if (!me) return res.status(401).json({ error: 'Unauthorized' });
     const otherId = req.params.userId;
     if (!otherId) return res.status(400).json({ error: 'Invalid user' });
+    const sender = await resolveSender(me);
+    if (!sender) return res.status(401).json({ error: 'Your account is not available in the application database. Please sign in again.' });
 
     const { error } = await supabase
       .from('messages')
       .update({ read_at: new Date().toISOString() })
       .eq('sender_id', otherId)
-      .eq('recipient_id', me.id)
+      .eq('recipient_id', sender.id)
       .is('read_at', null);
     if (error) throw error;
 
@@ -276,11 +319,13 @@ router.get('/unread-count', authMiddleware, async (req: AuthRequest, res: Respon
   try {
     const me = req.user;
     if (!me) return res.status(401).json({ error: 'Unauthorized' });
+    const sender = await resolveSender(me);
+    if (!sender) return res.status(401).json({ error: 'Your account is not available in the application database. Please sign in again.' });
 
     const { count, error } = await supabase
       .from('messages')
       .select('id', { head: true, count: 'exact' })
-      .eq('recipient_id', me.id)
+      .eq('recipient_id', sender.id)
       .is('read_at', null);
     if (error) throw error;
 

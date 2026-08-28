@@ -13,15 +13,46 @@ function isTransientDatabaseError(error: any) {
 
 router.use(authMiddleware, adminMiddleware);
 
-router.get('/instructor-requests', async (_req: AuthRequest, res: Response) => {
+router.get('/instructors', async (_req: AuthRequest, res: Response) => {
   try {
     if (supabase) {
       const { data, error } = await supabase
         .from('users')
+        .select('id, email, full_name, role, section, year_level, teaching_year_levels, avatar_url, created_at, instructor_approved')
+        .eq('role', 'instructor')
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      return res.json({ success: true, data: data || [] });
+    }
+
+    return res.json({ success: true, data: listUsersByRole('instructor') });
+  } catch (error: any) {
+    if (isTransientDatabaseError(error)) {
+      return res.json({ success: true, data: listUsersByRole('instructor') });
+    }
+    console.error('Get instructors error:', error);
+    return res.status(500).json({
+      success: false,
+      error: { code: 'INSTRUCTORS_FAILED', message: error.message },
+    });
+  }
+});
+
+router.get('/instructor-requests', async (_req: AuthRequest, res: Response) => {
+  try {
+    if (supabase) {
+      let query = supabase
+        .from('users')
         .select('id, email, full_name, role, avatar_url, created_at, instructor_approved')
         .eq('role', 'instructor')
-        .eq('instructor_approved', false)
         .order('created_at', { ascending: true });
+
+      if ((_req.query as any).includeAll !== 'true') {
+        query = query.eq('instructor_approved', false);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       return res.json({ success: true, data: data || [] });

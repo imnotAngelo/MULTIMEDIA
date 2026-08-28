@@ -13,7 +13,7 @@ import { StudentLayout, InstructorLayout } from '@/components/layout';
 import { AdminLayout } from '@/pages/admin';
 
 // Student Pages
-import { StudentDashboard, Lessons, Assessments, StudentQuizTaker, Laboratories, Portfolio, StudentQuizzes, Chatbox, StudentSettings } from '@/pages/student';
+import { StudentDashboard, Lessons, StudentQuizTaker, Laboratories, Portfolio, StudentQuizzes, Chatbox, StudentSettings } from '@/pages/student';
 
 // Instructor Pages
 import { InstructorDashboard, UnitsManagement, ViewLesson, InstructorAssessments, CreateAssessment, QuizManagement, QuizMethodPicker, CreateQuiz, AutoGenerateQuiz, LaboratorySubmissions, LaboratoriesManagement, InstructorMessages, InstructorSettings, StudentApprovals } from '@/pages/instructor';
@@ -81,7 +81,7 @@ export function App() {
           <Route path="/lessons" element={<Lessons />} />
           <Route path="/laboratories" element={<Laboratories />} />
           <Route path="/portfolio" element={<Portfolio />} />
-          <Route path="/assessments" element={<Assessments />} />
+          <Route path="/assessments" element={<StudentQuizzes />} />
           <Route path="/quizzes" element={<StudentQuizzes />} />
           <Route path="/announcements" element={<Chatbox />} />
           <Route path="/chatbox" element={<Chatbox />} />

@@ -33,6 +33,17 @@ interface Quiz {
   updatedAt: string;
 }
 
+interface QuizSubmission {
+  id: string;
+  score: number | null;
+  status: string;
+  submitted_at: string;
+  student?: {
+    full_name?: string;
+    email?: string;
+  } | null;
+}
+
 interface QuizStats {
   totalQuizzes: number;
   totalSubmissions: number;
@@ -55,6 +66,8 @@ export function QuizManagement() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [submissions, setSubmissions] = useState<Record<string, QuizSubmission[]>>({});
+  const [submissionsLoading, setSubmissionsLoading] = useState<string | null>(null);
 
   useEffect(() => {
     // Check if user has valid token before loading
@@ -161,6 +174,30 @@ export function QuizManagement() {
     const diffTime = due.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays;
+  };
+
+  const loadSubmissions = async (quizId: string) => {
+    setSubmissionsLoading(quizId);
+    try {
+      const response = await authFetch(`http://localhost:3001/api/assessments/${quizId}/submissions`);
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error?.message || 'Could not load submissions');
+      }
+      setSubmissions((current) => ({ ...current, [quizId]: data.data || [] }));
+    } catch (submissionError: any) {
+      alert(submissionError?.message || 'Could not load submissions');
+    } finally {
+      setSubmissionsLoading(null);
+    }
+  };
+
+  const toggleQuiz = (quizId: string) => {
+    const willExpand = expandedId !== quizId;
+    setExpandedId(willExpand ? quizId : null);
+    if (willExpand && !submissions[quizId]) {
+      loadSubmissions(quizId);
+    }
   };
 
   return (
@@ -286,7 +323,7 @@ export function QuizManagement() {
               className="bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden hover:border-violet-500/30 transition-colors"
             >
               <button
-                onClick={() => setExpandedId(expandedId === quiz.id ? null : quiz.id)}
+                onClick={() => toggleQuiz(quiz.id)}
                 className="w-full p-6 flex items-center justify-between hover:bg-slate-800/30 transition-colors text-left"
               >
                 <div className="flex-1">
@@ -337,6 +374,59 @@ export function QuizManagement() {
                         {new Date(quiz.createdAt).toLocaleDateString()}
                       </p>
                     </div>
+                  </div>
+
+                  <div className="border-t border-slate-700 pt-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-sm font-semibold text-white">Student Submissions</h4>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => loadSubmissions(quiz.id)}
+                        className="text-slate-400 hover:text-white"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 mr-2 ${submissionsLoading === quiz.id ? 'animate-spin' : ''}`} />
+                        Refresh
+                      </Button>
+                    </div>
+                    {submissionsLoading === quiz.id && !submissions[quiz.id] ? (
+                      <div className="flex items-center gap-2 text-sm text-slate-400 py-4">
+                        <Loader2 className="w-4 h-4 animate-spin" /> Loading submissions...
+                      </div>
+                    ) : !submissions[quiz.id]?.length ? (
+                      <p className="text-sm text-slate-500 py-3">No students have submitted this quiz yet.</p>
+                    ) : (
+                      <div className="overflow-x-auto rounded-lg border border-slate-700">
+                        <table className="w-full text-left text-sm">
+                          <thead className="bg-slate-900/80 text-xs uppercase text-slate-500">
+                            <tr>
+                              <th className="px-3 py-2">Student</th>
+                              <th className="px-3 py-2">Score</th>
+                              <th className="px-3 py-2">Status</th>
+                              <th className="px-3 py-2">Submitted</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-800">
+                            {submissions[quiz.id].map((submission) => (
+                              <tr key={submission.id} className="text-slate-300">
+                                <td className="px-3 py-3">
+                                  <div className="font-medium text-white">{submission.student?.full_name || 'Unknown student'}</div>
+                                  <div className="text-xs text-slate-500">{submission.student?.email || 'No email'}</div>
+                                </td>
+                                <td className="px-3 py-3 font-semibold text-emerald-400">
+                                  {submission.score === null || submission.score === undefined ? 'Not graded' : `${submission.score}%`}
+                                </td>
+                                <td className="px-3 py-3 capitalize">{submission.status || 'submitted'}</td>
+                                <td className="px-3 py-3 text-xs text-slate-400">
+                                  {submission.submitted_at ? new Date(submission.submitted_at).toLocaleString() : 'Unknown'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex gap-2 pt-4 border-t border-slate-700">

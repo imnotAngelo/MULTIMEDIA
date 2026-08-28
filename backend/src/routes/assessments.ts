@@ -10,6 +10,7 @@ import {
   submitAssessmentResponse,
   getAssessmentSubmissions,
   gradeSubmission,
+  getMyAssessmentSubmission,
 } from '../controllers/assessmentController.js';
 
 const router = Router();
@@ -20,6 +21,9 @@ router.get('/instructor/all', authMiddleware, getInstructorAssessments);
 
 // Student routes - get assessments (optional auth to show all public assessments)
 router.get('/', optionalAuthMiddleware, getStudentAssessments);
+
+// Get specific assessment (optional auth)
+router.get('/:assessmentId/my-submission', authMiddleware, getMyAssessmentSubmission);
 
 // Get specific assessment (optional auth)
 router.get('/:id', optionalAuthMiddleware, getAssessmentById);

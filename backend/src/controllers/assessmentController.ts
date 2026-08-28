@@ -6,6 +6,42 @@ import { findUserById } from '../lib/userStore.js';
 
 const DEFAULT_INSTRUCTOR_ID = '12345678-1234-4234-8234-123456789012';
 
+async function resolveAssessmentUser(user: { id: string; email: string }) {
+  const { data: byId, error: idError } = await supabase
+    .from('users')
+    .select('id, email, role')
+    .eq('id', user.id)
+    .maybeSingle();
+  if (idError) throw idError;
+  if (byId) return byId;
+
+  const { data: byEmail, error: emailError } = await supabase
+    .from('users')
+    .select('id, email, role')
+    .eq('email', user.email)
+    .maybeSingle();
+  if (emailError) throw emailError;
+  if (byEmail) return byEmail;
+
+  const localUser = findUserById(user.id);
+  if (!localUser) return null;
+
+  const { data: syncedUser, error: syncError } = await supabase
+    .from('users')
+    .insert({
+      id: localUser.id,
+      email: localUser.email,
+      full_name: localUser.full_name,
+      role: localUser.role,
+      xp_total: localUser.xp_total || 0,
+      streak_days: localUser.streak_days || 0,
+    })
+    .select('id, email, role')
+    .single();
+  if (syncError && syncError.code !== '23505') throw syncError;
+  return syncedUser || { id: localUser.id, email: localUser.email, role: localUser.role };
+}
+
 function isSupabaseTransientError(error: any): boolean {
   const message = `${error?.message || ''} ${error?.code || ''}`.toLowerCase();
   return [
@@ -319,7 +355,9 @@ export const createAssessment = async (req: AuthRequest, res: Response) => {
 // Get all assessments (Student - returns all published assessments)
 export const getStudentAssessments = async (req: AuthRequest, res: Response) => {
   try {
-    const userId = (req as any).user?.id;
+    const requestUser = (req as any).user;
+    const resolvedUser = requestUser ? await resolveAssessmentUser(requestUser) : null;
+    const userId = resolvedUser?.id;
     const { filter, unitId, page = 1, limit = 50 } = req.query;
 
     console.log('📋 getStudentAssessments - userId:', userId, 'filter:', filter);
@@ -378,11 +416,37 @@ export const getStudentAssessments = async (req: AuthRequest, res: Response) => 
         ...assessment,
       }));
 
+      const submissionsByAssessment = new Map<string, any>();
+      if (userId && transformedAssessments.length > 0) {
+        const { data: submissions, error: submissionsError } = await supabase
+          .from('assessment_submissions')
+          .select('id, assessment_id, score, status, submitted_at')
+          .eq('user_id', userId)
+          .in('assessment_id', transformedAssessments.map((assessment: any) => assessment.id))
+          .order('submitted_at', { ascending: false });
+
+        if (submissionsError) throw submissionsError;
+        for (const submission of submissions || []) {
+          if (!submissionsByAssessment.has(submission.assessment_id)) {
+            submissionsByAssessment.set(submission.assessment_id, submission);
+          }
+        }
+      }
+
+      const assessmentsWithProgress = transformedAssessments.map((assessment: any) => {
+        const submission = submissionsByAssessment.get(assessment.id);
+        return {
+          ...assessment,
+          completed: Boolean(submission),
+          submission: submission || null,
+        };
+      });
+
       console.log('📋 Returning', transformedAssessments.length, 'assessments');
 
       return res.json({
         success: true,
-        data: transformedAssessments,
+        data: assessmentsWithProgress,
         pagination: {
           page: pageNum,
           limit: limitNum,
@@ -489,6 +553,33 @@ export const getInstructorAssessments = async (req: AuthRequest, res: Response) 
 };
 
 // Get assessment by ID
+export const getMyAssessmentSubmission = async (req: AuthRequest, res: Response) => {
+  try {
+    const requestUser = (req as any).user;
+    const resolvedUser = requestUser ? await resolveAssessmentUser(requestUser) : null;
+    const userId = resolvedUser?.id;
+    const { assessmentId } = req.params;
+    if (!userId) {
+      return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required' } });
+    }
+
+    const { data: submission, error } = await supabase
+      .from('assessment_submissions')
+      .select('id, assessment_id, answers, score, status, submitted_at')
+      .eq('assessment_id', assessmentId)
+      .eq('user_id', userId)
+      .order('submitted_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) throw error;
+    return res.json({ success: true, data: submission || null });
+  } catch (error: any) {
+    console.error('Get student submission error:', error);
+    return res.status(500).json({ success: false, error: { code: 'SUBMISSION_FETCH_FAILED', message: error.message } });
+  }
+};
+
 export const getAssessmentById = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
@@ -657,7 +748,9 @@ export const deleteAssessment = async (req: AuthRequest, res: Response) => {
 // Submit assessment response
 export const submitAssessmentResponse = async (req: AuthRequest, res: Response) => {
   try {
-    const userId = (req as any).user?.id;
+    const requestUser = (req as any).user;
+    const resolvedUser = requestUser ? await resolveAssessmentUser(requestUser) : null;
+    const userId = resolvedUser?.id;
     if (!userId) {
       return res.status(401).json({
         success: false,
@@ -666,28 +759,117 @@ export const submitAssessmentResponse = async (req: AuthRequest, res: Response) 
     }
 
     const { assessmentId } = req.params;
-    const { answers, score } = req.body;
+    const { answers } = req.body;
+
+    const { data: assessment, error: assessmentError } = await supabase
+      .from('assessments')
+      .select('id, questions_data')
+      .eq('id', assessmentId)
+      .single();
+
+    if (assessmentError || !assessment) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'ASSESSMENT_NOT_FOUND', message: 'Quiz not found' },
+      });
+    }
+
+    const submittedAnswers = Array.isArray(answers)
+      ? answers
+      : Object.entries(answers || {}).map(([questionId, answer]) => ({ questionId, answer }));
+    const answerByQuestion = new Map(
+      submittedAnswers.map((entry: any) => [String(entry.questionId), String(entry.answer ?? '').trim()])
+    );
+    const questions = Array.isArray(assessment.questions_data) ? assessment.questions_data : [];
+    let possiblePoints = 0;
+    let earnedPoints = 0;
+    const gradingResults = questions.map((question: any) => {
+      const points = Number(question.points) || 0;
+      const submittedAnswer = answerByQuestion.get(String(question.id)) || '';
+      const expectedAnswer = String(question.correctAnswer ?? '').trim();
+      const isShortAnswer = question.type === 'short-answer';
+      const isCorrect = Boolean(submittedAnswer) && (isShortAnswer
+        ? submittedAnswer.toLowerCase() === expectedAnswer.toLowerCase()
+        : submittedAnswer === expectedAnswer);
+
+      return {
+        questionId: String(question.id),
+        isCorrect,
+        earnedPoints: isCorrect ? points : 0,
+      };
+    });
+
+    for (const question of questions) {
+      const points = Number(question.points) || 0;
+      possiblePoints += points;
+      const submittedAnswer = answerByQuestion.get(String(question.id));
+      if (!submittedAnswer) continue;
+
+      const expectedAnswer = String(question.correctAnswer ?? '').trim();
+      const isShortAnswer = question.type === 'short-answer';
+      const isCorrect = isShortAnswer
+        ? submittedAnswer.toLowerCase() === expectedAnswer.toLowerCase()
+        : submittedAnswer === expectedAnswer;
+
+      if (isCorrect) earnedPoints += points;
+    }
+
+    const calculatedScore = possiblePoints > 0
+      ? Number(((earnedPoints / possiblePoints) * 100).toFixed(2))
+      : 0;
+
+    const { data: existingSubmission, error: existingSubmissionError } = await supabase
+      .from('assessment_submissions')
+      .select('id, assessment_id, answers, score, status, submitted_at')
+      .eq('assessment_id', assessmentId)
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (existingSubmissionError) throw existingSubmissionError;
+    if (existingSubmission) {
+      return res.status(200).json({
+        success: true,
+        data: existingSubmission,
+        score: existingSubmission.score,
+        results: gradingResults,
+        alreadySubmitted: true,
+      });
+    }
 
     const submissionId = uuidv4();
-    const { data: submission, error } = await supabase
+    const { data: submissionRows, error } = await supabase
       .from('assessment_submissions')
-      .insert({
+      .upsert({
         id: submissionId,
         assessment_id: assessmentId,
         user_id: userId,
         answers: answers || {},
-        score: score || null,
+        score: calculatedScore,
         status: 'submitted',
         submitted_at: new Date().toISOString(),
-      })
+      }, { onConflict: 'assessment_id,user_id', ignoreDuplicates: true })
       .select('*')
-      .single();
+      .limit(1);
 
     if (error) throw error;
+
+    let submission = submissionRows?.[0];
+    if (!submission) {
+      const { data: savedSubmission, error: savedSubmissionError } = await supabase
+        .from('assessment_submissions')
+        .select('*')
+        .eq('assessment_id', assessmentId)
+        .eq('user_id', userId)
+        .single();
+      if (savedSubmissionError) throw savedSubmissionError;
+      submission = savedSubmission;
+    }
 
     return res.status(201).json({
       success: true,
       data: submission,
+      score: calculatedScore,
+      results: gradingResults,
     });
   } catch (error: any) {
     console.error('Submit assessment error:', error);
@@ -701,7 +883,9 @@ export const submitAssessmentResponse = async (req: AuthRequest, res: Response) 
 // Get assessment submissions
 export const getAssessmentSubmissions = async (req: AuthRequest, res: Response) => {
   try {
-    const userId = (req as any).user?.id;
+    const requestUser = (req as any).user;
+    const resolvedUser = requestUser ? await resolveAssessmentUser(requestUser) : null;
+    const userId = resolvedUser?.id;
     if (!userId) {
       return res.status(401).json({
         success: false,

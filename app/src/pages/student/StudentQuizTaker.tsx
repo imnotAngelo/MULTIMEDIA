@@ -57,7 +57,9 @@ export function StudentQuizTaker() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [studentAnswers, setStudentAnswers] = useState<StudentAnswer[]>([]);
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [score, setScore] = useState(0);
+  const [gradingResults, setGradingResults] = useState<Record<string, boolean>>({});
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [quizStartTime] = useState<Date>(new Date());
 
@@ -144,6 +146,48 @@ export function StudentQuizTaker() {
         console.log('✅ Final quiz to set:', finalQuiz);
         console.log('✅ Questions loaded:', finalQuiz.questions_data.length, 'questions');
         setQuiz(finalQuiz);
+
+        let savedSubmission: any = null;
+        try {
+          const submissionResponse = await authFetch(`http://localhost:3001/api/assessments/${id}/my-submission`);
+          if (submissionResponse.ok) {
+            const submissionData = await submissionResponse.json();
+            savedSubmission = submissionData?.data || null;
+          }
+        } catch (submissionError) {
+          console.warn('Unable to load student submission endpoint; using quiz data fallback.', submissionError);
+        }
+
+        // Older backend deployments include submissions in the quiz response.
+        // Use only the current student's submission as a review fallback.
+        if (!savedSubmission && Array.isArray((quizData as any).submissions)) {
+          savedSubmission = (quizData as any).submissions.find(
+            (submission: any) => String(submission.user_id) === String(user?.id)
+          ) || null;
+        }
+
+        if (savedSubmission) {
+            const savedAnswers = Array.isArray(savedSubmission.answers)
+              ? savedSubmission.answers
+              : Object.entries(savedSubmission.answers || {}).map(([questionId, answer]) => ({ questionId, answer }));
+            setStudentAnswers(savedAnswers as StudentAnswer[]);
+            const savedAnswerMap = new Map<string, string>(
+              savedAnswers.map((answer: StudentAnswer) => [
+                String(answer.questionId),
+                String(answer.answer ?? '').trim(),
+              ])
+            );
+            setGradingResults(Object.fromEntries(finalQuiz.questions_data.map((question) => {
+              const answer = savedAnswerMap.get(String(question.id)) ?? '';
+              const expected = String(question.correctAnswer ?? '').trim();
+              const isCorrect = Boolean(answer) && (question.type === 'short-answer'
+                ? answer.toLowerCase() === expected.toLowerCase()
+                : answer === expected);
+              return [String(question.id), isCorrect];
+            })));
+            setScore(Number(savedSubmission.score) || 0);
+            setSubmitted(true);
+        }
         
         // Initialize time remaining
         if (quizData.time_limit) {
@@ -207,29 +251,47 @@ export function StudentQuizTaker() {
   };
 
   const handleSubmit = async () => {
+    if (submitted || submitting) return;
+    setSubmitting(true);
     try {
-      const calculatedScore = calculateScore();
-      setScore(calculatedScore);
-      setSubmitted(true);
-
       // Send submission to backend
       const timeSpent = Math.floor(
         (new Date().getTime() - quizStartTime.getTime()) / 1000
       );
 
-      await authFetch(`http://localhost:3001/api/assessments/${id}/submit`, {
+      const response = await authFetch(`http://localhost:3001/api/assessments/${id}/submit`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           answers: studentAnswers,
-          score: calculatedScore,
           timeSpent,
         }),
       });
+
+      const result = await response.json().catch(() => null);
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.error?.message || `Submission failed (${response.status})`);
+      }
+
+      setScore(Number(result.score ?? result.data?.score ?? calculateScore()));
+      if (user?.id && id) {
+        localStorage.setItem(`quiz-submission:${user.id}:${id}`, JSON.stringify({
+          score: Number(result.score ?? result.data?.score ?? 0),
+          status: result.data?.status || 'submitted',
+          submitted_at: result.data?.submitted_at || new Date().toISOString(),
+        }));
+      }
+      if (Array.isArray(result.results)) {
+        setGradingResults(Object.fromEntries(result.results.map((item: any) => [String(item.questionId), Boolean(item.isCorrect)])));
+      }
+      setSubmitted(true);
     } catch (err) {
       console.error('Failed to submit quiz:', err);
+      setError(err instanceof Error ? err.message : 'Failed to submit quiz. Please try again.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -255,7 +317,7 @@ export function StudentQuizTaker() {
             </ul>
           </div>
           <Button
-            onClick={() => navigate('/assessments')}
+            onClick={() => navigate('/quizzes')}
             className="bg-violet-600 hover:bg-violet-700 text-white"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -276,7 +338,7 @@ export function StudentQuizTaker() {
             <p className="text-slate-400 mt-2">{quiz.title}</p>
           </div>
           <Button
-            onClick={() => navigate('/assessments')}
+            onClick={() => navigate('/quizzes')}
             variant="outline"
             className="border-slate-700 text-slate-300 hover:bg-slate-800/50"
           >
@@ -299,7 +361,9 @@ export function StudentQuizTaker() {
               const studentAnswer = studentAnswers.find(
                 a => a.questionId === question.id
               );
-              const isCorrect = studentAnswer?.answer === question.correctAnswer;
+              const isCorrect = Object.prototype.hasOwnProperty.call(gradingResults, question.id)
+                ? gradingResults[question.id]
+                : studentAnswer?.answer === question.correctAnswer;
 
               return (
                 <div
@@ -342,7 +406,7 @@ export function StudentQuizTaker() {
         {/* Action Buttons */}
         <div className="flex gap-3 justify-center">
           <Button
-            onClick={() => navigate('/assessments')}
+            onClick={() => navigate('/quizzes')}
             className="bg-violet-600 hover:bg-violet-700 text-white"
           >
             Back to Assessments
@@ -368,7 +432,7 @@ export function StudentQuizTaker() {
           <h2 className="text-xl font-bold text-white mb-2">No Questions Available</h2>
           <p className="text-slate-400 mb-6">This quiz does not have any questions.</p>
           <Button
-            onClick={() => navigate('/assessments')}
+            onClick={() => navigate('/quizzes')}
             className="bg-violet-600 hover:bg-violet-700 text-white"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -522,10 +586,11 @@ export function StudentQuizTaker() {
           {currentQuestionIndex === quiz.questions_data.length - 1 ? (
             <Button
               onClick={handleSubmit}
+              disabled={submitting}
               className="bg-emerald-600 hover:bg-emerald-700 text-white"
             >
-              <Send className="w-4 h-4 mr-2" />
-              Submit Quiz
+              {submitting ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
+              {submitting ? 'Submitting...' : 'Submit Quiz'}
             </Button>
           ) : (
             <Button

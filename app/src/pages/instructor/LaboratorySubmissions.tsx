@@ -7,7 +7,7 @@ import {
   updateSubmission,
   type LaboratorySubmission,
 } from '@/lib/laboratorySubmissionService';
-import { ExternalLink, Save, Beaker, ImageIcon, FileVideo, Eye, X, Calendar, User, Star, CheckCircle, Clock, XCircle } from 'lucide-react';
+import { ExternalLink, Save, Beaker, ImageIcon, FileVideo, Eye, X, Calendar, User, Star, CheckCircle, Clock, XCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import { AetherSpinner } from '@/components/AetherSpinner';
 
 interface FileSubmission {
@@ -46,11 +46,25 @@ export function LaboratorySubmissions() {
   const [gradeForm, setGradeForm] = useState({ grade: 0, feedback: '', status: 'reviewed' });
   const [savingGrade, setSavingGrade] = useState(false);
   const [activeTab, setActiveTab] = useState<'files' | 'unit'>('files');
+  const [expandedLabs, setExpandedLabs] = useState<Record<string, boolean>>({});
 
   const selectedUnit = useMemo(
     () => units.find((u) => u.id === selectedUnitId) ?? null,
     [units, selectedUnitId]
   );
+
+  const groupedFileSubs = useMemo(() => {
+    const groups = new Map<string, { title: string; submissions: FileSubmission[] }>();
+    for (const submission of fileSubs) {
+      const existing = groups.get(submission.labId);
+      if (existing) {
+        existing.submissions.push(submission);
+      } else {
+        groups.set(submission.labId, { title: submission.labTitle, submissions: [submission] });
+      }
+    }
+    return [...groups.entries()];
+  }, [fileSubs]);
 
   useEffect(() => {
     const loadUnits = async () => {
@@ -332,12 +346,20 @@ export function LaboratorySubmissions() {
             <div className="text-sm text-slate-400 py-8 text-center">No file submissions yet.</div>
           )}
 
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {fileSubs.map(sub => (
-              <div
-                key={sub.id}
-                className="bg-slate-950/40 border border-slate-800 rounded-xl overflow-hidden hover:border-emerald-500/30 transition-all"
-              >
+          <div className="space-y-4">
+            {groupedFileSubs.map(([labId, group]) => {
+              const expanded = expandedLabs[labId] ?? true;
+              return <div key={labId} className="border border-slate-800 rounded-xl overflow-hidden">
+                <button type="button" onClick={() => setExpandedLabs((current) => ({ ...current, [labId]: !expanded }))} className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-slate-950/70 hover:bg-slate-800/60 text-left">
+                  <div className="flex items-center gap-2 min-w-0"><Beaker className="w-4 h-4 text-emerald-400 shrink-0" /><span className="font-semibold text-slate-100 truncate">{group.title || labId}</span><span className="text-xs text-slate-500">{group.submissions.length} student submission{group.submissions.length !== 1 ? 's' : ''}</span></div>
+                  {expanded ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
+                </button>
+                {expanded && <div className="grid gap-4 p-4 sm:grid-cols-2 xl:grid-cols-3 bg-slate-900/30">
+                {group.submissions.map(sub => (
+                  <div
+                    key={sub.id}
+                    className="bg-slate-950/40 border border-slate-800 rounded-xl overflow-hidden hover:border-emerald-500/30 transition-all"
+                  >
                 {/* Thumbnail */}
                 <div
                   className="relative w-full h-36 bg-slate-800 flex items-center justify-center cursor-pointer group overflow-hidden"
@@ -405,8 +427,11 @@ export function LaboratorySubmissions() {
                     </Button>
                   </div>
                 </div>
-              </div>
-            ))}
+                  </div>
+                ))}
+                </div>}
+              </div>;
+            })}
           </div>
         </Card>
       )}

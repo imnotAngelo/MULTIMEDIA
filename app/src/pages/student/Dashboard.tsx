@@ -11,7 +11,6 @@ import {
   RefreshCw,
   FileText,
   ClipboardList,
-  Beaker,
   Layers,
   GraduationCap,
   Loader2,
@@ -201,15 +200,15 @@ export function Dashboard() {
             </div>
           </div>
 
-          {/* Assessment Quick Access */}
+          {/* Quiz Quick Access */}
           <div>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <ClipboardList className="w-5 h-5 text-blue-400" />
-                <h2 className="text-lg font-semibold text-white">Assessments</h2>
+                <ClipboardList className="w-5 h-5 text-amber-400" />
+                <h2 className="text-lg font-semibold text-white">Quizzes</h2>
               </div>
               <Button
-                onClick={() => navigate('/assessments')}
+                onClick={() => navigate('/quizzes')}
                 variant="ghost"
                 size="sm"
                 className="text-slate-400 hover:text-violet-400 text-sm"
@@ -218,27 +217,9 @@ export function Dashboard() {
                 <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
               </Button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <button
-                onClick={() => navigate('/assessments')}
-                className="group bg-slate-900/50 border border-slate-800/60 hover:border-blue-500/40 rounded-xl p-5 text-left transition-all duration-200"
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <div className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                    <FileText className="w-4.5 h-4.5 text-blue-400" />
-                  </div>
-                  <span className="text-xs font-medium text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded">
-                    Assignments
-                  </span>
-                </div>
-                <h3 className="text-white font-medium text-sm mb-1">Assignments</h3>
-                <p className="text-slate-500 text-xs">
-                  Apply your learning with practical tasks
-                </p>
-              </button>
-
-              <button
-                onClick={() => navigate('/assessments')}
+                onClick={() => navigate('/quizzes')}
                 className="group bg-slate-900/50 border border-slate-800/60 hover:border-amber-500/40 rounded-xl p-5 text-left transition-all duration-200"
               >
                 <div className="flex items-center justify-between mb-3">
@@ -253,22 +234,6 @@ export function Dashboard() {
                 <p className="text-slate-500 text-xs">
                   Test your knowledge with quick assessments
                 </p>
-              </button>
-
-              <button
-                onClick={() => navigate('/assessments')}
-                className="group bg-slate-900/50 border border-slate-800/60 hover:border-purple-500/40 rounded-xl p-5 text-left transition-all duration-200"
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <div className="w-9 h-9 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                    <Beaker className="w-4.5 h-4.5 text-purple-400" />
-                  </div>
-                  <span className="text-xs font-medium text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded">
-                    Labs
-                  </span>
-                </div>
-                <h3 className="text-white font-medium text-sm mb-1">Laboratories</h3>
-                <p className="text-slate-500 text-xs">Hands-on experimental learning</p>
               </button>
             </div>
           </div>

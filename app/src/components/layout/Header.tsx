@@ -100,7 +100,7 @@ export function Header({ title, subtitle }: HeaderProps) {
             type: 'assessment',
             title: a.title || 'Untitled assessment',
             subtitle: a.type || a.assessment_type,
-            path: isInstructor ? '/instructor/assessments' : '/assessments',
+            path: isInstructor ? '/instructor/assessments' : '/quizzes',
           });
         }
       } catch { /* ignore */ }
@@ -246,7 +246,7 @@ export function Header({ title, subtitle }: HeaderProps) {
       case 'lab':
         return isInstructor ? '/instructor/laboratories' : '/laboratories';
       case 'assignment':
-        return isInstructor ? '/instructor/assessments' : '/assessments';
+        return isInstructor ? '/instructor/assessments' : '/quizzes';
       case 'achievement':
         return isInstructor ? null : '/achievements';
       default:
