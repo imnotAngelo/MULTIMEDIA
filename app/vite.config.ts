@@ -10,7 +10,7 @@ const apiProxyTarget = configuredApiUrl
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: './',
+  base: '/',
   plugins: [inspectAttr(), react()],
   resolve: {
     alias: {
