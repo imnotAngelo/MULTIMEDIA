@@ -126,7 +126,28 @@ console.log('✅ All routes registered');
 
 // Health check
 app.get('/api/health', (req: Request, res: Response) => {
-  res.json({ success: true, message: 'Server is running' });
+  if (!supabase) {
+    return res.status(503).json({
+      success: false,
+      database: 'unconfigured',
+      message: 'Server is running, but Supabase is not configured',
+    });
+  }
+
+  supabase.from('laboratory_phase_progress').select('id').limit(1).then(({ error }) => {
+    if (error) {
+      return res.status(503).json({
+        success: false,
+        database: 'unavailable',
+        message: error.message,
+      });
+    }
+    return res.json({ success: true, database: 'connected', message: 'Server and Supabase are healthy' });
+  }).catch((error: any) => res.status(503).json({
+    success: false,
+    database: 'unavailable',
+    message: error.message,
+  }));
 });
 
 // 404 handler
@@ -147,6 +168,11 @@ app.use(errorHandler);
 // Start server
 async function startServer() {
   try {
+    if (!supabase) {
+      console.error('❌ Supabase is not configured. Refusing to start without database storage.');
+      process.exit(1);
+    }
+
     console.log('🔄 Checking database...');
     try {
       const { error } = await supabase
@@ -156,8 +182,8 @@ async function startServer() {
 
       if (!error) {
         console.log('✅ laboratory_phase_progress table exists');
-      } else if (error.code === 'PGRST116') {
-        console.warn('⚠️ laboratory_phase_progress table NOT FOUND');
+      } else {
+        console.warn('⚠️ Could not verify laboratory_phase_progress:', error.message);
       }
     } catch (dbError: any) {
       console.warn('⚠️ Could not verify table:', dbError.message);

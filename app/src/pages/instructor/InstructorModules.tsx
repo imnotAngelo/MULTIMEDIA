@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { UploadLesson } from './UploadLesson';
 import { notificationService } from '@/services/notificationService';
+import { authFetch } from '@/lib/authFetch';
+import { API_BASE_URL } from '@/lib/apiConfig';
 
 interface Unit {
   id: string;
@@ -37,13 +39,13 @@ export function InstructorModules() {
     loadUnits();
   }, []);
 
-  const loadUnits = () => {
+  const loadUnits = async () => {
     try {
       setLoading(true);
-      const savedUnits = localStorage.getItem('instructor_units');
-      if (savedUnits) {
-        setUnits(JSON.parse(savedUnits));
-      }
+      const response = await authFetch(`${API_BASE_URL}/units`);
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.error?.message || 'Failed to load units');
+      setUnits(result.data || []);
       setError('');
     } catch (err) {
       setError('Failed to load units');
@@ -53,14 +55,12 @@ export function InstructorModules() {
     }
   };
 
-  const loadLessons = (unitId: string) => {
+  const loadLessons = async (unitId: string) => {
     try {
-      const savedLessons = localStorage.getItem(`lessons_${unitId}`);
-      if (savedLessons) {
-        setLessons(JSON.parse(savedLessons));
-      } else {
-        setLessons([]);
-      }
+      const response = await authFetch(`${API_BASE_URL}/units/${unitId}/lessons`);
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.error?.message || 'Failed to load lessons');
+      setLessons(result.data || []);
     } catch (err) {
       console.error('Failed to load lessons:', err);
       setLessons([]);
@@ -77,7 +77,6 @@ export function InstructorModules() {
     if (selectedUnit) {
       const updatedLessons = [...lessons, newLesson];
       setLessons(updatedLessons);
-      localStorage.setItem(`lessons_${selectedUnit.id}`, JSON.stringify(updatedLessons));
       
       // Update unit lesson count
       const updatedUnits = units.map(unit =>
@@ -86,7 +85,6 @@ export function InstructorModules() {
           : unit
       );
       setUnits(updatedUnits);
-      localStorage.setItem('instructor_units', JSON.stringify(updatedUnits));
       setSelectedUnit(updatedUnits.find(u => u.id === selectedUnit.id) || null);
       setShowUpload(false);
       
@@ -101,7 +99,6 @@ export function InstructorModules() {
     if (selectedUnit) {
       const updatedLessons = lessons.filter(lesson => lesson.id !== lessonId);
       setLessons(updatedLessons);
-      localStorage.setItem(`lessons_${selectedUnit.id}`, JSON.stringify(updatedLessons));
 
       // Update unit lesson count
       const updatedUnits = units.map(unit =>
@@ -110,7 +107,6 @@ export function InstructorModules() {
           : unit
       );
       setUnits(updatedUnits);
-      localStorage.setItem('instructor_units', JSON.stringify(updatedUnits));
       setSelectedUnit(updatedUnits.find(u => u.id === selectedUnit.id) || null);
     }
   };

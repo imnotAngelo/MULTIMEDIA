@@ -6,9 +6,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'node:url';
 import pdfParser from 'pdf-parse';
-import Groq from 'groq-sdk';
 import { v4 as uuidv4 } from 'uuid';
-import { getLocalLessonById, listLocalLessonsByModuleId } from '../lib/lessonStore.js';
 
 const router = Router();
 const routeDir = path.dirname(fileURLToPath(import.meta.url));
@@ -40,15 +38,6 @@ const upload = multer({
   },
   limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
 });
-
-// Helper: Initialize Groq client
-function getGroqClient() {
-  const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) {
-    throw new Error('GROQ_API_KEY environment variable is not set');
-  }
-  return new Groq({ apiKey });
-}
 
 function sendSupabaseUnavailable(res: Response) {
   return res.status(503).json({
@@ -335,7 +324,10 @@ router.post(
             .single();
 
           if (moduleError || !moduleExists) {
-            console.warn('⚠️ Module not found in Supabase, falling back to local lesson store:', lessonModuleId);
+            return res.status(404).json({
+              success: false,
+              error: { code: 'MODULE_NOT_FOUND', message: 'Unit not found in Supabase.' },
+            });
           } else {
             console.log('✅ Module verified:', moduleExists.id);
             console.log('💾 Saving lesson to database:', lessonData);
@@ -357,13 +349,17 @@ router.post(
               .single();
 
             if (dbError) {
-              console.warn('⚠️ Database save error, falling back to local lesson store:', dbError.message);
+              throw dbError;
             } else {
               savedLesson = persistedLesson;
             }
           }
         } catch (dbError: any) {
-          console.warn('⚠️ Supabase lesson save failed, falling back to local lesson store:', dbError.message);
+          console.error('⚠️ Supabase lesson save failed:', dbError.message);
+          return res.status(503).json({
+            success: false,
+            error: { code: 'DB_UNAVAILABLE', message: 'Lesson could not be saved to Supabase.' },
+          });
         }
       }
 
@@ -432,24 +428,8 @@ router.get('/unit/:unitId', optionalAuthMiddleware, async (req: Request, res: Re
       });
     }
 
-    const localLessons = listLocalLessonsByModuleId(unitId);
-    if (localLessons.length > 0) {
-      return res.json({
-        success: true,
-        data: localLessons.map((lesson) => ({
-          id: lesson.id,
-          title: lesson.title,
-          content: lesson.content,
-          slides: lesson.slides || [],
-          slideCount: lesson.slideCount || 0,
-          createdAt: lesson.createdAt,
-          unitId,
-        })),
-      });
-    }
-
     if (!supabase) {
-      return res.json({ success: true, data: [] });
+      return sendSupabaseUnavailable(res);
     }
 
     const { data: lessons, error } = await supabase
@@ -681,11 +661,11 @@ router.post(
       console.log('🧠 Generating quiz questions for lesson:', lessonId);
 
       // Get lesson with content and slides
-      let lesson: any = getLocalLessonById(lessonId);
+      let lesson: any = null;
       let lessonError: any = null;
       let dbUnavailable = false;
 
-      if (!lesson && supabase) {
+      if (supabase) {
         try {
           const result = await Promise.race([
             supabase
@@ -704,7 +684,7 @@ router.post(
           dbUnavailable = true;
           console.error('❌ Supabase unreachable while fetching lesson for quiz generation:', error?.message || error);
         }
-      } else if (!lesson && !supabase) {
+      } else {
         dbUnavailable = true;
       }
 
@@ -750,17 +730,14 @@ router.post(
 
       console.log('📚 Lesson content length:', fullContent.length, 'chars');
 
-      // Use Groq AI to generate questions
-      const client = getGroqClient();
-      const numQuestions = Math.min(Math.max(numberOfQuestions, 2), 10);
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error('GEMINI_API_KEY environment variable is not set');
+      }
 
-      const response = await client.chat.completions.create({
-        model: 'llama-3.3-70b-versatile',
-        max_tokens: 4096,
-        messages: [
-          {
-            role: 'user',
-            content: `You are a quiz generator. Based ONLY on the lesson content below, generate exactly ${numQuestions} quiz questions.
+      const numQuestions = Math.min(Math.max(numberOfQuestions, 2), 10);
+      const model = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
+      const prompt = `You are a quiz generator. Based ONLY on the lesson content below, generate exactly ${numQuestions} quiz questions.
 
 LESSON CONTENT:
 ${fullContent.substring(0, 5000)}
@@ -774,32 +751,31 @@ RULES:
 - Do NOT reference the lesson title or slide names in questions
 - Ask about the actual concepts, facts, and ideas taught
 
-Return ONLY valid JSON in this exact format:
-{
-  "questions": [
-    {
-      "id": "1",
-      "text": "Question text here?",
-      "type": "multiple-choice",
-      "points": 2,
-      "options": ["Option A", "Option B", "Option C", "Option D"],
-      "correctAnswer": "Option A"
-    },
-    {
-      "id": "2",
-      "text": "Explain question here?",
-      "type": "short-answer",
-      "points": 3,
-      "options": [],
-      "correctAnswer": ""
-    }
-  ]
-}`,
+Return ONLY a JSON object with this shape:
+{"questions":[{"id":"1","text":"Question text?","type":"multiple-choice","points":2,"options":["A","B","C","D"],"correctAnswer":"A"}]}`;
+
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.2,
+            maxOutputTokens: 4096,
+            responseMimeType: 'application/json',
           },
-        ],
+        }),
       });
 
-      const aiContent = response.choices[0]?.message?.content;
+      const responseBody: any = await response.json();
+      if (!response.ok) {
+        const message = responseBody?.error?.message || `Gemini request failed with status ${response.status}`;
+        const error: any = new Error(message);
+        error.code = responseBody?.error?.status || responseBody?.error?.code;
+        throw error;
+      }
+
+      const aiContent = responseBody?.candidates?.[0]?.content?.parts?.[0]?.text;
       if (!aiContent) {
         throw new Error('AI returned empty response');
       }
@@ -822,11 +798,20 @@ Return ONLY valid JSON in this exact format:
     } catch (error: any) {
       console.error('Generate questions error:', error);
 
-      // If Groq fails, return a clear error
-      if (error.message?.includes('GROQ_API_KEY')) {
+      if (error.message?.includes('GEMINI_API_KEY')) {
         return res.status(500).json({
           success: false,
-          error: { code: 'AI_NOT_CONFIGURED', message: 'AI service is not configured. Please set GROQ_API_KEY.' },
+          error: { code: 'AI_NOT_CONFIGURED', message: 'AI service is not configured. Please set GEMINI_API_KEY.' },
+        });
+      }
+
+      if (error.code === 'NOT_FOUND' || error.message?.includes('not found') || error.message?.includes('not supported')) {
+        return res.status(502).json({
+          success: false,
+          error: {
+            code: 'AI_MODEL_UNAVAILABLE',
+            message: `The configured Gemini model is unavailable: ${process.env.GEMINI_MODEL || 'gemini-3.6-flash'}. Update GEMINI_MODEL to a supported model.`,
+          },
         });
       }
 

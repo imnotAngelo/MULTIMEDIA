@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { authFetch } from '@/lib/authFetch';
+import { API_BASE_URL } from '@/lib/apiConfig';
 import { notificationService } from '@/services/notificationService';
 
 interface Question {
@@ -57,7 +58,7 @@ export function CreateQuiz() {
   const loadUnits = async () => {
     try {
       setLoading(true);
-      const response = await authFetch('http://localhost:3001/api/units');
+      const response = await authFetch(`${API_BASE_URL}/units`);
       const data = await response.json();
       setUnits(data.data || []);
     } catch (err) {
@@ -98,15 +99,16 @@ export function CreateQuiz() {
     }
     try {
       setSubmitting(true);
-      const response = await authFetch('http://localhost:3001/api/quizzes', {
+      const response = await authFetch(`${API_BASE_URL}/assessments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: formData.title,
           description: formData.description,
           unitId: formData.unitId,
+          type: 'quiz',
+          totalPoints: questions.reduce((total, question) => total + question.points, 0),
           timeLimit: formData.timeLimit,
-          passingScore: formData.passingScore,
           questions: questions,
         }),
       });

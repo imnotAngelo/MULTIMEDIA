@@ -4,22 +4,6 @@ import { supabase } from '../config/supabase.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
-import { findUserByEmail } from '../lib/userStore.js';
-
-function isTransientAuthError(error: any): boolean {
-  const message = `${error?.message || ''} ${error?.code || ''}`.toLowerCase();
-  return [
-    'fetch failed',
-    'network',
-    'socket hang up',
-    'econnrefused',
-    'etimedout',
-    'timed out',
-    'temporarily unavailable',
-    'supabase unavailable',
-    'missing supabase',
-  ].some((fragment) => message.includes(fragment));
-}
 
 export const register = async (req: AuthRequest, res: Response) => {
   try {
@@ -83,20 +67,7 @@ export const register = async (req: AuthRequest, res: Response) => {
         });
       }
     } catch (error: any) {
-      if (!isTransientAuthError(error)) {
-        throw error;
-      }
-
-      const fallbackUser = findUserByEmail(email);
-      if (fallbackUser) {
-        return res.status(409).json({
-          success: false,
-          error: {
-            code: 'USER_EXISTS',
-            message: 'User already exists',
-          },
-        });
-      }
+      throw error;
     }
 
     // Hash password
@@ -141,10 +112,6 @@ export const register = async (req: AuthRequest, res: Response) => {
         },
       });
     } catch (error: any) {
-      if (!isTransientAuthError(error)) {
-        throw error;
-      }
-
       return res.status(503).json({
         success: false,
         error: {
@@ -200,14 +167,7 @@ export const login = async (req: AuthRequest, res: Response) => {
 
       user = dbUser;
     } catch (error: any) {
-      if (!isTransientAuthError(error)) {
-        throw error;
-      }
-
-      const fallbackUser = findUserByEmail(email);
-      if (fallbackUser) {
-        user = fallbackUser;
-      }
+      throw error;
     }
 
     if (!user) {
@@ -334,9 +294,16 @@ export const refresh = async (req: AuthRequest, res: Response) => {
       process.env.JWT_REFRESH_SECRET || 'default-refresh-secret'
     ) as any;
 
+    if (!supabase) {
+      return res.status(503).json({
+        success: false,
+        error: { code: 'DATABASE_UNAVAILABLE', message: 'Database is unavailable' },
+      });
+    }
+
     const { data: user } = await supabase
       .from('users')
-      .select('id, email, role')
+      .select('id, email, role, year_level, teaching_year_levels, section')
       .eq('id', decoded.id)
       .single();
 

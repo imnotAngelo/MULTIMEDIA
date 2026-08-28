@@ -7,7 +7,9 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
-  console.warn('⚠️ Supabase environment variables are not configured; auth will fall back to the local file store.');
+  console.error('Supabase environment variables are required.');
 }
 
-export const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+export const supabase: any = (supabaseUrl && supabaseKey
+  ? createClient(supabaseUrl, supabaseKey)
+  : null);

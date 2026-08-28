@@ -56,12 +56,8 @@ async function setupDatabase() {
 
     try {
       const statements = [
-        // Drop old tables
-        `DROP TABLE IF EXISTS laboratory_phase_progress CASCADE`,
-        `DROP TABLE IF EXISTS laboratory_progress CASCADE`,
-
         // Create laboratory_progress
-        `CREATE TABLE laboratory_progress (
+        `CREATE TABLE IF NOT EXISTS laboratory_progress (
           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
           user_id UUID NOT NULL,
           unit_id TEXT NOT NULL,
@@ -78,7 +74,7 @@ async function setupDatabase() {
         )`,
 
         // Create laboratory_phase_progress
-        `CREATE TABLE laboratory_phase_progress (
+        `CREATE TABLE IF NOT EXISTS laboratory_phase_progress (
           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
           user_id UUID NOT NULL,
           module_id TEXT NOT NULL,

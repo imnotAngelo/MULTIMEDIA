@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { authFetch } from '@/lib/authFetch';
+import { API_BASE_URL } from '@/lib/apiConfig';
 import { Button } from '@/components/ui/button';
 import {
   BookOpen,
@@ -35,8 +36,6 @@ interface Lesson {
   slides?: any[];
 }
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
-
 export function Dashboard() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
@@ -55,7 +54,7 @@ export function Dashboard() {
       console.log('📚 Fetching units from API...');
 
       // Fetch units from API
-      const unitsResponse = await authFetch(`${API_URL}/units`);
+      const unitsResponse = await authFetch(`${API_BASE_URL}/units`);
       const unitsData = await unitsResponse.json();
       console.log('✅ Units fetched:', unitsData.data || []);
 
@@ -63,7 +62,7 @@ export function Dashboard() {
       setUnits(unitList);
 
       const lessonResults = await Promise.all(unitList.map(async (unit) => {
-        const lessonsResponse = await authFetch(`${API_URL}/units/${unit.id}/lessons`);
+        const lessonsResponse = await authFetch(`${API_BASE_URL}/units/${unit.id}/lessons`);
         const lessonsData = await lessonsResponse.json();
         const unitLessons = lessonsData.success ? lessonsData.data || [] : [];
         console.log(`✅ Lessons for unit "${unit.title}": ${unitLessons.length}`);
@@ -76,7 +75,7 @@ export function Dashboard() {
 
       // Fetch this student's completed-lesson count
       try {
-        const lpResp = await authFetch(`${API_URL}/users/lesson-progress/me`);
+        const lpResp = await authFetch(`${API_BASE_URL}/users/lesson-progress/me`);
         const lpData = await lpResp.json();
         if (lpData?.success) {
           const total = Number(lpData.data?.total ?? 0);

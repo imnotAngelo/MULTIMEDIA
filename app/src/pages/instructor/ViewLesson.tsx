@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { Button } from '@/components/ui/button';
 import { authFetch } from '@/lib/authFetch';
+import { API_BASE_URL } from '@/lib/apiConfig';
 import { downloadLessonAsPDF } from '@/lib/downloadUtils';
 
 interface Lesson {
@@ -41,40 +42,9 @@ export function ViewLesson() {
         return;
       }
 
-      // First try localStorage (where lessons are cached after upload)
-      console.log('📚 Checking localStorage for lessons_' + unitId);
-      const savedLessons = localStorage.getItem(`lessons_${unitId}`);
-      if (savedLessons) {
-        try {
-          const lessons = JSON.parse(savedLessons);
-          console.log('📖 localStorage lessons:', lessons);
-          
-          const found = lessons.find((l: any) => l.id === lessonId || String(l.id) === String(lessonId));
-          if (found) {
-            console.log('✅ Found lesson in localStorage:', found);
-            // Lesson from localStorage might include slides already
-            setLesson({
-              id: found.id || uuidv4(),
-              unitId: unitId || '',
-              title: found.title || 'Untitled',
-              content: found.content || '',
-              createdAt: found.createdAt || new Date().toISOString(),
-              slideCount: found.slideCount || found.slides?.length || 0,
-              slides: found.slides || [],
-            });
-            setError('');
-            setLoading(false);
-            return;
-          }
-        } catch (parseErr) {
-          console.error('❌ Failed to parse localStorage:', parseErr);
-        }
-      }
-
-      // Try to fetch from API backend
       console.log('📡 Fetching from API:', `/api/units/${unitId}/lessons`);
       try {
-        const response = await authFetch(`http://localhost:3001/api/units/${unitId}/lessons`);
+        const response = await authFetch(`${API_BASE_URL}/units/${unitId}/lessons`);
 
         console.log('📊 API Response status:', response.status);
         const data = await response.json();

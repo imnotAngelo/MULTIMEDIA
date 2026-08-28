@@ -154,7 +154,7 @@ function addTextSlide(pptx: PptxGenJS, title: string, body: string, index: numbe
   slide.background = { color: '080B1C' };
   slide.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: 13.333, h: 0.18, fill: { color: index % 2 ? 'E879F9' : '67E8F9' }, line: { color: index % 2 ? 'E879F9' : '67E8F9' } });
   slide.addText(title || `Slide ${index + 1}`, { x: 0.75, y: 0.65, w: 11.7, h: 0.6, fontFace: 'Aptos Display', fontSize: 26, bold: true, color: 'F8FAFC', margin: 0, fit: 'shrink' });
-  slide.addText(body, { x: 0.8, y: 1.45, w: contentWidth, h: contentHeight, fontFace: 'Aptos', fontSize: 16, color: 'D8E3F2', breakLine: false, valign: 'top', margin: 0.08, fit: 'shrink', paraSpaceAfterPt: 10 });
+  slide.addText(body, { x: 0.8, y: 1.45, w: contentWidth, h: contentHeight, fontFace: 'Aptos', fontSize: 16, color: 'D8E3F2', breakLine: false, valign: 'top', margin: 0.08, fit: 'shrink', paraSpaceAfter: 10 });
   slide.addText(`${index + 1}`, { x: 12.25, y: 7.05, w: 0.45, h: 0.2, fontSize: 9, color: '718096', align: 'right', margin: 0 });
 }
 
@@ -187,12 +187,12 @@ function extractPageText(items: any[]): string {
 }
 
 async function addPdfSlides(pptx: PptxGenJS, buffer: Buffer, fileName: string) {
-  const document = await pdfjs.getDocument({ data: new Uint8Array(buffer), standardFontDataUrl, useWorkerFetch: false, isEvalSupported: false }).promise;
+  const document = await pdfjs.getDocument({ data: new Uint8Array(buffer), standardFontDataUrl, useWorkerFetch: false }).promise;
   for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
     const page = await document.getPage(pageNumber);
     const viewport = page.getViewport({ scale: 1.5 });
     const canvas = createCanvas(Math.ceil(viewport.width), Math.ceil(viewport.height));
-    await page.render({ canvasContext: canvas.getContext('2d') as any, viewport }).promise;
+    await page.render({ canvas: canvas as any, canvasContext: canvas.getContext('2d') as any, viewport }).promise;
     const pageText = extractPageText((await page.getTextContent()).items);
     const slide = pptx.addSlide();
     slide.background = { color: '080B1C' };

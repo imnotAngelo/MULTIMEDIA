@@ -24,6 +24,7 @@ import {
   DialogTrigger
 } from '@/components/ui/dialog';
 import { authFetch } from '@/lib/authFetch';
+import { API_BASE_URL } from '@/lib/apiConfig';
 import { notificationService } from '@/services/notificationService';
 import { cn } from '@/lib/utils';
 import { AetherLoader } from '@/components/AetherLoader';
@@ -280,7 +281,7 @@ export function CoursesManagement() {
 
     try {
       setCreatingUnit(true);
-      const response = await authFetch('http://localhost:3001/api/units', {
+      const response = await authFetch(`${API_BASE_URL}/units`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -351,7 +352,7 @@ export function CoursesManagement() {
       formData.append('description', lessonDescription.trim() || 'Lesson uploaded from PDF');
       formData.append('moduleId', selectedUnitForUpload);
 
-      const response = await authFetch('http://localhost:3001/api/lessons/upload-pdf', {
+      const response = await authFetch(`${API_BASE_URL}/lessons/upload-pdf`, {
         method: 'POST',
         body: formData,
       });
@@ -379,7 +380,7 @@ export function CoursesManagement() {
         await new Promise(resolve => setTimeout(resolve, 1000));
 
         console.log('[UPLOAD_VERIFY] Verifying lesson...');
-        const verifyResponse = await authFetch(`http://localhost:3001/api/units/${selectedUnitForUpload}/lessons`);
+        const verifyResponse = await authFetch(`${API_BASE_URL}/units/${selectedUnitForUpload}/lessons`);
         const verifyData = await verifyResponse.json();
         console.log('[UPLOAD_VERIFY_RESPONSE]', verifyData);
 

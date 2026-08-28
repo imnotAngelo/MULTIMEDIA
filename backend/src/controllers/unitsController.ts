@@ -2,8 +2,6 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth.js';
 import { supabase } from '../config/supabase.js';
 import { v4 as uuidv4 } from 'uuid';
-import { listLocalUnits } from '../lib/unitStore.js';
-import { listLocalLessonsByModuleId } from '../lib/lessonStore.js';
 import { findUserById } from '../lib/userStore.js';
 
 // Use a consistent default instructor ID for unauthenticated requests (proper UUID)
@@ -196,8 +194,6 @@ export const createUnit = async (req: AuthRequest, res: Response) => {
   try {
     const userId = (req as any).user?.id; // Optional auth, may be undefined
     const { title, description } = req.body;
-    const yearLevel = req.user?.year_level;
-    const section = req.user?.section;
 
     if (!title) {
       return res.status(400).json({
@@ -221,12 +217,10 @@ export const createUnit = async (req: AuthRequest, res: Response) => {
           course_id: courseId,
           title,
           description: description || '',
-          year_level: yearLevel || null,
-          section: section || null,
           order_index: 0,
           status: 'active',
         })
-        .select('id, title, description, year_level, section, created_at')
+        .select('id, title, description, created_at')
         .single();
 
       if (error) throw error;
@@ -241,8 +235,8 @@ export const createUnit = async (req: AuthRequest, res: Response) => {
           id: unitFromDb.id,
           title: unitFromDb.title,
           description: unitFromDb.description,
-          yearLevel: unitFromDb.year_level,
-          section: unitFromDb.section,
+          yearLevel: null,
+          section: null,
           createdAt: unitFromDb.created_at,
         },
       });
@@ -270,8 +264,6 @@ export const createUnit = async (req: AuthRequest, res: Response) => {
 // Get all units (modules)
 export const getUnits = async (req: AuthRequest, res: Response) => {
   try {
-    const localUnits = listLocalUnits();
-
     const unitsFromDb = await safeSupabaseCall(async () => {
       if (!supabase) {
         throw new Error('Supabase unavailable');
@@ -294,7 +286,7 @@ export const getUnits = async (req: AuthRequest, res: Response) => {
       // Get all modules for those courses
       const { data: units, error } = await supabase
         .from('modules')
-        .select('id, title, description, year_level, section, created_at')
+        .select('id, title, description, created_at')
         .in('course_id', courseIds)
         .eq('status', 'active')
         .order('created_at', { ascending: false });
@@ -304,8 +296,6 @@ export const getUnits = async (req: AuthRequest, res: Response) => {
       return (units || []) as Array<{ id: string; title: string; description: string; created_at: string }>;
     }, null as any);
 
-    // `unitsFromDb` is `null` only when Supabase was unreachable/errored (see safeSupabaseCall).
-    // A successful call that legitimately found zero units returns `[]`, which must NOT fall back to stale local data.
     if (unitsFromDb !== null) {
       console.log('📚 Units fetched from Supabase:', unitsFromDb.length);
       return res.json({
@@ -316,25 +306,13 @@ export const getUnits = async (req: AuthRequest, res: Response) => {
           description: u.description,
           lessonCount: 0, // Will be updated when fetching lessons
           createdAt: u.created_at,
-          yearLevel: u.year_level,
-          section: u.section,
+          yearLevel: null,
+          section: null,
         })),
       });
     }
 
-    console.warn('⚠️ Supabase unreachable, falling back to local units store');
-    return res.json({
-      success: true,
-      data: localUnits.map((u) => ({
-        id: u.id,
-        title: u.title,
-        description: u.description,
-        lessonCount: 0,
-        createdAt: u.createdAt,
-        yearLevel: u.yearLevel,
-        section: u.section,
-      })),
-    });
+    return res.status(503).json({ success: false, error: { code: 'DB_UNAVAILABLE', message: 'Database is unavailable.' } });
   } catch (error: any) {
     console.error('❌ Get units error:', error);
     return res.status(500).json({
@@ -359,22 +337,6 @@ export const getUnitLessons = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const localLessons = listLocalLessonsByModuleId(unitId);
-    if (localLessons.length > 0) {
-      return res.json({
-        success: true,
-        data: localLessons.map((lesson: any) => ({
-          id: lesson.id,
-          title: lesson.title,
-          content: lesson.content,
-          slides: lesson.slides || [],
-          slideCount: lesson.slide_count || lesson.slideCount || 0,
-          createdAt: lesson.created_at || lesson.createdAt,
-          unitId,
-        })),
-      });
-    }
-
     const lessonsFromDb = await safeSupabaseCall(async () => {
       if (!supabase) {
         throw new Error('Supabase unavailable');
@@ -391,7 +353,7 @@ export const getUnitLessons = async (req: AuthRequest, res: Response) => {
       return lessons || [];
     }, [] as Array<any>);
 
-    const allLessons = [...(lessonsFromDb || []), ...localLessons];
+    const allLessons = lessonsFromDb || [];
 
     console.log(`📖 Lessons for unit ${unitId}:`, allLessons.length);
     if (allLessons.length > 0) {

@@ -2,7 +2,6 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth.js';
 import { supabase } from '../config/supabase.js';
 import { v4 as uuidv4 } from 'uuid';
-import { getLocalAssessmentById, listLocalAssessments } from '../lib/assessmentStore.js';
 
 function isSupabaseTransientError(error: any): boolean {
   const message = `${error?.message || ''} ${error?.code || ''}`.toLowerCase();
@@ -26,9 +25,6 @@ async function safeSupabaseCall<T>(operation: () => Promise<T>, fallback: T): Pr
     }
     return await operation();
   } catch (error: any) {
-    if (isSupabaseTransientError(error)) {
-      return fallback;
-    }
     throw error;
   }
 }
@@ -229,13 +225,6 @@ export const getStudentAssessments = async (req: AuthRequest, res: Response) => 
     const limitNum = Math.min(parseInt(limit as string) || 50, 100);
     const offset = (pageNum - 1) * limitNum;
 
-    const fallbackResult = listLocalAssessments({
-      filter: typeof filter === 'string' ? filter : undefined,
-      page: pageNum,
-      limit: limitNum,
-      unitId: typeof unitId === 'string' ? unitId : undefined,
-    });
-
     try {
       // Simple query first - avoid complex joins that can fail
       let query = supabase
@@ -299,19 +288,6 @@ export const getStudentAssessments = async (req: AuthRequest, res: Response) => 
         },
       });
     } catch (error: any) {
-      if (isSupabaseTransientError(error)) {
-        console.warn('📋 Falling back to local assessments store.', error.message);
-        return res.json({
-          success: true,
-          data: fallbackResult.data,
-          pagination: {
-            page: fallbackResult.page,
-            limit: fallbackResult.limit,
-            total: fallbackResult.total,
-            total_pages: Math.ceil(fallbackResult.total / fallbackResult.limit),
-          },
-        });
-      }
       throw error;
     }
   } catch (error: any) {
@@ -397,24 +373,6 @@ export const getInstructorAssessments = async (req: AuthRequest, res: Response) 
         },
       });
     } catch (error: any) {
-      if (isSupabaseTransientError(error)) {
-        const localResult = listLocalAssessments({ filter: typeof filter === 'string' ? filter : undefined, page: pageNum, limit: limitNum, createdBy: userId });
-        return res.json({
-          success: true,
-          data: localResult.data.map((assessment: any) => ({
-            ...assessment,
-            unitName: 'Uncategorized',
-            submissions: 0,
-            graded: 0,
-          })),
-          pagination: {
-            page: localResult.page,
-            limit: localResult.limit,
-            total: localResult.total,
-            total_pages: Math.ceil(localResult.total / localResult.limit),
-          },
-        });
-      }
       throw error;
     }
   } catch (error: any) {
@@ -431,8 +389,6 @@ export const getAssessmentById = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     console.log('📋 Fetching assessment:', id);
-
-    const localAssessment = getLocalAssessmentById(id);
 
     try {
       const { data: assessment, error } = await supabase
@@ -461,11 +417,6 @@ export const getAssessmentById = async (req: AuthRequest, res: Response) => {
         .single();
 
       if (error || !assessment) {
-        if (isSupabaseTransientError(error)) {
-          if (localAssessment) {
-            return res.json({ success: true, data: localAssessment });
-          }
-        }
         console.error('❌ Assessment not found:', error);
         return res.status(404).json({
           success: false,
@@ -490,9 +441,6 @@ export const getAssessmentById = async (req: AuthRequest, res: Response) => {
         data: assessment,
       });
     } catch (error: any) {
-      if (isSupabaseTransientError(error) && localAssessment) {
-        return res.json({ success: true, data: localAssessment });
-      }
       console.error('Get assessment error:', error);
       return res.status(500).json({
         success: false,
