@@ -112,11 +112,15 @@ export const register = async (req: AuthRequest, res: Response) => {
         },
       });
     } catch (error: any) {
-      return res.status(503).json({
+      const isUnavailable = !supabase || /fetch failed|network|timeout|econn|unavailable/i.test(error?.message || '');
+      console.error('Registration insert failed:', error);
+      return res.status(isUnavailable ? 503 : 500).json({
         success: false,
         error: {
-          code: 'DB_UNAVAILABLE',
-          message: 'Registration could not be saved because Supabase is unavailable.',
+          code: isUnavailable ? 'DB_UNAVAILABLE' : error?.code || 'REGISTRATION_INSERT_FAILED',
+          message: isUnavailable
+            ? 'Registration could not reach Supabase. Please check the backend connection.'
+            : error?.message || 'Registration could not be saved.',
         },
       });
     }

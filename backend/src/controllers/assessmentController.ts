@@ -2,6 +2,9 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth.js';
 import { supabase } from '../config/supabase.js';
 import { v4 as uuidv4 } from 'uuid';
+import { findUserById } from '../lib/userStore.js';
+
+const DEFAULT_INSTRUCTOR_ID = '12345678-1234-4234-8234-123456789012';
 
 function isSupabaseTransientError(error: any): boolean {
   const message = `${error?.message || ''} ${error?.code || ''}`.toLowerCase();
@@ -29,11 +32,84 @@ async function safeSupabaseCall<T>(operation: () => Promise<T>, fallback: T): Pr
   }
 }
 
+async function getOrCreateDefaultInstructor(): Promise<string> {
+  const { data: existingUser, error: fetchError } = await supabase
+    .from('users')
+    .select('id')
+    .eq('id', DEFAULT_INSTRUCTOR_ID)
+    .single();
+
+  if (existingUser) {
+    return DEFAULT_INSTRUCTOR_ID;
+  }
+
+  if (fetchError && fetchError.code !== 'PGRST116') {
+    throw fetchError;
+  }
+
+  const { error: insertError } = await supabase
+    .from('users')
+    .insert({
+      id: DEFAULT_INSTRUCTOR_ID,
+      email: 'instructor@quicklearn.local',
+      full_name: 'Quick Learn Instructor',
+      role: 'instructor',
+      xp_total: 0,
+      streak_days: 0,
+    });
+
+  if (insertError && insertError.code !== '23505') {
+    throw insertError;
+  }
+
+  return DEFAULT_INSTRUCTOR_ID;
+}
+
+// Ensure the course owner exists in the same database as the course.
+async function resolveCourseInstructor(userId?: string): Promise<string> {
+  if (!userId) {
+    return getOrCreateDefaultInstructor();
+  }
+
+  const { data: existingUser, error: fetchError } = await supabase
+    .from('users')
+    .select('id')
+    .eq('id', userId)
+    .single();
+
+  if (existingUser) {
+    return userId;
+  }
+
+  if (fetchError && fetchError.code !== 'PGRST116') {
+    throw fetchError;
+  }
+
+  const localUser = findUserById(userId);
+  if (localUser) {
+    const { error: syncError } = await supabase
+      .from('users')
+      .insert({
+        id: localUser.id,
+        email: localUser.email,
+        full_name: localUser.full_name,
+        role: localUser.role,
+        xp_total: localUser.xp_total || 0,
+        streak_days: localUser.streak_days || 0,
+      });
+
+    if (!syncError || syncError.code === '23505') {
+      return userId;
+    }
+  }
+
+  return getOrCreateDefaultInstructor();
+}
+
 // Get or create default course
 async function getOrCreateDefaultCourse(userId?: string) {
   try {
-    const DEFAULT_INSTRUCTOR_ID = '12345678-1234-4234-8234-123456789012';
-    let instructorId = userId || DEFAULT_INSTRUCTOR_ID;
+    const instructorId = await resolveCourseInstructor(userId);
 
     const { data: courses } = await supabase
       .from('courses')
@@ -123,7 +199,8 @@ export const createAssessment = async (req: AuthRequest, res: Response) => {
       questions,
       timeLimit,
       shuffleQuestions,
-      showCorrectAnswers
+      showCorrectAnswers,
+      allowDuplicate = false,
     } = req.body;
 
     console.log('📝 Fields - title:', title, 'type:', type, 'questions:', Array.isArray(questions) ? questions.length + ' items' : typeof questions);
@@ -135,11 +212,37 @@ export const createAssessment = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const courseId = await getOrCreateDefaultCourse(userId);
+    const instructorId = await resolveCourseInstructor(userId);
+    const courseId = await getOrCreateDefaultCourse(instructorId);
     let moduleId = unitId;
 
     if (!moduleId) {
       moduleId = await getOrCreateDefaultModule(courseId);
+    }
+
+    if (type === 'quiz' && !allowDuplicate) {
+      const { data: existingQuiz, error: duplicateCheckError } = await supabase
+        .from('assessments')
+        .select('id, title')
+        .eq('module_id', moduleId)
+        .eq('type', 'quiz')
+        .limit(1)
+        .maybeSingle();
+
+      if (duplicateCheckError) {
+        throw duplicateCheckError;
+      }
+
+      if (existingQuiz) {
+        return res.status(409).json({
+          success: false,
+          error: {
+            code: 'QUIZ_ALREADY_EXISTS',
+            message: `A quiz already exists for this lesson: "${existingQuiz.title}".`,
+            existingQuiz,
+          },
+        });
+      }
     }
 
     const assessmentId = uuidv4();
@@ -154,7 +257,7 @@ export const createAssessment = async (req: AuthRequest, res: Response) => {
 
     const insertPayload = {
       id: assessmentId,
-      created_by: userId,
+      created_by: instructorId,
       title,
       description: description || '',
       type,
@@ -310,6 +413,7 @@ export const getInstructorAssessments = async (req: AuthRequest, res: Response) 
       });
     }
 
+    const instructorId = await resolveCourseInstructor(userId);
     const { filter, page = 1, limit = 10 } = req.query;
 
     const pageNum = parseInt(page as string) || 1;
@@ -327,7 +431,7 @@ export const getInstructorAssessments = async (req: AuthRequest, res: Response) 
         `,
           { count: 'exact' }
         )
-        .eq('created_by', userId);
+        .eq('created_by', instructorId);
 
       if (filter && filter !== 'all') {
         query = query.eq('type', filter);

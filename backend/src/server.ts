@@ -134,12 +134,12 @@ app.get('/api/health', (req: Request, res: Response) => {
     });
   }
 
-  supabase.from('laboratory_phase_progress').select('id').limit(1).then(({ error }) => {
+  supabase.from('users').select('id').limit(1).then(({ error }) => {
     if (error) {
       return res.status(503).json({
         success: false,
         database: 'unavailable',
-        message: error.message,
+        message: `Users table check failed: ${error.message}`,
       });
     }
     return res.json({ success: true, database: 'connected', message: 'Server and Supabase are healthy' });

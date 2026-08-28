@@ -3,7 +3,6 @@ import {
   LayoutDashboard, 
   BookOpen, 
   ClipboardCheck, 
-  Megaphone, 
   MessageSquare, 
   Palette,
   LogOut,
@@ -39,7 +38,6 @@ const studentNavItems: NavItem[] = [
   { label: 'Portfolio', href: '/portfolio', icon: Image },
   { label: 'Quizzes', href: '/quizzes', icon: Zap },
   { label: 'Message', href: '/chatbox', icon: MessageSquare },
-  { label: 'Announcements', href: '/announcements', icon: Megaphone },
   { label: 'Settings', href: '/settings', icon: Settings },
 ];
 
@@ -65,7 +63,6 @@ const instructorNavItems: NavItem[] = [
       { label: 'Create Quiz', href: '/instructor/quiz/create', icon: Plus },
     ]
   },
-  { label: 'Announcements', href: '/instructor/announcements', icon: Megaphone },
   { label: 'Student approvals', href: '/instructor/student-approvals', icon: UserCheck },
   { label: 'Messages', href: '/instructor/messages', icon: MessageSquare },
   { label: 'Settings', href: '/instructor/settings', icon: Settings },

@@ -219,13 +219,29 @@ export function AutoGenerateQuiz() {
         generatedAutomatically: true,
       };
 
-      const response = await authFetch('http://localhost:3001/api/assessments', {
+      const createQuiz = (allowDuplicate = false) => authFetch('http://localhost:3001/api/assessments', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ ...payload, allowDuplicate }),
       });
+
+      let response = await createQuiz();
+
+      if (response.status === 409) {
+        const duplicateData = await response.json().catch(() => null);
+        const existingTitle = duplicateData?.error?.existingQuiz?.title || 'a quiz';
+        const addAnother = window.confirm(
+          `This lesson already has ${existingTitle}. Do you want to add another quiz?`
+        );
+
+        if (!addAnother) {
+          return;
+        }
+
+        response = await createQuiz(true);
+      }
 
       if (!response.ok) {
         const errorText = await response.text();

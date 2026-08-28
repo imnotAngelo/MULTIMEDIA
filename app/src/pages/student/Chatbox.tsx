@@ -1,13 +1,7 @@
-import { ConversationView } from '@/components/ConversationView';
+import { MessagesWorkspace } from '@/components/MessagesWorkspace';
 
 export function Chatbox() {
-  return (
-    <ConversationView
-      title="Message"
-      subtitle="Send your inquiries and questions to your instructor"
-      emptyContactsLabel="No instructors are available yet. Please check back later."
-    />
-  );
+  return <MessagesWorkspace instructor={false} />;
 }
 
 export default Chatbox;

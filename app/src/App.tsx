@@ -13,10 +13,10 @@ import { StudentLayout, InstructorLayout } from '@/components/layout';
 import { AdminLayout } from '@/pages/admin';
 
 // Student Pages
-import { StudentDashboard, Lessons, Assessments, StudentQuizTaker, Laboratories, Portfolio, StudentQuizzes, Announcements, Chatbox, StudentSettings } from '@/pages/student';
+import { StudentDashboard, Lessons, Assessments, StudentQuizTaker, Laboratories, Portfolio, StudentQuizzes, Chatbox, StudentSettings } from '@/pages/student';
 
 // Instructor Pages
-import { InstructorDashboard, UnitsManagement, ViewLesson, InstructorAssessments, CreateAssessment, QuizManagement, QuizMethodPicker, CreateQuiz, AutoGenerateQuiz, LaboratorySubmissions, LaboratoriesManagement, AnnouncementsManagement, InstructorMessages, InstructorSettings, StudentApprovals } from '@/pages/instructor';
+import { InstructorDashboard, UnitsManagement, ViewLesson, InstructorAssessments, CreateAssessment, QuizManagement, QuizMethodPicker, CreateQuiz, AutoGenerateQuiz, LaboratorySubmissions, LaboratoriesManagement, InstructorMessages, InstructorSettings, StudentApprovals } from '@/pages/instructor';
 import { InstructorApprovals } from '@/pages/admin';
 
 
@@ -83,7 +83,7 @@ export function App() {
           <Route path="/portfolio" element={<Portfolio />} />
           <Route path="/assessments" element={<Assessments />} />
           <Route path="/quizzes" element={<StudentQuizzes />} />
-          <Route path="/announcements" element={<Announcements />} />
+          <Route path="/announcements" element={<Chatbox />} />
           <Route path="/chatbox" element={<Chatbox />} />
           <Route path="/settings" element={<StudentSettings />} />
           <Route path="/assessment/:id" element={<StudentQuizTaker />} />
@@ -106,7 +106,7 @@ export function App() {
           <Route path="/instructor/laboratory-submissions" element={<LaboratorySubmissions />} />
           <Route path="/instructor/laboratories" element={<LaboratoriesManagement />} />
           <Route path="/instructor/laboratories/create" element={<LaboratoriesManagement />} />
-          <Route path="/instructor/announcements" element={<AnnouncementsManagement />} />
+          <Route path="/instructor/announcements" element={<InstructorMessages />} />
           <Route path="/instructor/messages" element={<InstructorMessages />} />
           <Route path="/instructor/settings" element={<InstructorSettings />} />
           <Route path="/instructor/student-approvals" element={<StudentApprovals />} />

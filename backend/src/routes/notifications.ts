@@ -71,6 +71,46 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
 });
 
 /**
+ * GET /api/notifications/announcements
+ * Shared announcement feed used by the Messages group chat.
+ */
+router.get('/announcements', authMiddleware, async (_req: AuthRequest, res: Response) => {
+  try {
+    if (!supabase) return res.json([]);
+
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('type', 'announcement')
+      .order('created_at', { ascending: false })
+      .limit(200);
+
+    if (error) throw error;
+
+    // Broadcasts are stored once per student, so show one copy in the group feed.
+    const unique = new Map<string, any>();
+    for (const item of data ?? []) {
+      const key = `${item.sender_id}:${item.created_at}:${item.title}:${item.message}`;
+      if (!unique.has(key)) unique.set(key, item);
+    }
+
+    res.json([...unique.values()].map((item: any) => ({
+      ...item,
+      context_type: item.context_type ?? null,
+      context_id: item.context_id ?? null,
+      context_name: item.context_name ?? null,
+    })));
+  } catch (err: any) {
+    if (isSupabaseUnavailableError(err)) {
+      logNotificationFallback('Announcement table is unavailable; returning an empty feed.', err?.message);
+      return res.json([]);
+    }
+    console.error('Error loading announcement feed:', err);
+    res.status(500).json({ error: err?.message || 'Failed to load announcements' });
+  }
+});
+
+/**
  * POST /api/notifications
  * Instructor broadcasts a notification to all students (or a specific role).
  * Body: { type, title, message, recipientRole?, attachmentUrl?, attachmentName? }
@@ -144,7 +184,7 @@ router.post(
         const senderId = req.user?.id;
         if (!senderId) return res.status(401).json({ error: 'Unauthorized' });
 
-        const { title, message } = req.body ?? {};
+        const { title, message, contextType, contextId, contextName } = req.body ?? {};
         if (!title || !message) {
           return res.status(400).json({ error: 'title and message are required' });
         }
@@ -176,11 +216,19 @@ router.post(
           message,
           attachment_url: attachmentUrl,
           attachment_name: attachmentName,
+          context_type: contextType || null,
+          context_id: contextId || null,
+          context_name: contextName || null,
         }));
 
         if (rows.length === 0) return res.json({ sent: 0, attachmentUrl, attachmentName });
 
-        const { error: insErr } = await supabase.from('notifications').insert(rows);
+        let { error: insErr } = await supabase.from('notifications').insert(rows);
+        if (insErr && /column|context_type|does not exist/i.test(insErr.message || '')) {
+          const legacyRows = rows.map(({ context_type, context_id, context_name, ...row }: any) => row);
+          const retry = await supabase.from('notifications').insert(legacyRows);
+          insErr = retry.error;
+        }
         if (insErr) {
           if (isSupabaseUnavailableError(insErr)) {
             logNotificationFallback('Could not create announcement because the notifications table is unavailable.', insErr.message);

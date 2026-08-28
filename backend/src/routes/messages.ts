@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { supabase } from '../config/supabase.js';
+import { findUserById } from '../lib/userStore.js';
 
 const router = Router();
 
@@ -11,6 +12,43 @@ interface MessageRow {
   body: string;
   read_at: string | null;
   created_at: string;
+}
+
+async function resolveSender(user: NonNullable<AuthRequest['user']>) {
+  const { data: byId, error: idError } = await supabase
+    .from('users')
+    .select('id, email, full_name, role')
+    .eq('id', user.id)
+    .maybeSingle();
+  if (idError) throw idError;
+  if (byId) return byId;
+
+  // A stale JWT may contain an old ID while the account still exists by email.
+  const { data: byEmail, error: emailError } = await supabase
+    .from('users')
+    .select('id, email, full_name, role')
+    .eq('email', user.email)
+    .maybeSingle();
+  if (emailError) throw emailError;
+  if (byEmail) return byEmail;
+
+  const localUser = findUserById(user.id);
+  if (!localUser) return null;
+
+  const { data: syncedUser, error: syncError } = await supabase
+    .from('users')
+    .insert({
+      id: localUser.id,
+      email: localUser.email,
+      full_name: localUser.full_name,
+      role: localUser.role,
+      xp_total: localUser.xp_total || 0,
+      streak_days: localUser.streak_days || 0,
+    })
+    .select('id, email, full_name, role')
+    .single();
+  if (syncError && syncError.code !== '23505') throw syncError;
+  return syncedUser || { id: localUser.id, email: localUser.email, full_name: localUser.full_name, role: localUser.role };
 }
 
 /**
@@ -160,7 +198,12 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
     if (!body || typeof body !== 'string' || !body.trim()) {
       return res.status(400).json({ error: 'body is required' });
     }
-    if (recipientId === me.id) {
+    const sender = await resolveSender(me);
+    if (!sender) {
+      return res.status(401).json({ error: 'Your account is not available in the application database. Please sign in again.' });
+    }
+
+    if (recipientId === sender.id) {
       return res.status(400).json({ error: 'Cannot message yourself' });
     }
 
@@ -175,8 +218,8 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
 
     // Restrict cross-role messaging to student <-> instructor
     const allowed =
-      (me.role === 'student' && recipient.role === 'instructor') ||
-      (me.role === 'instructor' && recipient.role === 'student');
+      (sender.role === 'student' && recipient.role === 'instructor') ||
+      (sender.role === 'instructor' && recipient.role === 'student');
     if (!allowed) {
       return res.status(403).json({ error: 'Messaging not allowed between these roles' });
     }
@@ -184,7 +227,7 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
     const { data, error } = await supabase
       .from('messages')
       .insert({
-        sender_id: me.id,
+        sender_id: sender.id,
         recipient_id: recipientId,
         body: body.trim(),
       })

@@ -1,13 +1,7 @@
-import { ConversationView } from '@/components/ConversationView';
+import { MessagesWorkspace } from '@/components/MessagesWorkspace';
 
 export function InstructorMessages() {
-  return (
-    <ConversationView
-      title="Student Messages"
-      subtitle="Reply to student inquiries and questions"
-      emptyContactsLabel="No students have registered yet."
-    />
-  );
+  return <MessagesWorkspace instructor />;
 }
 
 export default InstructorMessages;
