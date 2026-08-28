@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { Upload, FileUp, AlertCircle, CheckCircle2, Loader } from 'lucide-react';
+import { Upload, FileUp, AlertCircle, CheckCircle2, Loader, FileText, Presentation } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,7 @@ interface UploadLessonProps {
 }
 
 export function UploadLesson({ unitId, onSuccess }: UploadLessonProps) {
+  const [format, setFormat] = useState<'pdf' | 'pptx'>('pdf');
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -130,6 +131,40 @@ export function UploadLesson({ unitId, onSuccess }: UploadLessonProps) {
 
   return (
     <div className="space-y-5">
+    <div className="grid grid-cols-2 gap-3" role="radiogroup" aria-label="Lesson format">
+      <button
+        type="button"
+        role="radio"
+        aria-checked={format === 'pdf'}
+        onClick={() => setFormat('pdf')}
+        className={`flex items-center justify-center gap-2 h-11 rounded-lg border text-sm font-medium transition-all ${
+          format === 'pdf'
+            ? 'border-violet-500/60 bg-violet-500/10 text-white'
+            : 'border-slate-700 bg-slate-800/40 text-slate-300 hover:bg-slate-800/70 hover:text-white'
+        }`}
+      >
+        <FileText className="w-4 h-4" />
+        Continue with PDF
+      </button>
+      <button
+        type="button"
+        role="radio"
+        aria-checked={format === 'pptx'}
+        onClick={() => setFormat('pptx')}
+        className={`flex items-center justify-center gap-2 h-11 rounded-lg border text-sm font-medium transition-all ${
+          format === 'pptx'
+            ? 'border-cyan-400/60 bg-cyan-400/10 text-white'
+            : 'border-slate-700 bg-slate-800/40 text-slate-300 hover:bg-slate-800/70 hover:text-white'
+        }`}
+      >
+        <Presentation className="w-4 h-4" />
+        Convert to PowerPoint
+      </button>
+    </div>
+
+    {format === 'pptx' ? (
+      <FileToPptxUploader />
+    ) : (
     <Card className="p-6 bg-slate-900/60 border-slate-800">
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
@@ -229,7 +264,7 @@ export function UploadLesson({ unitId, onSuccess }: UploadLessonProps) {
         </Button>
       </form>
     </Card>
-    <FileToPptxUploader />
+    )}
     </div>
   );
 }

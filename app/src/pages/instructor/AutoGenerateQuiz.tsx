@@ -4,6 +4,7 @@ import { authFetch } from '@/lib/authFetch';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Trash2, Sparkles, Settings2, BookOpen, Wand2, CheckCircle2 } from 'lucide-react';
 import { AetherSpinner } from '@/components/AetherSpinner';
+import { SectionYearTargetPicker } from '@/components/SectionYearTargetPicker';
 
 interface Unit {
   id: string;
@@ -40,6 +41,9 @@ export function AutoGenerateQuiz() {
   const [selectedLesson, setSelectedLesson] = useState('');
   const [generatedQuestions, setGeneratedQuestions] = useState<Question[]>([]);
   const [questionsGenerated, setQuestionsGenerated] = useState(false);
+  const [targetYearLevels, setTargetYearLevels] = useState<number[]>([]);
+  const [targetSections, setTargetSections] = useState<string[]>([]);
+  const [sectionInput, setSectionInput] = useState('');
 
   const [formData, setFormData] = useState({
     title: '',
@@ -217,6 +221,8 @@ export function AutoGenerateQuiz() {
         showCorrectAnswers: formData.showCorrectAnswers,
         questions: transformedQuestions,
         generatedAutomatically: true,
+        targetSections,
+        targetYearLevels,
       };
 
       const createQuiz = (allowDuplicate = false) => authFetch('http://localhost:3001/api/assessments', {
@@ -421,6 +427,15 @@ export function AutoGenerateQuiz() {
                 </label>
               </div>
             </div>
+
+            <SectionYearTargetPicker
+              yearLevels={targetYearLevels}
+              onYearLevelsChange={setTargetYearLevels}
+              sections={targetSections}
+              onSectionsChange={setTargetSections}
+              sectionInput={sectionInput}
+              onSectionInputChange={setSectionInput}
+            />
 
             {/* Generate Button */}
             {!questionsGenerated && (

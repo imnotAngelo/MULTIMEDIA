@@ -18,7 +18,7 @@ router.get('/instructors', async (_req: AuthRequest, res: Response) => {
     if (supabase) {
       const { data, error } = await supabase
         .from('users')
-        .select('id, email, full_name, role, section, year_level, teaching_year_levels, avatar_url, created_at, instructor_approved')
+        .select('id, email, full_name, role, section, year_level, teaching_year_levels, teaching_sections, avatar_url, created_at, instructor_approved')
         .eq('role', 'instructor')
         .order('created_at', { ascending: true });
 

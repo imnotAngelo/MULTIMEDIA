@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { AetherLoader } from '@/components/AetherLoader';
 import { authFetch } from '@/lib/authFetch';
+import { SectionYearTargetPicker } from '@/components/SectionYearTargetPicker';
 
 interface Laboratory {
   id: string;
@@ -31,12 +32,21 @@ interface Laboratory {
   platformUrl: string;
   unitId: string;
   unitName: string;
+  lessonId: string;
+  lessonTitle: string;
   dueDate: string;
   points: number;
+  targetSections?: string[];
+  targetYearLevels?: number[];
   createdAt: string;
 }
 
 interface Unit {
+  id: string;
+  title: string;
+}
+
+interface Lesson {
   id: string;
   title: string;
 }
@@ -78,8 +88,11 @@ interface FormData {
   platform: string;
   platformUrl: string;
   unitId: string;
+  lessonId: string;
   dueDate: string;
   points: number;
+  targetSections: string[];
+  targetYearLevels: number[];
 }
 
 const EMPTY_FORM: FormData = {
@@ -88,8 +101,11 @@ const EMPTY_FORM: FormData = {
   platform: 'Canva',
   platformUrl: '',
   unitId: '',
+  lessonId: '',
   dueDate: '',
   points: 100,
+  targetSections: [],
+  targetYearLevels: [],
 };
 
 export function LaboratoriesManagement() {
@@ -97,16 +113,65 @@ export function LaboratoriesManagement() {
   const navigate = useNavigate();
   const [laboratories, setLaboratories] = useState<Laboratory[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
+  const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [lessonsLoading, setLessonsLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<FormData>(EMPTY_FORM);
+  const [labSectionInput, setLabSectionInput] = useState('');
   const [formError, setFormError] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (!showCreateForm || !formData.unitId) {
+      setLessons([]);
+      setLessonsLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setLessonsLoading(true);
+    authFetch(`/units/${formData.unitId}/lessons`)
+      .then(async response => {
+        const json = await response.json();
+        if (!response.ok || !json.success) {
+          const message = typeof json.error === 'string'
+            ? json.error
+            : json.error?.message;
+          throw new Error(message || 'Failed to load lessons for this unit.');
+        }
+        return (json.data ?? []).map((lesson: any) => ({
+          id: lesson.id,
+          title: lesson.title,
+        }));
+      })
+      .then(nextLessons => {
+        if (cancelled) return;
+        setLessons(nextLessons);
+        setFormData(current => (
+          current.lessonId && !nextLessons.some((lesson: Lesson) => lesson.id === current.lessonId)
+            ? { ...current, lessonId: '' }
+            : current
+        ));
+      })
+      .catch(error => {
+        if (cancelled) return;
+        setLessons([]);
+        setFormError(error instanceof Error ? error.message : 'Could not load lessons for this unit.');
+      })
+      .finally(() => {
+        if (!cancelled) setLessonsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [formData.unitId, showCreateForm]);
 
   const loadData = async () => {
     setLoading(true);
@@ -133,11 +198,25 @@ export function LaboratoriesManagement() {
     setLoading(false);
   };
 
+  // Reload the units list so newly-created units/lessons are available to link, since
+  // the list is otherwise only fetched once when the page first mounts.
+  const refreshUnits = async () => {
+    try {
+      const unitsResponse = await authFetch('/units');
+      const unitsJson = await unitsResponse.json();
+      setUnits(unitsJson.success ? (unitsJson.data ?? []).map((unit: any) => ({ id: unit.id, title: unit.title })) : []);
+    } catch {
+      // Keep whatever units were already loaded if the refresh fails.
+    }
+  };
+
   const handleOpenCreate = () => {
     setFormData(EMPTY_FORM);
     setEditingId(null);
     setFormError('');
+    setLabSectionInput('');
     setShowCreateForm(true);
+    refreshUnits();
   };
 
   const handleOpenEdit = (lab: Laboratory) => {
@@ -147,12 +226,17 @@ export function LaboratoriesManagement() {
       platform: lab.platform,
       platformUrl: lab.platformUrl,
       unitId: lab.unitId,
+      lessonId: lab.lessonId,
       dueDate: lab.dueDate,
       points: lab.points ?? 100,
+      targetSections: lab.targetSections ?? [],
+      targetYearLevels: lab.targetYearLevels ?? [],
     });
     setEditingId(lab.id);
     setFormError('');
+    setLabSectionInput('');
     setShowCreateForm(true);
+    refreshUnits();
   };
 
   const handleCloseForm = () => {
@@ -176,6 +260,7 @@ export function LaboratoriesManagement() {
     }
 
     const selectedUnit = units.find(u => u.id === formData.unitId);
+    const selectedLesson = lessons.find(l => l.id === formData.lessonId);
 
     try {
       const response = await authFetch('/laboratories/metadata', {
@@ -189,8 +274,12 @@ export function LaboratoriesManagement() {
           platformUrl: formData.platformUrl,
           unitId: formData.unitId,
           unitName: selectedUnit?.title ?? '',
+          lessonId: formData.lessonId,
+          lessonTitle: selectedLesson?.title ?? '',
           dueDate: formData.dueDate,
           points: formData.points,
+          targetSections: formData.targetSections,
+          targetYearLevels: formData.targetYearLevels,
         }),
       });
       const json = await response.json();
@@ -311,10 +400,10 @@ export function LaboratoriesManagement() {
 
       {/* Create / Edit Modal */}
       {showCreateForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-3 sm:p-4 bg-black/60 backdrop-blur-sm">
+          <div className="my-3 sm:my-6 bg-slate-900 border border-slate-700 rounded-xl w-full max-w-lg max-h-[calc(100vh-1.5rem)] sm:max-h-[calc(100vh-3rem)] shadow-2xl flex flex-col overflow-hidden">
             {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
+            <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-slate-800 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-violet-500/15 flex items-center justify-center">
                   <Beaker className="w-4 h-4 text-violet-400" />
@@ -332,7 +421,8 @@ export function LaboratoriesManagement() {
             </div>
 
             {/* Modal Body */}
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="overflow-y-auto">
+              <div className="p-5 sm:p-6 space-y-4">
               {formError && (
                 <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
                   <p className="text-red-400 text-sm">{formError}</p>
@@ -423,12 +513,39 @@ export function LaboratoriesManagement() {
                 </label>
                 <select
                   value={formData.unitId}
-                  onChange={e => setFormData(f => ({ ...f, unitId: e.target.value }))}
+                  onChange={e => setFormData(f => ({ ...f, unitId: e.target.value, lessonId: '' }))}
                   className="w-full bg-slate-800/60 border border-slate-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-violet-500 text-sm"
                 >
                   <option value="">— No unit —</option>
                   {units.map(u => (
                     <option key={u.id} value={u.id}>{u.title}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Lesson */}
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                  <BookOpen className="w-3.5 h-3.5 inline mr-1" />
+                  Link to Lesson
+                </label>
+                <select
+                  value={formData.lessonId}
+                  onChange={e => setFormData(f => ({ ...f, lessonId: e.target.value }))}
+                  disabled={!formData.unitId || lessonsLoading}
+                  className="w-full bg-slate-800/60 border border-slate-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-violet-500 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  <option value="">
+                    {!formData.unitId
+                      ? 'Choose a unit first'
+                      : lessonsLoading
+                        ? 'Loading lessons...'
+                        : lessons.length === 0
+                          ? 'No published lessons found'
+                          : '-- No lesson --'}
+                  </option>
+                  {lessons.map(lesson => (
+                    <option key={lesson.id} value={lesson.id}>{lesson.title}</option>
                   ))}
                 </select>
               </div>
@@ -463,8 +580,18 @@ export function LaboratoriesManagement() {
                 </div>
               </div>
 
+              <SectionYearTargetPicker
+                yearLevels={formData.targetYearLevels}
+                onYearLevelsChange={(levels) => setFormData(f => ({ ...f, targetYearLevels: levels }))}
+                sections={formData.targetSections}
+                onSectionsChange={(sections) => setFormData(f => ({ ...f, targetSections: sections }))}
+                sectionInput={labSectionInput}
+                onSectionInputChange={setLabSectionInput}
+              />
+              </div>
+
               {/* Actions */}
-              <div className="flex justify-end gap-3 pt-2">
+              <div className="sticky bottom-0 flex justify-end gap-3 px-5 sm:px-6 py-4 bg-slate-900 border-t border-slate-800">
                 <Button
                   type="button"
                   variant="outline"
@@ -536,6 +663,12 @@ export function LaboratoriesManagement() {
                         <span className="flex items-center gap-1">
                           <BookOpen className="w-3.5 h-3.5" />
                           {lab.unitName}
+                        </span>
+                      )}
+                      {lab.lessonTitle && (
+                        <span className="flex items-center gap-1">
+                          <BookOpen className="w-3.5 h-3.5" />
+                          {lab.lessonTitle}
                         </span>
                       )}
                       {lab.dueDate && (

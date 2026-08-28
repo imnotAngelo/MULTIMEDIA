@@ -9,6 +9,7 @@ export interface AuthRequest extends Request {
     year_level?: number;
     teaching_year_levels?: number[];
     section?: string;
+    teaching_sections?: string[];
   };
 }
 

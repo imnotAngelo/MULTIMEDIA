@@ -207,9 +207,19 @@ router.post(
   },
   async (req: Request, res: Response) => {
     try {
-      const { title, moduleId, unitId } = req.body;
+      const { title, moduleId, unitId, targetSections, targetYearLevels } = req.body;
       const userId = (req as any).user?.id || 'anonymous'; // Use 'anonymous' if no auth
       const lessonModuleId = moduleId || unitId; // Accept both moduleId and unitId
+
+      const parseJsonArray = (value: any): any[] => {
+        if (Array.isArray(value)) return value;
+        if (typeof value === 'string' && value.trim()) {
+          try { const parsed = JSON.parse(value); return Array.isArray(parsed) ? parsed : []; } catch { return []; }
+        }
+        return [];
+      };
+      const cleanedTargetSections = [...new Set(parseJsonArray(targetSections).map((s) => String(s).trim()).filter(Boolean))];
+      const cleanedTargetYearLevels = [...new Set(parseJsonArray(targetYearLevels).map((y) => Number(y)).filter((y) => Number.isInteger(y) && y >= 1 && y <= 4))];
 
       if (!req.file) {
         return res.status(400).json({
@@ -343,6 +353,8 @@ router.post(
                 slide_count: slides.length,
                 xp_reward: 25,
                 order_index: 1,
+                target_sections: cleanedTargetSections,
+                target_year_levels: cleanedTargetYearLevels,
                 status: 'published',
               })
               .select('id, title, slides, slide_count')

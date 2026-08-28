@@ -18,7 +18,7 @@ export const getProfile = async (req: AuthRequest, res: Response) => {
 
     const { data: user, error } = await supabase
       .from('users')
-      .select('id, email, full_name, avatar_url, role, xp_total, streak_days, year_level, teaching_year_levels, created_at, last_active')
+      .select('id, email, full_name, avatar_url, role, xp_total, streak_days, year_level, teaching_year_levels, section, teaching_sections, created_at, last_active')
       .eq('id', userId)
       .single();
 
@@ -51,7 +51,7 @@ export const getProfile = async (req: AuthRequest, res: Response) => {
 export const updateProfile = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
-    const { full_name, avatar_url, year_level, teaching_year_levels } = req.body;
+    const { full_name, avatar_url, year_level, teaching_year_levels, teaching_sections } = req.body;
 
     if (!userId) {
       return res.status(401).json({
@@ -101,12 +101,32 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
       cleaned.sort((a, b) => a - b);
       updates.teaching_year_levels = cleaned;
     }
+    if (teaching_sections !== undefined) {
+      if (!Array.isArray(teaching_sections)) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'INVALID_TEACHING_SECTIONS', message: 'teaching_sections must be an array' },
+        });
+      }
+      const cleanedSections: string[] = [];
+      for (const v of teaching_sections) {
+        const trimmed = typeof v === 'string' ? v.trim() : '';
+        if (!trimmed || trimmed.length > 50) {
+          return res.status(400).json({
+            success: false,
+            error: { code: 'INVALID_TEACHING_SECTIONS', message: 'Each section must be 1-50 characters' },
+          });
+        }
+        if (!cleanedSections.includes(trimmed)) cleanedSections.push(trimmed);
+      }
+      updates.teaching_sections = cleanedSections;
+    }
 
     const { data: user, error } = await supabase
       .from('users')
       .update(updates)
       .eq('id', userId)
-      .select('id, email, full_name, avatar_url, role, xp_total, streak_days, year_level, teaching_year_levels, created_at, last_active');
+      .select('id, email, full_name, avatar_url, role, xp_total, streak_days, year_level, teaching_year_levels, section, teaching_sections, created_at, last_active');
 
     if (error) throw error;
 
@@ -128,7 +148,15 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
 
 export const getProgress = async (req: AuthRequest, res: Response) => {
   try {
-    const userId = req.params.id || req.user?.id;
+    const requestedId = req.params.id;
+    const userId = requestedId || req.user?.id;
+
+    if (requestedId && requestedId !== req.user?.id && req.user?.role !== 'instructor' && req.user?.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'You can only view your own progress' },
+      });
+    }
 
     const { data: progress, error } = await supabase
       .from('user_progress')
@@ -166,7 +194,15 @@ export const getProgress = async (req: AuthRequest, res: Response) => {
 
 export const getAchievements = async (req: AuthRequest, res: Response) => {
   try {
-    const userId = req.params.id || req.user?.id;
+    const requestedId = req.params.id;
+    const userId = requestedId || req.user?.id;
+
+    if (requestedId && requestedId !== req.user?.id && req.user?.role !== 'instructor' && req.user?.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'You can only view your own achievements' },
+      });
+    }
 
     const { data: achievements, error } = await supabase
       .from('user_achievements')

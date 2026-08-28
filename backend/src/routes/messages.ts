@@ -17,7 +17,7 @@ interface MessageRow {
 async function resolveSender(user: NonNullable<AuthRequest['user']>) {
   const { data: byId, error: idError } = await supabase
     .from('users')
-    .select('id, email, full_name, role')
+    .select('id, email, full_name, role, section, year_level, teaching_year_levels, teaching_sections')
     .eq('id', user.id)
     .maybeSingle();
   if (idError) throw idError;
@@ -26,7 +26,7 @@ async function resolveSender(user: NonNullable<AuthRequest['user']>) {
   // A stale JWT may contain an old ID while the account still exists by email.
   const { data: byEmail, error: emailError } = await supabase
     .from('users')
-    .select('id, email, full_name, role')
+    .select('id, email, full_name, role, section, year_level, teaching_year_levels, teaching_sections')
     .eq('email', user.email)
     .maybeSingle();
   if (emailError) throw emailError;
@@ -45,7 +45,7 @@ async function resolveSender(user: NonNullable<AuthRequest['user']>) {
       xp_total: localUser.xp_total || 0,
       streak_days: localUser.streak_days || 0,
     })
-    .select('id, email, full_name, role')
+    .select('id, email, full_name, role, section, year_level, teaching_year_levels, teaching_sections')
     .single();
   if (syncError && syncError.code !== '23505') throw syncError;
   return syncedUser || { id: localUser.id, email: localUser.email, full_name: localUser.full_name, role: localUser.role };
@@ -53,19 +53,28 @@ async function resolveSender(user: NonNullable<AuthRequest['user']>) {
 
 function isStudentAllowedToContact(student: any, instructor: any) {
   const studentSection = String(student.section || '').trim().toLowerCase();
-  const instructorSection = String(instructor.section || '').trim().toLowerCase();
   const studentYear = Number(student.year_level);
+  const teachingSections = (Array.isArray(instructor.teaching_sections) && instructor.teaching_sections.length
+    ? instructor.teaching_sections
+    : [instructor.section]
+  ).map((s: any) => String(s || '').trim().toLowerCase()).filter(Boolean);
   const teachingYears = Array.isArray(instructor.teaching_year_levels)
     ? instructor.teaching_year_levels.map(Number)
     : [];
 
   return Boolean(
     studentSection &&
-    instructorSection &&
-    studentSection === instructorSection &&
+    teachingSections.includes(studentSection) &&
     Number.isInteger(studentYear) &&
     teachingYears.includes(studentYear)
   );
+}
+
+// Symmetric check: works regardless of which side (student or instructor) is calling.
+function canContact(a: any, b: any): boolean {
+  if (a.role === 'student' && b.role === 'instructor') return isStudentAllowedToContact(a, b);
+  if (a.role === 'instructor' && b.role === 'student') return isStudentAllowedToContact(b, a);
+  return false;
 }
 
 /**
@@ -87,13 +96,11 @@ router.get('/contacts', authMiddleware, async (req: AuthRequest, res: Response) 
 
     const { data: contacts, error: cErr } = await supabase
       .from('users')
-      .select('id, email, full_name, role, avatar_url, section, year_level, teaching_year_levels')
+      .select('id, email, full_name, role, avatar_url, section, year_level, teaching_year_levels, teaching_sections')
       .eq('role', targetRole);
     if (cErr) throw cErr;
 
-    const permittedContacts = sender.role === 'student'
-      ? contacts.filter((contact: any) => isStudentAllowedToContact(sender, contact))
-      : contacts;
+    const permittedContacts = contacts.filter((contact: any) => canContact(sender, contact));
 
     if (permittedContacts.length === 0) return res.json([]);
 
@@ -178,13 +185,13 @@ router.get('/thread/:userId', authMiddleware, async (req: AuthRequest, res: Resp
 
     const { data: threadRecipient, error: threadRecipientError } = await supabase
       .from('users')
-      .select('id, role, section, year_level, teaching_year_levels')
+      .select('id, role, section, year_level, teaching_year_levels, teaching_sections')
       .eq('id', otherId)
       .maybeSingle();
     if (threadRecipientError) throw threadRecipientError;
     if (!threadRecipient) return res.status(404).json({ error: 'Recipient not found' });
-    if (sender.role === 'student' && !isStudentAllowedToContact(sender, threadRecipient)) {
-      return res.status(403).json({ error: 'You can only message your section adviser.' });
+    if (!canContact(sender, threadRecipient)) {
+      return res.status(403).json({ error: 'You can only message the students/instructors in your own section and year level.' });
     }
 
     // Two simple queries are more reliable than nested .or(and(...)) filters.
@@ -247,22 +254,15 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
     // Verify recipient exists
     const { data: recipient, error: rErr } = await supabase
       .from('users')
-      .select('id, role, section, year_level, teaching_year_levels')
+      .select('id, role, section, year_level, teaching_year_levels, teaching_sections')
       .eq('id', recipientId)
       .maybeSingle();
     if (rErr) throw rErr;
     if (!recipient) return res.status(404).json({ error: 'Recipient not found' });
 
-    if (sender.role === 'student' && !isStudentAllowedToContact(sender, recipient)) {
-      return res.status(403).json({ error: 'You can only message your section adviser.' });
-    }
-
-    // Restrict cross-role messaging to student <-> instructor
-    const allowed =
-      (sender.role === 'student' && recipient.role === 'instructor') ||
-      (sender.role === 'instructor' && recipient.role === 'student');
-    if (!allowed) {
-      return res.status(403).json({ error: 'Messaging not allowed between these roles' });
+    // Restrict cross-role messaging to student <-> instructor within the same section/year level.
+    if (!canContact(sender, recipient)) {
+      return res.status(403).json({ error: 'You can only message the students/instructors in your own section and year level.' });
     }
 
     const { data, error } = await supabase

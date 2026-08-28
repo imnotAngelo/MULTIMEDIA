@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Eye, EyeOff, Mail, Lock, GraduationCap, Presentation } from 'lucide-react';
 import { AetherSpinner } from '@/components/AetherSpinner';
 import { AetherLogo } from '@/components/AetherLogo';
+import { api } from '@/services/api';
 
 type Role = 'student' | 'instructor';
 
@@ -17,13 +18,29 @@ export function LoginPage() {
   const [role, setRole] = useState<Role>('student');
   const [showPassword, setShowPassword] = useState(false);
   const [roleMismatch, setRoleMismatch] = useState<string>('');
-  
+  const [resending, setResending] = useState(false);
+  const [resendMessage, setResendMessage] = useState('');
+
   const { loginAsync, logout, isLoading, error } = useAuthStore();
   const navigate = useNavigate();
+  const isUnverifiedError = /verify your email/i.test(error || '');
+
+  const handleResend = async () => {
+    if (!email) return;
+    setResending(true);
+    setResendMessage('');
+    try {
+      const response = await api.resendVerification(email);
+      setResendMessage((response.data as any)?.message || response.error?.message || 'Verification email sent.');
+    } finally {
+      setResending(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setRoleMismatch('');
+    setResendMessage('');
 
     const success = await loginAsync(email, password);
 
@@ -155,8 +172,24 @@ export function LoginPage() {
               </div>
 
               {error && (
-                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 text-sm text-red-400">
-                  {error}
+                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 text-sm text-red-400 space-y-2">
+                  <p>{error}</p>
+                  {isUnverifiedError && (
+                    <button
+                      type="button"
+                      onClick={handleResend}
+                      disabled={resending || !email}
+                      className="text-red-300 underline hover:text-white disabled:opacity-50"
+                    >
+                      {resending ? 'Sending...' : 'Resend verification email'}
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {resendMessage && (
+                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3 text-sm text-emerald-400">
+                  {resendMessage}
                 </div>
               )}
 

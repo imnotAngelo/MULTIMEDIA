@@ -12,11 +12,14 @@
     ALTER TABLE laboratories ADD COLUMN IF NOT EXISTS platform_url TEXT;
     ALTER TABLE laboratories ADD COLUMN IF NOT EXISTS unit_id TEXT;
     ALTER TABLE laboratories ADD COLUMN IF NOT EXISTS unit_name TEXT;
+    ALTER TABLE laboratories ADD COLUMN IF NOT EXISTS lesson_id TEXT;
+    ALTER TABLE laboratories ADD COLUMN IF NOT EXISTS lesson_title TEXT;
     ALTER TABLE laboratories ADD COLUMN IF NOT EXISTS due_date TIMESTAMPTZ;
     ALTER TABLE laboratories ADD COLUMN IF NOT EXISTS points INTEGER DEFAULT 100;
     ALTER TABLE laboratories ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
 
     CREATE INDEX IF NOT EXISTS idx_laboratories_instructor ON laboratories(instructor_id);
     CREATE INDEX IF NOT EXISTS idx_laboratories_unit ON laboratories(unit_id);
+    CREATE INDEX IF NOT EXISTS idx_laboratories_lesson ON laboratories(lesson_id);
 
     NOTIFY pgrst, 'reload schema';

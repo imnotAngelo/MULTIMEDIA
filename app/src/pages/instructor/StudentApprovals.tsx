@@ -22,6 +22,7 @@ export function StudentApprovals() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [sectionFilter, setSectionFilter] = useState('all');
 
   const loadRequests = async () => {
     setLoading(true);
@@ -51,6 +52,10 @@ export function StudentApprovals() {
   useEffect(() => {
     loadRequests();
   }, []);
+
+  const sections = Array.from(new Set([...requests, ...students].map((s) => s.section).filter(Boolean))).sort();
+  const filteredRequests = sectionFilter === 'all' ? requests : requests.filter((r) => r.section === sectionFilter);
+  const filteredStudents = sectionFilter === 'all' ? students : students.filter((s) => s.section === sectionFilter);
 
   const approveRequest = async (id: string) => {
     setApprovingId(id);
@@ -82,6 +87,23 @@ export function StudentApprovals() {
         </Button>
       </div>
 
+      {sections.length > 1 && (
+        <div className="flex items-center gap-2">
+          <label htmlFor="sectionFilter" className="text-sm text-slate-400">Filter by section</label>
+          <select
+            id="sectionFilter"
+            value={sectionFilter}
+            onChange={(e) => setSectionFilter(e.target.value)}
+            className="h-9 rounded-md border border-slate-700 bg-slate-800/60 px-3 text-sm text-white focus:border-violet-500/50 focus:outline-none focus:ring-2 focus:ring-violet-500/30"
+          >
+            <option value="all">All sections</option>
+            {sections.map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {error && <p className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">{error}</p>}
 
       <Card className="border-slate-800 bg-slate-900/70">
@@ -89,13 +111,13 @@ export function StudentApprovals() {
           <CardTitle className="flex items-center gap-3 text-white">
             <Users className="h-5 w-5 text-violet-400" />
             Pending requests
-            <span className="rounded-full bg-violet-500/15 px-2.5 py-0.5 text-sm text-violet-300">{requests.length}</span>
+            <span className="rounded-full bg-violet-500/15 px-2.5 py-0.5 text-sm text-violet-300">{filteredRequests.length}</span>
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           {loading ? (
             <AetherLoader compact label="Scanning student requests" />
-          ) : requests.length === 0 ? (
+          ) : filteredRequests.length === 0 ? (
             <div className="flex flex-col items-center justify-center p-14 text-center">
               <UserCheck className="h-10 w-10 text-emerald-400" />
               <h2 className="mt-4 text-lg font-semibold text-white">All caught up</h2>
@@ -103,7 +125,7 @@ export function StudentApprovals() {
             </div>
           ) : (
             <div className="divide-y divide-slate-800">
-              {requests.map((request) => (
+              {filteredRequests.map((request) => (
                 <div key={request.id} className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h2 className="font-semibold text-white">{request.full_name}</h2>
@@ -128,15 +150,15 @@ export function StudentApprovals() {
           <CardTitle className="flex items-center gap-3 text-white">
             <Users className="h-5 w-5 text-emerald-400" />
             All students in your section
-            <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-sm text-emerald-300">{students.length}</span>
+            <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-sm text-emerald-300">{filteredStudents.length}</span>
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          {students.length === 0 ? (
+          {filteredStudents.length === 0 ? (
             <p className="p-8 text-center text-sm text-slate-400">No students found in your assigned section.</p>
           ) : (
             <div className="divide-y divide-slate-800">
-              {students.map((student) => (
+              {filteredStudents.map((student) => (
                 <div key={student.id} className="flex flex-col gap-2 p-5 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h2 className="font-semibold text-white">{student.full_name}</h2>

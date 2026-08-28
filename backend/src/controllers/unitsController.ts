@@ -3,6 +3,7 @@ import { AuthRequest } from '../middleware/auth.js';
 import { supabase } from '../config/supabase.js';
 import { v4 as uuidv4 } from 'uuid';
 import { findUserById } from '../lib/userStore.js';
+import { matchesContentTarget } from '../lib/contentTargeting.js';
 
 // Use a consistent default instructor ID for unauthenticated requests (proper UUID)
 const DEFAULT_INSTRUCTOR_ID = '12345678-1234-4234-8234-123456789012';
@@ -193,7 +194,7 @@ async function getOrCreateDefaultCourse(userId?: string) {
 export const createUnit = async (req: AuthRequest, res: Response) => {
   try {
     const userId = (req as any).user?.id; // Optional auth, may be undefined
-    const { title, description } = req.body;
+    const { title, description, targetSections, targetYearLevels } = req.body;
 
     if (!title) {
       return res.status(400).json({
@@ -201,6 +202,13 @@ export const createUnit = async (req: AuthRequest, res: Response) => {
         error: { code: 'MISSING_FIELDS', message: 'Title is required' },
       });
     }
+
+    const cleanedSections = Array.isArray(targetSections)
+      ? [...new Set(targetSections.map((s: any) => String(s).trim()).filter(Boolean))]
+      : [];
+    const cleanedYearLevels = Array.isArray(targetYearLevels)
+      ? [...new Set(targetYearLevels.map((y: any) => Number(y)).filter((y: number) => Number.isInteger(y) && y >= 1 && y <= 4))]
+      : [];
 
     console.log('📝 Creating unit:', { title, description, userId: userId || 'anonymous' });
 
@@ -219,8 +227,10 @@ export const createUnit = async (req: AuthRequest, res: Response) => {
           description: description || '',
           order_index: 0,
           status: 'active',
+          target_sections: cleanedSections,
+          target_year_levels: cleanedYearLevels,
         })
-        .select('id, title, description, created_at')
+        .select('id, title, description, created_at, target_sections, target_year_levels')
         .single();
 
       if (error) throw error;
@@ -237,6 +247,8 @@ export const createUnit = async (req: AuthRequest, res: Response) => {
           description: unitFromDb.description,
           yearLevel: null,
           section: null,
+          targetSections: unitFromDb.target_sections ?? [],
+          targetYearLevels: unitFromDb.target_year_levels ?? [],
           createdAt: unitFromDb.created_at,
         },
       });
@@ -286,21 +298,25 @@ export const getUnits = async (req: AuthRequest, res: Response) => {
       // Get all modules for those courses
       const { data: units, error } = await supabase
         .from('modules')
-        .select('id, title, description, created_at')
+        .select('id, title, description, created_at, target_sections, target_year_levels')
         .in('course_id', courseIds)
         .eq('status', 'active')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      return (units || []) as Array<{ id: string; title: string; description: string; created_at: string }>;
+      return (units || []) as Array<{ id: string; title: string; description: string; created_at: string; target_sections: string[]; target_year_levels: number[] }>;
     }, null as any);
 
     if (unitsFromDb !== null) {
       console.log('📚 Units fetched from Supabase:', unitsFromDb.length);
+      const requester = (req as any).user;
+      const visibleUnits = requester?.role === 'student'
+        ? unitsFromDb.filter((u) => matchesContentTarget(u.target_sections, u.target_year_levels, requester.section, requester.year_level))
+        : unitsFromDb;
       return res.json({
         success: true,
-        data: unitsFromDb.map((u) => ({
+        data: visibleUnits.map((u) => ({
           id: u.id,
           title: u.title,
           description: u.description,
@@ -308,6 +324,8 @@ export const getUnits = async (req: AuthRequest, res: Response) => {
           createdAt: u.created_at,
           yearLevel: null,
           section: null,
+          targetSections: u.target_sections ?? [],
+          targetYearLevels: u.target_year_levels ?? [],
         })),
       });
     }
@@ -344,7 +362,7 @@ export const getUnitLessons = async (req: AuthRequest, res: Response) => {
 
       const { data: lessons, error } = await supabase
         .from('lessons')
-        .select('id, title, content, slides, slide_count, created_at, status')
+        .select('id, title, content, slides, slide_count, created_at, status, target_sections, target_year_levels')
         .eq('module_id', unitId)
         .eq('status', 'published')
         .order('created_at', { ascending: false });
@@ -353,7 +371,12 @@ export const getUnitLessons = async (req: AuthRequest, res: Response) => {
       return lessons || [];
     }, [] as Array<any>);
 
-    const allLessons = lessonsFromDb || [];
+    const requester = (req as any).user;
+    const allLessons = (lessonsFromDb || []).filter((l: any) =>
+      requester?.role === 'student'
+        ? matchesContentTarget(l.target_sections, l.target_year_levels, requester.section, requester.year_level)
+        : true
+    );
 
     console.log(`📖 Lessons for unit ${unitId}:`, allLessons.length);
     if (allLessons.length > 0) {

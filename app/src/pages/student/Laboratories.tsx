@@ -25,6 +25,8 @@ interface InstructorLab {
   platformUrl: string;
   unitId: string;
   unitName: string;
+  lessonId: string;
+  lessonTitle: string;
   dueDate: string;
   createdAt: string;
 }
@@ -458,6 +460,12 @@ export function Laboratories() {
                     <span className="flex items-center gap-1 text-slate-400">
                       <BookOpen className="w-3.5 h-3.5" />
                       {lab.unitName}
+                    </span>
+                  )}
+                  {lab.lessonTitle && (
+                    <span className="flex items-center gap-1 text-slate-400">
+                      <BookOpen className="w-3.5 h-3.5" />
+                      {lab.lessonTitle}
                     </span>
                   )}
                   {lab.dueDate && (

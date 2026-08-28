@@ -162,7 +162,7 @@ router.post('/debug/fix-orphaned-lessons', async (req, res) => {
 });
 
 // Get lessons for a unit
-router.get('/:unitId/lessons', getUnitLessons);
+router.get('/:unitId/lessons', optionalAuthMiddleware, getUnitLessons);
 
 // Update lesson slides (optional auth)
 router.put('/lessons/:lessonId/slides', optionalAuthMiddleware, updateLessonSlides);

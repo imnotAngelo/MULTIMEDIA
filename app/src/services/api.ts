@@ -109,7 +109,16 @@ class ApiService {
   }
 
   // Auth endpoints
-  async register(email: string, password: string, fullName: string, role: 'student' | 'instructor' = 'student', yearLevel: 1 | 2 | 3 | 4 = 1, section = '') {
+  async register(
+    email: string,
+    password: string,
+    fullName: string,
+    role: 'student' | 'instructor' = 'student',
+    yearLevel: 1 | 2 | 3 | 4 = 1,
+    section = '',
+    teachingYearLevels?: number[],
+    teachingSections?: string[]
+  ) {
     return this.request('/auth/register', {
       method: 'POST',
       body: JSON.stringify({
@@ -119,6 +128,8 @@ class ApiService {
         role,
         year_level: yearLevel,
         section,
+        teaching_year_levels: teachingYearLevels,
+        teaching_sections: teachingSections,
       }),
     });
   }
@@ -144,6 +155,26 @@ class ApiService {
     }
     
     return result;
+  }
+
+  async verifyEmail(token: string) {
+    return this.request(`/auth/verify-email?token=${encodeURIComponent(token)}`, {
+      method: 'GET',
+    });
+  }
+
+  async verifyEmailCode(email: string, code: string) {
+    return this.request('/auth/verify-email-code', {
+      method: 'POST',
+      body: JSON.stringify({ email, code }),
+    });
+  }
+
+  async resendVerification(email: string) {
+    return this.request('/auth/resend-verification', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
   }
 
   async refresh(refreshToken: string) {

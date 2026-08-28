@@ -9,13 +9,14 @@ import {
 } from '../controllers/laboratoryProgressController.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { supabase } from '../config/supabase.js';
+import { matchesContentTarget } from '../lib/contentTargeting.js';
 
 const router: Router = express.Router();
 
 // Require authentication for all laboratory progress endpoints
 router.use(authMiddleware);
 
-const laboratoryColumns = 'id, instructor_id, title, description, platform, platform_url, unit_id, unit_name, due_date, points, created_at';
+const laboratoryColumns = 'id, instructor_id, title, description, platform, platform_url, unit_id, unit_name, lesson_id, lesson_title, due_date, points, created_at, target_sections, target_year_levels';
 
 const toLaboratory = (row: any) => ({
   id: row.id,
@@ -25,8 +26,12 @@ const toLaboratory = (row: any) => ({
   platformUrl: row.platform_url ?? '',
   unitId: row.unit_id ?? '',
   unitName: row.unit_name ?? '',
+  lessonId: row.lesson_id ?? '',
+  lessonTitle: row.lesson_title ?? '',
   dueDate: row.due_date ?? '',
   points: row.points ?? 100,
+  targetSections: row.target_sections ?? [],
+  targetYearLevels: row.target_year_levels ?? [],
   createdAt: row.created_at,
 });
 
@@ -38,7 +43,11 @@ router.get('/', async (req: any, res) => {
       .select(laboratoryColumns)
       .order('created_at', { ascending: false });
     if (error) throw error;
-    return res.json({ success: true, data: (data ?? []).map(toLaboratory) });
+    const rows = data ?? [];
+    const visibleRows = req.user?.role === 'student'
+      ? rows.filter((row: any) => matchesContentTarget(row.target_sections, row.target_year_levels, req.user.section, req.user.year_level))
+      : rows;
+    return res.json({ success: true, data: visibleRows.map(toLaboratory) });
   } catch (error: any) {
     console.error('❌ List laboratories error:', error);
     return res.status(500).json({ success: false, error: { code: 'LIST_FAILED', message: error.message } });
@@ -49,9 +58,52 @@ router.get('/', async (req: any, res) => {
 router.post('/metadata', async (req: any, res) => {
   try {
     const instructorId = req.user?.id;
-    const { id, title, description, platform, platformUrl, unitId, unitName, dueDate, points } = req.body ?? {};
+    const { id, title, description, platform, platformUrl, unitId, unitName, lessonId, lessonTitle, dueDate, points, targetSections, targetYearLevels } = req.body ?? {};
     if (!instructorId || !title?.trim() || !platformUrl?.trim()) {
       return res.status(400).json({ success: false, error: { code: 'MISSING_FIELDS', message: 'Title and platform link are required' } });
+    }
+
+    const cleanedTargetSections = Array.isArray(targetSections)
+      ? [...new Set(targetSections.map((s: any) => String(s).trim()).filter(Boolean))]
+      : [];
+    const cleanedTargetYearLevels = Array.isArray(targetYearLevels)
+      ? [...new Set(targetYearLevels.map((y: any) => Number(y)).filter((y: number) => Number.isInteger(y) && y >= 1 && y <= 4))]
+      : [];
+
+    let resolvedUnitName = unitName || null;
+    let resolvedLessonTitle = lessonTitle || null;
+
+    if (unitId) {
+      const { data: unit, error: unitError } = await supabase
+        .from('modules')
+        .select('id, title')
+        .eq('id', unitId)
+        .single();
+
+      if (unitError || !unit) {
+        return res.status(404).json({ success: false, error: { code: 'UNIT_NOT_FOUND', message: 'Unit not found' } });
+      }
+      resolvedUnitName = unit.title;
+    }
+
+    if (lessonId) {
+      if (!unitId) {
+        return res.status(400).json({ success: false, error: { code: 'MISSING_UNIT', message: 'Choose a unit before linking a lesson' } });
+      }
+
+      const { data: lesson, error: lessonError } = await supabase
+        .from('lessons')
+        .select('id, title, module_id')
+        .eq('id', lessonId)
+        .single();
+
+      if (lessonError || !lesson) {
+        return res.status(404).json({ success: false, error: { code: 'LESSON_NOT_FOUND', message: 'Lesson not found' } });
+      }
+      if (lesson.module_id !== unitId) {
+        return res.status(400).json({ success: false, error: { code: 'LESSON_UNIT_MISMATCH', message: 'Lesson does not belong to the selected unit' } });
+      }
+      resolvedLessonTitle = lesson.title;
     }
 
     const row = {
@@ -62,9 +114,13 @@ router.post('/metadata', async (req: any, res) => {
       platform: platform || 'Other',
       platform_url: platformUrl.trim(),
       unit_id: unitId || null,
-      unit_name: unitName || null,
+      unit_name: resolvedUnitName,
+      lesson_id: lessonId || null,
+      lesson_title: resolvedLessonTitle,
       due_date: dueDate || null,
       points: Number.isFinite(Number(points)) ? Number(points) : 100,
+      target_sections: cleanedTargetSections,
+      target_year_levels: cleanedTargetYearLevels,
     };
 
     const { data, error } = await supabase

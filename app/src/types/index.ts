@@ -12,6 +12,7 @@ export interface User {
   year_level?: 1 | 2 | 3 | 4 | null;
   teaching_year_levels?: (1 | 2 | 3 | 4)[];
   section?: string | null;
+  teaching_sections?: string[] | null;
   last_active?: string;
   created_at: string;
 }

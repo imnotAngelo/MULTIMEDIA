@@ -5,8 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Eye, EyeOff, Mail, Lock, User, GraduationCap, Presentation } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, GraduationCap, Presentation, X } from 'lucide-react';
 import { AetherSpinner } from '@/components/AetherSpinner';
+
+const YEAR_LEVEL_OPTIONS: Array<1 | 2 | 3 | 4> = [1, 2, 3, 4];
 
 export function SignupPage() {
   const [fullName, setFullName] = useState('');
@@ -16,10 +18,37 @@ export function SignupPage() {
   const [role, setRole] = useState<'student' | 'instructor'>('student');
   const [yearLevel, setYearLevel] = useState<1 | 2 | 3 | 4>(1);
   const [section, setSection] = useState('');
+  const [teachingYearLevels, setTeachingYearLevels] = useState<(1 | 2 | 3 | 4)[]>([]);
+  const [teachingSections, setTeachingSections] = useState<string[]>([]);
+  const [sectionInput, setSectionInput] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [validationError, setValidationError] = useState('');
   const { registerAsync, isLoading, error } = useAuthStore();
   const navigate = useNavigate();
+
+  const toggleTeachingYear = (level: 1 | 2 | 3 | 4) => {
+    setTeachingYearLevels((current) =>
+      current.includes(level) ? current.filter((l) => l !== level) : [...current, level].sort()
+    );
+  };
+
+  const addTeachingSection = () => {
+    const trimmed = sectionInput.trim();
+    if (!trimmed) return;
+    setTeachingSections((current) => (current.includes(trimmed) ? current : [...current, trimmed]));
+    setSectionInput('');
+  };
+
+  const removeTeachingSection = (value: string) => {
+    setTeachingSections((current) => current.filter((s) => s !== value));
+  };
+
+  const handleSectionInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      addTeachingSection();
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,15 +64,35 @@ export function SignupPage() {
       return;
     }
 
-    if (!section.trim()) {
+    if (role === 'instructor') {
+      if (teachingYearLevels.length === 0) {
+        setValidationError('Select at least one year level you teach');
+        return;
+      }
+      if (teachingSections.length === 0) {
+        setValidationError('Add at least one section you handle');
+        return;
+      }
+    } else if (!section.trim()) {
       setValidationError('Section is required');
       return;
     }
 
     const normalizedEmail = email.trim().toLowerCase();
-    const success = await registerAsync(normalizedEmail, password, fullName.trim(), role, yearLevel, section.trim());
+    const success = role === 'instructor'
+      ? await registerAsync(
+          normalizedEmail,
+          password,
+          fullName.trim(),
+          role,
+          teachingYearLevels[0],
+          teachingSections[0],
+          teachingYearLevels,
+          teachingSections
+        )
+      : await registerAsync(normalizedEmail, password, fullName.trim(), role, yearLevel, section.trim());
     if (success) {
-      navigate('/login');
+      navigate('/check-email', { state: { email: normalizedEmail } });
     }
   };
 
@@ -92,63 +141,6 @@ export function SignupPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="yearLevel" className="text-slate-300 text-sm">
-                    {role === 'instructor' ? 'Teaching Year' : 'Year Level'}
-                  </Label>
-                  <select
-                    id="yearLevel"
-                    value={yearLevel}
-                    onChange={(e) => setYearLevel(Number(e.target.value) as 1 | 2 | 3 | 4)}
-                    className="h-11 w-full rounded-md border border-slate-700 bg-slate-800/60 px-3 text-sm text-white focus:border-violet-500/50 focus:outline-none focus:ring-2 focus:ring-violet-500/30"
-                  >
-                    <option value={1}>1st Year</option>
-                    <option value={2}>2nd Year</option>
-                    <option value={3}>3rd Year</option>
-                    <option value={4}>4th Year</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="section" className="text-slate-300 text-sm">
-                    Section
-                  </Label>
-                  <Input
-                    id="section"
-                    type="text"
-                    placeholder="e.g. A"
-                    value={section}
-                    onChange={(e) => setSection(e.target.value)}
-                    maxLength={50}
-                    required
-                    className="bg-slate-800/60 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-violet-500/50 focus-visible:border-violet-500/50 h-11"
-                  />
-                  {role === 'student' && (
-                    <p className="text-xs text-slate-500">
-                      Your account will need approval from the instructor assigned to this section and year before you can sign in.
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-slate-300 text-sm">
-                  Email
-                </Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="you@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    className="pl-10 bg-slate-800/60 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-violet-500/50 focus-visible:border-violet-500/50 h-11"
-                  />
-                </div>
-              </div>
-
               <div className="space-y-2">
                 <Label htmlFor="role" className="text-slate-300 text-sm">
                   I am a
@@ -182,6 +174,135 @@ export function SignupPage() {
                     <Presentation className="w-4 h-4 text-fuchsia-400" />
                     Instructor
                   </button>
+                </div>
+              </div>
+
+              {role === 'student' ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="yearLevel" className="text-slate-300 text-sm">
+                      Year Level
+                    </Label>
+                    <select
+                      id="yearLevel"
+                      value={yearLevel}
+                      onChange={(e) => setYearLevel(Number(e.target.value) as 1 | 2 | 3 | 4)}
+                      className="h-11 w-full rounded-md border border-slate-700 bg-slate-800/60 px-3 text-sm text-white focus:border-violet-500/50 focus:outline-none focus:ring-2 focus:ring-violet-500/30"
+                    >
+                      <option value={1}>1st Year</option>
+                      <option value={2}>2nd Year</option>
+                      <option value={3}>3rd Year</option>
+                      <option value={4}>4th Year</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="section" className="text-slate-300 text-sm">
+                      Section
+                    </Label>
+                    <Input
+                      id="section"
+                      type="text"
+                      placeholder="e.g. A"
+                      value={section}
+                      onChange={(e) => setSection(e.target.value)}
+                      maxLength={50}
+                      required
+                      className="bg-slate-800/60 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-violet-500/50 focus-visible:border-violet-500/50 h-11"
+                    />
+                    <p className="text-xs text-slate-500">
+                      Your account will need approval from the instructor assigned to this section and year before you can sign in.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-slate-300 text-sm">Year Levels You Teach</Label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {YEAR_LEVEL_OPTIONS.map((level) => (
+                        <button
+                          key={level}
+                          type="button"
+                          aria-pressed={teachingYearLevels.includes(level)}
+                          onClick={() => toggleTeachingYear(level)}
+                          className={`h-11 rounded-md border text-sm font-medium transition-all ${
+                            teachingYearLevels.includes(level)
+                              ? 'border-fuchsia-500/60 bg-fuchsia-500/10 text-white shadow-sm shadow-fuchsia-500/20'
+                              : 'border-slate-700 bg-slate-800/40 text-slate-300 hover:bg-slate-800/70 hover:text-white'
+                          }`}
+                        >
+                          Year {level}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-xs text-slate-500">Select every year level you handle.</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="teachingSections" className="text-slate-300 text-sm">
+                      Sections You Handle
+                    </Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="teachingSections"
+                        type="text"
+                        placeholder="e.g. A, then press Enter"
+                        value={sectionInput}
+                        onChange={(e) => setSectionInput(e.target.value)}
+                        onKeyDown={handleSectionInputKeyDown}
+                        maxLength={50}
+                        className="bg-slate-800/60 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-violet-500/50 focus-visible:border-violet-500/50 h-11"
+                      />
+                      <Button
+                        type="button"
+                        onClick={addTeachingSection}
+                        variant="outline"
+                        className="h-11 border-slate-700 text-slate-200 hover:bg-slate-800/70"
+                      >
+                        Add
+                      </Button>
+                    </div>
+                    {teachingSections.length > 0 && (
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        {teachingSections.map((s) => (
+                          <span
+                            key={s}
+                            className="flex items-center gap-1 rounded-full border border-fuchsia-500/30 bg-fuchsia-500/10 px-3 py-1 text-xs text-fuchsia-200"
+                          >
+                            {s}
+                            <button
+                              type="button"
+                              onClick={() => removeTeachingSection(s)}
+                              aria-label={`Remove section ${s}`}
+                              className="text-fuchsia-300 hover:text-white"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <p className="text-xs text-slate-500">
+                      Add every section you handle. Students in these sections and year levels will need your approval.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-slate-300 text-sm">
+                  Email
+                </Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    className="pl-10 bg-slate-800/60 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-violet-500/50 focus-visible:border-violet-500/50 h-11"
+                  />
                 </div>
               </div>
 

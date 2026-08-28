@@ -7,13 +7,13 @@ const router = Router();
 
 router.use(authMiddleware, instructorMiddleware);
 
-// List all students assigned to the instructor's section and teaching years.
+// List all students assigned to the instructor's sections and teaching years.
 router.get('/students', async (req: AuthRequest, res: Response) => {
   try {
-    const section = req.user?.section;
+    const teachingSections = req.user?.teaching_sections?.length ? req.user.teaching_sections : (req.user?.section ? [req.user.section] : []);
     const teachingYearLevels = req.user?.teaching_year_levels || [];
 
-    if (!section || teachingYearLevels.length === 0) {
+    if (teachingSections.length === 0 || teachingYearLevels.length === 0) {
       return res.json({ success: true, data: [] });
     }
 
@@ -28,7 +28,7 @@ router.get('/students', async (req: AuthRequest, res: Response) => {
       .from('users')
       .select('id, email, full_name, avatar_url, created_at, year_level, section, student_approved')
       .eq('role', 'student')
-      .eq('section', section)
+      .in('section', teachingSections)
       .in('year_level', teachingYearLevels)
       .order('year_level', { ascending: true })
       .order('full_name', { ascending: true });
@@ -44,13 +44,13 @@ router.get('/students', async (req: AuthRequest, res: Response) => {
   }
 });
 
-// List pending students for the instructor's own section + teaching year levels
+// List pending students for the instructor's own sections + teaching year levels
 router.get('/student-requests', async (req: AuthRequest, res: Response) => {
   try {
-    const section = req.user?.section;
+    const teachingSections = req.user?.teaching_sections?.length ? req.user.teaching_sections : (req.user?.section ? [req.user.section] : []);
     const teachingYearLevels = req.user?.teaching_year_levels || [];
 
-    if (!section || teachingYearLevels.length === 0) {
+    if (teachingSections.length === 0 || teachingYearLevels.length === 0) {
       return res.json({ success: true, data: [] });
     }
 
@@ -65,7 +65,7 @@ router.get('/student-requests', async (req: AuthRequest, res: Response) => {
       .from('users')
       .select('id, email, full_name, avatar_url, created_at, year_level, section, student_approved')
       .eq('role', 'student')
-      .eq('section', section)
+      .in('section', teachingSections)
       .order('created_at', { ascending: true });
 
     if (req.query.includeAll !== 'true') {
@@ -86,11 +86,11 @@ router.get('/student-requests', async (req: AuthRequest, res: Response) => {
   }
 });
 
-// Approve a single student, scoped to the instructor's own section + teaching year levels
+// Approve a single student, scoped to the instructor's own sections + teaching year levels
 router.patch('/student-requests/:id/approve', async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const section = req.user?.section;
+    const teachingSections = req.user?.teaching_sections?.length ? req.user.teaching_sections : (req.user?.section ? [req.user.section] : []);
     const teachingYearLevels = req.user?.teaching_year_levels || [];
 
     if (!supabase) {
@@ -100,7 +100,7 @@ router.patch('/student-requests/:id/approve', async (req: AuthRequest, res: Resp
       });
     }
 
-    if (!section || teachingYearLevels.length === 0) {
+    if (teachingSections.length === 0 || teachingYearLevels.length === 0) {
       return res.status(403).json({
         success: false,
         error: { code: 'FORBIDDEN', message: 'Your instructor account has no section/year level assigned.' },
@@ -112,7 +112,7 @@ router.patch('/student-requests/:id/approve', async (req: AuthRequest, res: Resp
       .update({ student_approved: true, updated_at: new Date().toISOString() })
       .eq('id', id)
       .eq('role', 'student')
-      .eq('section', section)
+      .in('section', teachingSections)
       .in('year_level', teachingYearLevels)
       .select('id, email, full_name, avatar_url, created_at, year_level, section, student_approved')
       .single();

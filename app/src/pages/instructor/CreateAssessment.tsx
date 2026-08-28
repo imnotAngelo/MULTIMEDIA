@@ -10,6 +10,7 @@ import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { authFetch } from '@/lib/authFetch';
 import { notificationService } from '@/services/notificationService';
+import { SectionYearTargetPicker } from '@/components/SectionYearTargetPicker';
 
 interface Unit {
   id: string;
@@ -28,6 +29,9 @@ export function CreateAssessment() {
   const [units, setUnits] = useState<Unit[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [targetYearLevels, setTargetYearLevels] = useState<number[]>([]);
+  const [targetSections, setTargetSections] = useState<string[]>([]);
+  const [sectionInput, setSectionInput] = useState('');
 
   useEffect(() => {
     loadUnits();
@@ -63,6 +67,8 @@ export function CreateAssessment() {
           unitId: formData.unitId,
           type: formData.type,
           dueDate: formData.dueDate,
+          targetSections,
+          targetYearLevels,
         }),
       });
       const data = await response.json();
@@ -151,6 +157,14 @@ export function CreateAssessment() {
                     className="bg-slate-800 border-slate-700 text-white mt-1"
                   />
                 </div>
+                <SectionYearTargetPicker
+                  yearLevels={targetYearLevels}
+                  onYearLevelsChange={setTargetYearLevels}
+                  sections={targetSections}
+                  onSectionsChange={setTargetSections}
+                  sectionInput={sectionInput}
+                  onSectionInputChange={setSectionInput}
+                />
               </div>
             </Card>
             <div className="flex gap-3 justify-end pt-4">

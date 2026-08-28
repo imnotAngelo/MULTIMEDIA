@@ -213,6 +213,9 @@ router.get(
     try {
       const userId = req.user?.id;
       if (!userId) return res.status(401).json({ error: "Unauthorized" });
+      if (req.user?.role !== "instructor" && req.user?.role !== "admin") {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
 
       if (!supabase) return res.status(500).json({ error: "Database client not initialized" });
 
@@ -285,6 +288,28 @@ router.patch(
       if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
       if (!supabase) return res.status(500).json({ error: "Database client not initialized" });
+
+      const { data: submission, error: submissionError } = await supabase
+        .from("lab_file_submissions")
+        .select("id, lab_id")
+        .eq("id", id)
+        .single();
+
+      if (submissionError || !submission) {
+        return res.status(404).json({ error: "Submission not found" });
+      }
+
+      const { data: lab } = await supabase
+        .from("laboratories")
+        .select("instructor_id")
+        .eq("id", submission.lab_id)
+        .maybeSingle();
+
+      // Only the instructor who owns this laboratory (or an admin) may grade it.
+      const isOwningInstructor = lab?.instructor_id === userId;
+      if (!isOwningInstructor && req.user?.role !== "admin") {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
 
       const updateData: any = { updated_at: new Date().toISOString() };
       if (grade !== undefined) updateData.grade = grade;

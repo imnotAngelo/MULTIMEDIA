@@ -73,15 +73,19 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
 /**
  * GET /api/notifications/announcements
  * Shared announcement feed used by the Messages group chat.
+ * Only returns announcements addressed to the current user (their own section/year).
  */
-router.get('/announcements', authMiddleware, async (_req: AuthRequest, res: Response) => {
+router.get('/announcements', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     if (!supabase) return res.json([]);
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     const { data, error } = await supabase
       .from('notifications')
       .select('*')
       .eq('type', 'announcement')
+      .eq('recipient_id', userId)
       .order('created_at', { ascending: false })
       .limit(200);
 
@@ -201,11 +205,21 @@ router.post(
           return res.json({ sent: 0, skipped: true, attachmentUrl, attachmentName });
         }
 
-        // Fetch all students
+        // Only broadcast to students in the instructor's own sections and taught year levels.
+        const teachingSections = (req.user?.teaching_sections?.length ? req.user.teaching_sections : (req.user?.section ? [req.user.section] : []))
+          .map((s: string) => String(s).trim()).filter(Boolean);
+        const teachingYearLevels = req.user?.teaching_year_levels || [];
+
+        if (teachingSections.length === 0 || teachingYearLevels.length === 0) {
+          return res.status(403).json({ error: 'Your instructor account has no section/year level assigned.' });
+        }
+
         const { data: recipients, error: rErr } = await supabase
           .from('users')
           .select('id')
-          .eq('role', 'student');
+          .eq('role', 'student')
+          .in('section', teachingSections)
+          .in('year_level', teachingYearLevels);
         if (rErr) throw rErr;
 
         const rows = (recipients ?? []).map((r: any) => ({

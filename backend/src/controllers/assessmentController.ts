@@ -3,6 +3,7 @@ import { AuthRequest } from '../middleware/auth.js';
 import { supabase } from '../config/supabase.js';
 import { v4 as uuidv4 } from 'uuid';
 import { findUserById } from '../lib/userStore.js';
+import { matchesContentTarget } from '../lib/contentTargeting.js';
 
 const DEFAULT_INSTRUCTOR_ID = '12345678-1234-4234-8234-123456789012';
 
@@ -237,6 +238,8 @@ export const createAssessment = async (req: AuthRequest, res: Response) => {
       shuffleQuestions,
       showCorrectAnswers,
       allowDuplicate = false,
+      targetSections,
+      targetYearLevels,
     } = req.body;
 
     console.log('📝 Fields - title:', title, 'type:', type, 'questions:', Array.isArray(questions) ? questions.length + ' items' : typeof questions);
@@ -291,6 +294,13 @@ export const createAssessment = async (req: AuthRequest, res: Response) => {
     
     console.log('📝 questionsData to save:', questionsData ? (Array.isArray(questionsData) ? questionsData.length + ' questions' : 'non-array') : 'null');
 
+    const cleanedTargetSections = Array.isArray(targetSections)
+      ? [...new Set(targetSections.map((s: any) => String(s).trim()).filter(Boolean))]
+      : [];
+    const cleanedTargetYearLevels = Array.isArray(targetYearLevels)
+      ? [...new Set(targetYearLevels.map((y: any) => Number(y)).filter((y: number) => Number.isInteger(y) && y >= 1 && y <= 4))]
+      : [];
+
     const insertPayload = {
       id: assessmentId,
       created_by: instructorId,
@@ -305,6 +315,8 @@ export const createAssessment = async (req: AuthRequest, res: Response) => {
       time_limit: timeLimit || null,
       shuffle_questions: shuffleQuestions || false,
       show_correct_answers: showCorrectAnswers || false,
+      target_sections: cleanedTargetSections,
+      target_year_levels: cleanedTargetYearLevels,
     };
 
     const createResult = await safeSupabaseCall(
@@ -385,7 +397,9 @@ export const getStudentAssessments = async (req: AuthRequest, res: Response) => 
           questions_data,
           created_at,
           created_by,
-          module_id
+          module_id,
+          target_sections,
+          target_year_levels
         `,
           { count: 'exact' }
         )
@@ -412,9 +426,15 @@ export const getStudentAssessments = async (req: AuthRequest, res: Response) => 
         }
       }
 
-      const transformedAssessments = (assessments || []).map((assessment: any) => ({
-        ...assessment,
-      }));
+      const transformedAssessments = (assessments || [])
+        .filter((assessment: any) =>
+          requestUser?.role === 'student'
+            ? matchesContentTarget(assessment.target_sections, assessment.target_year_levels, requestUser.section, requestUser.year_level)
+            : true
+        )
+        .map((assessment: any) => ({
+          ...assessment,
+        }));
 
       const submissionsByAssessment = new Map<string, any>();
       if (userId && transformedAssessments.length > 0) {

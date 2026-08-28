@@ -6,7 +6,7 @@ import { CursorTrail } from '@/components/CursorTrail';
 import { AetherLoader } from '@/components/AetherLoader';
 
 // Auth Pages
-import { LoginPage, SignupPage } from '@/pages/auth';
+import { LoginPage, SignupPage, VerifyEmailPage, CheckEmailPage } from '@/pages/auth';
 
 // Layouts
 import { StudentLayout, InstructorLayout } from '@/components/layout';
@@ -42,6 +42,8 @@ export function App() {
         {/* Public Routes */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
+        <Route path="/check-email" element={<CheckEmailPage />} />
 
         {/* Quiz Creation Routes (Full Page, No Layout) */}
         <Route

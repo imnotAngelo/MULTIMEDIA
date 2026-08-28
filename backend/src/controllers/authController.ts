@@ -4,10 +4,32 @@ import { supabase } from '../config/supabase.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
+import crypto from 'node:crypto';
+import { sendVerificationEmail } from '../lib/email.js';
+
+const VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+function createVerificationToken() {
+  return {
+    token: crypto.randomBytes(32).toString('hex'),
+    code: crypto.randomInt(0, 1_000_000).toString().padStart(6, '0'),
+    expiresAt: new Date(Date.now() + VERIFICATION_TOKEN_TTL_MS).toISOString(),
+  };
+}
+
 
 export const register = async (req: AuthRequest, res: Response) => {
   try {
-    const { email: rawEmail, password, full_name, role = 'student', year_level, section } = req.body;
+    const {
+      email: rawEmail,
+      password,
+      full_name,
+      role = 'student',
+      year_level,
+      section,
+      teaching_year_levels,
+      teaching_sections,
+    } = req.body;
     const email = typeof rawEmail === 'string' ? rawEmail.trim().toLowerCase() : '';
 
     if (role !== 'student' && role !== 'instructor') {
@@ -17,19 +39,66 @@ export const register = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const parsedYear = Number(year_level);
-    if (!Number.isInteger(parsedYear) || parsedYear < 1 || parsedYear > 4) {
-      return res.status(400).json({
-        success: false,
-        error: { code: 'INVALID_YEAR_LEVEL', message: 'Year level must be 1, 2, 3, or 4' },
-      });
-    }
+    let parsedYear = 0;
+    let parsedTeachingYears: number[] = [];
+    let parsedSection = '';
+    let parsedTeachingSections: string[] = [];
 
-    if (typeof section !== 'string' || !section.trim() || section.trim().length > 50) {
-      return res.status(400).json({
-        success: false,
-        error: { code: 'INVALID_SECTION', message: 'Section is required and must be 50 characters or fewer' },
-      });
+    if (role === 'instructor') {
+      const yearsInput = Array.isArray(teaching_year_levels) ? teaching_year_levels : [];
+      for (const value of yearsInput) {
+        const n = Number(value);
+        if (!Number.isInteger(n) || n < 1 || n > 4) {
+          return res.status(400).json({
+            success: false,
+            error: { code: 'INVALID_YEAR_LEVEL', message: 'Each teaching year level must be 1, 2, 3, or 4' },
+          });
+        }
+        if (!parsedTeachingYears.includes(n)) parsedTeachingYears.push(n);
+      }
+      if (parsedTeachingYears.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'INVALID_YEAR_LEVEL', message: 'Select at least one year level you teach' },
+        });
+      }
+
+      const sectionsInput = Array.isArray(teaching_sections) ? teaching_sections : [];
+      for (const value of sectionsInput) {
+        const trimmed = typeof value === 'string' ? value.trim() : '';
+        if (!trimmed || trimmed.length > 50) {
+          return res.status(400).json({
+            success: false,
+            error: { code: 'INVALID_SECTION', message: 'Each section must be 1-50 characters' },
+          });
+        }
+        if (!parsedTeachingSections.includes(trimmed)) parsedTeachingSections.push(trimmed);
+      }
+      if (parsedTeachingSections.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'INVALID_SECTION', message: 'Add at least one section you handle' },
+        });
+      }
+
+      parsedYear = parsedTeachingYears[0];
+      parsedSection = parsedTeachingSections[0];
+    } else {
+      parsedYear = Number(year_level);
+      if (!Number.isInteger(parsedYear) || parsedYear < 1 || parsedYear > 4) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'INVALID_YEAR_LEVEL', message: 'Year level must be 1, 2, 3, or 4' },
+        });
+      }
+
+      if (typeof section !== 'string' || !section.trim() || section.trim().length > 50) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'INVALID_SECTION', message: 'Section is required and must be 50 characters or fewer' },
+        });
+      }
+      parsedSection = section.trim();
     }
 
     // Validate input
@@ -79,6 +148,8 @@ export const register = async (req: AuthRequest, res: Response) => {
         throw new Error('Supabase unavailable');
       }
 
+      const { token: verificationToken, code: verificationCode, expiresAt: verificationExpiresAt } = createVerificationToken();
+
       const { data: user, error } = await supabase
         .from('users')
         .insert({
@@ -90,15 +161,26 @@ export const register = async (req: AuthRequest, res: Response) => {
           instructor_approved: role !== 'instructor',
           student_approved: role !== 'student',
           year_level: parsedYear,
-          teaching_year_levels: role === 'instructor' ? [parsedYear] : [],
-          section: section.trim(),
+          teaching_year_levels: role === 'instructor' ? parsedTeachingYears : [],
+          section: parsedSection,
+          teaching_sections: role === 'instructor' ? parsedTeachingSections : [],
           avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
           xp_total: 0,
           streak_days: 0,
+          email_verified: false,
+          email_verification_token: verificationToken,
+          email_verification_code: verificationCode,
+          email_verification_expires: verificationExpiresAt,
         })
         .select();
 
       if (error) throw error;
+
+      try {
+        await sendVerificationEmail(email, full_name, verificationToken, verificationCode);
+      } catch (emailError) {
+        console.error('⚠️ Registration succeeded but verification email failed to send:', emailError);
+      }
 
       return res.status(201).json({
         success: true,
@@ -109,7 +191,7 @@ export const register = async (req: AuthRequest, res: Response) => {
             full_name: user[0].full_name,
             role: user[0].role,
           },
-          message: 'Registration successful',
+          message: 'Registration successful. Please check your email to verify your account before signing in.',
         },
       });
     } catch (error: any) {
@@ -200,6 +282,13 @@ export const login = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    if (user.email_verified === false) {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'EMAIL_NOT_VERIFIED', message: 'Please verify your email address before signing in. Check your inbox for the verification link.' },
+      });
+    }
+
     if (user.role === 'instructor' && user.instructor_approved === false) {
       return res.status(403).json({
         success: false,
@@ -233,6 +322,7 @@ export const login = async (req: AuthRequest, res: Response) => {
         year_level: user.year_level,
         teaching_year_levels: user.teaching_year_levels,
         section: user.section,
+        teaching_sections: user.teaching_sections,
       },
       jwtSecret as any,
       { expiresIn: jwtExpiration } as any
@@ -263,6 +353,7 @@ export const login = async (req: AuthRequest, res: Response) => {
           year_level: user.year_level,
           teaching_year_levels: user.teaching_year_levels,
           section: user.section,
+          teaching_sections: user.teaching_sections,
           avatar_url: user.avatar_url,
           xp_total: user.xp_total,
           streak_days: user.streak_days,
@@ -359,4 +450,186 @@ export const logout = async (req: AuthRequest, res: Response) => {
     success: true,
     message: 'Logged out successfully',
   });
+};
+
+export const verifyEmail = async (req: AuthRequest, res: Response) => {
+  try {
+    const token = typeof req.query.token === 'string' ? req.query.token : req.body?.token;
+
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'MISSING_TOKEN', message: 'Verification token is required' },
+      });
+    }
+
+    if (!supabase) {
+      return res.status(503).json({
+        success: false,
+        error: { code: 'DB_UNAVAILABLE', message: 'Database is unavailable.' },
+      });
+    }
+
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('id, email_verified, email_verification_expires')
+      .eq('email_verification_token', token)
+      .single();
+
+    if (error || !user) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_TOKEN', message: 'This verification link is invalid or has already been used.' },
+      });
+    }
+
+    if (user.email_verified) {
+      return res.json({ success: true, data: { message: 'Your email is already verified.' } });
+    }
+
+    if (user.email_verification_expires && new Date(user.email_verification_expires).getTime() < Date.now()) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'TOKEN_EXPIRED', message: 'This verification link has expired. Please request a new one.' },
+      });
+    }
+
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({ email_verified: true, email_verification_token: null, email_verification_code: null, email_verification_expires: null })
+      .eq('id', user.id);
+
+    if (updateError) throw updateError;
+
+    return res.json({ success: true, data: { message: 'Email verified. You can now sign in.' } });
+  } catch (error: any) {
+    console.error('Verify email error:', error);
+    return res.status(500).json({
+      success: false,
+      error: { code: 'VERIFY_EMAIL_FAILED', message: error.message },
+    });
+  }
+};
+
+export const verifyEmailCode = async (req: AuthRequest, res: Response) => {
+  try {
+    const rawEmail = req.body?.email;
+    const rawCode = req.body?.code;
+    const email = typeof rawEmail === 'string' ? rawEmail.trim().toLowerCase() : '';
+    const code = typeof rawCode === 'string' ? rawCode.trim() : '';
+
+    if (!email || !code) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'MISSING_FIELDS', message: 'Email and code are required' },
+      });
+    }
+
+    if (!supabase) {
+      return res.status(503).json({
+        success: false,
+        error: { code: 'DB_UNAVAILABLE', message: 'Database is unavailable.' },
+      });
+    }
+
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('id, email_verified, email_verification_code, email_verification_expires')
+      .eq('email', email)
+      .single();
+
+    if (error || !user) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_CODE', message: 'That code is incorrect or has expired.' },
+      });
+    }
+
+    if (user.email_verified) {
+      return res.json({ success: true, data: { message: 'Your email is already verified.' } });
+    }
+
+    if (!user.email_verification_code || user.email_verification_code !== code) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_CODE', message: 'That code is incorrect or has expired.' },
+      });
+    }
+
+    if (user.email_verification_expires && new Date(user.email_verification_expires).getTime() < Date.now()) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'CODE_EXPIRED', message: 'This code has expired. Please request a new one.' },
+      });
+    }
+
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({ email_verified: true, email_verification_token: null, email_verification_code: null, email_verification_expires: null })
+      .eq('id', user.id);
+
+    if (updateError) throw updateError;
+
+    return res.json({ success: true, data: { message: 'Email verified. You can now sign in.' } });
+  } catch (error: any) {
+    console.error('Verify email code error:', error);
+    return res.status(500).json({
+      success: false,
+      error: { code: 'VERIFY_CODE_FAILED', message: error.message },
+    });
+  }
+};
+
+export const resendVerification = async (req: AuthRequest, res: Response) => {
+  try {
+    const rawEmail = req.body?.email;
+    const email = typeof rawEmail === 'string' ? rawEmail.trim().toLowerCase() : '';
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'MISSING_EMAIL', message: 'Email is required' },
+      });
+    }
+
+    if (!supabase) {
+      return res.status(503).json({
+        success: false,
+        error: { code: 'DB_UNAVAILABLE', message: 'Database is unavailable.' },
+      });
+    }
+
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('id, full_name, email_verified')
+      .eq('email', email)
+      .single();
+
+    // Respond with a generic success message even if the account doesn't exist, to avoid leaking which emails are registered.
+    if (error || !user) {
+      return res.json({ success: true, data: { message: 'If an account with that email exists, a verification email has been sent.' } });
+    }
+
+    if (user.email_verified) {
+      return res.json({ success: true, data: { message: 'Your email is already verified. You can sign in.' } });
+    }
+
+    const { token, code, expiresAt } = createVerificationToken();
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({ email_verification_token: token, email_verification_code: code, email_verification_expires: expiresAt })
+      .eq('id', user.id);
+
+    if (updateError) throw updateError;
+
+    await sendVerificationEmail(email, user.full_name, token, code);
+
+    return res.json({ success: true, data: { message: 'Verification email sent. Please check your inbox.' } });
+  } catch (error: any) {
+    console.error('Resend verification error:', error);
+    return res.status(500).json({
+      success: false,
+      error: { code: 'RESEND_VERIFICATION_FAILED', message: error.message },
+    });
+  }
 };

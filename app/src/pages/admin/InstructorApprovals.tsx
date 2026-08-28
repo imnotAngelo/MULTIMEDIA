@@ -14,6 +14,7 @@ interface InstructorRequest {
   section?: string | null;
   year_level?: number | null;
   teaching_year_levels?: number[] | null;
+  teaching_sections?: string[] | null;
   instructor_approved?: boolean;
 }
 
@@ -148,7 +149,7 @@ export function InstructorApprovals() {
                     <h2 className="font-semibold text-white">{instructor.full_name}</h2>
                     <p className="text-sm text-slate-400">{instructor.email}</p>
                     <p className="mt-1 text-xs text-slate-500">
-                      Section: {instructor.section || 'Not assigned'}
+                      Sections: {(instructor.teaching_sections?.length ? instructor.teaching_sections.join(', ') : instructor.section) || 'Not assigned'}
                       {' | '}
                       Teaching years: {instructor.teaching_year_levels?.join(', ') || 'Not assigned'}
                     </p>
