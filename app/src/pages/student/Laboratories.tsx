@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { authFetch } from '@/lib/authFetch';
 
-// --- Instructor-assigned labs (synced from localStorage) ---
+// --- Instructor-assigned labs (loaded from Supabase) ---
 interface InstructorLab {
   id: string;
   title: string;
@@ -63,108 +63,8 @@ const PLATFORM_BADGE: Record<string, string> = {
 const getPlatformBadge = (p: string) =>
   PLATFORM_BADGE[p] ?? 'bg-slate-500/10 border-slate-500/30 text-slate-400';
 
-function loadInstructorLabs(): InstructorLab[] {
-  try {
-    return JSON.parse(localStorage.getItem('instructor_laboratories') || '[]');
-  } catch { return []; }
-}
-
-function InstructorLabsSection() {
-  const [labs, setLabs] = useState<InstructorLab[]>(loadInstructorLabs);
-
-  const refresh = () => setLabs(loadInstructorLabs());
-
-  const formatDate = (d: string) =>
-    d ? new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '';
-
-  const daysLabel = (d: string) => {
-    if (!d) return null;
-    const diff = Math.ceil((new Date(d).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-    if (diff < 0) return { text: `${Math.abs(diff)}d overdue`, cls: 'text-red-400' };
-    if (diff === 0) return { text: 'Due today', cls: 'text-amber-400' };
-    if (diff <= 3) return { text: `Due in ${diff}d`, cls: 'text-amber-400' };
-    return { text: `Due in ${diff}d`, cls: 'text-slate-400' };
-  };
-
-  if (labs.length === 0) return null;
-
-  return (
-    <div className="space-y-3 mb-8">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Beaker className="w-5 h-5 text-violet-400" />
-          <h2 className="text-lg font-semibold text-white">Assigned Laboratories</h2>
-          <span className="text-xs px-2 py-0.5 rounded-full bg-violet-500/15 border border-violet-500/30 text-violet-400 font-medium">{labs.length}</span>
-        </div>
-        <button onClick={refresh} className="text-slate-500 hover:text-slate-300 transition-colors" title="Refresh">
-          <RefreshCw className="w-4 h-4" />
-        </button>
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {labs.map(lab => {
-          const dl = daysLabel(lab.dueDate);
-          const isOverdue = lab.dueDate ? new Date(lab.dueDate).getTime() < Date.now() : false;
-          return (
-            <div
-              key={lab.id}
-              className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex flex-col gap-3 hover:border-violet-500/30 transition-all"
-            >
-              {/* Platform badge + title */}
-              <div className="flex items-start gap-3">
-                <div className={`p-2 rounded-lg border shrink-0 ${getPlatformBadge(lab.platform)}`}>
-                  <Beaker className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <h3 className="font-semibold text-white text-sm leading-tight">{lab.title}</h3>
-                  <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full border mt-1 ${getPlatformBadge(lab.platform)}`}>
-                    {lab.platform}
-                  </span>
-                </div>
-              </div>
-
-              {/* Description */}
-              {lab.description && (
-                <p className="text-slate-400 text-xs line-clamp-2">{lab.description}</p>
-              )}
-
-              {/* Meta */}
-              <div className="flex flex-wrap gap-2 text-xs">
-                {lab.unitName && (
-                  <span className="flex items-center gap-1 text-slate-400">
-                    <BookOpen className="w-3 h-3" />{lab.unitName}
-                  </span>
-                )}
-                {lab.dueDate && (
-                  <span className={`flex items-center gap-1 ${dl?.cls ?? 'text-slate-400'}`}>
-                    <Calendar className="w-3 h-3" />
-                    {formatDate(lab.dueDate)}
-                    {dl && <span className="ml-0.5">({dl.text})</span>}
-                  </span>
-                )}
-              </div>
-
-              {/* Open button */}
-              <a
-                href={lab.platformUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-auto flex items-center justify-center gap-2 w-full px-3 py-2 rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-xs font-medium transition-colors"
-              >
-                <ExternalLink className="w-3.5 h-3.5" />
-                Open in {lab.platform}
-              </a>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-// -----------------------------------------------------------
-
 export function Laboratories() {
-  const [labs, setLabs] = useState<InstructorLab[]>(loadInstructorLabs);
+  const [labs, setLabs] = useState<InstructorLab[]>([]);
   const [submissions, setSubmissions] = useState<Record<string, Submission>>(loadCache);
   const [submittingLabId, setSubmittingLabId] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -175,8 +75,16 @@ export function Laboratories() {
   const [viewingLabId, setViewingLabId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load submissions from API on mount; fall back to cache if offline
+  // Load laboratories and submissions from Supabase on mount.
   useEffect(() => {
+    authFetch('/laboratories')
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then(data => {
+        if (!data.success) throw new Error(data.error?.message || 'Failed to load laboratories');
+        setLabs(data.data ?? []);
+      })
+      .catch(() => setLabs([]));
+
     authFetch('/laboratory-submissions/my-files')
       .then(r => r.ok ? r.json() : Promise.reject(r.status))
       .then((map: Record<string, any>) => {
@@ -197,7 +105,12 @@ export function Laboratories() {
       .catch(() => { /* offline – keep cache */ });
   }, []);
 
-  const refresh = () => setLabs(loadInstructorLabs());
+  const refresh = () => {
+    authFetch('/laboratories')
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then(data => setLabs(data.success ? data.data ?? [] : []))
+      .catch(() => setLabs([]));
+  };
 
   const openModal = (labId: string) => {
     setSelectedFile(null);

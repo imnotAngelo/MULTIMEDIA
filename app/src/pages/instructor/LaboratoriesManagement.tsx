@@ -21,6 +21,7 @@ import {
   Layers,
 } from 'lucide-react';
 import { AetherLoader } from '@/components/AetherLoader';
+import { authFetch } from '@/lib/authFetch';
 
 interface Laboratory {
   id: string;
@@ -71,21 +72,6 @@ const getPlatformColor = (platform: string) => {
   return found?.color ?? 'bg-slate-500/10 border-slate-500/30 text-slate-400';
 };
 
-const STORAGE_KEY = 'instructor_laboratories';
-
-const loadFromStorage = (): Laboratory[] => {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-};
-
-const saveToStorage = (labs: Laboratory[]) => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(labs));
-};
-
 interface FormData {
   title: string;
   description: string;
@@ -122,21 +108,27 @@ export function LaboratoriesManagement() {
     loadData();
   }, []);
 
-  const loadData = () => {
+  const loadData = async () => {
     setLoading(true);
-    // Load laboratories from localStorage
-    const storedLabs = loadFromStorage();
-    setLaboratories(storedLabs);
-
-    // Load units from localStorage (populated by CoursesManagement)
     try {
-      const storedUnits = localStorage.getItem('instructor_units');
-      if (storedUnits) {
-        const parsed = JSON.parse(storedUnits);
-        setUnits(Array.isArray(parsed) ? parsed.map((u: any) => ({ id: u.id, title: u.title })) : []);
+      const [labsResponse, unitsResponse] = await Promise.all([
+        authFetch('/laboratories'),
+        authFetch('/units'),
+      ]);
+      const labsJson = await labsResponse.json();
+      const unitsJson = await unitsResponse.json();
+      if (!labsResponse.ok || !labsJson.success) {
+        const message = typeof labsJson.error === 'string'
+          ? labsJson.error
+          : labsJson.error?.message;
+        throw new Error(message || `Laboratory request failed (${labsResponse.status})`);
       }
-    } catch {
+      setLaboratories(labsJson.data ?? []);
+      setUnits(unitsJson.success ? (unitsJson.data ?? []).map((unit: any) => ({ id: unit.id, title: unit.title })) : []);
+    } catch (error) {
+      setLaboratories([]);
       setUnits([]);
+      setFormError(error instanceof Error ? error.message : 'Could not load laboratories from Supabase.');
     }
     setLoading(false);
   };
@@ -170,7 +162,7 @@ export function LaboratoriesManagement() {
     setFormError('');
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
 
@@ -185,63 +177,57 @@ export function LaboratoriesManagement() {
 
     const selectedUnit = units.find(u => u.id === formData.unitId);
 
-    if (editingId) {
-      // Update existing
-      const updated = laboratories.map(lab =>
-        lab.id === editingId
-          ? {
-              ...lab,
-              title: formData.title.trim(),
-              description: formData.description.trim(),
-              platform: formData.platform,
-              platformUrl: formData.platformUrl.trim(),
-              unitId: formData.unitId,
-              unitName: selectedUnit?.title ?? '',
-              dueDate: formData.dueDate,
-              points: formData.points,
-            }
-          : lab
-      );
-      setLaboratories(updated);
-      saveToStorage(updated);
-    } else {
-      // Create new
-      const newLab: Laboratory = {
-        id: crypto.randomUUID(),
-        title: formData.title.trim(),
-        description: formData.description.trim(),
-        platform: formData.platform,
-        platformUrl: formData.platformUrl.trim(),
-        unitId: formData.unitId,
-        unitName: selectedUnit?.title ?? '',
-        dueDate: formData.dueDate,
-        points: formData.points,
-        createdAt: new Date().toISOString(),
-      };
-      const updated = [newLab, ...laboratories];
-      setLaboratories(updated);
-      saveToStorage(updated);
-      notificationService.notifyLabAdded(newLab.title, newLab.platform);
+    try {
+      const response = await authFetch('/laboratories/metadata', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingId ?? undefined,
+          title: formData.title,
+          description: formData.description,
+          platform: formData.platform,
+          platformUrl: formData.platformUrl,
+          unitId: formData.unitId,
+          unitName: selectedUnit?.title ?? '',
+          dueDate: formData.dueDate,
+          points: formData.points,
+        }),
+      });
+      const json = await response.json();
+      if (!response.ok || !json.success) throw new Error(json.error?.message || 'Failed to save laboratory');
+      const savedLab = json.data as Laboratory;
+      setLaboratories(current => editingId
+        ? current.map(lab => lab.id === editingId ? savedLab : lab)
+        : [savedLab, ...current]);
+      if (!editingId) notificationService.notifyLabAdded(savedLab.title, savedLab.platform);
 
       // Auto-open the selected platform/project so the instructor can start preparing it
-      const launchUrl = (newLab.platformUrl || PLATFORM_URLS[newLab.platform] || '').trim();
-      if (launchUrl) {
+      const launchUrl = (savedLab.platformUrl || PLATFORM_URLS[savedLab.platform] || '').trim();
+      if (!editingId && launchUrl) {
         try {
           window.open(launchUrl, '_blank', 'noopener,noreferrer');
         } catch {
           // Pop-up blocked — silent fail; the link is still saved on the card.
         }
       }
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'Failed to save laboratory');
+      return;
     }
 
     handleCloseForm();
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (!confirm('Delete this laboratory? This cannot be undone.')) return;
-    const updated = laboratories.filter(l => l.id !== id);
-    setLaboratories(updated);
-    saveToStorage(updated);
+    try {
+      const response = await authFetch(`/laboratories/${id}`, { method: 'DELETE' });
+      const json = await response.json();
+      if (!response.ok || !json.success) throw new Error(json.error?.message || 'Failed to delete laboratory');
+      setLaboratories(current => current.filter(lab => lab.id !== id));
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'Failed to delete laboratory');
+    }
   };
 
   const formatDate = (dateStr: string) => {

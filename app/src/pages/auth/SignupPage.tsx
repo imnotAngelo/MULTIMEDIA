@@ -40,7 +40,8 @@ export function SignupPage() {
       return;
     }
 
-    const success = await registerAsync(email, password, fullName, role, yearLevel, section.trim());
+    const normalizedEmail = email.trim().toLowerCase();
+    const success = await registerAsync(normalizedEmail, password, fullName.trim(), role, yearLevel, section.trim());
     if (success) {
       navigate('/login');
     }

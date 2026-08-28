@@ -7,7 +7,8 @@ import { v4 as uuidv4 } from 'uuid';
 
 export const register = async (req: AuthRequest, res: Response) => {
   try {
-    const { email, password, full_name, role = 'student', year_level, section } = req.body;
+    const { email: rawEmail, password, full_name, role = 'student', year_level, section } = req.body;
+    const email = typeof rawEmail === 'string' ? rawEmail.trim().toLowerCase() : '';
 
     if (role !== 'student' && role !== 'instructor') {
       return res.status(400).json({
@@ -138,7 +139,8 @@ export const register = async (req: AuthRequest, res: Response) => {
 
 export const login = async (req: AuthRequest, res: Response) => {
   try {
-    const { email, password } = req.body;
+    const { email: rawEmail, password } = req.body;
+    const email = typeof rawEmail === 'string' ? rawEmail.trim().toLowerCase() : '';
 
     console.log('🔐 Login attempt for:', email);
 
