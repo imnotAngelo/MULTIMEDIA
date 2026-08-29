@@ -12,7 +12,10 @@ export function requireJwtSecret(): string {
 
 export function createRateLimiter(windowMs: number, max: number) {
   return (req: Request, res: Response, next: NextFunction) => {
-    const key = `${req.ip}:${req.path}`;
+    const email = typeof req.body?.email === 'string'
+      ? req.body.email.trim().toLowerCase()
+      : '';
+    const key = email ? `email:${email}:${req.path}` : `${req.ip}:${req.path}`;
     const now = Date.now();
     const current = attempts.get(key);
     const entry = !current || current.resetAt <= now
