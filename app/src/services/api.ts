@@ -34,8 +34,6 @@ class ApiService {
   ): Promise<ApiResponse<T>> {
     try {
       const url = buildApiUrl(endpoint);
-      console.log('API Request to:', url);
-      console.log('Request Options:', options);
       
       const response = await fetch(url, {
         ...options,
@@ -45,7 +43,6 @@ class ApiService {
         },
       });
 
-      console.log('API Response Status:', response.status);
 
       // Handle 401 - try to refresh token
       if (response.status === 401) {
@@ -56,7 +53,6 @@ class ApiService {
           try {
             const refreshResponse = await this.refresh(refreshToken);
             if (refreshResponse.success && (refreshResponse.data as any)?.access_token) {
-              console.log('✅ Token refreshed successfully');
               localStorage.setItem('access_token', (refreshResponse.data as any).access_token);
               
               // Retry the original request with new token
@@ -135,23 +131,14 @@ class ApiService {
   }
 
   async login(email: string, password: string) {
-    console.log('🔐 [API] Calling login endpoint...');
     const result = await this.request('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
     
-    console.log('🔐 [API] Login response:', {
-      success: result.success,
-      hasData: !!result.data,
-      dataKeys: result.data ? Object.keys(result.data) : [],
-      hasError: !!result.error,
-      errorMsg: result.error?.message,
-    });
     
     // Debug the data structure
     if (result.data) {
-      console.log('🔐 [API] Response data structure:', result.data);
     }
     
     return result;

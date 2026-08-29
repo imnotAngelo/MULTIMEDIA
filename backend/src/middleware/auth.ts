@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
+import { requireJwtSecret } from './security.js';
 
 export interface AuthRequest extends Request {
   user?: {
@@ -17,13 +18,7 @@ export const authMiddleware = (req: AuthRequest, res: Response, next: NextFuncti
   const authHeader = req.headers.authorization;
   const token = authHeader?.split(' ')[1];
 
-  console.log('🔐 Auth Middleware Called');
-  console.log('📋 Authorization Header:', authHeader ? authHeader.substring(0, 50) + '...' : 'NONE');
-  console.log('📋 Token:', token ? token.substring(0, 50) + '...' : 'NONE');
-  console.log('🔑 JWT_SECRET is set:', !!process.env.JWT_SECRET);
-
   if (!token) {
-    console.error('❌ No token provided');
     return res.status(401).json({
       success: false,
       error: 'Authorization token not provided',
@@ -31,16 +26,10 @@ export const authMiddleware = (req: AuthRequest, res: Response, next: NextFuncti
   }
 
   try {
-    console.log('🔍 Verifying token...');
-    const secret = process.env.JWT_SECRET || 'default-secret';
-    const decoded = jwt.verify(token, secret) as any;
-    console.log('✅ Token verified successfully. User:', decoded.id, decoded.email);
+    const decoded = jwt.verify(token, requireJwtSecret()) as any;
     req.user = decoded;
     next();
   } catch (error: any) {
-    console.error('❌ JWT Verification Error:', error.message);
-    console.error('❌ Error Code:', error.code);
-    console.error('❌ Token (first 100 chars):', token.substring(0, 100));
     return res.status(401).json({
       success: false,
       error: `Invalid or expired token: ${error.message}`,
@@ -54,7 +43,7 @@ export const optionalAuthMiddleware = (req: AuthRequest, res: Response, next: Ne
 
   if (token) {
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default-secret') as any;
+      const decoded = jwt.verify(token, requireJwtSecret()) as any;
       req.user = decoded;
     } catch (error) {
       // Token provided but invalid - still allow request with no user

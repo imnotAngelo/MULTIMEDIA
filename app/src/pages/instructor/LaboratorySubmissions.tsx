@@ -2,12 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { authFetch } from '@/lib/authFetch';
-import {
-  getSubmissions,
-  updateSubmission,
-  type LaboratorySubmission,
-} from '@/lib/laboratorySubmissionService';
-import { ExternalLink, Save, Beaker, ImageIcon, FileVideo, Eye, X, Calendar, User, Star, CheckCircle, Clock, XCircle, ChevronDown, ChevronRight } from 'lucide-react';
+import { Save, Beaker, ImageIcon, FileVideo, Eye, X, Calendar, User, Star, CheckCircle, Clock, XCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import { AetherSpinner } from '@/components/AetherSpinner';
 
 interface FileSubmission {
@@ -28,15 +23,8 @@ interface FileSubmission {
   status: string;
 }
 
-type Unit = { id: string; title?: string; name?: string };
-
 export function LaboratorySubmissions() {
-  const [units, setUnits] = useState<Unit[]>([]);
-  const [selectedUnitId, setSelectedUnitId] = useState<string>('');
-  const [loadingUnits, setLoadingUnits] = useState(true);
-  const [loadingSubs, setLoadingSubs] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [submissions, setSubmissions] = useState<LaboratorySubmission[]>([]);
 
   // File submissions from instructor-assigned labs
   const [fileSubs, setFileSubs] = useState<FileSubmission[]>([]);
@@ -45,13 +33,7 @@ export function LaboratorySubmissions() {
   const [gradingFile, setGradingFile] = useState<FileSubmission | null>(null);
   const [gradeForm, setGradeForm] = useState({ grade: 0, feedback: '', status: 'reviewed' });
   const [savingGrade, setSavingGrade] = useState(false);
-  const [activeTab, setActiveTab] = useState<'files' | 'unit'>('files');
   const [expandedLabs, setExpandedLabs] = useState<Record<string, boolean>>({});
-
-  const selectedUnit = useMemo(
-    () => units.find((u) => u.id === selectedUnitId) ?? null,
-    [units, selectedUnitId]
-  );
 
   const groupedFileSubs = useMemo(() => {
     const groups = new Map<string, { title: string; submissions: FileSubmission[] }>();
@@ -65,43 +47,6 @@ export function LaboratorySubmissions() {
     }
     return [...groups.entries()];
   }, [fileSubs]);
-
-  useEffect(() => {
-    const loadUnits = async () => {
-      try {
-        setLoadingUnits(true);
-        setError(null);
-        const res = await authFetch('/units');
-        if (!res.ok) throw new Error('Failed to load units');
-        const data: unknown = await res.json();
-        const list = Array.isArray(data) ? (data as Unit[]) : [];
-        setUnits(list);
-        setSelectedUnitId(list[0]?.id ?? '');
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'Failed to load units');
-      } finally {
-        setLoadingUnits(false);
-      }
-    };
-    loadUnits();
-  }, []);
-
-  useEffect(() => {
-    const loadSubmissions = async () => {
-      if (!selectedUnitId) return;
-      try {
-        setLoadingSubs(true);
-        setError(null);
-        const data = await getSubmissions(selectedUnitId);
-        setSubmissions(data);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'Failed to load submissions');
-      } finally {
-        setLoadingSubs(false);
-      }
-    };
-    loadSubmissions();
-  }, [selectedUnitId]);
 
   // Load file submissions from instructor-assigned labs
   useEffect(() => {
@@ -150,19 +95,6 @@ export function LaboratorySubmissions() {
       setError(e instanceof Error ? e.message : 'Failed to save grade');
     } finally {
       setSavingGrade(false);
-    }
-  };
-
-  const handleSave = async (
-    submissionId: string,
-    patch: { grade?: number; instructorFeedback?: string; status?: string }
-  ) => {
-    try {
-      setError(null);
-      const updated = await updateSubmission(submissionId, patch);
-      setSubmissions((prev) => prev.map((s) => (s.id === submissionId ? updated : s)));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to save grade');
     }
   };
 
@@ -302,32 +234,9 @@ export function LaboratorySubmissions() {
             </p>
           </div>
 
-          {/* Tabs */}
-          <div className="flex gap-2">
-            <button
-              onClick={() => setActiveTab('files')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                activeTab === 'files'
-                  ? 'bg-emerald-600 text-white'
-                  : 'border border-slate-700 text-slate-300 hover:bg-slate-800'
-              }`}
-            >
-              <Beaker className="w-3.5 h-3.5" />
-              File Submissions
-              <span className={`text-xs px-1.5 py-0.5 rounded-full ${activeTab === 'files' ? 'bg-white/20' : 'bg-slate-700 text-slate-300'}`}>
-                {fileSubs.length}
-              </span>
-            </button>
-            <button
-              onClick={() => setActiveTab('unit')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                activeTab === 'unit'
-                  ? 'bg-violet-600 text-white'
-                  : 'border border-slate-700 text-slate-300 hover:bg-slate-800'
-              }`}
-            >
-              Unit Submissions
-            </button>
+          <div className="flex items-center gap-2 text-sm text-emerald-300">
+            <Beaker className="h-4 w-4" />
+            {fileSubs.length} submission{fileSubs.length !== 1 ? 's' : ''}
           </div>
         </div>
 
@@ -335,8 +244,7 @@ export function LaboratorySubmissions() {
       </Card>
 
       {/* ── File Submissions Tab ─────────────────────────────── */}
-      {activeTab === 'files' && (
-        <Card className="bg-slate-900/60 border-slate-800 p-5">
+      <Card className="bg-slate-900/60 border-slate-800 p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-slate-100">Instructor-Assigned Lab Files</h2>
             {loadingFileSubs && <AetherSpinner className="w-4 h-4 text-slate-400" />}
@@ -433,168 +341,7 @@ export function LaboratorySubmissions() {
               </div>;
             })}
           </div>
-        </Card>
-      )}
-
-      {/* ── Unit Submissions Tab ─────────────────────────────── */}
-      {activeTab === 'unit' && (
-        <>
-          <Card className="bg-slate-900/60 border-slate-800 p-5">
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-slate-300">Unit</label>
-              <select
-                className="bg-slate-950 border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200"
-                value={selectedUnitId}
-                onChange={(e) => setSelectedUnitId(e.target.value)}
-                disabled={loadingUnits}
-              >
-                {units.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.title ?? u.name ?? u.id}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </Card>
-
-          <Card className="bg-slate-900/60 border-slate-800 p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-slate-100">
-                {selectedUnit
-                  ? selectedUnit.title ?? selectedUnit.name ?? 'Selected Unit'
-                  : 'Submissions'}
-              </h2>
-              {loadingSubs && (
-                <div className="flex items-center gap-2 text-slate-400 text-sm">
-                  <AetherSpinner className="w-4 h-4" />
-                  Loading…
-                </div>
-              )}
-            </div>
-
-            {!loadingSubs && submissions.length === 0 && (
-              <div className="text-sm text-slate-400">No submissions yet.</div>
-            )}
-
-            <div className="space-y-4">
-              {submissions.map((s) => (
-                <SubmissionCard key={s.id} submission={s} onSave={handleSave} />
-              ))}
-            </div>
-          </Card>
-        </>
-      )}
-    </div>
-  );
-}
-
-function SubmissionCard({
-  submission,
-  onSave,
-}: {
-  submission: LaboratorySubmission;
-  onSave: (id: string, patch: { grade?: number; instructorFeedback?: string; status?: string }) => Promise<void>;
-}) {
-  const [grade, setGrade] = useState<number>(submission.grade ?? 0);
-  const [feedback, setFeedback] = useState<string>(submission.instructor_feedback ?? '');
-  const [status, setStatus] = useState<string>(submission.status ?? 'submitted');
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    setGrade(submission.grade ?? 0);
-    setFeedback(submission.instructor_feedback ?? '');
-    setStatus(submission.status ?? 'submitted');
-  }, [submission.id, submission.grade, submission.instructor_feedback, submission.status]);
-
-  const submissionUrl = submission.canva_url;
-
-  return (
-    <div className="border border-slate-800 rounded-xl p-4 bg-slate-950/40">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <div className="text-slate-100 font-medium truncate">
-            {submission.project_title || 'Untitled Project'}
-          </div>
-          <div className="text-xs text-slate-400 mt-1">
-            Student: {submission.student?.email ?? submission.student_id}
-          </div>
-          <div className="text-xs text-slate-500 mt-1">Status: {status}</div>
-        </div>
-
-        {submissionUrl ? (
-          <Button asChild variant="outline" className="border-slate-700 text-slate-200">
-            <a href={submissionUrl} target="_blank" rel="noreferrer">
-              <ExternalLink className="w-4 h-4 mr-2" />
-              Open submission
-            </a>
-          </Button>
-        ) : (
-          <div className="text-xs text-slate-500">No link</div>
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
-        <div>
-          <label className="block text-xs text-slate-400 mb-1">Grade (0-100)</label>
-          <input
-            type="number"
-            min={0}
-            max={100}
-            value={Number.isFinite(grade) ? grade : 0}
-            onChange={(e) => setGrade(Number(e.target.value))}
-            className="w-full bg-slate-950 border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-100"
-          />
-        </div>
-        <div>
-          <label className="block text-xs text-slate-400 mb-1">Status</label>
-          <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-100"
-          >
-            <option value="submitted">submitted</option>
-            <option value="reviewed">reviewed</option>
-            <option value="approved">approved</option>
-            <option value="rejected">rejected</option>
-          </select>
-        </div>
-        <div className="flex items-end">
-          <Button
-            onClick={async () => {
-              setSaving(true);
-              try {
-                await onSave(submission.id, { grade, instructorFeedback: feedback, status });
-              } finally {
-                setSaving(false);
-              }
-            }}
-            disabled={saving}
-            className="w-full"
-          >
-            {saving ? (
-              <>
-                <AetherSpinner className="w-4 h-4 mr-2" />
-                Saving…
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4 mr-2" />
-                Save grade
-              </>
-            )}
-          </Button>
-        </div>
-      </div>
-
-      <div className="mt-3">
-        <label className="block text-xs text-slate-400 mb-1">Feedback</label>
-        <textarea
-          value={feedback}
-          onChange={(e) => setFeedback(e.target.value)}
-          className="w-full min-h-[90px] bg-slate-950 border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-100"
-          placeholder="Write feedback for the student..."
-        />
-      </div>
+      </Card>
     </div>
   );
 }

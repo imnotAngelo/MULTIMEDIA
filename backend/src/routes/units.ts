@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import { optionalAuthMiddleware } from '../middleware/auth.js';
+import { authMiddleware, optionalAuthMiddleware } from '../middleware/auth.js';
+import { instructorMiddleware } from '../middleware/admin.js';
 import { supabase } from '../config/supabase.js';
 import {
   createUnit,
@@ -12,13 +13,13 @@ import {
 const router = Router();
 
 // Create a new unit (optional auth for now)
-router.post('/', optionalAuthMiddleware, createUnit);
+router.post('/', authMiddleware, instructorMiddleware, createUnit);
 
 // Get all units
 router.get('/', optionalAuthMiddleware, getUnits);
 
 // DEBUG: Get ALL lessons in database (no filtering)
-router.get('/debug/all-lessons', async (req, res) => {
+router.get('/debug/all-lessons', authMiddleware, instructorMiddleware, async (req, res) => {
   try {
     if (!supabase) {
       return res.status(503).json({
@@ -83,7 +84,7 @@ router.get('/debug/all-lessons', async (req, res) => {
 });
 
 // FIX: Link all orphaned lessons to a unit
-router.post('/debug/fix-orphaned-lessons', async (req, res) => {
+router.post('/debug/fix-orphaned-lessons', authMiddleware, instructorMiddleware, async (req, res) => {
   try {
     if (!supabase) {
       return res.status(503).json({
@@ -165,9 +166,9 @@ router.post('/debug/fix-orphaned-lessons', async (req, res) => {
 router.get('/:unitId/lessons', optionalAuthMiddleware, getUnitLessons);
 
 // Update lesson slides (optional auth)
-router.put('/lessons/:lessonId/slides', optionalAuthMiddleware, updateLessonSlides);
+router.put('/lessons/:lessonId/slides', authMiddleware, instructorMiddleware, updateLessonSlides);
 
 // Delete a unit (optional auth)
-router.delete('/:unitId', optionalAuthMiddleware, deleteUnit);
+router.delete('/:unitId', authMiddleware, instructorMiddleware, deleteUnit);
 
 export default router;

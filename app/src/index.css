@@ -49,10 +49,10 @@
     min-height: 100vh;
     overflow-x: hidden;
     background:
-      radial-gradient(circle at 14% 12%, rgba(34, 211, 238, 0.13), transparent 22rem),
-      radial-gradient(circle at 86% 20%, rgba(245, 158, 11, 0.08), transparent 20rem),
-      radial-gradient(ellipse at 50% 44%, rgba(22, 65, 86, 0.2), transparent 64%),
-      linear-gradient(145deg, #071018 0%, #050a11 48%, #0b1118 100%);
+      radial-gradient(circle at 8% 0%, rgba(20, 184, 166, 0.14), transparent 24rem),
+      radial-gradient(circle at 92% 18%, rgba(251, 146, 60, 0.1), transparent 22rem),
+      radial-gradient(ellipse at 50% 44%, rgba(24, 62, 70, 0.24), transparent 64%),
+      linear-gradient(145deg, #0b1115 0%, #070b0f 48%, #101519 100%);
     background-attachment: fixed;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
@@ -267,16 +267,17 @@
   }
 
   .aether-sidebar {
-    background: linear-gradient(180deg, rgba(10, 14, 34, 0.92), rgba(7, 8, 22, 0.82));
+    background: linear-gradient(180deg, rgba(11, 20, 22, 0.96), rgba(8, 13, 16, 0.94));
   }
 
   .aether-header {
-    box-shadow: 0 1px 0 rgba(103, 232, 249, 0.08), 0 12px 35px rgba(2, 4, 20, 0.28);
+    background-image: linear-gradient(90deg, rgba(14, 32, 32, 0.74), rgba(10, 15, 19, 0.72));
+    box-shadow: 0 1px 0 rgba(45, 212, 191, 0.16), 0 12px 35px rgba(2, 8, 10, 0.36);
   }
 
   .aether-header input {
-    border-color: rgba(103, 232, 249, 0.26);
-    box-shadow: 0 0 18px rgba(103, 232, 249, 0.06);
+    border-color: rgba(45, 212, 191, 0.3);
+    box-shadow: 0 0 18px rgba(45, 212, 191, 0.08);
   }
 
   .aether-orbit {

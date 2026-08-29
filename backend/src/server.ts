@@ -17,6 +17,7 @@ import adminRoutes from './routes/admin.js';
 import studentApprovalRoutes from './routes/studentApprovals.js';
 import convertRoutes from './routes/convert.js';
 import { errorHandler } from './middleware/auth.js';
+import { createRateLimiter, securityHeaders } from './middleware/security.js';
 import { supabase } from './config/supabase.js';
 
 dotenv.config();
@@ -25,45 +26,16 @@ const app: Express = express();
 const PORT = Number(process.env.PORT) || 3001;
 const HOST = process.env.HOST || '0.0.0.0';
 
-// =====================================================
-// FORCE CORS - This will fix the "Failed to fetch" error
-// =====================================================
-app.use((req, res, next) => {
-  const origin = req.headers.origin as string | undefined;
-
-  // Always set CORS headers
-  if (origin) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  } else {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-  }
-
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader(
-    'Access-Control-Allow-Methods',
-    'GET, POST, PUT, PATCH, DELETE, OPTIONS'
-  );
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'Content-Type, Authorization, X-Requested-With'
-  );
-
-  // Handle preflight request
-  if (req.method === 'OPTIONS') {
-    return res.status(204).end();
-  }
-
-  next();
-});
-
-// Also keep the cors package as backup
 app.use(
   cors({
-    origin: true,
+    origin: (process.env.FRONTEND_URL || 'http://localhost:5173').split(',').map((value) => value.trim()).filter(Boolean),
     credentials: true,
   })
 );
-// =====================================================
+app.use(securityHeaders);
+app.use('/api/auth/login', createRateLimiter(15 * 60 * 1000, 10));
+app.use('/api/auth/forgot-password', createRateLimiter(15 * 60 * 1000, 5));
+app.use('/api/auth/reset-password', createRateLimiter(15 * 60 * 1000, 10));
 
 // Serve uploaded files statically
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
@@ -168,6 +140,9 @@ app.use(errorHandler);
 // Start server
 async function startServer() {
   try {
+    if (!process.env.JWT_SECRET?.trim() || !process.env.JWT_REFRESH_SECRET?.trim()) {
+      throw new Error('JWT_SECRET and JWT_REFRESH_SECRET must be configured.');
+    }
     if (!supabase) {
       console.error('❌ Supabase is not configured. Refusing to start without database storage.');
       process.exit(1);

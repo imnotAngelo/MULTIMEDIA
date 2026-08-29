@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { supabase } from '../config/supabase.js';
-import { optionalAuthMiddleware } from '../middleware/auth.js';
+import { authMiddleware, optionalAuthMiddleware } from '../middleware/auth.js';
+import { instructorMiddleware } from '../middleware/admin.js';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
@@ -316,7 +317,8 @@ async function generateSummary(slides: any[], pdfText?: string): Promise<string>
 // Upload and process PDF
 router.post(
   '/upload-pdf',
-  optionalAuthMiddleware,
+  authMiddleware,
+  instructorMiddleware,
   (req: Request, res: Response, next) => {
     console.log('✅ [UPLOAD_ROUTE_MATCHED] /upload-pdf route matched!');
     console.log('Content-Type:', req.headers['content-type']);
@@ -1178,7 +1180,7 @@ router.get(
 );
 
 // Catch POST to /lessons and handle file uploads OR return error
-router.post('/', optionalAuthMiddleware, (req: Request, res: Response, next) => {
+router.post('/', authMiddleware, instructorMiddleware, (req: Request, res: Response, next) => {
   // Check if this is a file upload request (multipart/form-data)
   const contentType = req.headers['content-type'] || '';
   if (contentType.includes('multipart/form-data')) {

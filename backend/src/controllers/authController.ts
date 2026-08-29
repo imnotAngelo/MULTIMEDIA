@@ -6,6 +6,7 @@ import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'node:crypto';
 import { EmailServiceError, sendPasswordResetEmail, sendVerificationEmail } from '../lib/email.js';
+import { requireJwtSecret } from '../middleware/security.js';
 
 const VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const PASSWORD_RESET_TOKEN_TTL_MS = 30 * 60 * 1000;
@@ -225,7 +226,6 @@ export const login = async (req: AuthRequest, res: Response) => {
     const { email: rawEmail, password } = req.body;
     const email = typeof rawEmail === 'string' ? rawEmail.trim().toLowerCase() : '';
 
-    console.log('🔐 Login attempt for:', email);
 
     if (!email || !password) {
       return res.status(400).json({
@@ -246,7 +246,7 @@ export const login = async (req: AuthRequest, res: Response) => {
 
       const { data: dbUser, error } = await supabase
         .from('users')
-        .select('*')
+        .select('id, email, password_hash, full_name, role, email_verified, instructor_approved, student_approved, year_level, teaching_year_levels, section, teaching_sections, avatar_url, xp_total, streak_days')
         .eq('email', email)
         .single();
 
@@ -260,7 +260,6 @@ export const login = async (req: AuthRequest, res: Response) => {
     }
 
     if (!user) {
-      console.error('❌ User not found:', email);
       return res.status(401).json({
         success: false,
         error: {
@@ -273,7 +272,6 @@ export const login = async (req: AuthRequest, res: Response) => {
     // Verify password
     const validPassword = await bcrypt.compare(password, user.password_hash);
     if (!validPassword) {
-      console.error('❌ Invalid password for:', email);
       return res.status(401).json({
         success: false,
         error: {
@@ -305,15 +303,12 @@ export const login = async (req: AuthRequest, res: Response) => {
     }
 
     // Generate tokens
-    const jwtSecret = process.env.JWT_SECRET || 'default-secret';
-    const jwtRefreshSecret = process.env.JWT_REFRESH_SECRET || 'default-refresh-secret';
+    const jwtSecret = requireJwtSecret();
+    const jwtRefreshSecret = process.env.JWT_REFRESH_SECRET?.trim();
+    if (!jwtRefreshSecret) throw new Error('JWT_REFRESH_SECRET is required');
     const jwtExpiration = process.env.JWT_EXPIRATION || '3600s';
     const jwtRefreshExpiration = process.env.JWT_REFRESH_EXPIRATION || '86400s';
 
-    console.log('🔑 Token Config:');
-    console.log('   JWT_SECRET length:', jwtSecret.length);
-    console.log('   JWT_EXPIRATION:', jwtExpiration);
-    console.log('   JWT_REFRESH_EXPIRATION:', jwtRefreshExpiration);
 
     const accessToken = jwt.sign(
       {
@@ -335,8 +330,6 @@ export const login = async (req: AuthRequest, res: Response) => {
       { expiresIn: jwtRefreshExpiration } as any
     );
 
-    console.log('✅ Tokens generated successfully');
-    console.log('📋 Access Token (first 50 chars):', accessToken.substring(0, 50) + '...');
 
     return res.json({
       success: true,
@@ -389,7 +382,7 @@ export const refresh = async (req: AuthRequest, res: Response) => {
 
     const decoded = jwt.verify(
       refresh_token,
-      process.env.JWT_REFRESH_SECRET || 'default-refresh-secret'
+      process.env.JWT_REFRESH_SECRET?.trim() || (() => { throw new Error('JWT_REFRESH_SECRET is required'); })()
     ) as any;
 
     if (!supabase) {
@@ -424,7 +417,7 @@ export const refresh = async (req: AuthRequest, res: Response) => {
         teaching_year_levels: user.teaching_year_levels,
         section: user.section,
       },
-      (process.env.JWT_SECRET || 'default-secret') as any,
+      requireJwtSecret() as any,
       { expiresIn: process.env.JWT_EXPIRATION || '3600s' } as any
     );
 

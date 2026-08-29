@@ -4,6 +4,7 @@ import path from "path";
 import fs from "fs";
 import { supabase } from "../config/supabase.js";
 import { authMiddleware, type AuthRequest } from "../middleware/auth.js";
+import { matchesContentTarget } from "../lib/contentTargeting.js";
 
 // --- Multer setup for lab file submissions ---
 const labUploadsDir = path.join(process.cwd(), "uploads", "lab-submissions");
@@ -95,7 +96,7 @@ router.post("/upload-file", authMiddleware, async (req: AuthRequest, res: Respon
     const studentId = req.user?.id;
 
     const { data: labRecord } = labId
-      ? await supabase.from("laboratories").select("id, instructor_id").eq("id", labId).maybeSingle()
+      ? await supabase.from("laboratories").select("id, instructor_id, target_sections, target_year_levels").eq("id", labId).maybeSingle()
       : { data: null };
 
     if (!labId || !studentId || !file) {
@@ -107,6 +108,16 @@ router.post("/upload-file", authMiddleware, async (req: AuthRequest, res: Respon
 
     if (!labRecord) {
       return res.status(404).json({ error: "Laboratory not found" });
+    }
+
+    if (req.user?.role === 'student' && !matchesContentTarget(
+      labRecord.target_sections,
+      labRecord.target_year_levels,
+      req.user.section,
+      req.user.year_level
+    )) {
+      if (file) fs.unlinkSync(file.path);
+      return res.status(403).json({ error: "This laboratory is not assigned to your section and year level" });
     }
 
     const filePath = `lab-submissions/${file.filename}`;

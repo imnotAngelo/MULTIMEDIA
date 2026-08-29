@@ -13,6 +13,7 @@ import {
 import { useAuthStore } from '@/stores/authStore';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { authFetch } from '@/lib/authFetch';
+import { API_BASE_URL } from '@/lib/apiConfig';
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -56,41 +57,40 @@ export function Header({ title, subtitle }: HeaderProps) {
 
       // Units + lessons
       try {
-        const unitsRes = await authFetch('http://localhost:3001/api/units');
+        const unitsRes = await authFetch(`${API_BASE_URL}/units`);
         const unitsJson = await unitsRes.json();
         const units: any[] = unitsJson?.success ? unitsJson.data ?? [] : [];
-        for (const u of units) {
-          items.push({
-            id: `unit:${u.id}`,
-            type: 'unit',
-            title: u.title,
-            subtitle: u.description,
-            path: isInstructor ? '/instructor/courses' : '/lessons',
-          });
+        items.push(...units.map((u) => ({
+          id: `unit:${u.id}`,
+          type: 'unit' as const,
+          title: u.title || 'Untitled unit',
+          subtitle: u.description,
+          path: isInstructor ? '/instructor/courses' : '/lessons',
+        })));
+
+        const lessonGroups = await Promise.all(units.map(async (u) => {
           try {
-            const lr = await authFetch(`http://localhost:3001/api/units/${u.id}/lessons`);
-            const lj = await lr.json();
-            const lessons: any[] = lj?.success ? lj.data ?? [] : [];
-            for (const l of lessons) {
-              items.push({
-                id: `lesson:${l.id}`,
-                type: 'lesson',
-                title: l.title,
-                subtitle: u.title,
-                path: isInstructor
-                  ? `/instructor/lessons/${l.id}/view`
-                  : `/lessons/${l.id}`,
-              });
-            }
-          } catch { /* ignore single-unit failure */ }
-        }
+            const response = await authFetch(`${API_BASE_URL}/units/${u.id}/lessons`);
+            const payload = await response.json();
+            return (payload?.success ? payload.data ?? [] : []).map((lesson: any) => ({
+              id: `lesson:${lesson.id}`,
+              type: 'lesson' as const,
+              title: lesson.title || 'Untitled lesson',
+              subtitle: u.title,
+              path: isInstructor ? `/instructor/lessons/${lesson.id}/view` : `/lessons/${lesson.id}`,
+            }));
+          } catch {
+            return [];
+          }
+        }));
+        items.push(...lessonGroups.flat());
       } catch { /* ignore units failure */ }
 
       // Assessments
       try {
         const url = isInstructor
-          ? 'http://localhost:3001/api/assessments/instructor/all'
-          : 'http://localhost:3001/api/assessments';
+          ? `${API_BASE_URL}/assessments/instructor/all`
+          : `${API_BASE_URL}/assessments`;
         const ar = await authFetch(url);
         const aj = await ar.json();
         const list: any[] = aj?.success ? aj.data ?? [] : Array.isArray(aj) ? aj : [];
@@ -113,13 +113,24 @@ export function Header({ title, subtitle }: HeaderProps) {
   };
 
   const filteredResults = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const normalize = (value: string) => value.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
+    const q = normalize(query.trim());
     if (!q) return [];
+    const terms = q.split(/\s+/).filter(Boolean);
     return searchIndex
-      .filter((it) =>
-        it.title.toLowerCase().includes(q) ||
-        (it.subtitle ?? '').toLowerCase().includes(q)
-      )
+      .map((item) => {
+        const title = normalize(item.title);
+        const subtitle = normalize(item.subtitle ?? '');
+        const searchable = `${title} ${subtitle}`;
+        const matches = terms.every((term) => searchable.includes(term));
+        const score = matches
+          ? (title.startsWith(q) ? 3 : title.includes(q) ? 2 : 1)
+          : 0;
+        return { item, score };
+      })
+      .filter((result) => result.score > 0)
+      .sort((a, b) => b.score - a.score || a.item.title.localeCompare(b.item.title))
+      .map((result) => result.item)
       .slice(0, 12);
   }, [query, searchIndex]);
 
@@ -280,7 +291,7 @@ export function Header({ title, subtitle }: HeaderProps) {
   };
 
   return (
-    <header className="h-14 border-b border-indigo-400/20 bg-slate-950/65 backdrop-blur-xl flex items-center justify-between px-6 sticky top-0 z-30 aether-header">
+    <header className="h-14 border-b border-teal-400/20 bg-slate-950/65 backdrop-blur-xl flex items-center justify-between px-6 sticky top-0 z-30 aether-header">
       {/* Left Section */}
       <div className="flex items-center gap-4">
         {title && (

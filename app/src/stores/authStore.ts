@@ -53,12 +53,10 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true, error: null });
 
         try {
-          console.log('🔐 [AUTH] Starting login for:', email);
 
           const response = await api.login(email, password);
           
           // Debug: Log raw response
-          console.log('🔐 [AUTH] Raw API response:', response);
 
           if (!response) {
             throw new Error("No response from server");
@@ -68,7 +66,6 @@ export const useAuthStore = create<AuthState>()(
             const { user, access_token, refresh_token } = response.data as any;
 
             if (!access_token || !refresh_token) {
-              console.error('❌ [AUTH] Tokens missing in response');
               set({ 
                 error: 'Login failed: Missing authentication tokens',
                 isLoading: false 
@@ -87,17 +84,14 @@ export const useAuthStore = create<AuthState>()(
               error: null
             });
 
-            console.log('✅ [AUTH] Login successful!');
             return true;
           } else {
             const errorMsg = response.error?.message || response.message || 'Invalid email or password';
-            console.error('❌ [AUTH] Login failed:', errorMsg);
             set({ error: errorMsg, isLoading: false });
             return false;
           }
         } catch (err: any) {
           const errorMsg = err.message || 'Login failed. Please try again.';
-          console.error('❌ [AUTH] Exception during login:', err);
           set({ error: errorMsg, isLoading: false });
           return false;
         }

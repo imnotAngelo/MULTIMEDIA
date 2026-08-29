@@ -271,7 +271,7 @@ export function Sidebar({
       </button>
 
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex w-64 flex-col bg-slate-950/75 backdrop-blur-xl border-r border-indigo-400/20 fixed h-full aether-panel">
+      <aside className="hidden lg:flex w-64 flex-col bg-slate-950/75 backdrop-blur-xl border-r border-teal-400/20 fixed h-full aether-panel">
         <SidebarContent />
       </aside>
 
@@ -282,7 +282,7 @@ export function Sidebar({
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
             onClick={() => setIsMobileMenuOpen(false)}
           />
-          <aside className="absolute left-0 top-0 h-full w-64 bg-slate-950/90 border-r border-indigo-400/20 aether-panel">
+          <aside className="absolute left-0 top-0 h-full w-64 bg-slate-950/90 border-r border-teal-400/20 aether-panel">
             <SidebarContent />
           </aside>
         </div>

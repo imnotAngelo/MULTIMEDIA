@@ -10,6 +10,7 @@ import {
 import { authMiddleware } from '../middleware/auth.js';
 import { supabase } from '../config/supabase.js';
 import { matchesContentTarget } from '../lib/contentTargeting.js';
+import { instructorMiddleware } from '../middleware/admin.js';
 
 const router: Router = express.Router();
 
@@ -36,7 +37,7 @@ const toLaboratory = (row: any) => ({
 });
 
 // List laboratories saved in Supabase for the current instructor/student view.
-router.get('/', async (req: any, res) => {
+router.post('/metadata', instructorMiddleware, async (req: any, res) => {
   try {
     const { data, error } = await supabase
       .from('laboratories')
@@ -123,6 +124,18 @@ router.post('/metadata', async (req: any, res) => {
       target_year_levels: cleanedTargetYearLevels,
     };
 
+    if (id) {
+      const { data: existing, error: existingError } = await supabase
+        .from('laboratories')
+        .select('instructor_id')
+        .eq('id', id)
+        .maybeSingle();
+      if (existingError) throw existingError;
+      if (existing && existing.instructor_id !== instructorId) {
+        return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'You do not own this laboratory.' } });
+      }
+    }
+
     const { data, error } = await supabase
       .from('laboratories')
       .upsert(row, { onConflict: 'id' })
@@ -199,6 +212,16 @@ router.post('/create-from-unit', async (req: any, res) => {
       id: unitId,
       instructor_id: userId,
     };
+
+    const { data: existingLab, error: existingLabError } = await supabase
+      .from('laboratories')
+      .select('instructor_id')
+      .eq('id', unitId)
+      .maybeSingle();
+    if (existingLabError) throw existingLabError;
+    if (existingLab && existingLab.instructor_id !== userId) {
+      return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'This laboratory belongs to another instructor.' } });
+    }
 
     const { data: created, error: createError } = await supabase
       .from('laboratories')
