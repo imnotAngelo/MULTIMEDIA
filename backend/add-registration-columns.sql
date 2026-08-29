@@ -1,5 +1,9 @@
 -- Run once in the Supabase SQL Editor if registration reports a missing column.
 ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_token TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_code TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_expires TIMESTAMPTZ;
+CREATE INDEX IF NOT EXISTS idx_users_password_reset_token ON users(password_reset_token);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'student';
 ALTER TABLE users ADD COLUMN IF NOT EXISTS instructor_approved BOOLEAN NOT NULL DEFAULT TRUE;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS student_approved BOOLEAN NOT NULL DEFAULT TRUE;

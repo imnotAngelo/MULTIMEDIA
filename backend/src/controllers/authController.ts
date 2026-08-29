@@ -5,9 +5,10 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'node:crypto';
-import { sendVerificationEmail } from '../lib/email.js';
+import { EmailServiceError, sendPasswordResetEmail, sendVerificationEmail } from '../lib/email.js';
 
 const VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const PASSWORD_RESET_TOKEN_TTL_MS = 30 * 60 * 1000;
 
 function createVerificationToken() {
   return {
@@ -631,5 +632,94 @@ export const resendVerification = async (req: AuthRequest, res: Response) => {
       success: false,
       error: { code: 'RESEND_VERIFICATION_FAILED', message: error.message },
     });
+  }
+};
+
+export const forgotPassword = async (req: AuthRequest, res: Response) => {
+  const genericMessage = 'If an account with that email exists, a password reset link has been sent.';
+
+  try {
+    const rawEmail = req.body?.email;
+    const email = typeof rawEmail === 'string' ? rawEmail.trim().toLowerCase() : '';
+    if (!email) {
+      return res.status(400).json({ success: false, error: { code: 'MISSING_EMAIL', message: 'Email is required' } });
+    }
+    if (!supabase) {
+      return res.status(503).json({ success: false, error: { code: 'DB_UNAVAILABLE', message: 'Database is unavailable.' } });
+    }
+
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('id, email, full_name')
+      .eq('email', email)
+      .single();
+
+    if (error || !user) return res.json({ success: true, data: { message: genericMessage } });
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const code = crypto.randomInt(0, 1_000_000).toString().padStart(6, '0');
+    const expiresAt = new Date(Date.now() + PASSWORD_RESET_TOKEN_TTL_MS).toISOString();
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({ password_reset_token: token, password_reset_code: code, password_reset_expires: expiresAt })
+      .eq('id', user.id);
+    if (updateError) throw updateError;
+
+    await sendPasswordResetEmail(user.email, user.full_name, token, code);
+    return res.json({ success: true, data: { message: genericMessage } });
+  } catch (error: any) {
+    console.error('Forgot password error:', error);
+    if (error instanceof EmailServiceError) {
+      return res.status(503).json({
+        success: false,
+        error: { code: 'EMAIL_SERVICE_UNAVAILABLE', message: 'Password reset email service is unavailable. Please contact the administrator.' },
+      });
+    }
+    return res.status(500).json({ success: false, error: { code: 'FORGOT_PASSWORD_FAILED', message: 'Unable to process the password reset request.' } });
+  }
+};
+
+export const resetPassword = async (req: AuthRequest, res: Response) => {
+  try {
+    const token = typeof req.body?.token === 'string' ? req.body.token.trim() : '';
+    const code = typeof req.body?.code === 'string' ? req.body.code.trim() : '';
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    const password = typeof req.body?.password === 'string' ? req.body.password : '';
+    if ((!token && (!email || !code)) || !password) {
+      return res.status(400).json({ success: false, error: { code: 'MISSING_FIELDS', message: 'Reset token and new password are required' } });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ success: false, error: { code: 'WEAK_PASSWORD', message: 'Password must be at least 6 characters' } });
+    }
+    if (!supabase) {
+      return res.status(503).json({ success: false, error: { code: 'DB_UNAVAILABLE', message: 'Database is unavailable.' } });
+    }
+
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('id, password_reset_code, password_reset_expires')
+      .eq(token ? 'password_reset_token' : 'email', token || email)
+      .single();
+    if (error || !user) {
+      return res.status(400).json({ success: false, error: { code: 'INVALID_RESET_TOKEN', message: 'This reset link is invalid or has already been used.' } });
+    }
+    if (!user.password_reset_expires || new Date(user.password_reset_expires).getTime() < Date.now()) {
+      return res.status(400).json({ success: false, error: { code: 'RESET_TOKEN_EXPIRED', message: 'This reset link has expired. Please request a new one.' } });
+    }
+    if (code && user.password_reset_code !== code) {
+      return res.status(400).json({ success: false, error: { code: 'INVALID_RESET_CODE', message: 'That confirmation code is incorrect.' } });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({ password_hash: passwordHash, password_reset_token: null, password_reset_code: null, password_reset_expires: null })
+      .eq('id', user.id);
+    if (updateError) throw updateError;
+
+    return res.json({ success: true, data: { message: 'Password reset successfully. You can now sign in.' } });
+  } catch (error: any) {
+    console.error('Reset password error:', error);
+    return res.status(500).json({ success: false, error: { code: 'RESET_PASSWORD_FAILED', message: 'Unable to reset the password.' } });
   }
 };
