@@ -18,9 +18,9 @@ export async function sendVerificationEmail(to: string, fullName: string, token:
   const verifyUrl = `${frontendUrl}/verify-email?token=${encodeURIComponent(token)}`;
 
   if (!isEmailServiceConfigured()) {
-    // No provider configured (e.g. local dev) - log the link/code so it can still be tested manually.
-    console.warn(`⚠️ BREVO_API_KEY/BREVO_FROM_EMAIL not set. Verification code for ${to}: ${code} (link: ${verifyUrl})`);
-    return;
+    throw new EmailServiceError(
+      'BREVO_API_KEY and BREVO_FROM_EMAIL must be configured before verification emails can be sent.'
+    );
   }
 
   const response = await fetch('https://api.brevo.com/v3/smtp/email', {
@@ -56,8 +56,9 @@ export async function sendPasswordResetEmail(to: string, fullName: string, token
   const resetUrl = `${frontendUrl}/reset-password?token=${encodeURIComponent(token)}`;
 
   if (!isEmailServiceConfigured()) {
-    console.warn(`BREVO_API_KEY/BREVO_FROM_EMAIL not set. Password reset link for ${to}: ${resetUrl}`);
-    return;
+    throw new EmailServiceError(
+      'BREVO_API_KEY and BREVO_FROM_EMAIL must be configured before password reset emails can be sent.'
+    );
   }
 
   const response = await fetch('https://api.brevo.com/v3/smtp/email', {

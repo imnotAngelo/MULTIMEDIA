@@ -182,6 +182,23 @@ export const register = async (req: AuthRequest, res: Response) => {
         await sendVerificationEmail(email, full_name, verificationToken, verificationCode);
       } catch (emailError) {
         console.error('⚠️ Registration succeeded but verification email failed to send:', emailError);
+
+        const { error: deleteError } = await supabase
+          .from('users')
+          .delete()
+          .eq('id', user[0].id);
+
+        if (deleteError) {
+          console.error('Failed to rollback user after verification email send failure:', deleteError);
+        }
+
+        return res.status(503).json({
+          success: false,
+          error: {
+            code: 'EMAIL_VERIFICATION_FAILED',
+            message: 'Could not send the verification email. Please verify the Brevo email configuration and try again.',
+          },
+        });
       }
 
       return res.status(201).json({
@@ -616,7 +633,18 @@ export const resendVerification = async (req: AuthRequest, res: Response) => {
 
     if (updateError) throw updateError;
 
-    await sendVerificationEmail(email, user.full_name, token, code);
+    try {
+      await sendVerificationEmail(email, user.full_name, token, code);
+    } catch (emailError) {
+      console.error('Resend verification email failed:', emailError);
+      return res.status(503).json({
+        success: false,
+        error: {
+          code: 'EMAIL_VERIFICATION_FAILED',
+          message: 'Could not send the verification email. Please verify the Brevo email configuration and try again.',
+        },
+      });
+    }
 
     return res.json({ success: true, data: { message: 'Verification email sent. Please check your inbox.' } });
   } catch (error: any) {
