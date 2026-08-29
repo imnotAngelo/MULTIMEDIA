@@ -377,7 +377,7 @@ export function CoursesManagement() {
 
       if (response.ok && data.success) {
         console.log('[UPLOAD_SUCCESS] Lesson uploaded');
-        toast.success('Lesson uploaded! Processing...');
+        toast.success('Lesson uploaded! PDF kept in original format.');
 
         // Get the unit name for the notification
         const unit = units.find(u => u.id === selectedUnitForUpload);

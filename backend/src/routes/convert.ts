@@ -28,21 +28,122 @@ function cleanHeading(value: string): string {
   return value
     .replace(/^#{1,6}\s+/, '')
     .replace(/^[*_]+|[*_]+$/g, '')
+    .replace(/^[\-•*+\d.\)]\s+/, '')
     .replace(/\s+/g, ' ')
     .trim();
 }
 
 function looksLikePlainHeading(line: string, nextLine?: string): boolean {
   const value = line.trim();
-  if (!value || value.length > 90 || !nextLine?.trim()) return false;
-  if (/^[-*+]\s+/.test(value) || /[.!?,;:]$/.test(value)) return false;
+  if (!value || value.length > 120) return false;
+  if (/^[-*+]\s+/.test(value) || /^\d+\s*[:.)-]\s*/.test(value) || /[.!?,;:]$/.test(value)) return false;
   if (/^(chapter|unit|module|lesson|topic|part|section)\b/i.test(value)) return true;
   if (/^\d+(?:\.\d+)*[.)]?\s+/.test(value)) return true;
+
   const words = value.split(/\s+/).filter(Boolean);
-  const uppercaseLetters = value.replace(/[^A-Z]/g, '').length;
+  if (words.length < 2 || words.length > 12) return false;
+
   const letters = value.replace(/[^A-Za-z]/g, '').length;
-  const titleCase = words.length <= 12 && words.every((word) => !/^[a-z]/.test(word));
-  return letters >= 3 && uppercaseLetters / letters > 0.65 || titleCase;
+  const uppercaseLetters = value.replace(/[^A-Z]/g, '').length;
+  const isTitleCase = words.every((word) => {
+    if (!/[A-Za-z]/.test(word)) return true;
+    if (word.length <= 2) return true;
+    return /^[A-Z][a-z0-9'\-]*$/.test(word)
+      || /^[A-Z0-9]+$/.test(word)
+      || /^(the|and|for|of|to|in|on|at|by|a|an|or|but|if|as|is|it|be|with|that|this|from|into|via)$/i.test(word);
+  });
+  const hasContinuation = !!nextLine?.trim() && !/[.!?]$/.test(nextLine.trim()) && nextLine.trim().length <= 90;
+  return letters >= 3 && (uppercaseLetters / letters > 0.45 || isTitleCase || hasContinuation);
+}
+
+function mergeWrappedHeading(lines: string[], startIndex: number): { title: string; nextIndex: number } | null {
+  const first = lines[startIndex]?.trim();
+  if (!first || !looksLikePlainHeading(first, lines[startIndex + 1])) return null;
+
+  const merged: string[] = [first];
+  let i = startIndex + 1;
+
+  while (i < lines.length && merged.length < 3) {
+    const next = lines[i].trim();
+    if (!next || next.length > 80 || /^[-*•+\d.\)]\s*/.test(next) || /[.!?]$/.test(next)) break;
+
+    const candidate = `${merged[merged.length - 1]} ${next}`.replace(/\s+/g, ' ').trim();
+    if (candidate.length > 120) break;
+
+    merged[merged.length - 1] = candidate;
+    i += 1;
+  }
+
+  if (merged.length === 1 && lines[startIndex + 1] && looksLikePlainHeading(`${first} ${lines[startIndex + 1]}`.trim(), lines[startIndex + 2])) {
+    const combined = `${first} ${lines[startIndex + 1]}`.replace(/\s+/g, ' ').trim();
+    return { title: cleanHeading(combined), nextIndex: startIndex + 2 };
+  }
+
+  return { title: cleanHeading(merged.join(' ')), nextIndex: i };
+}
+
+export function buildPresentationSections(text: string, fallbackTitle: string): TextSlide[] {
+  const rawLines = text.replace(/\r\n/g, '\n').split('\n');
+  const lines = rawLines.map((line) => line.replace(/\s+/g, ' ').trim()).filter(Boolean);
+
+  if (!lines.length) {
+    return [{ title: fallbackTitle || 'Document Overview', body: 'No readable text was found in the uploaded document.' }];
+  }
+
+  const sections: TextSlide[] = [];
+  let currentBody: string[] = [];
+  let i = 0;
+
+  const flushBody = (headingTitle: string) => {
+    const body = currentBody.join('\n\n').trim();
+    if (body) sections.push({ title: headingTitle, body });
+    currentBody = [];
+  };
+
+  while (i < lines.length) {
+    const line = lines[i];
+    const nextLine = lines[i + 1];
+    const heading = mergeWrappedHeading(lines, i) || (looksLikePlainHeading(line, nextLine) ? { title: cleanHeading(line), nextIndex: i + 1 } : null);
+
+    if (heading) {
+      if (currentBody.length) {
+        flushBody(fallbackTitle || 'Overview');
+      }
+      sections.push({ title: heading.title, body: '' });
+      i = heading.nextIndex;
+      const bodyLines: string[] = [];
+      while (i < lines.length) {
+        const current = lines[i];
+        const followingLine = lines[i + 1];
+        const nextHeading = mergeWrappedHeading(lines, i) || (looksLikePlainHeading(current, followingLine) ? { title: cleanHeading(current), nextIndex: i + 1 } : null);
+        if (nextHeading) break;
+        bodyLines.push(current);
+        i += 1;
+      }
+      const finalBody = bodyLines.join('\n\n').trim();
+      const targetIndex = sections.length - 1;
+      sections[targetIndex].body = finalBody || 'No supporting details were found for this section.';
+      continue;
+    }
+
+    currentBody.push(line);
+    i += 1;
+  }
+
+  if (currentBody.length) {
+    flushBody(fallbackTitle || 'Overview');
+  }
+
+  const normalized = (sections.length ? sections : [{ title: fallbackTitle || 'Document Overview', body: text.trim() }])
+    .map((section) => ({
+      title: section.title || fallbackTitle || 'Document Overview',
+      body: section.body && section.body.trim() ? section.body.trim() : 'No supporting details were found for this section.',
+    }));
+
+  return normalized.flatMap((section) => {
+    const chunked = chunkText(section.body || '');
+    return chunked.length ? chunked.map((body) => ({ title: section.title, body })) : [{ title: section.title, body: section.body }];
+  });
 }
 
 function chunkText(text: string, maxCharacters = 900): string[] {
@@ -76,37 +177,7 @@ function chunkText(text: string, maxCharacters = 900): string[] {
 }
 
 function structuredTextSlides(text: string, fallbackTitle: string): TextSlide[] {
-  const lines = text.replace(/\r\n/g, '\n').split('\n');
-  const sections: Array<{ title: string; body: string }> = [];
-  let currentTitle = fallbackTitle;
-  let bodyLines: string[] = [];
-
-  const flushSection = () => {
-    const body = bodyLines.join('\n').trim();
-    if (body) sections.push({ title: currentTitle, body });
-    bodyLines = [];
-  };
-
-  lines.forEach((line, index) => {
-    const trimmed = line.trim();
-    const markdownHeading = /^#{1,6}\s+/.test(trimmed);
-    const plainHeading = !markdownHeading && looksLikePlainHeading(trimmed, lines[index + 1]);
-    if (markdownHeading || plainHeading) {
-      flushSection();
-      currentTitle = cleanHeading(trimmed) || fallbackTitle;
-      return;
-    }
-    bodyLines.push(line);
-  });
-  flushSection();
-
-  const slides: TextSlide[] = [];
-  for (const section of sections.length ? sections : [{ title: fallbackTitle, body: text }]) {
-    for (const body of chunkText(section.body)) {
-      slides.push({ title: section.title, body });
-    }
-  }
-  return slides;
+  return buildPresentationSections(text, fallbackTitle);
 }
 
 interface DocxBlock {
@@ -149,13 +220,236 @@ function parseDocxHtml(html: string): DocxBlock[] {
   return blocks;
 }
 
-function addTextSlide(pptx: PptxGenJS, title: string, body: string, index: number) {
+function getSectionTheme(index: number) {
+  const themes = [
+    { primary: '67E8F9', secondary: '0EA5E9', accent: 'E0F2FE', panel: '0F172A' },
+    { primary: 'A78BFA', secondary: '8B5CF6', accent: 'EDE9FE', panel: '1F1635' },
+    { primary: 'F9A8D4', secondary: 'EC4899', accent: 'FCE7F3', panel: '2E1324' },
+    { primary: '86EFAC', secondary: '22C55E', accent: 'DCFCE7', panel: '12251B' },
+  ];
+  return themes[index % themes.length];
+}
+
+function addTitleSlide(pptx: PptxGenJS, title: string, subtitle?: string) {
   const slide = pptx.addSlide();
-  slide.background = { color: '080B1C' };
-  slide.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: 13.333, h: 0.18, fill: { color: index % 2 ? 'E879F9' : '67E8F9' }, line: { color: index % 2 ? 'E879F9' : '67E8F9' } });
-  slide.addText(title || `Slide ${index + 1}`, { x: 0.75, y: 0.65, w: 11.7, h: 0.6, fontFace: 'Aptos Display', fontSize: 26, bold: true, color: 'F8FAFC', margin: 0, fit: 'shrink' });
-  slide.addText(body, { x: 0.8, y: 1.45, w: contentWidth, h: contentHeight, fontFace: 'Aptos', fontSize: 16, color: 'D8E3F2', breakLine: false, valign: 'top', margin: 0.08, fit: 'shrink', paraSpaceAfter: 10 });
-  slide.addText(`${index + 1}`, { x: 12.25, y: 7.05, w: 0.45, h: 0.2, fontSize: 9, color: '718096', align: 'right', margin: 0 });
+  slide.background = { color: '0B1020' };
+
+  slide.addShape(pptx.ShapeType.rect, {
+    x: 0,
+    y: 0,
+    w: 13.333,
+    h: 7.5,
+    fill: { color: '0F172A' },
+    line: { color: '0F172A' },
+  });
+
+  slide.addShape(pptx.ShapeType.rect, {
+    x: 0,
+    y: 0,
+    w: 13.333,
+    h: 0.38,
+    fill: { color: '67E8F9' },
+    line: { color: '67E8F9' },
+  });
+
+  slide.addShape(pptx.ShapeType.rect, {
+    x: 0.85,
+    y: 1.1,
+    w: 11.7,
+    h: 4.8,
+    fill: { color: '111827' },
+    line: { color: '334155', pt: 1 },
+  });
+
+  slide.addText('ACADEMIC LESSON', {
+    x: 1.2,
+    y: 1.45,
+    w: 3.2,
+    h: 0.35,
+    fontFace: 'Aptos',
+    fontSize: 11,
+    bold: true,
+    color: '67E8F9',
+    margin: 0,
+    fit: 'shrink',
+  });
+
+  slide.addText(title || 'Course Presentation', {
+    x: 1.2,
+    y: 2.1,
+    w: 10.8,
+    h: 1.5,
+    fontFace: 'Aptos Display',
+    fontSize: 28,
+    bold: true,
+    color: 'F8FAFC',
+    margin: 0,
+    fit: 'shrink',
+    breakLine: true,
+  });
+
+  slide.addText(subtitle || 'Prepared for classroom discussion and guided study', {
+    x: 1.2,
+    y: 3.9,
+    w: 8.4,
+    h: 0.6,
+    fontFace: 'Aptos',
+    fontSize: 15,
+    color: 'CBD5E1',
+    margin: 0,
+    fit: 'shrink',
+  });
+
+  slide.addShape(pptx.ShapeType.line, {
+    x: 1.2,
+    y: 4.85,
+    w: 4.2,
+    h: 0,
+    fill: { color: '67E8F9' },
+    line: { color: '67E8F9', pt: 3 },
+  });
+
+  slide.addText('Learning objectives • Key concepts • Discussion prompts', {
+    x: 1.2,
+    y: 5.25,
+    w: 9.8,
+    h: 0.55,
+    fontFace: 'Aptos',
+    fontSize: 12,
+    color: 'E2E8F0',
+    margin: 0,
+    fit: 'shrink',
+  });
+}
+
+function addTextSlide(pptx: PptxGenJS, title: string, body: string, index: number, options?: { isOverview?: boolean; callout?: string }) {
+  const slide = pptx.addSlide();
+  const theme = getSectionTheme(index);
+  const isOverview = Boolean(options?.isOverview);
+  const callout = options?.callout?.trim();
+
+  slide.background = { color: '0B1020' };
+
+  slide.addShape(pptx.ShapeType.rect, {
+    x: 0,
+    y: 0,
+    w: 13.333,
+    h: 0.38,
+    fill: { color: theme.primary },
+    line: { color: theme.primary },
+  });
+
+  slide.addShape(pptx.ShapeType.rect, {
+    x: 0.55,
+    y: 0.75,
+    w: 0.2,
+    h: 0.7,
+    fill: { color: theme.primary },
+    line: { color: theme.primary },
+  });
+
+  slide.addShape(pptx.ShapeType.rect, {
+    x: 0.9,
+    y: 1.6,
+    w: 11.55,
+    h: 4.95,
+    fill: { color: theme.panel },
+    line: { color: '24314D', pt: 1 },
+  });
+
+  slide.addText(isOverview ? 'OVERVIEW' : `SECTION ${index + 1}`.padEnd(12, ' '), {
+    x: 0.95,
+    y: 0.18,
+    w: 2.2,
+    h: 0.18,
+    fontFace: 'Aptos',
+    fontSize: 9,
+    bold: true,
+    color: '08111F',
+    margin: 0,
+    fit: 'shrink',
+  });
+
+  slide.addText(title || `Slide ${index + 1}`, {
+    x: 0.95,
+    y: 0.72,
+    w: 11.1,
+    h: 0.82,
+    fontFace: 'Aptos Display',
+    fontSize: 24,
+    bold: true,
+    color: 'F8FAFC',
+    margin: 0,
+    fit: 'shrink',
+    breakLine: true,
+  });
+
+  const bodyLines = body.split(/\n\s*\n/).map((paragraph) => paragraph.trim()).filter(Boolean);
+  const displayBody = bodyLines.length > 1 ? bodyLines.join('\n\n') : body;
+
+  slide.addText(displayBody, {
+    x: 1.25,
+    y: 1.9,
+    w: 8.9,
+    h: 4.15,
+    fontFace: 'Aptos',
+    fontSize: 15,
+    color: 'E2E8F0',
+    valign: 'top',
+    margin: 0.08,
+    fit: 'shrink',
+    breakLine: true,
+    paraSpaceAfter: 8,
+    bullet: { indent: 0.18, type: 'bullet' },
+  });
+
+  if (callout) {
+    slide.addShape(pptx.ShapeType.rect, {
+      x: 9.9,
+      y: 2.05,
+      w: 2.15,
+      h: 2.9,
+      fill: { color: theme.accent },
+      line: { color: theme.primary, pt: 1 },
+    });
+
+    slide.addText('Key takeaway', {
+      x: 10.15,
+      y: 2.25,
+      w: 1.7,
+      h: 0.35,
+      fontFace: 'Aptos',
+      fontSize: 9,
+      bold: true,
+      color: '0F172A',
+      margin: 0,
+      fit: 'shrink',
+    });
+
+    slide.addText(callout, {
+      x: 10.15,
+      y: 2.75,
+      w: 1.7,
+      h: 1.7,
+      fontFace: 'Aptos',
+      fontSize: 11,
+      color: '0F172A',
+      margin: 0.06,
+      fit: 'shrink',
+      breakLine: true,
+    });
+  }
+
+  slide.addText(`${index + 1}`, {
+    x: 12.38,
+    y: 6.8,
+    w: 0.6,
+    h: 0.2,
+    fontSize: 9,
+    color: '94A3B8',
+    align: 'right',
+    margin: 0,
+  });
 }
 
 function addImageSlide(pptx: PptxGenJS, buffer: Buffer, extension: string, fileName: string) {
@@ -164,9 +458,47 @@ function addImageSlide(pptx: PptxGenJS, buffer: Buffer, extension: string, fileN
 
 function addImageDataSlide(pptx: PptxGenJS, data: string, fileName: string) {
   const slide = pptx.addSlide();
-  slide.background = { color: '080B1C' };
-  slide.addText(fileName, { x: 0.75, y: 0.5, w: 11.7, h: 0.45, fontSize: 23, bold: true, color: 'F8FAFC', margin: 0, fit: 'shrink' });
-  slide.addImage({ data, x: 0.7, y: 1.15, w: 11.9, h: 5.8, sizing: { type: 'contain', x: 0.7, y: 1.15, w: 11.9, h: 5.8 } });
+  slide.background = { color: '0B1020' };
+
+  slide.addShape(pptx.ShapeType.rect, {
+    x: 0,
+    y: 0,
+    w: 13.333,
+    h: 0.38,
+    fill: { color: '67E8F9' },
+    line: { color: '67E8F9' },
+  });
+
+  slide.addText(fileName, {
+    x: 0.8,
+    y: 0.7,
+    w: 11.5,
+    h: 0.5,
+    fontFace: 'Aptos Display',
+    fontSize: 22,
+    bold: true,
+    color: 'F8FAFC',
+    margin: 0,
+    fit: 'shrink',
+  });
+
+  slide.addShape(pptx.ShapeType.rect, {
+    x: 0.7,
+    y: 1.35,
+    w: 11.9,
+    h: 5.5,
+    fill: { color: '111827' },
+    line: { color: '334155', pt: 1 },
+  });
+
+  slide.addImage({
+    data,
+    x: 0.96,
+    y: 1.62,
+    w: 11.35,
+    h: 4.95,
+    sizing: { type: 'contain', x: 0.96, y: 1.62, w: 11.35, h: 4.95 },
+  });
 }
 
 function extractPageText(items: any[]): string {
@@ -234,6 +566,9 @@ router.post('/pptx', upload.single('file'), async (req: Request, res: Response) 
     pptx.title = req.body.title || path.basename(req.file.originalname, extension);
     pptx.company = 'Multimedia Learning';
 
+    const presentationTitle = req.body.title || path.basename(req.file.originalname, extension).replace(/\.[^.]+$/, '');
+    addTitleSlide(pptx, presentationTitle, 'Prepared for classroom discussion and guided study');
+
     if (extension === '.pdf') {
       await addPdfSlides(pptx, req.file.buffer, req.file.originalname);
     } else if (['.png', '.jpg', '.jpeg', '.webp'].includes(extension)) {
@@ -254,7 +589,12 @@ router.post('/pptx', upload.single('file'), async (req: Request, res: Response) 
         const flushText = () => {
           if (!textBuffer.length) return;
           const body = textBuffer.join('\n\n');
-          structuredTextSlides(body, textTitle).forEach((slide) => addTextSlide(pptx, slide.title, slide.body, slideIndex++));
+          const slides = structuredTextSlides(body, textTitle);
+          if (slides.length > 1) {
+            const overviewBody = slides.slice(0, Math.min(4, slides.length)).map((slide, idx) => `• ${idx + 1}. ${slide.title}`).join('\n');
+            addTextSlide(pptx, 'Overview', overviewBody, slideIndex++, { isOverview: true, callout: 'Lesson structure and section flow' });
+          }
+          slides.forEach((slide) => addTextSlide(pptx, slide.title, slide.body, slideIndex++, { callout: slide.title }));
           textBuffer = [];
         };
         for (const block of blocks) {
@@ -276,7 +616,13 @@ router.post('/pptx', upload.single('file'), async (req: Request, res: Response) 
 
       const slides = extension === '.docx' ? [] : structuredTextSlides(text, req.body.title || path.basename(req.file!.originalname, extension));
       if (extension !== '.docx' && !slides.length) return res.status(400).json({ success: false, error: { code: 'EMPTY_FILE', message: 'The uploaded file contains no readable text' } });
-      slides.forEach((slide, index) => addTextSlide(pptx, slide.title, slide.body, index));
+
+      if (extension !== '.docx' && slides.length > 1) {
+        const overviewBody = slides.slice(0, Math.min(4, slides.length)).map((slide, idx) => `• ${idx + 1}. ${slide.title}`).join('\n');
+        addTextSlide(pptx, 'Overview', overviewBody, 0, { isOverview: true, callout: 'Lesson structure and section flow' });
+      }
+
+      slides.forEach((slide, index) => addTextSlide(pptx, slide.title, slide.body, slides.length > 1 ? index + 1 : index, { callout: slide.title }));
     }
 
     const output = await pptx.write({ outputType: 'nodebuffer' }) as Buffer;

@@ -19,6 +19,9 @@ export function UploadLesson({ unitId, onSuccess }: UploadLessonProps) {
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [videoUrl, setVideoUrl] = useState('');
+  const [graphicUrl, setGraphicUrl] = useState('');
+  const [graphicFile, setGraphicFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -38,6 +41,24 @@ export function UploadLesson({ unitId, onSuccess }: UploadLessonProps) {
       }
       setError('');
       setFile(selectedFile);
+    }
+  };
+
+  const handleGraphicFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      if (!selectedFile.type.startsWith('image/')) {
+        setError('Graphic must be an image file');
+        setGraphicFile(null);
+        return;
+      }
+      if (selectedFile.size > 10 * 1024 * 1024) {
+        setError('Graphic file size must be less than 10MB');
+        setGraphicFile(null);
+        return;
+      }
+      setError('');
+      setGraphicFile(selectedFile);
     }
   };
 
@@ -64,6 +85,9 @@ export function UploadLesson({ unitId, onSuccess }: UploadLessonProps) {
       formData.append('file', file);
       formData.append('title', title);
       formData.append('description', description);
+      if (videoUrl.trim()) formData.append('videoUrl', videoUrl.trim());
+      if (graphicUrl.trim()) formData.append('graphicUrl', graphicUrl.trim());
+      if (graphicFile) formData.append('graphicFile', graphicFile);
       formData.append('unitId', unitId);
 
       const uploadUrl = `${API_BASE_URL}/lessons/upload-pdf`;
@@ -95,7 +119,7 @@ export function UploadLesson({ unitId, onSuccess }: UploadLessonProps) {
       
       console.log('📡 Backend Response:', data);
       console.log('📋 Response Data:', responseData);
-      console.log('🎬 Slides from response:', responseData.slides);
+      console.log('📄 PDF kept as uploaded:', responseData.pdfUrl || responseData.lesson?.pdfUrl);
       console.log('📊 Slide count:', responseData.slideCount);
 
       // Create lesson object with the response from backend
@@ -103,10 +127,14 @@ export function UploadLesson({ unitId, onSuccess }: UploadLessonProps) {
         id: responseData.lessonId || uuidv4(),
         unitId,
         title,
-        content: description || 'PDF lesson - slides generated automatically',
+        content: description || 'Original PDF lesson uploaded without changes',
         createdAt: new Date().toISOString(),
         slideCount: responseData.slideCount || 0,
         slides: responseData.slides || [],
+        pdfUrl: responseData.pdfUrl || responseData.lesson?.pdfUrl || '',
+        videoUrl: videoUrl.trim() || '',
+        graphicUrl: graphicUrl.trim() || '',
+        graphicFileName: graphicFile?.name || '',
       };
       
       console.log('✅ New Lesson Object:', newLesson);
@@ -116,6 +144,9 @@ export function UploadLesson({ unitId, onSuccess }: UploadLessonProps) {
       setFile(null);
       setTitle('');
       setDescription('');
+      setVideoUrl('');
+      setGraphicUrl('');
+      setGraphicFile(null);
 
       setTimeout(() => {
         setSuccess(false);
@@ -170,7 +201,7 @@ export function UploadLesson({ unitId, onSuccess }: UploadLessonProps) {
         <div>
           <h3 className="text-lg font-semibold text-slate-200 mb-4">Upload Lesson Material</h3>
           <p className="text-sm text-slate-400 mb-4">
-            Upload a PDF file. Our system will automatically generate slides and create a summary for students.
+            Upload the original PDF file and keep it unchanged. No slide conversion or document rewriting will happen.
           </p>
         </div>
 
@@ -201,6 +232,61 @@ export function UploadLesson({ unitId, onSuccess }: UploadLessonProps) {
             rows={3}
             className="mt-2 w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500"
           />
+        </div>
+
+        {/* Class Media Section */}
+        <div className="rounded-xl border border-slate-700 bg-slate-950/40 p-4 space-y-4">
+          <div>
+            <h4 className="text-sm font-semibold text-slate-200">Class media (optional)</h4>
+            <p className="text-xs text-slate-400 mt-1">Add a video or supporting graphic to enrich the lesson for class discussion.</p>
+          </div>
+
+          <div>
+            <Label htmlFor="videoUrl" className="text-slate-300">
+              Video URL
+            </Label>
+            <Input
+              id="videoUrl"
+              value={videoUrl}
+              onChange={(e) => setVideoUrl(e.target.value)}
+              placeholder="https://example.com/video.mp4 or YouTube/Vimeo link"
+              className="mt-2 bg-slate-800 border-slate-700 text-white placeholder:text-slate-500"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="graphicUrl" className="text-slate-300">
+              Graphic URL
+            </Label>
+            <Input
+              id="graphicUrl"
+              value={graphicUrl}
+              onChange={(e) => setGraphicUrl(e.target.value)}
+              placeholder="https://example.com/diagram.png"
+              className="mt-2 bg-slate-800 border-slate-700 text-white placeholder:text-slate-500"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="graphicFile" className="text-slate-300 block mb-2">
+              Upload Graphic
+            </Label>
+            <label className="flex items-center justify-center p-4 border-2 border-dashed border-slate-700 rounded-lg hover:border-violet-500 hover:bg-slate-900/30 transition-colors cursor-pointer">
+              <div className="text-center">
+                <Upload className="w-6 h-6 text-slate-500 mx-auto mb-2" />
+                <p className="text-sm text-slate-400">
+                  {graphicFile ? graphicFile.name : 'Choose an image for class visuals'}
+                </p>
+              </div>
+              <input
+                id="graphicFile"
+                type="file"
+                accept="image/*"
+                onChange={handleGraphicFileChange}
+                className="hidden"
+              />
+            </label>
+          </div>
         </div>
 
         {/* File Upload */}
@@ -240,7 +326,7 @@ export function UploadLesson({ unitId, onSuccess }: UploadLessonProps) {
         {success && (
           <div className="flex gap-3 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
             <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" />
-            <p className="text-sm text-emerald-200">Lesson uploaded successfully! Processing slides...</p>
+            <p className="text-sm text-emerald-200">Lesson uploaded successfully! The PDF was kept in its original format.</p>
           </div>
         )}
 

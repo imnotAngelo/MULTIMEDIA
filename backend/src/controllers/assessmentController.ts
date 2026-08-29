@@ -4,6 +4,7 @@ import { supabase } from '../config/supabase.js';
 import { v4 as uuidv4 } from 'uuid';
 import { findUserById } from '../lib/userStore.js';
 import { matchesContentTarget } from '../lib/contentTargeting.js';
+import { scoreAssessmentSubmission } from '../lib/assessmentScoring.js';
 
 const DEFAULT_INSTRUCTOR_ID = '12345678-1234-4234-8234-123456789012';
 
@@ -797,46 +798,13 @@ export const submitAssessmentResponse = async (req: AuthRequest, res: Response) 
     const submittedAnswers = Array.isArray(answers)
       ? answers
       : Object.entries(answers || {}).map(([questionId, answer]) => ({ questionId, answer }));
-    const answerByQuestion = new Map(
-      submittedAnswers.map((entry: any) => [String(entry.questionId), String(entry.answer ?? '').trim()])
-    );
     const questions = Array.isArray(assessment.questions_data) ? assessment.questions_data : [];
-    let possiblePoints = 0;
-    let earnedPoints = 0;
-    const gradingResults = questions.map((question: any) => {
-      const points = Number(question.points) || 0;
-      const submittedAnswer = answerByQuestion.get(String(question.id)) || '';
-      const expectedAnswer = String(question.correctAnswer ?? '').trim();
-      const isShortAnswer = question.type === 'short-answer';
-      const isCorrect = Boolean(submittedAnswer) && (isShortAnswer
-        ? submittedAnswer.toLowerCase() === expectedAnswer.toLowerCase()
-        : submittedAnswer === expectedAnswer);
+    const { score: calculatedScore, results: gradingResults, earnedPoints, possiblePoints } = scoreAssessmentSubmission(
+      questions,
+      submittedAnswers
+    );
 
-      return {
-        questionId: String(question.id),
-        isCorrect,
-        earnedPoints: isCorrect ? points : 0,
-      };
-    });
-
-    for (const question of questions) {
-      const points = Number(question.points) || 0;
-      possiblePoints += points;
-      const submittedAnswer = answerByQuestion.get(String(question.id));
-      if (!submittedAnswer) continue;
-
-      const expectedAnswer = String(question.correctAnswer ?? '').trim();
-      const isShortAnswer = question.type === 'short-answer';
-      const isCorrect = isShortAnswer
-        ? submittedAnswer.toLowerCase() === expectedAnswer.toLowerCase()
-        : submittedAnswer === expectedAnswer;
-
-      if (isCorrect) earnedPoints += points;
-    }
-
-    const calculatedScore = possiblePoints > 0
-      ? Number(((earnedPoints / possiblePoints) * 100).toFixed(2))
-      : 0;
+    const earnedPointsValue = earnedPoints;
 
     const { data: existingSubmission, error: existingSubmissionError } = await supabase
       .from('assessment_submissions')
@@ -865,6 +833,8 @@ export const submitAssessmentResponse = async (req: AuthRequest, res: Response) 
         user_id: userId,
         answers: answers || {},
         score: calculatedScore,
+        possible_points: possiblePoints,
+        earned_points: earnedPointsValue,
         status: 'submitted',
         submitted_at: new Date().toISOString(),
       }, { onConflict: 'assessment_id,user_id', ignoreDuplicates: true })

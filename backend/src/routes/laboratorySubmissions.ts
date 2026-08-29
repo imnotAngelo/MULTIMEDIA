@@ -94,12 +94,20 @@ router.post("/upload-file", authMiddleware, async (req: AuthRequest, res: Respon
     const { labId, labTitle, note } = req.body ?? {};
     const studentId = req.user?.id;
 
+    const { data: labRecord } = labId
+      ? await supabase.from("laboratories").select("id, instructor_id").eq("id", labId).maybeSingle()
+      : { data: null };
+
     if (!labId || !studentId || !file) {
       if (file) fs.unlinkSync(file.path);
       return res.status(400).json({ error: "Missing labId or file" });
     }
 
     if (!supabase) return res.status(500).json({ error: "Database client not initialized" });
+
+    if (!labRecord) {
+      return res.status(404).json({ error: "Laboratory not found" });
+    }
 
     const filePath = `lab-submissions/${file.filename}`;
 
@@ -116,19 +124,22 @@ router.post("/upload-file", authMiddleware, async (req: AuthRequest, res: Respon
       await supabase.from("lab_file_submissions").delete().eq("id", existing.id);
     }
 
+    const submissionPayload: any = {
+      lab_id: labId,
+      lab_title: labTitle ?? "",
+      student_id: studentId,
+      instructor_id: labRecord.instructor_id ?? null,
+      file_name: file.originalname,
+      file_path: filePath,
+      file_size: file.size,
+      file_type: file.mimetype,
+      note: note ?? "",
+      submitted_at: new Date().toISOString(),
+    };
+
     const { data, error } = await supabase
       .from("lab_file_submissions")
-      .insert([{
-        lab_id: labId,
-        lab_title: labTitle ?? "",
-        student_id: studentId,
-        file_name: file.originalname,
-        file_path: filePath,
-        file_size: file.size,
-        file_type: file.mimetype,
-        note: note ?? "",
-        submitted_at: new Date().toISOString(),
-      }])
+      .insert([submissionPayload])
       .select()
       .single();
 
@@ -240,6 +251,14 @@ router.get(
 
       if (error) throw error;
 
+      const labIds = [...new Set((data ?? []).map((r: any) => r.lab_id).filter(Boolean))];
+      const { data: labs } = labIds.length
+        ? await supabase.from("laboratories").select("id, instructor_id").in("id", labIds)
+        : { data: [] };
+      const labInstructorById: Record<string, string | null> = Object.fromEntries(
+        (labs ?? []).map((lab: any) => [lab.id, lab.instructor_id ?? null])
+      );
+
       const studentIds = [...new Set((data ?? []).map((r: any) => r.student_id))];
       const { data: users } = studentIds.length
         ? await supabase.from("users").select("id, email, full_name").in("id", studentIds)
@@ -248,23 +267,28 @@ router.get(
       const userMap: Record<string, any> = {};
       for (const u of users ?? []) userMap[u.id] = u;
 
-      const rows = (data ?? []).map((row: any) => ({
-        id: row.id,
-        labId: row.lab_id,
-        labTitle: row.lab_title ?? row.lab_id,
-        studentId: row.student_id,
-        studentEmail: userMap[row.student_id]?.email ?? row.student_id,
-        studentName: userMap[row.student_id]?.full_name ?? userMap[row.student_id]?.email ?? row.student_id,
-        fileName: row.file_name,
-        fileType: row.file_type,
-        fileUrl: `/uploads/${row.file_path}`,
-        fileSize: row.file_size,
-        note: row.note ?? "",
-        submittedAt: row.submitted_at,
-        grade: row.grade ?? null,
-        feedback: row.feedback ?? "",
-        status: row.status ?? "submitted",
-      }));
+      const rows = (data ?? [])
+        .filter((row: any) => {
+          const labInstructorId = labInstructorById[row.lab_id] ?? null;
+          return !labInstructorId || labInstructorId === userId;
+        })
+        .map((row: any) => ({
+          id: row.id,
+          labId: row.lab_id,
+          labTitle: row.lab_title ?? row.lab_id,
+          studentId: row.student_id,
+          studentEmail: userMap[row.student_id]?.email ?? row.student_id,
+          studentName: userMap[row.student_id]?.full_name ?? userMap[row.student_id]?.email ?? row.student_id,
+          fileName: row.file_name,
+          fileType: row.file_type,
+          fileUrl: `/uploads/${row.file_path}`,
+          fileSize: row.file_size,
+          note: row.note ?? "",
+          submittedAt: row.submitted_at,
+          grade: row.grade ?? null,
+          feedback: row.feedback ?? "",
+          status: row.status ?? "submitted",
+        }));
 
       res.json(rows);
     } catch (err: any) {

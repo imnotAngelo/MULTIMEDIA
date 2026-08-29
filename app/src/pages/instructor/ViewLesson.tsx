@@ -15,6 +15,8 @@ interface Lesson {
   createdAt: string;
   slideCount?: number;
   slides?: any[];
+  videoUrl?: string;
+  graphicUrl?: string;
 }
 
 export function ViewLesson() {
@@ -75,6 +77,8 @@ export function ViewLesson() {
                 createdAt: found.createdAt || new Date().toISOString(),
                 slideCount: found.slideCount || found.slides?.length || 0,
                 slides: found.slides,
+                videoUrl: found.videoUrl || found.video_url || '',
+                graphicUrl: found.graphicUrl || found.graphic_url || '',
               });
               setError('');
               setLoading(false);
@@ -138,6 +142,8 @@ export function ViewLesson() {
           createdAt: lessonData.created_at || new Date().toISOString(),
           slideCount: Array.isArray(slidesData) ? slidesData.length : 0,
           slides: Array.isArray(slidesData) ? slidesData : [],
+          videoUrl: lessonData.videoUrl || lessonData.video_url || '',
+          graphicUrl: lessonData.graphicUrl || lessonData.graphic_url || '',
         };
 
         console.log('✅ Final lesson object:', lesson);
@@ -155,6 +161,8 @@ export function ViewLesson() {
           createdAt: lessonData.created_at || new Date().toISOString(),
           slideCount: 0,
           slides: [],
+          videoUrl: lessonData.videoUrl || lessonData.video_url || '',
+          graphicUrl: lessonData.graphicUrl || lessonData.graphic_url || '',
         };
         setLesson(lesson);
         setError('⚠️ Could not load slides');
@@ -171,6 +179,8 @@ export function ViewLesson() {
         createdAt: lessonData.created_at || new Date().toISOString(),
         slideCount: 0,
         slides: [],
+        videoUrl: lessonData.videoUrl || lessonData.video_url || '',
+        graphicUrl: lessonData.graphicUrl || lessonData.graphic_url || '',
       };
       setLesson(fallbackLesson);
       setError('Failed to load lesson slides, but showing lesson info');
@@ -258,6 +268,24 @@ export function ViewLesson() {
             Download as PDF
           </Button>
         </div>
+
+        {(lesson.videoUrl || lesson.graphicUrl) && (
+          <div className="mb-6 grid gap-4 lg:grid-cols-2">
+            {lesson.videoUrl && (
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+                <h3 className="text-sm font-semibold text-violet-300 mb-3">Class video</h3>
+                <video src={lesson.videoUrl} controls className="w-full rounded-xl max-h-72 object-cover" />
+              </div>
+            )}
+
+            {lesson.graphicUrl && (
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+                <h3 className="text-sm font-semibold text-violet-300 mb-3">Class graphic</h3>
+                <img src={lesson.graphicUrl} alt={`${lesson.title} graphic`} className="w-full rounded-xl max-h-72 object-cover border border-slate-700" />
+              </div>
+            )}
+          </div>
+        )}
 
         {!hasSlides ? (
           <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-12 text-center">

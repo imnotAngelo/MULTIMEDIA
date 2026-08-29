@@ -30,14 +30,54 @@ router.post('/test-upload', (req: Request, res: Response) => {
 const upload = multer({
   dest: 'uploads/',
   fileFilter: (req, file, cb) => {
+    if (file.fieldname === 'graphicFile') {
+      if (file.mimetype.startsWith('image/')) {
+        cb(null, true);
+        return;
+      }
+      cb(new Error('Only image files are allowed for graphic uploads'));
+      return;
+    }
+
     if (file.mimetype === 'application/pdf') {
       cb(null, true);
-    } else {
-      cb(new Error('Only PDF files are allowed'));
+      return;
     }
+
+    cb(new Error('Only PDF files are allowed'));
   },
   limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
 });
+
+function getUploadedFile(req: Request): Express.Multer.File | undefined {
+  const files = (req as any).files;
+  if (files && Array.isArray(files.file)) return files.file[0];
+  if (files && Array.isArray(files.graphicFile)) return files.graphicFile[0];
+  return (req as any).file;
+}
+
+function getUploadedGraphicFile(req: Request): Express.Multer.File | undefined {
+  const files = (req as any).files;
+  if (!files) return undefined;
+  if (Array.isArray(files.graphicFile)) return files.graphicFile[0];
+  return files.graphicFile;
+}
+
+async function persistGraphicAsset(graphicFile: Express.Multer.File, lessonTitle: string): Promise<string> {
+  if (!graphicFile) return '';
+
+  const assetDir = path.join(uploadDir, 'lesson-graphics');
+  if (!fs.existsSync(assetDir)) fs.mkdirSync(assetDir, { recursive: true });
+
+  const extension = path.extname(graphicFile.originalname || graphicFile.filename || '.png') || '.png';
+  const safeTitle = (lessonTitle || 'lesson-graphic').replace(/[^a-zA-Z0-9-_]+/g, '-').replace(/^-+|-+$/g, '') || 'lesson-graphic';
+  const fileName = `${safeTitle}-${Date.now()}${extension}`;
+  const targetPath = path.join(assetDir, fileName);
+
+  if (fs.existsSync(graphicFile.path)) fs.renameSync(graphicFile.path, targetPath);
+
+  return `/uploads/lesson-graphics/${fileName}`;
+}
 
 function sendSupabaseUnavailable(res: Response) {
   return res.status(503).json({
@@ -167,6 +207,98 @@ function buildFallbackSummary(slides: any[], pdfText?: string): string {
     : cleaned || `Lesson content for ${slides[0]?.title || 'this lesson'}`;
 }
 
+export function buildOriginalPdfLessonRecord({
+  lessonId,
+  title,
+  description,
+  moduleId,
+  fileName,
+  fileUrl,
+  videoUrl,
+  graphicUrl,
+}: {
+  lessonId?: string;
+  title: string;
+  description?: string;
+  moduleId: string;
+  fileName: string;
+  fileUrl?: string;
+  videoUrl?: string;
+  graphicUrl?: string;
+}) {
+  const content = (description && description.trim()) || `Original PDF uploaded: ${title}`;
+
+  return {
+    id: lessonId || uuidv4(),
+    moduleId,
+    title,
+    content,
+    slides: [],
+    slideCount: 0,
+    status: 'published' as const,
+    pdfUrl: fileUrl || `/uploads/${fileName}`,
+    originalFormat: 'pdf' as const,
+    videoUrl: videoUrl || '',
+    graphicUrl: graphicUrl || '',
+  };
+}
+
+export function normalizeGeneratedQuestions(rawQuestions: any[], targetCount = 5) {
+  const normalized: any[] = [];
+  const seen = new Set<string>();
+
+  for (const item of rawQuestions || []) {
+    if (!item || typeof item !== 'object') continue;
+
+    const rawText = String(item.text ?? item.title ?? '').trim();
+    if (!rawText) continue;
+
+    const normalizedText = rawText.replace(/\s+/g, ' ').trim();
+    const dedupeKey = normalizedText.toLowerCase();
+    if (!dedupeKey || seen.has(dedupeKey)) continue;
+    seen.add(dedupeKey);
+
+    const type = item.type === 'short-answer' ? 'short-answer' : 'multiple-choice';
+    const points = Number(item.points) > 0 ? Number(item.points) : 2;
+
+    if (type === 'multiple-choice') {
+      const rawOptions = Array.isArray(item.options) ? item.options : [];
+      const validOptions = rawOptions
+        .map((option: any) => String(typeof option === 'string' ? option : option?.text ?? '').trim())
+        .filter((option) => option && option.length > 0)
+        .filter((option, index, arr) => arr.findIndex((candidate) => candidate.toLowerCase() === option.toLowerCase()) === index);
+
+      if (validOptions.length < 4) continue;
+
+      const uniqueOptions = validOptions.slice(0, 4);
+      const answerValue = String(item.correctAnswer ?? item.answer ?? '').trim();
+      const correctAnswer = uniqueOptions.find((option) => option.toLowerCase() === answerValue.toLowerCase()) || uniqueOptions[0];
+
+      normalized.push({
+        id: item.id ?? String(normalized.length + 1),
+        text: normalizedText,
+        type,
+        points,
+        options: uniqueOptions,
+        correctAnswer,
+      });
+    } else {
+      normalized.push({
+        id: item.id ?? String(normalized.length + 1),
+        text: normalizedText,
+        type: 'short-answer',
+        points,
+        options: [],
+        correctAnswer: '',
+      });
+    }
+
+    if (normalized.length >= targetCount) break;
+  }
+
+  return normalized;
+}
+
 // Helper: Generate slides from PDF text
 async function generateSlides(pdfText: string, title: string, pages?: string[]): Promise<any[]> {
   // Keep the complete extracted text in the deck. AI-generated slides are
@@ -191,7 +323,10 @@ router.post(
     console.log('req.body before multer:', req.body);
     console.log('req.file before multer:', req.file);
     
-    upload.single('file')(req, res, (err) => {
+    upload.fields([
+      { name: 'file', maxCount: 1 },
+      { name: 'graphicFile', maxCount: 1 },
+    ])(req, res, (err) => {
       if (err) {
         console.error('❌ Multer error:', err);
         return res.status(400).json({
@@ -201,15 +336,20 @@ router.post(
       }
       console.log('✅ Multer processed successfully');
       console.log('req.body after multer:', req.body);
-      console.log('req.file after multer:', req.file ? { name: req.file.filename, size: req.file.size } : null);
+      console.log('req.file after multer:', (req as any).file ? { name: (req as any).file.filename, size: (req as any).file.size } : null);
+      console.log('req.files after multer:', (req as any).files ? Object.keys((req as any).files) : null);
       next();
     });
   },
   async (req: Request, res: Response) => {
     try {
-      const { title, moduleId, unitId, targetSections, targetYearLevels } = req.body;
+      const { title, moduleId, unitId, targetSections, targetYearLevels, description, videoUrl, graphicUrl } = req.body;
       const userId = (req as any).user?.id || 'anonymous'; // Use 'anonymous' if no auth
       const lessonModuleId = moduleId || unitId; // Accept both moduleId and unitId
+      const uploadedFile = getUploadedFile(req);
+      const uploadedGraphic = getUploadedGraphicFile(req);
+      const normalizedVideoUrl = String(videoUrl || '').trim() || String((req.body as any).video_url || '').trim() || '';
+      const normalizedGraphicUrl = String(graphicUrl || '').trim() || String((req.body as any).graphic_url || '').trim() || '';
 
       const parseJsonArray = (value: any): any[] => {
         if (Array.isArray(value)) return value;
@@ -221,7 +361,7 @@ router.post(
       const cleanedTargetSections = [...new Set(parseJsonArray(targetSections).map((s) => String(s).trim()).filter(Boolean))];
       const cleanedTargetYearLevels = [...new Set(parseJsonArray(targetYearLevels).map((y) => Number(y)).filter((y) => Number.isInteger(y) && y >= 1 && y <= 4))];
 
-      if (!req.file) {
+      if (!uploadedFile) {
         return res.status(400).json({
           success: false,
           error: { code: 'NO_FILE', message: 'No file uploaded' },
@@ -229,7 +369,7 @@ router.post(
       }
 
       if (!title || !lessonModuleId) {
-        fs.unlinkSync(req.file.path);
+        if (uploadedFile && fs.existsSync(uploadedFile.path)) fs.unlinkSync(uploadedFile.path);
         return res.status(400).json({
           success: false,
           error: { code: 'MISSING_FIELDS', message: 'Title and moduleId/unitId are required' },
@@ -239,7 +379,7 @@ router.post(
       // Validate that lessonModuleId is a valid UUID (v4 format)
       const uuidv4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
       if (!uuidv4Regex.test(lessonModuleId)) {
-        fs.unlinkSync(req.file.path);
+        if (uploadedFile && fs.existsSync(uploadedFile.path)) fs.unlinkSync(uploadedFile.path);
         console.error(`Invalid UUID format for moduleId: "${lessonModuleId}"`);
         return res.status(400).json({
           success: false,
@@ -250,77 +390,28 @@ router.post(
         });
       }
 
-      // Extract PDF text
-      let pdfText = '';
-      let parsedPdfPages: string[] = [];
-      let extractionError: any = null;
-      try {
-        const parsedPdf = await extractPdf(req.file.path);
-        pdfText = parsedPdf.text;
-        parsedPdfPages = parsedPdf.pages;
-      } catch (error) {
-        extractionError = error;
-        console.error('❌ PDF text extraction failed:', {
-          file: req.file?.originalname,
-          size: req.file?.size,
-          error: String(error)
-        });
-      }
+      const persistedGraphicUrl = uploadedGraphic ? await persistGraphicAsset(uploadedGraphic, title) : normalizedGraphicUrl;
 
-      if (!pdfText || pdfText.trim().length < 20) {
-        const fileInfo = req.file?.originalname || 'lesson.pdf';
-        const notExtractedMsg = extractionError 
-          ? `\n\n⚠️ **Automatic text extraction failed:**\n${String(extractionError)}\n\nPlease manually create slides or contact support.`
-          : '\n\n⚠️ **PDF was uploaded but contains no readable text.** This may be a scanned document, image-only PDF, or password-protected file.';
-        
-        pdfText = `# ${title}\n\nFile: ${fileInfo}\nModule: ${lessonModuleId}${notExtractedMsg}`;
-        console.warn(`📄 Using fallback content for lesson "${title}" - file uploaded but not extracted`);
-      }
-
-      // Generate slides
-      const slides = await generateSlides(pdfText, title, parsedPdfPages);
-
-      if (slides.length === 0) {
-        slides.push({
-          slideNumber: 1,
-          title: title,
-          content: `Lesson content for ${title}`,
-          summary: `Lesson content for ${title}`,
-          keyPoints: [title],
-        });
-      }
-
-      console.log('✅ Slides generated:', slides.length);
-      console.log('🎬 Slide data:', JSON.stringify(slides.slice(0, 1), null, 2)); // Log first slide structure
-
-      // Generate summary from the slides (only covers discussed topics)
-      const summary = await generateSummary(slides, pdfText);
-      slides.push({
-        slideNumber: slides.length + 1,
-        title: 'Lesson Summary',
-        content: summary,
-        summary,
-        keyPoints: ['Summary of the complete lesson content'],
-        isSummary: true,
-      });
-
-      // Store file
+      // Keep the original PDF untouched instead of converting it into a slide deck.
       const fileName = `lesson-${Date.now()}.pdf`;
       if (!fs.existsSync(uploadDir)) {
         fs.mkdirSync(uploadDir, { recursive: true });
       }
-      fs.renameSync(req.file.path, path.join(uploadDir, fileName));
+      const destinationPath = path.join(uploadDir, fileName);
+      fs.renameSync(uploadedFile.path, destinationPath);
 
+      const pdfUrl = `/uploads/${fileName}`;
       const lessonId = uuidv4();
-      const lessonData = {
-        id: lessonId,
-        moduleId: lessonModuleId,
+      const lessonData = buildOriginalPdfLessonRecord({
+        lessonId,
         title,
-        content: summary,
-        slides,
-        slideCount: slides.length,
-        status: 'published',
-      };
+        description,
+        moduleId: lessonModuleId,
+        fileName,
+        fileUrl: pdfUrl,
+        videoUrl: normalizedVideoUrl || undefined,
+        graphicUrl: persistedGraphicUrl || undefined,
+      });
 
       let savedLesson: any = null;
 
@@ -348,16 +439,18 @@ router.post(
                 id: lessonId,
                 module_id: lessonModuleId,
                 title,
-                content: summary,
-                slides,
-                slide_count: slides.length,
+                content: lessonData.content,
+                slides: [],
+                slide_count: 0,
                 xp_reward: 25,
                 order_index: 1,
                 target_sections: cleanedTargetSections,
                 target_year_levels: cleanedTargetYearLevels,
                 status: 'published',
+                video_url: normalizedVideoUrl || null,
+                graphic_url: persistedGraphicUrl || null,
               })
-              .select('id, title, slides, slide_count')
+              .select('id, title, slides, slide_count, video_url, graphic_url')
               .single();
 
             if (dbError) {
@@ -390,27 +483,36 @@ router.post(
           id: lessonId,
           title: title,
           moduleId: lessonModuleId,
-          slides: slides.length,
-          summary,
+          slides: 0,
+          summary: lessonData.content,
+          pdfUrl,
+          videoUrl: normalizedVideoUrl || '',
+          graphicUrl: persistedGraphicUrl || '',
+          originalFormat: 'pdf',
         },
         lessonId: lessonId,
-        slideCount: slides.length,
-        slides: slides,
-        message: 'Lesson created successfully with auto-generated slides',
+        slideCount: 0,
+        slides: [],
+        pdfUrl,
+        videoUrl: normalizedVideoUrl || '',
+        graphicUrl: persistedGraphicUrl || '',
+        originalFormat: 'pdf',
+        message: 'Lesson created successfully. The original PDF was kept as uploaded.',
       };
-      
-      console.log('📤 Sending response with slides:', responsePayload.slides.length);
+
+      console.log('📤 Sending response with original PDF preserved:', pdfUrl);
 
       res.status(201).json({
         success: true,
         data: responsePayload,
       });
     } catch (error: any) {
-      // Clean up uploaded file on error
-      if ((req as any).file) {
+      // Clean up uploaded files on error
+      const cleanupFile = (req as any).files?.file?.[0] || (req as any).files?.graphicFile?.[0] || (req as any).file;
+      if (cleanupFile) {
         try {
-          if (fs.existsSync((req as any).file.path)) {
-            fs.unlinkSync((req as any).file.path);
+          if (fs.existsSync(cleanupFile.path)) {
+            fs.unlinkSync(cleanupFile.path);
           }
         } catch (e) {
           console.error('Failed to clean up file:', e);
@@ -446,7 +548,7 @@ router.get('/unit/:unitId', optionalAuthMiddleware, async (req: Request, res: Re
 
     const { data: lessons, error } = await supabase
       .from('lessons')
-      .select('id, title, content, slides, slide_count, created_at, status')
+      .select('id, title, content, slides, slide_count, created_at, status, video_url, graphic_url')
       .eq('module_id', unitId)
       .eq('status', 'published')
       .order('created_at', { ascending: false });
@@ -463,6 +565,8 @@ router.get('/unit/:unitId', optionalAuthMiddleware, async (req: Request, res: Re
         slideCount: lesson.slide_count || 0,
         createdAt: lesson.created_at,
         unitId,
+        videoUrl: lesson.video_url || '',
+        graphicUrl: lesson.graphic_url || '',
       })),
     });
   } catch (error: any) {
@@ -749,22 +853,25 @@ router.post(
 
       const numQuestions = Math.min(Math.max(numberOfQuestions, 2), 10);
       const model = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
-      const prompt = `You are a quiz generator. Based ONLY on the lesson content below, generate exactly ${numQuestions} quiz questions.
+      const prompt = `You are a professional quiz generator. Based ONLY on the lesson content below, generate exactly ${numQuestions} unique quiz questions.
 
 LESSON CONTENT:
 ${fullContent.substring(0, 5000)}
 
 RULES:
-- Questions MUST be answerable from the lesson content above
-- Include a mix of multiple-choice and short-answer questions
-- For multiple-choice: provide exactly 4 options with 1 correct answer
-- Make incorrect options plausible but clearly wrong based on the content
-- Questions should test understanding of key concepts, not just memorization
-- Do NOT reference the lesson title or slide names in questions
-- Ask about the actual concepts, facts, and ideas taught
+- Generate exactly ${numQuestions} questions, no more and no fewer.
+- Every question must be answerable from the lesson content above.
+- Make the questions precise, high-quality, and academically appropriate.
+- Include a balanced mix of multiple-choice and short-answer questions.
+- For multiple-choice: provide exactly 4 unique options and exactly 1 correct answer.
+- Incorrect options must be plausible but clearly incorrect based on the lesson content.
+- Do not repeat the same question, idea, or wording across questions.
+- Avoid vague, generic, or repetitive phrasing.
+- Do not mention the lesson title, slide titles, or any metadata in the question text.
+- Focus on understanding, interpretation, and key concepts rather than memorization.
 
-Return ONLY a JSON object with this shape:
-{"questions":[{"id":"1","text":"Question text?","type":"multiple-choice","points":2,"options":["A","B","C","D"],"correctAnswer":"A"}]}`;
+Return ONLY a JSON object in this exact format:
+{"questions":[{"id":"1","text":"Question text?","type":"multiple-choice","points":2,"options":["Option A","Option B","Option C","Option D"],"correctAnswer":"Option A"}]}`;
 
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`, {
         method: 'POST',
@@ -799,7 +906,7 @@ Return ONLY a JSON object with this shape:
       }
 
       const parsed = JSON.parse(jsonMatch[0]);
-      const questions = parsed.questions || [];
+      const questions = normalizeGeneratedQuestions(parsed.questions || [], numQuestions);
 
       console.log('🧠 Generated', questions.length, 'questions from lesson content');
 

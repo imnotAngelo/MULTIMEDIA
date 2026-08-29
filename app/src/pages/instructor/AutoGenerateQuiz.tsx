@@ -140,21 +140,31 @@ export function AutoGenerateQuiz() {
         throw new Error('No questions were generated');
       }
 
-      const aiQuestions: Question[] = data.data.map((q: any, idx: number) => ({
-        id: String(idx + 1),
-        title: q.text || q.title || '',
-        type: q.type === 'short-answer' ? 'short-answer' : 'multiple-choice',
-        points: q.points || 2,
-        options: q.type === 'multiple-choice' && Array.isArray(q.options)
-          ? q.options.map((opt: string, i: number) => ({
-              id: String(i + 1),
-              text: opt,
-              isCorrect: opt === q.correctAnswer,
-            }))
-          : [],
-      }));
+      const aiQuestions: Question[] = data.data
+        .map((q: any, idx: number) => ({
+          id: String(idx + 1),
+          title: (q.text || q.title || '').trim(),
+          type: q.type === 'short-answer' ? 'short-answer' : 'multiple-choice',
+          points: Number(q.points) > 0 ? Number(q.points) : 2,
+          options: q.type === 'multiple-choice' && Array.isArray(q.options)
+            ? q.options
+                .map((opt: string, i: number) => ({
+                  id: String(i + 1),
+                  text: String(opt || '').trim(),
+                  isCorrect: String(opt || '').trim() === String(q.correctAnswer || '').trim(),
+                }))
+                .filter((opt) => opt.text.length > 0)
+                .slice(0, 4)
+            : [],
+        }))
+        .filter((q) => q.title.length > 0);
 
-      setGeneratedQuestions(aiQuestions);
+      const cleanedQuestions = normalizeQuestionSet(aiQuestions);
+      if (cleanedQuestions.length === 0) {
+        throw new Error('The generated content did not produce valid unique questions. Please regenerate.');
+      }
+
+      setGeneratedQuestions(cleanedQuestions);
       setQuestionsGenerated(true);
     } catch (error: any) {
       alert('Failed to generate questions: ' + error.message);
@@ -181,6 +191,41 @@ export function AutoGenerateQuiz() {
     }
   };
 
+  const normalizeQuestionSet = (questions: Question[]) => {
+    const seen = new Set<string>();
+    return questions.filter((question) => {
+      const text = question.title.trim();
+      const key = text.toLowerCase();
+      if (!text || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).map((question) => {
+      const normalizedQuestion = { ...question, title: question.title.trim() };
+
+      if (normalizedQuestion.type === 'multiple-choice') {
+        const options = normalizedQuestion.options
+          .map((option) => ({ ...option, text: option.text.trim() }))
+          .filter((option) => option.text.length > 0)
+          .filter((option, idx, arr) => arr.findIndex((candidate) => candidate.text.toLowerCase() === option.text.toLowerCase()) === idx)
+          .slice(0, 4);
+
+        if (options.length < 4) {
+          return null;
+        }
+
+        const hasCorrectAnswer = options.some((option) => option.isCorrect);
+        const correctedOptions = options.map((option, idx) => ({
+          ...option,
+          isCorrect: hasCorrectAnswer ? option.isCorrect : idx === 0,
+        }));
+
+        return { ...normalizedQuestion, options: correctedOptions };
+      }
+
+      return normalizedQuestion;
+    }).filter(Boolean) as Question[];
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -194,10 +239,17 @@ export function AutoGenerateQuiz() {
       return;
     }
 
+    const cleanedQuestions = normalizeQuestionSet(generatedQuestions);
+    if (cleanedQuestions.length !== generatedQuestions.length) {
+      alert('Please remove duplicate or incomplete questions before creating the quiz.');
+      setGeneratedQuestions(cleanedQuestions);
+      return;
+    }
+
     try {
       setLoading(true);
 
-      const transformedQuestions = generatedQuestions.map(q => ({
+      const transformedQuestions = cleanedQuestions.map(q => ({
         id: q.id,
         text: q.title,
         type: q.type,
