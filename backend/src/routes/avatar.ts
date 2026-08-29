@@ -1,17 +1,11 @@
 import { Router, Response } from 'express';
 import multer from 'multer';
 import path from 'path';
-import fs from 'fs';
-import crypto from 'crypto';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { supabase } from '../config/supabase.js';
+import { buildAvatarStoragePath, extractStorageObjectPath } from '../lib/avatarStorage.js';
 
 const router = Router();
-
-const AVATARS_DIR = path.join(process.cwd(), 'uploads', 'avatars');
-if (!fs.existsSync(AVATARS_DIR)) {
-  fs.mkdirSync(AVATARS_DIR, { recursive: true });
-}
 
 const ALLOWED_MIME = new Set([
   'image/jpeg',
@@ -21,15 +15,7 @@ const ALLOWED_MIME = new Set([
   'image/gif',
 ]);
 
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, AVATARS_DIR),
-  filename: (req, file, cb) => {
-    const userId = (req as AuthRequest).user?.id ?? 'anon';
-    const ext = (path.extname(file.originalname) || '').toLowerCase().slice(0, 8);
-    const rand = crypto.randomBytes(6).toString('hex');
-    cb(null, `${userId}-${Date.now()}-${rand}${ext}`);
-  },
-});
+const storage = multer.memoryStorage();
 
 const upload = multer({
   storage,
@@ -78,9 +64,31 @@ router.post(
         });
       }
 
-      const publicUrl = `/uploads/avatars/${req.file.filename}`;
+      if (!supabase) {
+        return res.status(503).json({
+          success: false,
+          error: { code: 'SUPABASE_UNAVAILABLE', message: 'Supabase is not configured' },
+        });
+      }
 
-      // Look up the previous avatar so we can delete it if it's a local file we own.
+      const filePath = buildAvatarStoragePath(userId, req.file.originalname);
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, req.file.buffer, {
+          contentType: req.file.mimetype,
+          upsert: true,
+        });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data: publicData } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      const publicUrl = publicData?.publicUrl || `https://ciopmrwvmgqsbapyljih.supabase.co/storage/v1/object/public/avatars/${filePath}`;
+
       const { data: existing } = await supabase
         .from('users')
         .select('avatar_url')
@@ -98,13 +106,12 @@ router.post(
 
       if (error) throw error;
 
-      // Best-effort: remove the previous local avatar to avoid disk bloat.
       const prev = existing?.avatar_url;
-      if (prev && typeof prev === 'string' && prev.startsWith('/uploads/avatars/')) {
-        const prevPath = path.join(process.cwd(), prev.replace(/^\//, ''));
-        fs.unlink(prevPath, () => {
-          /* ignore */
-        });
+      if (prev && typeof prev === 'string') {
+        const previousObjectPath = extractStorageObjectPath(prev);
+        if (previousObjectPath && previousObjectPath !== filePath) {
+          await supabase.storage.from('avatars').remove([previousObjectPath]).catch(() => undefined);
+        }
       }
 
       return res.json({
