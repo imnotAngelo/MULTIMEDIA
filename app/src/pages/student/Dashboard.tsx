@@ -10,7 +10,6 @@ import {
   ArrowRight,
   RefreshCw,
   FileText,
-  ClipboardList,
   Layers,
   GraduationCap,
   Loader2,
@@ -200,43 +199,6 @@ export function Dashboard() {
             </div>
           </div>
 
-          {/* Quiz Quick Access */}
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <ClipboardList className="w-5 h-5 text-amber-400" />
-                <h2 className="text-lg font-semibold text-white">Quizzes</h2>
-              </div>
-              <Button
-                onClick={() => navigate('/quizzes')}
-                variant="ghost"
-                size="sm"
-                className="text-slate-400 hover:text-violet-400 text-sm"
-              >
-                View All
-                <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
-              </Button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <button
-                onClick={() => navigate('/quizzes')}
-                className="group bg-slate-900/50 border border-slate-800/60 hover:border-amber-500/40 rounded-xl p-5 text-left transition-all duration-200"
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                    <ClipboardList className="w-4.5 h-4.5 text-amber-400" />
-                  </div>
-                  <span className="text-xs font-medium text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded">
-                    Quizzes
-                  </span>
-                </div>
-                <h3 className="text-white font-medium text-sm mb-1">Quizzes</h3>
-                <p className="text-slate-500 text-xs">
-                  Test your knowledge with quick assessments
-                </p>
-              </button>
-            </div>
-          </div>
         </>
       )}
     </div>

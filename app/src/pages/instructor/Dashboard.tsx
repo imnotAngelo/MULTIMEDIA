@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/stores/authStore';
-import { Plus, BookOpen, Users, FileText, ClipboardList, Zap, ArrowRight, Layers, Upload, Loader2, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { BookOpen, Users, FileText, ClipboardList, ArrowRight, Layers, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { authFetch } from '@/lib/authFetch';
@@ -223,82 +223,6 @@ export function InstructorDashboard() {
         <AetherLoader label="Mapping your instructor workspace" />
       ) : (
         <>
-          {/* Quick Actions */}
-          <div>
-            <h2 className="text-lg font-semibold text-white mb-4">Quick Actions</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              <button
-                onClick={() => navigate('/instructor/courses')}
-                className="group flex items-center gap-4 bg-slate-900/50 border border-slate-800/60 hover:border-violet-500/40 rounded-xl p-5 text-left transition-all duration-200"
-              >
-                <div className="w-11 h-11 rounded-lg bg-violet-500/10 flex items-center justify-center group-hover:bg-violet-500/15 transition-colors shrink-0">
-                  <Plus className="w-5 h-5 text-violet-400" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-medium text-white text-sm group-hover:text-violet-300 transition-colors">Create Unit</h3>
-                  <p className="text-slate-500 text-xs mt-0.5">Add a new course unit</p>
-                </div>
-                <ArrowRight className="w-4 h-4 text-slate-600 group-hover:text-violet-400 transition-colors shrink-0" />
-              </button>
-
-              <button
-                onClick={() => navigate('/instructor/courses')}
-                className="group flex items-center gap-4 bg-slate-900/50 border border-slate-800/60 hover:border-blue-500/40 rounded-xl p-5 text-left transition-all duration-200"
-              >
-                <div className="w-11 h-11 rounded-lg bg-blue-500/10 flex items-center justify-center group-hover:bg-blue-500/15 transition-colors shrink-0">
-                  <Upload className="w-5 h-5 text-blue-400" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-medium text-white text-sm group-hover:text-blue-300 transition-colors">Upload Lesson</h3>
-                  <p className="text-slate-500 text-xs mt-0.5">Add a PDF lesson to a unit</p>
-                </div>
-                <ArrowRight className="w-4 h-4 text-slate-600 group-hover:text-blue-400 transition-colors shrink-0" />
-              </button>
-
-              <button
-                onClick={() => navigate('/instructor/assessments')}
-                className="group flex items-center gap-4 bg-slate-900/50 border border-slate-800/60 hover:border-purple-500/40 rounded-xl p-5 text-left transition-all duration-200"
-              >
-                <div className="w-11 h-11 rounded-lg bg-purple-500/10 flex items-center justify-center group-hover:bg-purple-500/15 transition-colors shrink-0">
-                  <ClipboardList className="w-5 h-5 text-purple-400" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-medium text-white text-sm group-hover:text-purple-300 transition-colors">Assessments</h3>
-                  <p className="text-slate-500 text-xs mt-0.5">Manage student assessments</p>
-                </div>
-                <ArrowRight className="w-4 h-4 text-slate-600 group-hover:text-purple-400 transition-colors shrink-0" />
-              </button>
-
-              <button
-                onClick={() => navigate('/instructor/quizzes')}
-                className="group flex items-center gap-4 bg-slate-900/50 border border-slate-800/60 hover:border-fuchsia-500/40 rounded-xl p-5 text-left transition-all duration-200"
-              >
-                <div className="w-11 h-11 rounded-lg bg-fuchsia-500/10 flex items-center justify-center group-hover:bg-fuchsia-500/15 transition-colors shrink-0">
-                  <Zap className="w-5 h-5 text-fuchsia-400" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-medium text-white text-sm group-hover:text-fuchsia-300 transition-colors">Quizzes</h3>
-                  <p className="text-slate-500 text-xs mt-0.5">Create and manage quizzes</p>
-                </div>
-                <ArrowRight className="w-4 h-4 text-slate-600 group-hover:text-fuchsia-400 transition-colors shrink-0" />
-              </button>
-
-              <button
-                onClick={() => navigate('/instructor/quiz/create')}
-                className="group flex items-center gap-4 bg-slate-900/50 border border-slate-800/60 hover:border-emerald-500/40 rounded-xl p-5 text-left transition-all duration-200"
-              >
-                <div className="w-11 h-11 rounded-lg bg-emerald-500/10 flex items-center justify-center group-hover:bg-emerald-500/15 transition-colors shrink-0">
-                  <BookOpen className="w-5 h-5 text-emerald-400" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-medium text-white text-sm group-hover:text-emerald-300 transition-colors">Create Quiz</h3>
-                  <p className="text-slate-500 text-xs mt-0.5">Manual or AI-generated</p>
-                </div>
-                <ArrowRight className="w-4 h-4 text-slate-600 group-hover:text-emerald-400 transition-colors shrink-0" />
-              </button>
-            </div>
-          </div>
-
           {/* Units Overview */}
           {units.length > 0 && (
             <div>

@@ -11,6 +11,7 @@ interface StudentRequest {
   id: string;
   email: string;
   full_name: string;
+  avatar_url?: string | null;
   year_level: number;
   section: string;
   created_at: string;
@@ -23,6 +24,7 @@ export function StudentApprovals() {
   const [error, setError] = useState('');
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [sectionFilter, setSectionFilter] = useState('all');
+  const [yearFilter, setYearFilter] = useState('all');
 
   const loadRequests = async () => {
     setLoading(true);
@@ -54,8 +56,15 @@ export function StudentApprovals() {
   }, []);
 
   const sections = Array.from(new Set([...requests, ...students].map((s) => s.section).filter(Boolean))).sort();
-  const filteredRequests = sectionFilter === 'all' ? requests : requests.filter((r) => r.section === sectionFilter);
-  const filteredStudents = sectionFilter === 'all' ? students : students.filter((s) => s.section === sectionFilter);
+  const years = Array.from(new Set([...requests, ...students].map((s) => s.year_level).filter((year) => year !== null && year !== undefined))).sort((a, b) => a - b);
+  const matchesFilters = (student: StudentRequest) =>
+    (sectionFilter === 'all' || student.section === sectionFilter) &&
+    (yearFilter === 'all' || String(student.year_level) === yearFilter);
+  const filteredRequests = requests.filter(matchesFilters);
+  const filteredStudents = students.filter(matchesFilters);
+
+  const getAvatarUrl = (student: StudentRequest) =>
+    student.avatar_url || `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(student.full_name || student.email)}`;
 
   const approveRequest = async (id: string) => {
     setApprovingId(id);
@@ -87,9 +96,9 @@ export function StudentApprovals() {
         </Button>
       </div>
 
-      {sections.length > 1 && (
-        <div className="flex items-center gap-2">
-          <label htmlFor="sectionFilter" className="text-sm text-slate-400">Filter by section</label>
+      {(sections.length > 0 || years.length > 0) && (
+        <div className="flex flex-wrap items-center gap-3">
+          <label htmlFor="sectionFilter" className="text-sm text-slate-400">Filter students</label>
           <select
             id="sectionFilter"
             value={sectionFilter}
@@ -99,6 +108,17 @@ export function StudentApprovals() {
             <option value="all">All sections</option>
             {sections.map((s) => (
               <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+          <select
+            id="yearFilter"
+            value={yearFilter}
+            onChange={(e) => setYearFilter(e.target.value)}
+            className="h-9 rounded-md border border-slate-700 bg-slate-800/60 px-3 text-sm text-white focus:border-violet-500/50 focus:outline-none focus:ring-2 focus:ring-violet-500/30"
+          >
+            <option value="all">All year levels</option>
+            {years.map((year) => (
+              <option key={year} value={String(year)}>Year {year}</option>
             ))}
           </select>
         </div>
@@ -127,12 +147,15 @@ export function StudentApprovals() {
             <div className="divide-y divide-slate-800">
               {filteredRequests.map((request) => (
                 <div key={request.id} className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <h2 className="font-semibold text-white">{request.full_name}</h2>
-                    <p className="text-sm text-slate-400">{request.email}</p>
+                  <div className="flex items-center gap-4">
+                    <img src={getAvatarUrl(request)} alt={`${request.full_name} profile`} className="h-12 w-12 shrink-0 rounded-full border border-slate-700 bg-slate-800 object-cover" />
+                    <div>
+                      <h2 className="font-semibold text-white">{request.full_name}</h2>
+                      <p className="text-sm text-slate-400">{request.email}</p>
                     <p className="mt-1 text-xs text-slate-500">
                       Year {request.year_level} · Section {request.section} · Requested {new Date(request.created_at).toLocaleDateString()}
                     </p>
+                    </div>
                   </div>
                   <Button onClick={() => approveRequest(request.id)} disabled={approvingId === request.id} className="bg-emerald-600 text-white hover:bg-emerald-500">
                     {approvingId === request.id ? <AetherSpinner className="mr-2 h-4 w-4" /> : <Check className="mr-2 h-4 w-4" />}
@@ -160,10 +183,15 @@ export function StudentApprovals() {
             <div className="divide-y divide-slate-800">
               {filteredStudents.map((student) => (
                 <div key={student.id} className="flex flex-col gap-2 p-5 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <h2 className="font-semibold text-white">{student.full_name}</h2>
-                    <p className="text-sm text-slate-400">{student.email}</p>
-                    <p className="mt-1 text-xs text-slate-500">Year {student.year_level} · Section {student.section}</p>
+                  <div className="flex items-center gap-4">
+                    <img src={getAvatarUrl(student)} alt={`${student.full_name} profile`} className="h-12 w-12 shrink-0 rounded-full border border-slate-700 bg-slate-800 object-cover" />
+                    <div>
+                      <h2 className="font-semibold text-white">{student.full_name}</h2>
+                      <p className="text-sm text-slate-400">{student.email}</p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        Year {student.year_level} · Section {student.section} · Joined {new Date(student.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
                   </div>
                   <span className={`w-fit rounded-full border px-2.5 py-1 text-xs ${student.student_approved === false ? 'border-amber-500/30 bg-amber-500/10 text-amber-300' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'}`}>
                     {student.student_approved === false ? 'Pending approval' : 'Approved'}

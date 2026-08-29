@@ -14,7 +14,8 @@ export function InstructorLayout() {
         userRole="instructor"
         userName={user.full_name}
         userAvatar={user.avatar_url}
-        xp={user.xp_total}
+        yearLevel={user.year_level}
+        section={user.section}
       />
       <div className="lg:ml-64 min-h-screen flex flex-col">
         <Header

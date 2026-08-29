@@ -1,4 +1,4 @@
-import { Bell, Search, Sparkles, LogOut as LogOutIcon, CheckCheck, BookOpen, FileText, ClipboardList, Layers, X, ChevronDown } from 'lucide-react';
+import { Bell, Search, Sparkles, LogOut as LogOutIcon, CheckCheck, BookOpen, FileText, ClipboardList, Layers, X } from 'lucide-react';
 import { AetherSpinner } from '@/components/AetherSpinner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -216,6 +216,10 @@ export function Header({ title, subtitle }: HeaderProps) {
     navigate('/login');
   };
 
+  const handleProfileClick = () => {
+    navigate(user?.role === 'instructor' ? '/instructor/settings' : '/settings');
+  };
+
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case 'lesson':     return <span className="text-lg">📖</span>;
@@ -427,46 +431,35 @@ export function Header({ title, subtitle }: HeaderProps) {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* User Menu */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0 header-user-trigger" aria-label="Open user menu">
-              <span className="header-user-ring" />
-              <div className="header-user-avatar">
-                {user?.avatar_url ? (
-                  <img src={user.avatar_url} alt="" className="h-full w-full rounded-full object-cover" />
-                ) : (
-                  <span className="text-white font-semibold text-sm">
-                    {user?.full_name?.charAt(0).toUpperCase() || 'S'}
-                  </span>
-                )}
-              </div>
-              <ChevronDown className="header-user-chevron" aria-hidden="true" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="bg-slate-900 border-slate-800">
-            <DropdownMenuLabel className="text-slate-200">
-              <div className="flex flex-col">
-                <span>{user?.full_name || 'Student'}</span>
-                <span className="text-xs text-slate-400 font-normal">{user?.email}</span>
-              </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator className="bg-slate-800" />
-            <DropdownMenuItem className="text-slate-300 hover:text-slate-100 hover:bg-slate-800 cursor-pointer">
-              Profile
-            </DropdownMenuItem>
-            <DropdownMenuItem className="text-slate-300 hover:text-slate-100 hover:bg-slate-800 cursor-pointer">
-              Settings
-            </DropdownMenuItem>
-            <DropdownMenuSeparator className="bg-slate-800" />
-            <DropdownMenuItem 
-              onClick={handleLogout}
-              className="text-red-400 hover:text-red-300 hover:bg-slate-800 cursor-pointer"
-            >
-              Log out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {/* Profile and logout actions */}
+        <Button
+          variant="ghost"
+          onClick={handleProfileClick}
+          className="relative h-10 w-10 rounded-full p-0 header-user-trigger"
+          aria-label="Open settings"
+          title="Settings"
+        >
+          <span className="header-user-ring" />
+          <div className="header-user-avatar">
+            {user?.avatar_url ? (
+              <img src={user.avatar_url} alt="" className="h-full w-full rounded-full object-cover" />
+            ) : (
+              <span className="text-white font-semibold text-sm">
+                {user?.full_name?.charAt(0).toUpperCase() || 'S'}
+              </span>
+            )}
+          </div>
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={handleLogout}
+          className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+          aria-label="Log out"
+          title="Log out"
+        >
+          <LogOutIcon className="w-5 h-5" />
+        </Button>
       </div>
     </header>
   );

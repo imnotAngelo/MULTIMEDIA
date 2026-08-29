@@ -14,8 +14,7 @@ import {
   Zap,
   Layers,
   Image,
-  Settings
-  ,UserCheck
+  UserCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -38,7 +37,6 @@ const studentNavItems: NavItem[] = [
   { label: 'Portfolio', href: '/portfolio', icon: Image },
   { label: 'Quizzes', href: '/quizzes', icon: Zap },
   { label: 'Message', href: '/chatbox', icon: MessageSquare },
-  { label: 'Settings', href: '/settings', icon: Settings },
 ];
 
 const instructorNavItems: NavItem[] = [
@@ -65,7 +63,6 @@ const instructorNavItems: NavItem[] = [
   },
   { label: 'Student approvals', href: '/instructor/student-approvals', icon: UserCheck },
   { label: 'Messages', href: '/instructor/messages', icon: MessageSquare },
-  { label: 'Settings', href: '/instructor/settings', icon: Settings },
 ];
 
 const adminNavItems: NavItem[] = [
@@ -78,14 +75,16 @@ interface SidebarProps {
   userRole?: 'student' | 'instructor' | 'admin';
   userName?: string;
   userAvatar?: string;
-  xp?: number;
+  yearLevel?: number | null;
+  section?: string | null;
 }
 
 export function Sidebar({ 
   userRole = 'student', 
   userName = 'Student', 
   userAvatar,
-  xp = 0 
+  yearLevel,
+  section,
 }: SidebarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [expandedItems, setExpandedItems] = useState<string[]>(['Laboratories']);
@@ -243,7 +242,10 @@ export function Sidebar({
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-white text-sm font-medium truncate">{userName}</p>
-            <p className="text-slate-400 text-xs">{xp.toLocaleString()} XP</p>
+            <p className="text-slate-400 text-xs truncate">
+              {yearLevel ? `Year ${yearLevel}` : 'Year not set'}
+              {section ? ` · Section ${section}` : ''}
+            </p>
           </div>
           <Button 
             onClick={handleLogout}

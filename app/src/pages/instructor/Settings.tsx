@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { GraduationCap, Save, User as UserIcon, Trophy, Calendar, Image as ImageIcon, Upload } from 'lucide-react';
+import { GraduationCap, Save, User as UserIcon, Calendar, Image as ImageIcon, Upload } from 'lucide-react';
 import { AetherSpinner } from '@/components/AetherSpinner';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -156,16 +156,7 @@ export function InstructorSettings() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 gap-3 mt-5 pt-5 border-t border-white/5">
-          <div className="rounded-xl bg-slate-800/40 border border-white/5 p-3">
-            <div className="flex items-center gap-1.5 text-amber-300 text-xs font-medium mb-1">
-              <Trophy className="w-3.5 h-3.5" />
-              Total XP
-            </div>
-            <div className="text-white text-lg font-semibold">
-              {user?.xp_total ?? 0}
-            </div>
-          </div>
+        <div className="grid grid-cols-1 gap-3 mt-5 pt-5 border-t border-white/5">
           <div className="rounded-xl bg-slate-800/40 border border-white/5 p-3">
             <div className="flex items-center gap-1.5 text-sky-300 text-xs font-medium mb-1">
               <Calendar className="w-3.5 h-3.5" />
