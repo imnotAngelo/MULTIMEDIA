@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { authFetch } from '@/lib/authFetch';
 import { downloadLessonAsPDF } from '@/lib/downloadUtils';
+import { resolveBackendAssetUrl } from '@/lib/apiConfig';
 import { useAuthStore } from '@/stores/authStore';
 import { toast } from 'sonner';
 import { AetherLoader } from '@/components/AetherLoader';
@@ -43,6 +44,7 @@ export function SlideViewer({ lessonId, lessonTitle }: SlideViewerProps) {
   const [error, setError] = useState('');
   const [showComments, setShowComments] = useState(false);
   const [lesson, setLesson] = useState<any>(null);
+  const [pdfUrl, setPdfUrl] = useState<string>('');
   const { user } = useAuthStore();
   const completionKey = user?.id ? `lesson-completed:${user.id}:${lessonId}` : '';
   const [completed, setCompleted] = useState(false);
@@ -134,6 +136,21 @@ export function SlideViewer({ lessonId, lessonTitle }: SlideViewerProps) {
             console.log('🎬 Lesson has slides?', lesson.slides);
             console.log('📊 Slide count:', lesson.slides?.length || lesson.slideCount || 0);
 
+            const isPdfLesson = Boolean(
+              lesson.pdfUrl || lesson.pdf_url || lesson.originalFormat === 'pdf' || lesson.original_format === 'pdf'
+            );
+
+            if (isPdfLesson) {
+              foundLesson = lesson;
+              const resolvedPdfUrl = resolveBackendAssetUrl(lesson.pdfUrl || lesson.pdf_url || '');
+              setPdfUrl(resolvedPdfUrl);
+              console.log('📄 PDF lesson detected:', resolvedPdfUrl);
+              setLesson(foundLesson);
+              setSlides([]);
+              setLoading(false);
+              return;
+            }
+
             if (lesson.slides && Array.isArray(lesson.slides) && lesson.slides.length > 0) {
               foundLesson = lesson;
               foundSlides = lesson.slides.map((slide: any, idx: number) => ({
@@ -151,7 +168,7 @@ export function SlideViewer({ lessonId, lessonTitle }: SlideViewerProps) {
         }
       }
 
-      if (foundSlides.length === 0) {
+      if (foundSlides.length === 0 && !pdfUrl && !foundLesson?.pdfUrl && !foundLesson?.pdf_url && !foundLesson?.originalFormat && !foundLesson?.original_format) {
         console.warn('⚠️ No slides found in database');
         setError('No slides found for this lesson.');
       } else {
@@ -259,6 +276,45 @@ export function SlideViewer({ lessonId, lessonTitle }: SlideViewerProps) {
     return (
       <div className="text-center p-12">
         <p className="text-red-400">{error}</p>
+      </div>
+    );
+  }
+
+  const isPdfLesson = Boolean(
+    lesson?.pdfUrl || lesson?.pdf_url || lesson?.originalFormat === 'pdf' || lesson?.original_format === 'pdf' || pdfUrl
+  );
+
+  if (isPdfLesson) {
+    const pdfViewerUrl = pdfUrl || resolveBackendAssetUrl(lesson?.pdfUrl || lesson?.pdf_url || '');
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-bold text-white">{lessonTitle}</h2>
+            <p className="text-sm text-slate-400">PDF Document</p>
+          </div>
+          <a
+            href={pdfViewerUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2 rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+          >
+            <Download className="w-4 h-4" />
+            Open PDF
+          </a>
+        </div>
+
+        <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-950">
+          {pdfViewerUrl ? (
+            <iframe
+              src={pdfViewerUrl}
+              title={lessonTitle}
+              className="h-[80vh] w-full border-0"
+            />
+          ) : (
+            <div className="p-12 text-center text-slate-400">PDF preview is not available for this lesson.</div>
+          )}
+        </div>
       </div>
     );
   }

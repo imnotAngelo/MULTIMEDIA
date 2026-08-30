@@ -4,6 +4,7 @@ import { supabase } from '../config/supabase.js';
 import { v4 as uuidv4 } from 'uuid';
 import { findUserById } from '../lib/userStore.js';
 import { matchesContentTarget } from '../lib/contentTargeting.js';
+import { listLocalLessonsByModuleId } from '../lib/lessonStore.js';
 
 // Use a consistent default instructor ID for unauthenticated requests (proper UUID)
 const DEFAULT_INSTRUCTOR_ID = '12345678-1234-4234-8234-123456789012';
@@ -362,7 +363,7 @@ export const getUnitLessons = async (req: AuthRequest, res: Response) => {
 
       const { data: lessons, error } = await supabase
         .from('lessons')
-        .select('id, title, content, slides, slide_count, created_at, status, target_sections, target_year_levels')
+        .select('id, title, content, slides, slide_count, created_at, status, target_sections, target_year_levels, video_url, graphic_url')
         .eq('module_id', unitId)
         .eq('status', 'published')
         .order('created_at', { ascending: false });
@@ -371,8 +372,24 @@ export const getUnitLessons = async (req: AuthRequest, res: Response) => {
       return lessons || [];
     }, [] as Array<any>);
 
+    const localLessons = listLocalLessonsByModuleId(unitId).map((l) => ({
+      id: l.id,
+      title: l.title,
+      content: l.content || '',
+      slides: Array.isArray(l.slides) ? l.slides : [],
+      slide_count: l.slideCount || 0,
+      created_at: l.createdAt || new Date().toISOString(),
+      target_sections: [],
+      target_year_levels: [],
+      status: l.status || 'published',
+      pdf_url: l.pdfUrl || '',
+      original_format: l.originalFormat || (l.pdfUrl ? 'pdf' : 'slides'),
+      video_url: l.videoUrl || '',
+      graphic_url: l.graphicUrl || '',
+    }));
+
     const requester = (req as any).user;
-    const allLessons = (lessonsFromDb || []).filter((l: any) =>
+    const allLessons = [...(lessonsFromDb || []), ...localLessons].filter((l: any) =>
       requester?.role === 'student'
         ? matchesContentTarget(l.target_sections, l.target_year_levels, requester.section, requester.year_level)
         : true
@@ -394,8 +411,10 @@ export const getUnitLessons = async (req: AuthRequest, res: Response) => {
           slideCount: l.slide_count || l.slideCount || 0,
           createdAt: l.created_at || l.createdAt,
           unitId,
+          pdfUrl: l.pdf_url || l.pdfUrl || '',
+          originalFormat: l.original_format || l.originalFormat || (l.pdf_url || l.pdfUrl ? 'pdf' : 'slides'),
         };
-        console.log('📝 Mapped lesson:', { id: mappedLesson.id, title: mappedLesson.title, slidesCount: mappedLesson.slides.length });
+        console.log('📝 Mapped lesson:', { id: mappedLesson.id, title: mappedLesson.title, slidesCount: mappedLesson.slides.length, pdfUrl: mappedLesson.pdfUrl, originalFormat: mappedLesson.originalFormat });
         return mappedLesson;
       }),
     });

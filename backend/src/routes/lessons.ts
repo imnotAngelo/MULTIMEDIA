@@ -8,6 +8,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'node:url';
 import pdfParser from 'pdf-parse';
 import { v4 as uuidv4 } from 'uuid';
+import { createLocalLesson, listLocalLessonsByModuleId } from '../lib/lessonStore.js';
 
 const router = Router();
 const routeDir = path.dirname(fileURLToPath(import.meta.url));
@@ -50,18 +51,25 @@ const upload = multer({
   limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
 });
 
-function getUploadedFile(req: Request): Express.Multer.File | undefined {
+export function getUploadedFile(req: Request): Express.Multer.File | undefined {
   const files = (req as any).files;
   if (files && Array.isArray(files.file)) return files.file[0];
-  if (files && Array.isArray(files.graphicFile)) return files.graphicFile[0];
+  if (files && files.file && !Array.isArray(files.file)) return files.file;
   return (req as any).file;
 }
 
-function getUploadedGraphicFile(req: Request): Express.Multer.File | undefined {
+export function getUploadedGraphicFile(req: Request): Express.Multer.File | undefined {
   const files = (req as any).files;
   if (!files) return undefined;
   if (Array.isArray(files.graphicFile)) return files.graphicFile[0];
-  return files.graphicFile;
+  if (files.graphicFile && !Array.isArray(files.graphicFile)) return files.graphicFile;
+  return undefined;
+}
+
+export function createUniqueStorageName(extension: string, prefix = 'lesson') {
+  const normalizedExt = extension.startsWith('.') ? extension : `.${extension}`;
+  const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  return `${prefix}-${uniqueSuffix}${normalizedExt}`;
 }
 
 async function persistGraphicAsset(graphicFile: Express.Multer.File, lessonTitle: string): Promise<string> {
@@ -72,7 +80,7 @@ async function persistGraphicAsset(graphicFile: Express.Multer.File, lessonTitle
 
   const extension = path.extname(graphicFile.originalname || graphicFile.filename || '.png') || '.png';
   const safeTitle = (lessonTitle || 'lesson-graphic').replace(/[^a-zA-Z0-9-_]+/g, '-').replace(/^-+|-+$/g, '') || 'lesson-graphic';
-  const fileName = `${safeTitle}-${Date.now()}${extension}`;
+  const fileName = createUniqueStorageName(extension, safeTitle);
   const targetPath = path.join(assetDir, fileName);
 
   if (fs.existsSync(graphicFile.path)) fs.renameSync(graphicFile.path, targetPath);
@@ -93,6 +101,12 @@ function sendSupabaseUnavailable(res: Response) {
 interface ParsedPdf {
   text: string;
   pages: string[];
+}
+
+function summarizePdfText(pdfText?: string, maxLength = 1800): string {
+  const normalized = String(pdfText || '').replace(/\s+/g, ' ').trim();
+  if (!normalized) return '';
+  return normalized.length > maxLength ? `${normalized.slice(0, maxLength - 3).trim()}...` : normalized;
 }
 
 // Extract the complete document while retaining page boundaries for slide conversion.
@@ -217,6 +231,7 @@ export function buildOriginalPdfLessonRecord({
   fileUrl,
   videoUrl,
   graphicUrl,
+  pdfText,
 }: {
   lessonId?: string;
   title: string;
@@ -226,8 +241,10 @@ export function buildOriginalPdfLessonRecord({
   fileUrl?: string;
   videoUrl?: string;
   graphicUrl?: string;
+  pdfText?: string;
 }) {
-  const content = (description && description.trim()) || `Original PDF uploaded: ${title}`;
+  const rawText = summarizePdfText(pdfText || description);
+  const content = (description && description.trim()) || rawText || `Original PDF uploaded: ${title}`;
 
   return {
     id: lessonId || uuidv4(),
@@ -395,7 +412,7 @@ router.post(
       const persistedGraphicUrl = uploadedGraphic ? await persistGraphicAsset(uploadedGraphic, title) : normalizedGraphicUrl;
 
       // Keep the original PDF untouched instead of converting it into a slide deck.
-      const fileName = `lesson-${Date.now()}.pdf`;
+      const fileName = createUniqueStorageName('.pdf', 'lesson');
       if (!fs.existsSync(uploadDir)) {
         fs.mkdirSync(uploadDir, { recursive: true });
       }
@@ -404,6 +421,15 @@ router.post(
 
       const pdfUrl = `/uploads/${fileName}`;
       const lessonId = uuidv4();
+      let extractedPdfText = '';
+      try {
+        const parsedPdf = await extractPdf(destinationPath);
+        extractedPdfText = parsedPdf.text || parsedPdf.pages.join('\n\n') || '';
+        console.log('📄 Extracted PDF text length:', extractedPdfText.length);
+      } catch (parseError) {
+        console.warn('⚠️ PDF extraction failed; falling back to a placeholder lesson description:', parseError);
+      }
+
       const lessonData = buildOriginalPdfLessonRecord({
         lessonId,
         title,
@@ -413,6 +439,7 @@ router.post(
         fileUrl: pdfUrl,
         videoUrl: normalizedVideoUrl || undefined,
         graphicUrl: persistedGraphicUrl || undefined,
+        pdfText: extractedPdfText,
       });
 
       let savedLesson: any = null;
@@ -427,57 +454,154 @@ router.post(
             .single();
 
           if (moduleError || !moduleExists) {
-            return res.status(404).json({
-              success: false,
-              error: { code: 'MODULE_NOT_FOUND', message: 'Unit not found in Supabase.' },
+            console.warn('⚠️ Supabase module lookup failed, falling back to local lesson persistence:', moduleError?.message || 'module missing');
+            const localLesson = createLocalLesson({
+              id: lessonId,
+              moduleId: lessonModuleId,
+              title,
+              content: lessonData.content,
+              slides: [],
+              slideCount: 0,
+              status: 'published',
+              createdAt: new Date().toISOString(),
+              pdfUrl,
+              originalFormat: 'pdf',
+              videoUrl: normalizedVideoUrl || '',
+              graphicUrl: persistedGraphicUrl || '',
             });
+            savedLesson = {
+              id: localLesson.id,
+              title: localLesson.title,
+              slides: localLesson.slides || [],
+              slide_count: localLesson.slideCount || 0,
+              video_url: normalizedVideoUrl || null,
+              graphic_url: persistedGraphicUrl || null,
+              pdf_url: localLesson.pdfUrl || pdfUrl,
+              original_format: localLesson.originalFormat || 'pdf',
+            };
           } else {
             console.log('✅ Module verified:', moduleExists.id);
             console.log('💾 Saving lesson to database:', lessonData);
 
-            const { data: persistedLesson, error: dbError } = await supabase
-              .from('lessons')
-              .insert({
+            const insertPayload: any = {
+              id: lessonId,
+              module_id: lessonModuleId,
+              title,
+              content: lessonData.content,
+              slides: [],
+              slide_count: 0,
+              xp_reward: 25,
+              order_index: 1,
+              target_sections: cleanedTargetSections,
+              target_year_levels: cleanedTargetYearLevels,
+              status: 'published',
+              video_url: normalizedVideoUrl || null,
+              graphic_url: persistedGraphicUrl || null,
+            };
+
+            const pdfAwareInsertPayload = {
+              ...insertPayload,
+              pdf_url: pdfUrl,
+              original_format: 'pdf',
+            };
+
+            try {
+              const { data: persistedLesson, error: dbError } = await supabase
+                .from('lessons')
+                .insert(pdfAwareInsertPayload)
+                .select('id, title, slides, slide_count, video_url, graphic_url')
+                .single();
+
+              if (dbError) {
+                const isMissingPdfColumns = /pdf_url|original_format|42703|column .* does not exist/i.test(dbError.message || '');
+                if (isMissingPdfColumns) {
+                  console.warn('⚠️ PDF columns not available in database. Falling back to local lesson persistence.');
+                  throw new Error(dbError.message);
+                }
+                throw dbError;
+              }
+
+              savedLesson = persistedLesson;
+            } catch (dbError: any) {
+              console.error('⚠️ Supabase lesson save failed, using local fallback:', dbError.message);
+              const localLesson = createLocalLesson({
                 id: lessonId,
-                module_id: lessonModuleId,
+                moduleId: lessonModuleId,
                 title,
                 content: lessonData.content,
                 slides: [],
-                slide_count: 0,
-                xp_reward: 25,
-                order_index: 1,
-                target_sections: cleanedTargetSections,
-                target_year_levels: cleanedTargetYearLevels,
+                slideCount: 0,
                 status: 'published',
+                createdAt: new Date().toISOString(),
+                pdfUrl,
+                originalFormat: 'pdf',
+                videoUrl: normalizedVideoUrl || '',
+                graphicUrl: persistedGraphicUrl || '',
+              });
+              savedLesson = {
+                id: localLesson.id,
+                title: localLesson.title,
+                slides: localLesson.slides || [],
+                slide_count: localLesson.slideCount || 0,
                 video_url: normalizedVideoUrl || null,
                 graphic_url: persistedGraphicUrl || null,
-              })
-              .select('id, title, slides, slide_count, video_url, graphic_url')
-              .single();
-
-            if (dbError) {
-              throw dbError;
-            } else {
-              savedLesson = persistedLesson;
+                pdf_url: localLesson.pdfUrl || pdfUrl,
+                original_format: localLesson.originalFormat || 'pdf',
+              };
             }
           }
         } catch (dbError: any) {
-          console.error('⚠️ Supabase lesson save failed:', dbError.message);
-          return res.status(503).json({
-            success: false,
-            error: { code: 'DB_UNAVAILABLE', message: 'Lesson could not be saved to Supabase.' },
+          console.error('⚠️ Supabase lesson save failed, using local fallback:', dbError.message);
+          const localLesson = createLocalLesson({
+            id: lessonId,
+            moduleId: lessonModuleId,
+            title,
+            content: lessonData.content,
+            slides: [],
+            slideCount: 0,
+            status: 'published',
+            createdAt: new Date().toISOString(),
+            pdfUrl,
+            originalFormat: 'pdf',
+            videoUrl: normalizedVideoUrl || '',
+            graphicUrl: persistedGraphicUrl || '',
           });
+          savedLesson = {
+            id: localLesson.id,
+            title: localLesson.title,
+            slides: localLesson.slides || [],
+            slide_count: localLesson.slideCount || 0,
+            video_url: normalizedVideoUrl || null,
+            graphic_url: persistedGraphicUrl || null,
+            pdf_url: localLesson.pdfUrl || pdfUrl,
+            original_format: localLesson.originalFormat || 'pdf',
+          };
         }
-      }
-
-      if (!savedLesson) {
-        return res.status(503).json({
-          success: false,
-          error: {
-            code: 'DB_UNAVAILABLE',
-            message: 'Lesson could not be saved because Supabase is unavailable or the unit does not exist there.',
-          },
+      } else {
+        const localLesson = createLocalLesson({
+          id: lessonId,
+          moduleId: lessonModuleId,
+          title,
+          content: lessonData.content,
+          slides: [],
+          slideCount: 0,
+          status: 'published',
+          createdAt: new Date().toISOString(),
+          pdfUrl,
+          originalFormat: 'pdf',
+          videoUrl: normalizedVideoUrl || '',
+          graphicUrl: persistedGraphicUrl || '',
         });
+        savedLesson = {
+          id: localLesson.id,
+          title: localLesson.title,
+          slides: localLesson.slides || [],
+          slide_count: localLesson.slideCount || 0,
+          video_url: normalizedVideoUrl || null,
+          graphic_url: persistedGraphicUrl || null,
+          pdf_url: localLesson.pdfUrl || pdfUrl,
+          original_format: localLesson.originalFormat || 'pdf',
+        };
       }
 
       const responsePayload = {
@@ -487,12 +611,14 @@ router.post(
           moduleId: lessonModuleId,
           slides: 0,
           summary: lessonData.content,
+          content: lessonData.content,
           pdfUrl,
           videoUrl: normalizedVideoUrl || '',
           graphicUrl: persistedGraphicUrl || '',
           originalFormat: 'pdf',
         },
         lessonId: lessonId,
+        content: lessonData.content,
         slideCount: 0,
         slides: [],
         pdfUrl,
@@ -544,22 +670,42 @@ router.get('/unit/:unitId', optionalAuthMiddleware, async (req: Request, res: Re
       });
     }
 
-    if (!supabase) {
-      return sendSupabaseUnavailable(res);
+    let lessons: any[] = [];
+
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('lessons')
+        .select('id, title, content, slides, slide_count, created_at, status, video_url, graphic_url')
+        .eq('module_id', unitId)
+        .eq('status', 'published')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.warn('⚠️ Failed to load lessons from Supabase, falling back to local lesson store:', error.message);
+      } else {
+        lessons = data || [];
+      }
     }
 
-    const { data: lessons, error } = await supabase
-      .from('lessons')
-      .select('id, title, content, slides, slide_count, created_at, status, video_url, graphic_url')
-      .eq('module_id', unitId)
-      .eq('status', 'published')
-      .order('created_at', { ascending: false });
+    const localLessons = listLocalLessonsByModuleId(unitId).map((lesson: any) => ({
+      id: lesson.id,
+      title: lesson.title,
+      content: lesson.content || '',
+      slides: Array.isArray(lesson.slides) ? lesson.slides : [],
+      slide_count: lesson.slideCount || 0,
+      created_at: lesson.createdAt || new Date().toISOString(),
+      status: lesson.status || 'published',
+      video_url: lesson.videoUrl || '',
+      graphic_url: lesson.graphicUrl || '',
+      pdf_url: lesson.pdfUrl || '',
+      original_format: lesson.originalFormat || (lesson.pdfUrl ? 'pdf' : 'slides'),
+    }));
 
-    if (error) throw error;
+    const mergedLessons = [...(lessons || []), ...localLessons];
 
     return res.json({
       success: true,
-      data: (lessons || []).map((lesson: any) => ({
+      data: mergedLessons.map((lesson: any) => ({
         id: lesson.id,
         title: lesson.title,
         content: lesson.content,
@@ -569,6 +715,8 @@ router.get('/unit/:unitId', optionalAuthMiddleware, async (req: Request, res: Re
         unitId,
         videoUrl: lesson.video_url || '',
         graphicUrl: lesson.graphic_url || '',
+        pdfUrl: lesson.pdf_url || lesson.pdfUrl || '',
+        originalFormat: lesson.original_format || lesson.originalFormat || (lesson.pdf_url || lesson.pdfUrl ? 'pdf' : 'slides'),
       })),
     });
   } catch (error: any) {

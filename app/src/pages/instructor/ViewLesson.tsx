@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { Button } from '@/components/ui/button';
 import { authFetch } from '@/lib/authFetch';
-import { API_BASE_URL } from '@/lib/apiConfig';
+import { API_BASE_URL, resolveBackendAssetUrl } from '@/lib/apiConfig';
 import { downloadLessonAsPDF } from '@/lib/downloadUtils';
 
 interface Lesson {
@@ -17,6 +17,8 @@ interface Lesson {
   slides?: any[];
   videoUrl?: string;
   graphicUrl?: string;
+  pdfUrl?: string;
+  originalFormat?: string;
 }
 
 export function ViewLesson() {
@@ -79,6 +81,8 @@ export function ViewLesson() {
                 slides: found.slides,
                 videoUrl: found.videoUrl || found.video_url || '',
                 graphicUrl: found.graphicUrl || found.graphic_url || '',
+                pdfUrl: found.pdfUrl || found.pdf_url || '',
+                originalFormat: found.originalFormat || found.original_format || (found.pdfUrl || found.pdf_url ? 'pdf' : 'slides'),
               });
               setError('');
               setLoading(false);
@@ -144,6 +148,8 @@ export function ViewLesson() {
           slides: Array.isArray(slidesData) ? slidesData : [],
           videoUrl: lessonData.videoUrl || lessonData.video_url || '',
           graphicUrl: lessonData.graphicUrl || lessonData.graphic_url || '',
+          pdfUrl: lessonData.pdfUrl || lessonData.pdf_url || '',
+          originalFormat: lessonData.originalFormat || lessonData.original_format || (lessonData.pdfUrl || lessonData.pdf_url ? 'pdf' : 'slides'),
         };
 
         console.log('✅ Final lesson object:', lesson);
@@ -232,14 +238,56 @@ export function ViewLesson() {
 
       const currentSlideData = lesson.slides?.[currentSlide];
       const hasSlides = lesson.slides && lesson.slides.length > 0;
+      const isPdfLesson = lesson.originalFormat === 'pdf' || !!lesson.pdfUrl;
 
       console.log('🎬 Rendering ViewLesson:', { 
         lessonTitle: lesson.title, 
         totalSlides: lesson.slides?.length || 0, 
         currentSlide, 
         hasSlides,
-        currentSlideData 
+        currentSlideData,
+        isPdfLesson,
+        pdfUrl: lesson.pdfUrl,
       });
+
+      if (isPdfLesson) {
+        const pdfViewerUrl = resolveBackendAssetUrl(lesson.pdfUrl || '');
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-6">
+            <div className="max-w-6xl mx-auto space-y-6">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <button
+                    onClick={() => navigate(-1)}
+                    className="flex items-center gap-2 text-violet-400 hover:text-violet-300 mb-4 transition-colors"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    Back to Lessons
+                  </button>
+                  <h1 className="text-4xl font-bold text-white">{lesson.title}</h1>
+                  <p className="text-slate-400 mt-2">PDF Document</p>
+                </div>
+                <Button onClick={handleDownloadPDF} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                  <Download className="w-4 h-4 mr-2" />
+                  Download PDF
+                </Button>
+              </div>
+
+              <div className="rounded-2xl border border-slate-700 overflow-hidden bg-slate-900/60">
+                {pdfViewerUrl ? (
+                  <iframe
+                    src={pdfViewerUrl}
+                    title={lesson.title}
+                    className="w-full h-[80vh] border-0"
+                  />
+                ) : (
+                  <div className="p-10 text-center text-slate-400">PDF preview is not available for this lesson.</div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      }
 
       return (
         <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-6">

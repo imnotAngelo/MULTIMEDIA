@@ -11,6 +11,10 @@ interface LocalLesson {
   slideCount?: number;
   status?: string;
   createdAt?: string;
+  pdfUrl?: string;
+  originalFormat?: string;
+  videoUrl?: string;
+  graphicUrl?: string;
 }
 
 const moduleDir = path.dirname(fileURLToPath(import.meta.url));

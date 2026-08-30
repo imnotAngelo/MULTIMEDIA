@@ -33,6 +33,8 @@ interface Lesson {
   createdAt: string;
   slideCount?: number;
   slides?: any[];
+  pdfUrl?: string;
+  originalFormat?: string;
 }
 
 function LessonItem({ lesson, isActive, onClick }: {
@@ -348,7 +350,7 @@ export function Lessons() {
                   className="w-full bg-violet-600 hover:bg-violet-700 text-white"
                 >
                   <Play className="w-4 h-4 mr-2" />
-                  View Slides & Learn
+                  {activeLesson.originalFormat === 'pdf' || activeLesson.pdfUrl ? 'View PDF' : 'View Slides & Learn'}
                 </Button>
               </div>
             </div>

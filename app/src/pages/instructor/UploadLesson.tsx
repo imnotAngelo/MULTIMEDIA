@@ -127,7 +127,7 @@ export function UploadLesson({ unitId, onSuccess }: UploadLessonProps) {
         id: responseData.lessonId || uuidv4(),
         unitId,
         title,
-        content: description || 'Original PDF lesson uploaded without changes',
+        content: responseData.content || responseData.lesson?.content || responseData.summary || description || 'Original PDF lesson uploaded without changes',
         createdAt: new Date().toISOString(),
         slideCount: responseData.slideCount || 0,
         slides: responseData.slides || [],

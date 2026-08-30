@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildOriginalPdfLessonRecord, normalizeGeneratedQuestions } from '../src/routes/lessons.ts';
+import { buildOriginalPdfLessonRecord, normalizeGeneratedQuestions, createUniqueStorageName } from '../src/routes/lessons.ts';
 
 test('keeps uploaded PDFs as original documents without slide generation', () => {
   const record = buildOriginalPdfLessonRecord({
@@ -21,6 +21,15 @@ test('keeps uploaded PDFs as original documents without slide generation', () =>
   assert.equal(record.videoUrl, 'https://example.com/lesson-video.mp4');
   assert.equal(record.graphicUrl, '/uploads/lesson-graphics/lesson-graphic.png');
   assert.equal(record.originalFormat, 'pdf');
+});
+
+test('creates unique upload names to prevent overwriting earlier PDF files', () => {
+  const nameA = createUniqueStorageName('.pdf', 'lesson');
+  const nameB = createUniqueStorageName('.pdf', 'lesson');
+
+  assert.notEqual(nameA, nameB);
+  assert.match(nameA, /^lesson-[a-z0-9-]+\.pdf$/i);
+  assert.match(nameB, /^lesson-[a-z0-9-]+\.pdf$/i);
 });
 
 test('removes duplicate generated questions and keeps only valid multiple-choice answers', () => {

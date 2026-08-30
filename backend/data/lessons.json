@@ -84,5 +84,69 @@
     "slideCount": 4,
     "status": "published",
     "createdAt": "2026-08-25T06:25:59.043Z"
+  },
+  {
+    "id": "1e8d54af-93e7-4e81-bdbd-424f58e7c6b7",
+    "moduleId": "902ac20e-66c7-4c40-acda-78a563a1cde9",
+    "title": "zczczccz",
+    "content": "zcczcz",
+    "slides": [],
+    "slideCount": 0,
+    "status": "published",
+    "createdAt": "2026-08-29T13:15:30.174Z"
+  },
+  {
+    "id": "9018d4bd-4fa2-4068-abb2-43fd61bb2cc4",
+    "moduleId": "902ac20e-66c7-4c40-acda-78a563a1cde9",
+    "title": "sfsf",
+    "content": "sddd",
+    "slides": [],
+    "slideCount": 0,
+    "status": "published",
+    "createdAt": "2026-08-29T13:21:07.213Z"
+  },
+  {
+    "id": "0eff8757-82b5-438c-a771-53028863edfb",
+    "moduleId": "902ac20e-66c7-4c40-acda-78a563a1cde9",
+    "title": "czcczc",
+    "content": "zcczc",
+    "slides": [],
+    "slideCount": 0,
+    "status": "published",
+    "createdAt": "2026-08-29T13:24:28.332Z"
+  },
+  {
+    "id": "a9d8b911-73f8-43c6-aaa7-1b0d6e215491",
+    "moduleId": "61488a6a-c2b8-4c03-9f30-4fa128d170a7",
+    "title": "czczc",
+    "content": "czczc",
+    "slides": [],
+    "slideCount": 0,
+    "status": "published",
+    "createdAt": "2026-08-29T13:25:50.785Z"
+  },
+  {
+    "id": "73adfd41-8116-4759-93e8-2d2bbef5d77f",
+    "moduleId": "61488a6a-c2b8-4c03-9f30-4fa128d170a7",
+    "title": "xcz,,.",
+    "content": ".,/z,cc",
+    "slides": [],
+    "slideCount": 0,
+    "status": "published",
+    "createdAt": "2026-08-29T13:26:48.450Z"
+  },
+  {
+    "id": "4bc5ec0a-14eb-44e1-8fec-432f28b615a7",
+    "moduleId": "61488a6a-c2b8-4c03-9f30-4fa128d170a7",
+    "title": "xXxX",
+    "content": "xXzxzc",
+    "slides": [],
+    "slideCount": 0,
+    "status": "published",
+    "createdAt": "2026-08-29T13:35:31.748Z",
+    "pdfUrl": "/uploads/lesson-1788010522409-c266jptz.pdf",
+    "originalFormat": "pdf",
+    "videoUrl": "",
+    "graphicUrl": ""
   }
 ]
