@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { authFetch } from '@/lib/authFetch';
 import { downloadLessonAsPDF } from '@/lib/downloadUtils';
-import { resolveBackendAssetUrl } from '@/lib/apiConfig';
+import { buildOfficeViewerUrl, resolveBackendAssetUrl } from '@/lib/apiConfig';
 import { useAuthStore } from '@/stores/authStore';
 import { toast } from 'sonner';
 import { AetherLoader } from '@/components/AetherLoader';
@@ -280,11 +280,26 @@ export function SlideViewer({ lessonId, lessonTitle }: SlideViewerProps) {
     );
   }
 
+  const lessonAssetUrl = pdfUrl || lesson?.pdfUrl || lesson?.pdf_url || '';
+  const normalizedLessonPath = String(lessonAssetUrl || lesson?.filePath || lesson?.file_path || lesson?.fileName || lesson?.file_name || '');
   const isPdfLesson = Boolean(
-    lesson?.pdfUrl || lesson?.pdf_url || lesson?.originalFormat === 'pdf' || lesson?.original_format === 'pdf' || pdfUrl
+    lesson?.pdfUrl ||
+      lesson?.pdf_url ||
+      lesson?.originalFormat === 'pdf' ||
+      lesson?.original_format === 'pdf' ||
+      /\.pdf$/i.test(normalizedLessonPath) ||
+      pdfUrl
+  );
+  const isPptLesson = Boolean(
+    lesson?.originalFormat === 'ppt' ||
+      lesson?.original_format === 'ppt' ||
+      lesson?.originalFormat === 'pptx' ||
+      lesson?.original_format === 'pptx' ||
+      /\.pptx?$/i.test(normalizedLessonPath) ||
+      /\.pptx?$/i.test(String(pdfUrl || ''))
   );
 
-  if (isPdfLesson) {
+  if (isPdfLesson && !isPptLesson) {
     const pdfViewerUrl = pdfUrl || resolveBackendAssetUrl(lesson?.pdfUrl || lesson?.pdf_url || '');
     return (
       <div className="space-y-4">
@@ -313,6 +328,65 @@ export function SlideViewer({ lessonId, lessonTitle }: SlideViewerProps) {
             />
           ) : (
             <div className="p-12 text-center text-slate-400">PDF preview is not available for this lesson.</div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (isPptLesson) {
+    const pptSourceUrl = pdfUrl || lesson?.pdfUrl || lesson?.pdf_url || '';
+    const resolvedPptUrl = resolveBackendAssetUrl(pptSourceUrl);
+    const isLocalAssetUrl = /^(https?:\/\/)?(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?/i.test(resolvedPptUrl) || resolvedPptUrl.startsWith('/');
+    const pptViewerUrl = resolvedPptUrl && !isLocalAssetUrl
+      ? `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(resolvedPptUrl)}`
+      : '';
+
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-bold text-white">{lessonTitle}</h2>
+            <p className="text-sm text-slate-400">PowerPoint lesson</p>
+          </div>
+          <a
+            href={resolvedPptUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2 rounded-md bg-cyan-600 px-3 py-2 text-sm font-medium text-white hover:bg-cyan-700"
+          >
+            <Download className="w-4 h-4" />
+            Open PPT
+          </a>
+        </div>
+
+        <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-950">
+          {pptViewerUrl ? (
+            <iframe
+              src={pptViewerUrl}
+              title={lessonTitle}
+              className="h-[80vh] w-full border-0"
+              allowFullScreen
+            />
+          ) : (
+            <div className="flex min-h-[420px] flex-col items-center justify-center gap-4 p-12 text-center">
+              <div className="rounded-full bg-cyan-500/10 border border-cyan-500/20 p-4 text-cyan-300">
+                <Download className="h-8 w-8" />
+              </div>
+              <div>
+                <p className="text-lg font-semibold text-white">PowerPoint preview is not available in this local environment.</p>
+                <p className="mt-2 text-sm text-slate-400">Open the presentation in a new tab to view it.</p>
+              </div>
+              <a
+                href={resolvedPptUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-700"
+              >
+                <Download className="h-4 w-4" />
+                View presentation
+              </a>
+            </div>
           )}
         </div>
       </div>

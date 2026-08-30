@@ -296,7 +296,10 @@ export function Lessons() {
                   isExpanded={expandedUnits.includes(unit.id)}
                   activeLessonId={activeLessonId || undefined}
                   onToggle={() => toggleUnit(unit.id)}
-                  onLessonClick={setActiveLessonId}
+                  onLessonClick={(lessonId) => {
+                    setActiveLessonId(lessonId);
+                    setViewMode('viewer');
+                  }}
                 />
               ))}
             </div>

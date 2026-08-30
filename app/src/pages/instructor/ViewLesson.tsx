@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { Button } from '@/components/ui/button';
 import { authFetch } from '@/lib/authFetch';
-import { API_BASE_URL, resolveBackendAssetUrl } from '@/lib/apiConfig';
+import { API_BASE_URL, buildOfficeViewerUrl, resolveBackendAssetUrl } from '@/lib/apiConfig';
 import { downloadLessonAsPDF } from '@/lib/downloadUtils';
 import { PDFViewer } from '@/components/PDFViewer';
 
@@ -286,9 +286,12 @@ export function ViewLesson() {
       });
 
       if (lesson.originalFormat === 'pptx' || /\.pptx?$/i.test(String(lesson.pdfUrl || ''))) {
+        const presentationUrl = resolveBackendAssetUrl(lesson.pdfUrl || '');
+        const pptViewerUrl = buildOfficeViewerUrl(lesson.pdfUrl || '');
+
         return (
           <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-6">
-            <div className="max-w-4xl mx-auto space-y-6">
+            <div className="max-w-6xl mx-auto space-y-6">
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <button
@@ -308,7 +311,7 @@ export function ViewLesson() {
                 <p className="text-slate-300 whitespace-pre-wrap">{lesson.content || 'This lesson was converted to a presentation file.'}</p>
                 <div className="mt-6 flex flex-wrap gap-3">
                   <Button
-                    onClick={() => window.open(resolveBackendAssetUrl(lesson.pdfUrl || ''), '_blank', 'noopener,noreferrer')}
+                    onClick={() => window.open(presentationUrl, '_blank', 'noopener,noreferrer')}
                     className="bg-cyan-600 hover:bg-cyan-700 text-white"
                   >
                     Open presentation
@@ -321,6 +324,25 @@ export function ViewLesson() {
                     Download PPTX
                   </Button>
                 </div>
+              </div>
+
+              <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 shadow-2xl shadow-cyan-500/10">
+                {pptViewerUrl ? (
+                  <iframe
+                    src={pptViewerUrl}
+                    title={lesson.title}
+                    className="h-[80vh] w-full border-0"
+                    allowFullScreen
+                  />
+                ) : (
+                  <div className="flex min-h-[420px] flex-col items-center justify-center gap-4 p-12 text-center text-slate-400">
+                    <p className="text-lg font-semibold text-white">Preview is unavailable for this local lesson file.</p>
+                    <p className="text-sm text-slate-400">Open the presentation in a new tab to view it.</p>
+                    <Button onClick={() => window.open(presentationUrl, '_blank', 'noopener,noreferrer')} className="bg-cyan-600 hover:bg-cyan-700 text-white">
+                      View presentation
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           </div>

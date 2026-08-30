@@ -241,7 +241,8 @@ export function InstructorModules() {
                         {lessons.map(lesson => (
                           <Card
                             key={lesson.id}
-                            className="p-4 bg-slate-900/60 border-slate-800 hover:border-slate-700 transition-colors"
+                            onClick={() => handleViewLesson(lesson)}
+                            className="p-4 bg-slate-900/60 border-slate-800 hover:border-slate-700 transition-colors cursor-pointer"
                           >
                             <div className="flex items-start justify-between">
                               <div className="flex-1">
@@ -258,14 +259,20 @@ export function InstructorModules() {
                               </div>
                               <div className="flex gap-2 ml-4">
                                 <button
-                                  onClick={() => handleViewLesson(lesson)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleViewLesson(lesson);
+                                  }}
                                   title="View lesson"
                                   className="p-2 hover:bg-slate-800 rounded-lg transition-colors text-slate-400 hover:text-blue-400"
                                 >
                                   <Eye className="w-4 h-4" />
                                 </button>
                                 <button
-                                  onClick={() => handleDeleteLesson(lesson.id)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteLesson(lesson.id);
+                                  }}
                                   title="Delete lesson"
                                   className="p-2 hover:bg-red-500/20 rounded-lg transition-colors text-red-400 hover:text-red-300"
                                 >

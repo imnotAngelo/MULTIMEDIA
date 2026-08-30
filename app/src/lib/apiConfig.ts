@@ -28,9 +28,27 @@ export const API_BASE_URL = useOnlineApi
  */
 export function resolveBackendAssetUrl(pathOrUrl?: string | null): string {
   if (!pathOrUrl) return '';
-  if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl;
 
-  const normalizedPath = pathOrUrl.startsWith('/') ? pathOrUrl : `/${pathOrUrl}`;
+  const trimmed = pathOrUrl.trim();
+
+  if (/^https?:\/\//i.test(trimmed)) {
+    try {
+      const url = new URL(trimmed);
+      const isLocalBackendHost = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname.toLowerCase());
+
+      // In local development, prefer the browser's same-origin /uploads path so the Vite
+      // proxy can reach the backend reliably instead of hardcoding 127.0.0.1:3001.
+      if (isLocalBackendHost && !useOnlineApi) {
+        return url.pathname + url.search;
+      }
+
+      return trimmed;
+    } catch {
+      return trimmed;
+    }
+  }
+
+  const normalizedPath = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
 
   // If API_BASE_URL is itself a path (e.g. "/api"), the asset is same-origin —
   // just return the path so the browser/dev-proxy can handle it.
@@ -46,3 +64,29 @@ export function resolveBackendAssetUrl(pathOrUrl?: string | null): string {
     return normalizedPath;
   }
 }
+
+export function isLocalAssetUrl(pathOrUrl?: string | null): boolean {
+  if (!pathOrUrl) return false;
+
+  const trimmed = pathOrUrl.trim();
+  if (!trimmed) return false;
+
+  if (trimmed.startsWith('/')) return true;
+
+  try {
+    const url = new URL(trimmed);
+    return ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname.toLowerCase());
+  } catch {
+    return false;
+  }
+}
+
+export function buildOfficeViewerUrl(pathOrUrl?: string | null): string {
+  const resolvedUrl = resolveBackendAssetUrl(pathOrUrl);
+
+  if (!resolvedUrl || isLocalAssetUrl(resolvedUrl)) {
+    return '';
+  }
+
+  return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(resolvedUrl)}`;
+} 
