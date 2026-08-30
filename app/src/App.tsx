@@ -4,6 +4,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { CursorTrail } from '@/components/CursorTrail';
 import { AetherLoader } from '@/components/AetherLoader';
+import { Toaster } from '@/components/ui/sonner';
 
 // Auth Pages
 import { LoginPage, SignupPage, VerifyEmailPage, CheckEmailPage, ForgotPasswordPage, ResetPasswordPage } from '@/pages/auth';
@@ -38,6 +39,7 @@ export function App() {
   return (
     <BrowserRouter>
       <CursorTrail />
+      <Toaster richColors position="top-right" closeButton />
       <Routes>
         {/* Public Routes */}
         <Route path="/login" element={<LoginPage />} />

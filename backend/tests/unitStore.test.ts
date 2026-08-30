@@ -8,6 +8,7 @@ import { createLocalUnit, listLocalUnits, setUnitsStoreFile } from '../src/lib/u
 import { createLocalLesson, listLocalLessonsByModuleId, setLessonsStoreFile } from '../src/lib/lessonStore.ts';
 import { getUnitLessons } from '../src/controllers/unitsController.ts';
 import { buildOriginalPdfLessonRecord, getUploadedFile, getUploadedGraphicFile } from '../src/routes/lessons.ts';
+import { buildConvertedLessonRecord } from '../src/routes/convert.ts';
 
 test('stores units in the fallback unit store and lists them', () => {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'units-store-'));
@@ -124,4 +125,23 @@ test('returns the PDF upload file instead of the optional graphic asset', () => 
 
   assert.equal(getUploadedFile(req), pdfFile);
   assert.equal(getUploadedGraphicFile(req), graphicFile);
+});
+
+test('keeps converted PPT lessons attached to the selected unit and preserves the file URL', () => {
+  const unitId = '11111111-1111-4111-8111-111111111111';
+
+  const record = buildConvertedLessonRecord({
+    id: 'lesson-ppt-1',
+    unitId,
+    title: 'Week 3 Presentation',
+    content: 'Converted presentation generated from source material.',
+    fileUrl: '/uploads/week-3-presentation.pptx',
+    originalFormat: 'pptx',
+  });
+
+  assert.equal(record.unitId, unitId);
+  assert.equal(record.moduleId, unitId);
+  assert.equal(record.pdfUrl, '/uploads/week-3-presentation.pptx');
+  assert.equal(record.originalFormat, 'pptx');
+  assert.equal(record.fileUrl, '/uploads/week-3-presentation.pptx');
 });

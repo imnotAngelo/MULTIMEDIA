@@ -356,21 +356,8 @@ export const getUnitLessons = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const lessonsFromDb = await safeSupabaseCall(async () => {
-      if (!supabase) {
-        throw new Error('Supabase unavailable');
-      }
-
-      const { data: lessons, error } = await supabase
-        .from('lessons')
-        .select('id, title, content, slides, slide_count, created_at, status, target_sections, target_year_levels, video_url, graphic_url')
-        .eq('module_id', unitId)
-        .eq('status', 'published')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      return lessons || [];
-    }, [] as Array<any>);
+    const requester = (req as any).user;
+    const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(unitId);
 
     const localLessons = listLocalLessonsByModuleId(unitId).map((l) => ({
       id: l.id,
@@ -386,9 +373,29 @@ export const getUnitLessons = async (req: AuthRequest, res: Response) => {
       original_format: l.originalFormat || (l.pdfUrl ? 'pdf' : 'slides'),
       video_url: l.videoUrl || '',
       graphic_url: l.graphicUrl || '',
+      pdfUrl: l.pdfUrl || '',
+      originalFormat: l.originalFormat || (l.pdfUrl ? 'pdf' : 'slides'),
     }));
 
-    const requester = (req as any).user;
+    let lessonsFromDb: any[] = [];
+    if (isValidUuid) {
+      lessonsFromDb = await safeSupabaseCall(async () => {
+        if (!supabase) {
+          throw new Error('Supabase unavailable');
+        }
+
+        const { data: lessons, error } = await supabase
+          .from('lessons')
+          .select('id, title, content, slides, slide_count, created_at, status, target_sections, target_year_levels, video_url, graphic_url, pdf_url, original_format')
+          .eq('module_id', unitId)
+          .eq('status', 'published')
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        return lessons || [];
+      }, [] as Array<any>);
+    }
+
     const allLessons = [...(lessonsFromDb || []), ...localLessons].filter((l: any) =>
       requester?.role === 'student'
         ? matchesContentTarget(l.target_sections, l.target_year_levels, requester.section, requester.year_level)
@@ -396,9 +403,6 @@ export const getUnitLessons = async (req: AuthRequest, res: Response) => {
     );
 
     console.log(`📖 Lessons for unit ${unitId}:`, allLessons.length);
-    if (allLessons.length > 0) {
-      console.log('📊 First lesson data:', JSON.stringify(allLessons[0], null, 2));
-    }
 
     return res.json({
       success: true,
@@ -414,7 +418,6 @@ export const getUnitLessons = async (req: AuthRequest, res: Response) => {
           pdfUrl: l.pdf_url || l.pdfUrl || '',
           originalFormat: l.original_format || l.originalFormat || (l.pdf_url || l.pdfUrl ? 'pdf' : 'slides'),
         };
-        console.log('📝 Mapped lesson:', { id: mappedLesson.id, title: mappedLesson.title, slidesCount: mappedLesson.slides.length, pdfUrl: mappedLesson.pdfUrl, originalFormat: mappedLesson.originalFormat });
         return mappedLesson;
       }),
     });

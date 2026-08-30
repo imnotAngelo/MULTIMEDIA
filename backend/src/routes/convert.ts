@@ -1,15 +1,26 @@
 import { Router, Request, Response } from 'express';
 import multer from 'multer';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import fs from 'node:fs';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import mammoth from 'mammoth';
 import pdfParser from 'pdf-parse';
 import PptxGenJS from 'pptxgenjs';
+import { v4 as uuidv4 } from 'uuid';
 import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { createCanvas } from '@napi-rs/canvas';
+import { supabase } from '../config/supabase.js';
+import { createLocalLesson } from '../lib/lessonStore.js';
 
 const router = Router();
-const standardFontDataUrl = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../node_modules/pdfjs-dist/standard_fonts/');
+const routeDir = path.dirname(fileURLToPath(import.meta.url));
+const backendRoot = path.resolve(routeDir, '..', '..');
+const uploadDir = path.join(backendRoot, 'uploads');
+const standardFontsPath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../node_modules/pdfjs-dist/standard_fonts');
+const standardFontDataUrl = (() => {
+  const url = pathToFileURL(standardFontsPath).href;
+  return url.endsWith('/') ? url : `${url}/`;
+})();
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 50 * 1024 * 1024 },
@@ -178,6 +189,49 @@ function chunkText(text: string, maxCharacters = 900): string[] {
 
 function structuredTextSlides(text: string, fallbackTitle: string): TextSlide[] {
   return buildPresentationSections(text, fallbackTitle);
+}
+
+export function buildConvertedLessonRecord({
+  id,
+  unitId,
+  moduleId,
+  title,
+  content,
+  fileUrl,
+  pdfUrl,
+  originalFormat = 'pptx',
+}: {
+  id?: string;
+  unitId?: string | null;
+  moduleId?: string | null;
+  title: string;
+  content?: string;
+  fileUrl?: string;
+  pdfUrl?: string;
+  originalFormat?: string;
+}) {
+  const normalizedUnitId = unitId || moduleId || null;
+  const normalizedFileUrl = fileUrl || pdfUrl || '';
+
+  return {
+    id: id || uuidv4(),
+    lessonId: id || uuidv4(),
+    unitId: normalizedUnitId,
+    moduleId: normalizedUnitId,
+    title,
+    content: content || `Converted presentation generated from ${title}.`,
+    createdAt: new Date().toISOString(),
+    slideCount: 0,
+    slides: [],
+    pdfUrl: normalizedFileUrl,
+    fileUrl: normalizedFileUrl,
+    downloadUrl: normalizedFileUrl,
+    videoUrl: '',
+    graphicUrl: '',
+    originalFormat,
+    stored: true,
+    message: 'Presentation converted and saved as a lesson.',
+  };
 }
 
 interface DocxBlock {
@@ -559,14 +613,25 @@ router.post('/pptx', upload.single('file'), async (req: Request, res: Response) 
     const extension = path.extname(req.file.originalname).toLowerCase();
     if (!supportedExtensions.has(extension)) return res.status(400).json({ success: false, error: { code: 'UNSUPPORTED_FILE', message: 'Supported files: PDF, DOCX, images, Markdown, and TXT' } });
 
+    const title = String(req.body.title || path.basename(req.file.originalname, extension) || 'Converted Lesson').trim();
+    const unitId = String(req.body.unitId || req.body.moduleId || '').trim();
+    const lessonModuleId = unitId || null;
+
+    if (lessonModuleId && !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(lessonModuleId)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_UNIT_ID', message: `Invalid unit ID format. Expected UUID, got: "${lessonModuleId}"` },
+      });
+    }
+
     const pptx = new PptxGenJS();
     pptx.layout = 'LAYOUT_WIDE';
     pptx.author = 'Multimedia Learning';
     pptx.subject = 'Converted learning material';
-    pptx.title = req.body.title || path.basename(req.file.originalname, extension);
+    pptx.title = title;
     pptx.company = 'Multimedia Learning';
 
-    const presentationTitle = req.body.title || path.basename(req.file.originalname, extension).replace(/\.[^.]+$/, '');
+    const presentationTitle = title;
     addTitleSlide(pptx, presentationTitle, 'Prepared for classroom discussion and guided study');
 
     if (extension === '.pdf') {
@@ -584,7 +649,7 @@ router.post('/pptx', upload.single('file'), async (req: Request, res: Response) 
         })).value;
         const blocks = parseDocxHtml(html);
         let textBuffer: string[] = [];
-        let textTitle = req.body.title || 'Document';
+        let textTitle = title;
         let slideIndex = 0;
         const flushText = () => {
           if (!textBuffer.length) return;
@@ -614,7 +679,7 @@ router.post('/pptx', upload.single('file'), async (req: Request, res: Response) 
       }
       else text = req.file.buffer.toString('utf8');
 
-      const slides = extension === '.docx' ? [] : structuredTextSlides(text, req.body.title || path.basename(req.file!.originalname, extension));
+      const slides = extension === '.docx' ? [] : structuredTextSlides(text, title);
       if (extension !== '.docx' && !slides.length) return res.status(400).json({ success: false, error: { code: 'EMPTY_FILE', message: 'The uploaded file contains no readable text' } });
 
       if (extension !== '.docx' && slides.length > 1) {
@@ -626,9 +691,91 @@ router.post('/pptx', upload.single('file'), async (req: Request, res: Response) 
     }
 
     const output = await pptx.write({ outputType: 'nodebuffer' }) as Buffer;
-    const safeName = (req.body.title || path.basename(req.file.originalname, extension)).replace(/[^a-z0-9-_]+/gi, '-').replace(/^-|-$/g, '') || 'converted-presentation';
-    res.set({ 'Content-Type': 'application/vnd.openxmlformats-officedocument.presentationml.presentation', 'Content-Disposition': `attachment; filename="${safeName}.pptx"` });
-    return res.send(output);
+    const safeName = title.replace(/[^a-z0-9-_]+/gi, '-').replace(/^-|-$/g, '') || 'converted-presentation';
+    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+    const fileName = `${safeName}-${Date.now()}.pptx`;
+    const filePath = path.join(uploadDir, fileName);
+    fs.writeFileSync(filePath, output);
+    const fileUrl = `/uploads/${fileName}`;
+
+    const lessonId = uuidv4();
+    const content = `Converted presentation generated from ${path.basename(req.file.originalname)}.`;
+    const lessonPayload = {
+      id: lessonId,
+      module_id: lessonModuleId,
+      title,
+      content,
+      slides: [],
+      slide_count: 0,
+      xp_reward: 25,
+      order_index: 1,
+      status: 'published',
+      pdf_url: fileUrl,
+      original_format: 'pptx',
+      video_url: null,
+      graphic_url: null,
+      created_at: new Date().toISOString(),
+    };
+
+    let savedLesson: any = null;
+    if (supabase && lessonModuleId) {
+      try {
+        const { data: moduleRow, error: moduleError } = await supabase
+          .from('modules')
+          .select('id')
+          .eq('id', lessonModuleId)
+          .maybeSingle();
+
+        if (moduleError) throw moduleError;
+        if (!moduleRow) {
+          throw new Error(`Selected unit ${lessonModuleId} does not exist`);
+        }
+
+        const { data, error } = await supabase.from('lessons').insert(lessonPayload).select('id, title, module_id, pdf_url, original_format').single();
+        if (error) throw error;
+        savedLesson = data;
+      } catch (error: any) {
+        console.warn('Converted PPT lesson save to Supabase failed, falling back to local lesson store:', error.message);
+      }
+    }
+
+    if (!savedLesson) {
+      const localLesson = createLocalLesson({
+        id: lessonId,
+        moduleId: lessonModuleId || 'local-unit',
+        title,
+        content: lessonPayload.content,
+        slides: [],
+        slideCount: 0,
+        status: 'published',
+        createdAt: new Date().toISOString(),
+        pdfUrl: fileUrl,
+        originalFormat: 'pptx',
+      });
+      savedLesson = {
+        id: localLesson.id,
+        title: localLesson.title,
+        module_id: localLesson.moduleId || lessonModuleId,
+        pdf_url: localLesson.pdfUrl || fileUrl,
+        original_format: localLesson.originalFormat || 'pptx',
+      };
+    }
+
+    const lessonRecord = buildConvertedLessonRecord({
+      id: savedLesson?.id || lessonId,
+      unitId: lessonModuleId || savedLesson?.module_id || null,
+      moduleId: lessonModuleId || savedLesson?.module_id || null,
+      title,
+      content,
+      fileUrl,
+      pdfUrl: fileUrl,
+      originalFormat: 'pptx',
+    });
+
+    return res.status(201).json({
+      success: true,
+      data: lessonRecord,
+    });
   } catch (error: any) {
     console.error('PPTX conversion error:', error);
     return res.status(500).json({ success: false, error: { code: 'CONVERSION_FAILED', message: error.message || 'Could not convert file' } });

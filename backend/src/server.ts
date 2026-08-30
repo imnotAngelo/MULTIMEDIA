@@ -60,9 +60,9 @@ app.use(
   })
 );
 app.use(securityHeaders);
-app.use('/api/auth/login', createRateLimiter(15 * 60 * 1000, 15));
-app.use('/api/auth/forgot-password', createRateLimiter(15 * 60 * 1000, 10));
-app.use('/api/auth/reset-password', createRateLimiter(15 * 60 * 1000, 20));
+app.use('/api/auth/login', createRateLimiter(15 * 60 * 1000, 60));
+app.use('/api/auth/forgot-password', createRateLimiter(15 * 60 * 1000, 20));
+app.use('/api/auth/reset-password', createRateLimiter(15 * 60 * 1000, 40));
 
 // Serve uploaded files statically
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));

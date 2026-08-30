@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { authFetch } from '@/lib/authFetch';
 import { API_BASE_URL, resolveBackendAssetUrl } from '@/lib/apiConfig';
 import { downloadLessonAsPDF } from '@/lib/downloadUtils';
+import { PDFViewer } from '@/components/PDFViewer';
 
 interface Lesson {
   id: string;
@@ -66,7 +67,36 @@ export function ViewLesson() {
           
           if (found) {
             console.log('✅ Found lesson in API:', found);
-            console.log('📊 Lesson slides data:', { slides: found.slides, slideCount: found.slideCount, slidesLength: found.slides?.length });
+            console.log('📊 Lesson data:', { 
+              slides: found.slides, 
+              slideCount: found.slideCount, 
+              pdfUrl: found.pdfUrl || found.pdf_url,
+              originalFormat: found.originalFormat || found.original_format
+            });
+            
+            const normalizedOriginalFormat = String(found.originalFormat || found.original_format || '').toLowerCase();
+            const hasActualPdf = !!(found.pdfUrl || found.pdf_url) && !['pptx', 'ppt'].includes(normalizedOriginalFormat) && !/\.pptx?$/i.test(String(found.pdfUrl || found.pdf_url || ''));
+            const isPdf = found.originalFormat === 'pdf' || found.original_format === 'pdf' || hasActualPdf;
+
+            if (isPdf) {
+              console.log('✅ PDF lesson detected - skipping slide fetch');
+              setLesson({
+                id: found.id || uuidv4(),
+                unitId: unitId || '',
+                title: found.title || 'Untitled',
+                content: found.content || '',
+                createdAt: found.createdAt || new Date().toISOString(),
+                slideCount: 0,
+                slides: [],
+                videoUrl: found.videoUrl || found.video_url || '',
+                graphicUrl: found.graphicUrl || found.graphic_url || '',
+                pdfUrl: found.pdfUrl || found.pdf_url || '',
+                originalFormat: 'pdf',
+              });
+              setError('');
+              setLoading(false);
+              return;
+            }
             
             // Check if lesson already has slides embedded
             if (found.slides && Array.isArray(found.slides) && found.slides.length > 0) {
@@ -169,6 +199,8 @@ export function ViewLesson() {
           slides: [],
           videoUrl: lessonData.videoUrl || lessonData.video_url || '',
           graphicUrl: lessonData.graphicUrl || lessonData.graphic_url || '',
+          pdfUrl: lessonData.pdfUrl || lessonData.pdf_url || '',
+          originalFormat: lessonData.originalFormat || lessonData.original_format || (lessonData.pdfUrl || lessonData.pdf_url ? 'pdf' : 'slides'),
         };
         setLesson(lesson);
         setError('⚠️ Could not load slides');
@@ -187,6 +219,8 @@ export function ViewLesson() {
         slides: [],
         videoUrl: lessonData.videoUrl || lessonData.video_url || '',
         graphicUrl: lessonData.graphicUrl || lessonData.graphic_url || '',
+        pdfUrl: lessonData.pdfUrl || lessonData.pdf_url || '',
+        originalFormat: lessonData.originalFormat || lessonData.original_format || (lessonData.pdfUrl || lessonData.pdf_url ? 'pdf' : 'slides'),
       };
       setLesson(fallbackLesson);
       setError('Failed to load lesson slides, but showing lesson info');
@@ -238,20 +272,69 @@ export function ViewLesson() {
 
       const currentSlideData = lesson.slides?.[currentSlide];
       const hasSlides = lesson.slides && lesson.slides.length > 0;
-      const isPdfLesson = lesson.originalFormat === 'pdf' || !!lesson.pdfUrl;
+      const isPdfLesson = !!lesson.pdfUrl && lesson.originalFormat !== 'pptx' && lesson.originalFormat !== 'ppt' && !/\.pptx?$/i.test(String(lesson.pdfUrl));
 
-      console.log('🎬 Rendering ViewLesson:', { 
-        lessonTitle: lesson.title, 
-        totalSlides: lesson.slides?.length || 0, 
-        currentSlide, 
+      console.log('🎬 Rendering ViewLesson:', {
+        lessonTitle: lesson.title,
+        totalSlides: lesson.slides?.length || 0,
+        currentSlide,
         hasSlides,
         currentSlideData,
         isPdfLesson,
         pdfUrl: lesson.pdfUrl,
+        originalFormat: lesson.originalFormat,
       });
+
+      if (lesson.originalFormat === 'pptx' || /\.pptx?$/i.test(String(lesson.pdfUrl || ''))) {
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-6">
+            <div className="max-w-4xl mx-auto space-y-6">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <button
+                    onClick={() => navigate(-1)}
+                    className="flex items-center gap-2 text-violet-400 hover:text-violet-300 mb-4 transition-colors"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    Back to Lessons
+                  </button>
+                  <h1 className="text-4xl font-bold text-white">{lesson.title}</h1>
+                  <p className="text-slate-400 mt-2">Converted PowerPoint lesson</p>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
+                <h2 className="text-xl font-semibold text-white mb-3">Lesson content</h2>
+                <p className="text-slate-300 whitespace-pre-wrap">{lesson.content || 'This lesson was converted to a presentation file.'}</p>
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <Button
+                    onClick={() => window.open(resolveBackendAssetUrl(lesson.pdfUrl || ''), '_blank', 'noopener,noreferrer')}
+                    className="bg-cyan-600 hover:bg-cyan-700 text-white"
+                  >
+                    Open presentation
+                  </Button>
+                  <Button
+                    onClick={handleDownloadPDF}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download PPTX
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
 
       if (isPdfLesson) {
         const pdfViewerUrl = resolveBackendAssetUrl(lesson.pdfUrl || '');
+        console.log('📄 PDF Lesson Rendering:', {
+          originalPdfUrl: lesson.pdfUrl,
+          resolvedPdfUrl: pdfViewerUrl,
+          isValidUrl: !!pdfViewerUrl && pdfViewerUrl.trim() !== '',
+        });
+        
         return (
           <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-6">
             <div className="max-w-6xl mx-auto space-y-6">
@@ -267,23 +350,13 @@ export function ViewLesson() {
                   <h1 className="text-4xl font-bold text-white">{lesson.title}</h1>
                   <p className="text-slate-400 mt-2">PDF Document</p>
                 </div>
-                <Button onClick={handleDownloadPDF} className="bg-emerald-600 hover:bg-emerald-700 text-white">
-                  <Download className="w-4 h-4 mr-2" />
-                  Download PDF
-                </Button>
               </div>
 
-              <div className="rounded-2xl border border-slate-700 overflow-hidden bg-slate-900/60">
-                {pdfViewerUrl ? (
-                  <iframe
-                    src={pdfViewerUrl}
-                    title={lesson.title}
-                    className="w-full h-[80vh] border-0"
-                  />
-                ) : (
-                  <div className="p-10 text-center text-slate-400">PDF preview is not available for this lesson.</div>
-                )}
-              </div>
+              <PDFViewer 
+                url={pdfViewerUrl} 
+                title={lesson.title}
+                onDownload={handleDownloadPDF}
+              />
             </div>
           </div>
         );

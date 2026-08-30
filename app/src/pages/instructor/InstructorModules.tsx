@@ -73,24 +73,21 @@ export function InstructorModules() {
     setShowUpload(false);
   };
 
-  const handleUploadSuccess = (newLesson: Lesson) => {
-    if (selectedUnit) {
-      const updatedLessons = [...lessons, newLesson];
-      setLessons(updatedLessons);
-      
-      // Update unit lesson count
-      const updatedUnits = units.map(unit =>
-        unit.id === selectedUnit.id
-          ? { ...unit, lessonCount: unit.lessonCount + 1 }
-          : unit
-      );
-      setUnits(updatedUnits);
-      setSelectedUnit(updatedUnits.find(u => u.id === selectedUnit.id) || null);
-      setShowUpload(false);
-      
-      // Add notification
-      notificationService.notifyLessonAdded(newLesson.title, selectedUnit.title);
-    }
+  const handleUploadSuccess = async (newLesson: Lesson) => {
+    if (!selectedUnit) return;
+
+    await loadLessons(selectedUnit.id);
+
+    const updatedUnits = units.map(unit =>
+      unit.id === selectedUnit.id
+        ? { ...unit, lessonCount: Math.max(0, unit.lessonCount + 1) }
+        : unit
+    );
+    setUnits(updatedUnits);
+    setSelectedUnit(updatedUnits.find(u => u.id === selectedUnit.id) || null);
+    setShowUpload(false);
+
+    notificationService.notifyLessonAdded(newLesson.title, selectedUnit.title);
   };
 
   const handleDeleteLesson = (lessonId: string) => {

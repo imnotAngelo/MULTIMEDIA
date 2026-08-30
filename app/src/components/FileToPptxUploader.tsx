@@ -17,9 +17,11 @@ const acceptedTypes = {
 
 interface FileToPptxUploaderProps {
   className?: string;
+  unitId?: string;
+  onSuccess?: (lesson: any) => void;
 }
 
-export function FileToPptxUploader({ className = '' }: FileToPptxUploaderProps) {
+export function FileToPptxUploader({ className = '', unitId, onSuccess }: FileToPptxUploaderProps) {
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState('');
   const [loading, setLoading] = useState(false);
@@ -56,22 +58,38 @@ export function FileToPptxUploader({ className = '' }: FileToPptxUploaderProps) 
       const form = new FormData();
       form.append('file', file);
       form.append('title', title.trim());
+      if (unitId) {
+        form.append('unitId', unitId);
+        form.append('moduleId', unitId);
+      }
+
       const response = await authFetch(`${API_BASE_URL}/convert/pptx`, { method: 'POST', body: form });
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
         throw new Error(payload?.error?.message || 'Conversion failed');
       }
 
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = `${title.trim().replace(/[^a-z0-9-_]+/gi, '-').replace(/^-|-$/g, '') || 'presentation'}.pptx`;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      URL.revokeObjectURL(url);
+      const payload = await response.json();
+      const lesson = payload?.data || {
+        id: payload?.lessonId || payload?.id || undefined,
+        title: title.trim(),
+        fileUrl: payload?.fileUrl || payload?.data?.fileUrl || '',
+        pdfUrl: payload?.fileUrl || payload?.data?.pdfUrl || '',
+        originalFormat: 'pptx',
+      };
+
       setDownloaded(true);
+      onSuccess?.({
+        id: lesson.id || lesson.lessonId || '',
+        unitId: unitId || '',
+        title: lesson.title || title.trim(),
+        content: lesson.content || `Converted presentation generated from ${file.name}.`,
+        createdAt: lesson.createdAt || new Date().toISOString(),
+        slideCount: lesson.slideCount || 0,
+        slides: lesson.slides || [],
+        pdfUrl: lesson.pdfUrl || lesson.fileUrl || '',
+        originalFormat: lesson.originalFormat || 'pptx',
+      });
     } catch (conversionError) {
       setError(conversionError instanceof Error ? conversionError.message : 'Conversion failed');
     } finally {
@@ -101,13 +119,13 @@ export function FileToPptxUploader({ className = '' }: FileToPptxUploaderProps) 
           <label className="block text-sm text-slate-300" htmlFor="pptx-title">Presentation title</label>
           <input id="pptx-title" value={title} onChange={(event) => setTitle(event.target.value)} className="h-10 w-full rounded-md border border-slate-700 bg-slate-900/70 px-3 text-sm text-white outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20" />
           <button type="button" onClick={convertFile} disabled={loading} className="inline-flex h-10 w-full items-center justify-center rounded-md bg-cyan-500 px-4 text-sm font-semibold text-slate-950 transition-colors hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60">
-            {loading ? <><AetherSpinner className="mr-2 h-4 w-4" /> Converting...</> : <><Download className="mr-2 h-4 w-4" /> Convert and download PPTX</>}
+            {loading ? <><AetherSpinner className="mr-2 h-4 w-4" /> Converting...</> : <><Download className="mr-2 h-4 w-4" /> Convert and save lesson</>}
           </button>
         </div>
       )}
 
       {error && <p className="mt-4 flex items-center gap-2 rounded-md border border-red-400/25 bg-red-400/10 p-3 text-sm text-red-200"><AlertCircle className="h-4 w-4 shrink-0" />{error}</p>}
-      {downloaded && <p className="mt-4 flex items-center gap-2 rounded-md border border-emerald-400/25 bg-emerald-400/10 p-3 text-sm text-emerald-200"><FileText className="h-4 w-4 shrink-0" />PowerPoint downloaded successfully.</p>}
+      {downloaded && <p className="mt-4 flex items-center gap-2 rounded-md border border-emerald-400/25 bg-emerald-400/10 p-3 text-sm text-emerald-200"><FileText className="h-4 w-4 shrink-0" />Presentation converted and saved as a lesson.</p>}
     </section>
   );
 }

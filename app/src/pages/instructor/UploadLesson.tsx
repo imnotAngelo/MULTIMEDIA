@@ -194,7 +194,7 @@ export function UploadLesson({ unitId, onSuccess }: UploadLessonProps) {
     </div>
 
     {format === 'pptx' ? (
-      <FileToPptxUploader />
+      <FileToPptxUploader unitId={unitId} onSuccess={onSuccess} />
     ) : (
     <Card className="p-6 bg-slate-900/60 border-slate-800">
       <form onSubmit={handleSubmit} className="space-y-6">

@@ -261,6 +261,49 @@ export function buildOriginalPdfLessonRecord({
   };
 }
 
+export function buildConvertedLessonRecord({
+  id,
+  unitId,
+  moduleId,
+  title,
+  content,
+  fileUrl,
+  pdfUrl,
+  originalFormat = 'pptx',
+}: {
+  id?: string;
+  unitId?: string | null;
+  moduleId?: string | null;
+  title: string;
+  content?: string;
+  fileUrl?: string;
+  pdfUrl?: string;
+  originalFormat?: string;
+}) {
+  const normalizedUnitId = unitId || moduleId || null;
+  const normalizedFileUrl = fileUrl || pdfUrl || '';
+
+  return {
+    id: id || uuidv4(),
+    lessonId: id || uuidv4(),
+    unitId: normalizedUnitId,
+    moduleId: normalizedUnitId,
+    title,
+    content: content || `Converted presentation generated from ${title}.`,
+    createdAt: new Date().toISOString(),
+    slideCount: 0,
+    slides: [],
+    pdfUrl: normalizedFileUrl,
+    fileUrl: normalizedFileUrl,
+    downloadUrl: normalizedFileUrl,
+    videoUrl: '',
+    graphicUrl: '',
+    originalFormat,
+    stored: true,
+    message: 'Presentation converted and saved as a lesson.',
+  };
+}
+
 export function normalizeGeneratedQuestions(rawQuestions: any[], targetCount = 5) {
   const normalized: any[] = [];
   const seen = new Set<string>();

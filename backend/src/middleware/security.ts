@@ -12,10 +12,15 @@ export function requireJwtSecret(): string {
 
 export function createRateLimiter(windowMs: number, max: number) {
   return (req: Request, res: Response, next: NextFunction) => {
+    const forwarded = req.headers['x-forwarded-for'];
+    const clientIp = typeof forwarded === 'string'
+      ? forwarded.split(',')[0].trim()
+      : (req.ip || req.socket.remoteAddress || 'unknown');
+
     const email = typeof req.body?.email === 'string'
       ? req.body.email.trim().toLowerCase()
       : '';
-    const key = email ? `email:${email}:${req.path}` : `${req.ip}:${req.path}`;
+    const key = email ? `email:${email}:${req.path}` : `${clientIp}:${req.path}`;
     const now = Date.now();
     const current = attempts.get(key);
     const entry = !current || current.resetAt <= now

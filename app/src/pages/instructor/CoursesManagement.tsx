@@ -639,7 +639,7 @@ export function CoursesManagement() {
             </div>
 
             {lessonFormat === 'pptx' ? (
-              <FileToPptxUploader />
+              <FileToPptxUploader unitId={selectedUnitForUpload || undefined} />
             ) : (
             <>
             <div>
