@@ -421,7 +421,7 @@ router.post(
         return [];
       };
       const cleanedTargetSections = [...new Set(parseJsonArray(targetSections).map((s) => String(s).trim()).filter(Boolean))];
-      const cleanedTargetYearLevels = [...new Set(parseJsonArray(targetYearLevels).map((y) => Number(y)).filter((y) => Number.isInteger(y) && y >= 1 && y <= 4))];
+      const cleanedTargetYearLevels = [...new Set(parseJsonArray(targetYearLevels).map((y) => Number(y)).filter((y) => Number.isInteger(y) && y >= 1 && y <= 3))];
 
       if (!uploadedFile) {
         return res.status(400).json({
@@ -1467,6 +1467,7 @@ router.post('/', authMiddleware, instructorMiddleware, (req: Request, res: Respo
           return sendSupabaseUnavailable(res);
         }
 
+        const creatorYearLevel = (req as any).user?.year_level || 1;
         const { data, error } = await supabase
           .from('lessons')
           .insert({
@@ -1479,6 +1480,7 @@ router.post('/', authMiddleware, instructorMiddleware, (req: Request, res: Respo
             status: 'published',
             xp_reward: 10,
             order_index: 0,
+            year_level: creatorYearLevel,
           })
           .select();
 

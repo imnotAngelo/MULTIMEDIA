@@ -189,8 +189,13 @@ export function Header({ title, subtitle }: HeaderProps) {
         console.error('[notify] Invalid notification payload:', parseErr);
         setFromApi([]);
       }
-    } catch (err) {
-      console.error('[notify] Fetch error:', err);
+    } catch (err: any) {
+      const errorMsg = err?.message || String(err);
+      if (errorMsg.includes('Failed to fetch')) {
+        console.warn('[notify] Backend API not accessible. Is the backend server running on port 3001?');
+      } else {
+        console.error('[notify] Fetch error:', err);
+      }
       setFromApi([]);
     }
   };

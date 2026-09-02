@@ -1,16 +1,145 @@
 import { Router } from 'express';
+import multer from 'multer';
 import { authMiddleware, optionalAuthMiddleware } from '../middleware/auth.js';
 import { instructorMiddleware } from '../middleware/admin.js';
 import { supabase } from '../config/supabase.js';
+
+const ALLOWED_VIDEO_MIME = new Set([
+  'video/mp4',
+  'video/webm',
+  'video/ogg',
+  'video/quicktime',
+  'video/x-msvideo',
+  'video/x-matroska',
+]);
+
+const videoStorage = multer.memoryStorage();
+
+const videoUpload = multer({
+  storage: videoStorage,
+  limits: { fileSize: 500 * 1024 * 1024 }, // 500 MB max
+  fileFilter: (_req, file, cb) => {
+    if (!ALLOWED_VIDEO_MIME.has(file.mimetype)) {
+      return cb(new Error('Only MP4, WebM, OGG, MOV, AVI, and MKV video formats are allowed.'));
+    }
+    cb(null, true);
+  },
+});
 import {
   createUnit,
   getUnits,
   getUnitLessons,
   updateLessonSlides,
   deleteUnit,
+  unarchiveUnit,
+  unarchiveLesson,
+  updateLessonMetadata,
 } from '../controllers/unitsController.js';
 
 const router = Router();
+
+// Upload lesson video file
+router.post('/lessons/:lessonId/upload-video', authMiddleware, instructorMiddleware, (req, res, next) => {
+  videoUpload.single('video')(req, res, (err: any) => {
+    if (err) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VIDEO_UPLOAD_FAILED', message: err.message || 'Video upload failed' },
+      });
+    }
+    next();
+  });
+}, async (req: any, res: any) => {
+  try {
+    const { lessonId } = req.params;
+
+    if (!lessonId) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'MISSING_ID', message: 'Lesson ID is required' },
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'NO_FILE', message: 'No video file uploaded' },
+      });
+    }
+
+    if (!supabase) {
+      return res.status(503).json({
+        success: false,
+        error: { code: 'SUPABASE_UNAVAILABLE', message: 'Supabase is not configured' },
+      });
+    }
+
+    // Generate unique video filename
+    const timestamp = Date.now();
+    const randomId = Math.random().toString(36).substring(2, 10);
+    const extension = req.file.mimetype === 'video/quicktime' ? '.mov' : 
+                     req.file.mimetype === 'video/x-msvideo' ? '.avi' :
+                     req.file.mimetype === 'video/x-matroska' ? '.mkv' :
+                     req.file.mimetype === 'video/webm' ? '.webm' :
+                     req.file.mimetype === 'video/ogg' ? '.ogg' : '.mp4';
+    const videoFileName = `lesson-${lessonId}-${timestamp}-${randomId}${extension}`;
+    const videoPath = `lesson-videos/${videoFileName}`;
+
+    console.log(`📹 Uploading video: ${videoPath}, size: ${req.file.size} bytes`);
+
+    // Upload to Supabase storage
+    const { error: uploadError } = await supabase.storage
+      .from('lesson-videos')
+      .upload(videoPath, req.file.buffer, {
+        contentType: req.file.mimetype,
+        upsert: true,
+      });
+
+    if (uploadError) {
+      throw uploadError;
+    }
+
+    // Get public URL
+    const { data: publicData } = supabase.storage
+      .from('lesson-videos')
+      .getPublicUrl(videoPath);
+
+    const videoUrl = publicData?.publicUrl || `https://ciopmrwvmgqsbapyljih.supabase.co/storage/v1/object/public/lesson-videos/${videoPath}`;
+
+    // Update lesson with video URL
+    const { data: lesson, error: updateError } = await supabase
+      .from('lessons')
+      .update({ video_url: videoUrl, updated_at: new Date().toISOString() })
+      .eq('id', lessonId)
+      .select('id, title, video_url')
+      .single();
+
+    if (updateError) throw updateError;
+
+    console.log('✅ Video uploaded and lesson updated:', { lessonId, videoUrl });
+
+    return res.json({
+      success: true,
+      message: 'Video uploaded successfully',
+      data: {
+        lessonId,
+        video_url: videoUrl,
+        lesson,
+      },
+    });
+  } catch (error: any) {
+    console.error('❌ Video upload error:', error);
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: 'VIDEO_UPLOAD_ERROR',
+        message: error.message,
+      },
+    });
+  }
+});
+
+
 
 // Create a new unit (optional auth for now)
 router.post('/', authMiddleware, instructorMiddleware, createUnit);
@@ -168,7 +297,16 @@ router.get('/:unitId/lessons', optionalAuthMiddleware, getUnitLessons);
 // Update lesson slides (optional auth)
 router.put('/lessons/:lessonId/slides', authMiddleware, instructorMiddleware, updateLessonSlides);
 
+// Update lesson metadata (video URL, app link, app name)
+router.put('/lessons/:lessonId/metadata', authMiddleware, instructorMiddleware, updateLessonMetadata);
+
 // Delete a unit (optional auth)
 router.delete('/:unitId', authMiddleware, instructorMiddleware, deleteUnit);
+
+// Unarchive a unit (restore from archive)
+router.post('/:unitId/unarchive', authMiddleware, instructorMiddleware, unarchiveUnit);
+
+// Unarchive a lesson (restore from archive)
+router.post('/lessons/:lessonId/unarchive', authMiddleware, instructorMiddleware, unarchiveLesson);
 
 export default router;

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { authFetch } from '@/lib/authFetch';
 import { AetherLoader } from '@/components/AetherLoader';
+import { toast } from 'sonner';
 
 interface Unit {
   id: string;
@@ -65,20 +66,20 @@ export function InstructorDashboard() {
       const unitsData = await unitsResponse.json();
       console.log('✅ Units fetched:', unitsData.data || []);
       
-      const unitList: Unit[] = unitsData.success ? (unitsData.data || []) : [];
-      setUnits(unitList);
+      const activeUnits: Unit[] = unitsData.success ? (unitsData.data || []) : [];
+      setUnits(activeUnits);
 
-      // Fetch all lessons from all units
+      // Fetch all lessons from all active units
       const allLessons: Lesson[] = [];
       
-      for (const unit of unitList) {
+      for (const unit of activeUnits) {
         const lessonsResponse = await authFetch(`http://localhost:3001/api/units/${unit.id}/lessons`);
         const lessonsData = await lessonsResponse.json();
         
         if (lessonsData.success) {
-          const lessons = lessonsData.data || [];
-          console.log(`✅ Lessons for unit "${unit.title}": ${lessons.length}`);
-          allLessons.push(...lessons.map((l: any) => ({
+          const activeLessons = lessonsData.data || [];
+          console.log(`✅ Lessons for unit "${unit.title}": ${activeLessons.length} active`);
+          allLessons.push(...activeLessons.map((l: any) => ({
             ...l,
             unitId: unit.id,
           })));
@@ -135,7 +136,7 @@ export function InstructorDashboard() {
         l => (l.slides && l.slides.length > 0) || (l.slideCount && l.slideCount > 0)
       ).length;
       setStats({
-        totalUnits: unitList.length,
+        totalUnits: activeUnits.length,
         activeStudents: activeCount,
         totalStudents: studentList.length,
         lessonsCreated: allLessons.length,

@@ -208,7 +208,7 @@ export const createUnit = async (req: AuthRequest, res: Response) => {
       ? [...new Set(targetSections.map((s: any) => String(s).trim()).filter(Boolean))]
       : [];
     const cleanedYearLevels = Array.isArray(targetYearLevels)
-      ? [...new Set(targetYearLevels.map((y: any) => Number(y)).filter((y: number) => Number.isInteger(y) && y >= 1 && y <= 4))]
+      ? [...new Set(targetYearLevels.map((y: any) => Number(y)).filter((y: number) => Number.isInteger(y) && y >= 1 && y <= 3))]
       : [];
 
     console.log('📝 Creating unit:', { title, description, userId: userId || 'anonymous' });
@@ -291,38 +291,60 @@ export const getUnits = async (req: AuthRequest, res: Response) => {
       if (coursesError) throw coursesError;
 
       if (!courses || courses.length === 0) {
-        return [] as Array<{ id: string; title: string; description: string; created_at: string }>;
+        return [] as Array<{ id: string; title: string; description: string; created_at: string; status?: string }>;
       }
 
       const courseIds = courses.map(c => c.id);
 
-      // Get all modules for those courses
+      // Get all modules for those courses (both active and archived so we can separate them)
       const { data: units, error } = await supabase
         .from('modules')
-        .select('id, title, description, created_at, target_sections, target_year_levels')
+        .select('id, title, description, created_at, status, target_sections, target_year_levels')
         .in('course_id', courseIds)
-        .eq('status', 'active')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      return (units || []) as Array<{ id: string; title: string; description: string; created_at: string; target_sections: string[]; target_year_levels: number[] }>;
+      return (units || []) as Array<{ id: string; title: string; description: string; created_at: string; status: string; target_sections: string[]; target_year_levels: number[] }>;
     }, null as any);
 
     if (unitsFromDb !== null) {
       console.log('📚 Units fetched from Supabase:', unitsFromDb.length);
       const requester = (req as any).user;
-      const visibleUnits = requester?.role === 'student'
-        ? unitsFromDb.filter((u) => matchesContentTarget(u.target_sections, u.target_year_levels, requester.section, requester.year_level))
-        : unitsFromDb;
+      
+      // Separate active and archived units
+      const activeUnits = unitsFromDb.filter(u => u.status !== 'archived');
+      const archivedUnits = unitsFromDb.filter(u => u.status === 'archived');
+      
+      const visibleActiveUnits = requester?.role === 'student'
+        ? activeUnits.filter((u) => matchesContentTarget(u.target_sections, u.target_year_levels, requester.section, requester.year_level))
+        : activeUnits;
+      
+      const visibleArchivedUnits = requester?.role === 'student'
+        ? archivedUnits.filter((u) => matchesContentTarget(u.target_sections, u.target_year_levels, requester.section, requester.year_level))
+        : archivedUnits;
+
       return res.json({
         success: true,
-        data: visibleUnits.map((u) => ({
+        data: visibleActiveUnits.map((u) => ({
           id: u.id,
           title: u.title,
           description: u.description,
           lessonCount: 0, // Will be updated when fetching lessons
           createdAt: u.created_at,
+          status: u.status,
+          yearLevel: null,
+          section: null,
+          targetSections: u.target_sections ?? [],
+          targetYearLevels: u.target_year_levels ?? [],
+        })),
+        archived: visibleArchivedUnits.map((u) => ({
+          id: u.id,
+          title: u.title,
+          description: u.description,
+          lessonCount: 0,
+          createdAt: u.created_at,
+          status: u.status,
           yearLevel: null,
           section: null,
           targetSections: u.target_sections ?? [],
@@ -377,18 +399,17 @@ export const getUnitLessons = async (req: AuthRequest, res: Response) => {
       originalFormat: l.originalFormat || (l.pdfUrl ? 'pdf' : 'slides'),
     }));
 
-    let lessonsFromDb: any[] = [];
+    let allDbLessons: any[] = [];
     if (isValidUuid) {
-      lessonsFromDb = await safeSupabaseCall(async () => {
+      allDbLessons = await safeSupabaseCall(async () => {
         if (!supabase) {
           throw new Error('Supabase unavailable');
         }
 
         const { data: lessons, error } = await supabase
           .from('lessons')
-          .select('id, title, content, slides, slide_count, created_at, status, target_sections, target_year_levels, video_url, graphic_url, pdf_url, original_format')
+          .select('id, title, content, slides, slide_count, created_at, status, target_sections, target_year_levels, video_url, app_link, app_name, graphic_url, pdf_url, original_format')
           .eq('module_id', unitId)
-          .eq('status', 'published')
           .order('created_at', { ascending: false });
 
         if (error) throw error;
@@ -396,17 +417,25 @@ export const getUnitLessons = async (req: AuthRequest, res: Response) => {
       }, [] as Array<any>);
     }
 
-    const allLessons = [...(lessonsFromDb || []), ...localLessons].filter((l: any) =>
+    // Combine local and DB lessons, then separate by status
+    const allLessons = [...(allDbLessons || []), ...localLessons];
+    
+    // Filter based on role and visibility
+    const filteredLessons = allLessons.filter((l: any) =>
       requester?.role === 'student'
         ? matchesContentTarget(l.target_sections, l.target_year_levels, requester.section, requester.year_level)
         : true
     );
 
-    console.log(`📖 Lessons for unit ${unitId}:`, allLessons.length);
+    // Separate active and archived
+    const activeLessons = filteredLessons.filter((l: any) => l.status !== 'archived');
+    const archivedLessons = filteredLessons.filter((l: any) => l.status === 'archived');
+
+    console.log(`📖 Lessons for unit ${unitId}: ${activeLessons.length} active, ${archivedLessons.length} archived`);
 
     return res.json({
       success: true,
-      data: allLessons.map((l: any) => {
+      data: activeLessons.map((l: any) => {
         const mappedLesson = {
           id: l.id,
           title: l.title,
@@ -414,6 +443,22 @@ export const getUnitLessons = async (req: AuthRequest, res: Response) => {
           slides: Array.isArray(l.slides) ? l.slides : (typeof l.slides === 'string' ? JSON.parse(l.slides) : []),
           slideCount: l.slide_count || l.slideCount || 0,
           createdAt: l.created_at || l.createdAt,
+          status: l.status,
+          unitId,
+          pdfUrl: l.pdf_url || l.pdfUrl || '',
+          originalFormat: l.original_format || l.originalFormat || (l.pdf_url || l.pdfUrl ? 'pdf' : 'slides'),
+        };
+        return mappedLesson;
+      }),
+      archived: archivedLessons.map((l: any) => {
+        const mappedLesson = {
+          id: l.id,
+          title: l.title,
+          content: l.content,
+          slides: Array.isArray(l.slides) ? l.slides : (typeof l.slides === 'string' ? JSON.parse(l.slides) : []),
+          slideCount: l.slide_count || l.slideCount || 0,
+          createdAt: l.created_at || l.createdAt,
+          status: l.status,
           unitId,
           pdfUrl: l.pdf_url || l.pdfUrl || '',
           originalFormat: l.original_format || l.originalFormat || (l.pdf_url || l.pdfUrl ? 'pdf' : 'slides'),
@@ -523,3 +568,138 @@ export const deleteUnit = async (req: AuthRequest, res: Response) => {
     });
   }
 };
+
+// Unarchive a unit (module) - restore to active
+export const unarchiveUnit = async (req: AuthRequest, res: Response) => {
+  try {
+    const { unitId } = req.params;
+
+    if (!unitId) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'MISSING_ID', message: 'Unit ID is required' },
+      });
+    }
+
+    console.log('♻️ Unarchiving unit:', unitId);
+
+    const { data: unit, error } = await supabase
+      .from('modules')
+      .update({ status: 'active' })
+      .eq('id', unitId)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    console.log('✅ Unit unarchived:', unitId);
+
+    return res.json({
+      success: true,
+      message: 'Unit restored successfully',
+      data: unit,
+    });
+  } catch (error: any) {
+    console.error('❌ Unarchive unit error:', error);
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: 'UNARCHIVE_FAILED',
+        message: error.message,
+      },
+    });
+  }
+};
+
+// Unarchive a lesson - restore to active
+export const unarchiveLesson = async (req: AuthRequest, res: Response) => {
+  try {
+    const { lessonId } = req.params;
+
+    if (!lessonId) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'MISSING_ID', message: 'Lesson ID is required' },
+      });
+    }
+
+    console.log('♻️ Unarchiving lesson:', lessonId);
+
+    const { data: lesson, error } = await supabase
+      .from('lessons')
+      .update({ status: 'active' })
+      .eq('id', lessonId)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    console.log('✅ Lesson unarchived:', lessonId);
+
+    return res.json({
+      success: true,
+      message: 'Lesson restored successfully',
+      data: lesson,
+    });
+  } catch (error: any) {
+    console.error('❌ Unarchive lesson error:', error);
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: 'UNARCHIVE_FAILED',
+        message: error.message,
+      },
+    });
+  }
+};
+
+// Update lesson metadata (video URL, app link, app name)
+export const updateLessonMetadata = async (req: AuthRequest, res: Response) => {
+  try {
+    const { lessonId } = req.params;
+    const { video_url, app_link, app_name } = req.body;
+
+    if (!lessonId) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'MISSING_ID', message: 'Lesson ID is required' },
+      });
+    }
+
+    console.log('📝 Updating lesson metadata:', { lessonId, video_url, app_link, app_name });
+
+    // Build update object with only provided fields
+    const updateData: any = {};
+    if (video_url !== undefined) updateData.video_url = video_url || null;
+    if (app_link !== undefined) updateData.app_link = app_link || null;
+    if (app_name !== undefined) updateData.app_name = app_name || null;
+
+    const { data: lesson, error } = await supabase
+      .from('lessons')
+      .update(updateData)
+      .eq('id', lessonId)
+      .select('id, title, video_url, app_link, app_name')
+      .single();
+
+    if (error) throw error;
+
+    console.log('✅ Lesson metadata updated:', lesson);
+
+    return res.json({
+      success: true,
+      message: 'Lesson metadata updated successfully',
+      data: lesson,
+    });
+  } catch (error: any) {
+    console.error('❌ Update lesson metadata error:', error);
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: 'UPDATE_FAILED',
+        message: error.message,
+      },
+    });
+  }
+};
+
+

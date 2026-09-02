@@ -9,8 +9,8 @@ export interface User {
   student_approved?: boolean;
   xp_total: number;
   streak_days: number;
-  year_level?: 1 | 2 | 3 | 4 | null;
-  teaching_year_levels?: (1 | 2 | 3 | 4)[];
+  year_level?: 1 | 2 | 3 | null;
+  teaching_year_levels?: (1 | 2 | 3)[];
   section?: string | null;
   teaching_sections?: string[] | null;
   last_active?: string;

@@ -53,6 +53,8 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
     const userId = req.user?.id;
     const { full_name, avatar_url, year_level, teaching_year_levels, teaching_sections } = req.body;
 
+    console.log(`🔄 UPDATE PROFILE: userId=${userId}, year_level=${year_level}, teaching_year_levels=${JSON.stringify(teaching_year_levels)}`);
+
     if (!userId) {
       return res.status(401).json({
         success: false,
@@ -63,23 +65,55 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    // Get the current user to check if year_level is changing
+    const { data: currentUser, error: getUserError } = await supabase
+      .from('users')
+      .select('year_level, role')
+      .eq('id', userId)
+      .single();
+
+    if (getUserError || !currentUser) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'USER_NOT_FOUND',
+          message: 'User not found',
+        },
+      });
+    }
+
+    console.log(`  Current user - year_level=${currentUser.year_level}, role=${currentUser.role}`);
+
     const updates: Record<string, any> = {
       updated_at: new Date().toISOString(),
     };
     if (typeof full_name === 'string') updates.full_name = full_name;
     if (typeof avatar_url === 'string') updates.avatar_url = avatar_url;
+    
+    let oldYearLevel: number | null = null;
+    let shouldArchive = false;
+
     if (year_level === null || year_level === undefined) {
-      // skip
+      console.log(`  ⏭️  year_level not provided in request`);
     } else {
       const yl = Number(year_level);
-      if (!Number.isInteger(yl) || yl < 1 || yl > 4) {
+      console.log(`  🔍 Validating year_level: received=${year_level}, parsed=${yl}`);
+      if (!Number.isInteger(yl) || yl < 1 || yl > 3) {
         return res.status(400).json({
           success: false,
-          error: { code: 'INVALID_YEAR_LEVEL', message: 'year_level must be 1, 2, 3, or 4' },
+          error: { code: 'INVALID_YEAR_LEVEL', message: 'year_level must be 1, 2, or 3' },
         });
+      }
+      if (currentUser.year_level && currentUser.year_level !== yl) {
+        oldYearLevel = currentUser.year_level;
+        shouldArchive = true;
+        console.log(`  🔄 SEMESTER CHANGE DETECTED: ${oldYearLevel} → ${yl}`);
+      } else {
+        console.log(`  ℹ️  No semester change: current=${currentUser.year_level}, new=${yl}`);
       }
       updates.year_level = yl;
     }
+    
     if (teaching_year_levels !== undefined) {
       if (!Array.isArray(teaching_year_levels)) {
         return res.status(400).json({
@@ -90,10 +124,10 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
       const cleaned: number[] = [];
       for (const v of teaching_year_levels) {
         const n = Number(v);
-        if (!Number.isInteger(n) || n < 1 || n > 4) {
+        if (!Number.isInteger(n) || n < 1 || n > 3) {
           return res.status(400).json({
             success: false,
-            error: { code: 'INVALID_TEACHING_YEARS', message: 'Each teaching year must be 1, 2, 3, or 4' },
+            error: { code: 'INVALID_TEACHING_YEARS', message: 'Each teaching year must be 1, 2, or 3' },
           });
         }
         if (!cleaned.includes(n)) cleaned.push(n);
@@ -101,6 +135,7 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
       cleaned.sort((a, b) => a - b);
       updates.teaching_year_levels = cleaned;
     }
+    
     if (teaching_sections !== undefined) {
       if (!Array.isArray(teaching_sections)) {
         return res.status(400).json({
@@ -122,13 +157,113 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
       updates.teaching_sections = cleanedSections;
     }
 
+    // If semester is changing for a student or instructor, archive old semester content
+    if (shouldArchive && oldYearLevel) {
+      try {
+        console.log(`📦 ARCHIVING: ${currentUser.role} ${userId} changing from semester ${oldYearLevel} to ${updates.year_level}`);
+
+        if (currentUser.role === 'instructor') {
+          // For instructors: Archive ALL unarchived content (clean semester start)
+          console.log(`  📝 Instructor mode: archiving ALL unarchived content for clean semester switch...`);
+
+          // Step 1: Get instructor's courses
+          const { data: courses } = await supabase
+            .from('courses')
+            .select('id')
+            .eq('instructor_id', userId);
+
+          if (courses && courses.length > 0) {
+            const courseIds = courses.map(c => c.id);
+            console.log(`  📝 Found ${courseIds.length} courses`);
+
+            // Step 2: Get ALL unarchived modules for these courses
+            const { data: modules } = await supabase
+              .from('modules')
+              .select('id')
+              .in('course_id', courseIds)
+              .neq('status', 'archived');
+
+            if (modules && modules.length > 0) {
+              const moduleIds = modules.map(m => m.id);
+              
+              // Archive all modules
+              await supabase
+                .from('modules')
+                .update({ status: 'archived' })
+                .in('id', moduleIds);
+              console.log(`  ✅ Archived ${moduleIds.length} modules`);
+
+              // Step 3: Archive all lessons in these modules
+              await supabase
+                .from('lessons')
+                .update({ status: 'archived' })
+                .in('module_id', moduleIds)
+                .neq('status', 'archived');
+              console.log(`  ✅ Archived lessons`);
+
+              // Step 4: Archive all assessments in these modules
+              await supabase
+                .from('assessments')
+                .update({ status: 'archived' })
+                .in('module_id', moduleIds)
+                .neq('status', 'archived');
+              console.log(`  ✅ Archived assessments`);
+
+              // Step 5: Archive all laboratories in these modules
+              await supabase
+                .from('laboratories')
+                .update({ status: 'archived' })
+                .in('unit_id', moduleIds)
+                .neq('status', 'archived');
+              console.log(`  ✅ Archived laboratories`);
+            }
+          }
+        } else {
+          // For students: Archive all their unarchived content (complete fresh start)
+          console.log(`  📝 Student mode: archiving ALL unarchived content...`);
+
+          // Archive all lessons
+          await supabase
+            .from('lessons')
+            .update({ status: 'archived' })
+            .neq('status', 'archived');
+
+          // Archive all assessments
+          await supabase
+            .from('assessments')
+            .update({ status: 'archived' })
+            .neq('status', 'archived');
+
+          // Archive all laboratories
+          await supabase
+            .from('laboratories')
+            .update({ status: 'archived' })
+            .neq('status', 'archived');
+
+          console.log(`  ✅ Archived all student content`);
+        }
+
+        console.log(`📦 ARCHIVING COMPLETE for ${currentUser.role} ${userId}`);
+      } catch (archiveError: any) {
+        console.error('❌ Error during archiving:', archiveError.message);
+        // Continue even if archiving fails - don't block user profile update
+      }
+    } else {
+      console.log(`⏭️  SKIP ARCHIVING: shouldArchive=${shouldArchive}, oldYearLevel=${oldYearLevel}, role=${currentUser.role}`);
+    }
+
     const { data: user, error } = await supabase
       .from('users')
       .update(updates)
       .eq('id', userId)
       .select('id, email, full_name, avatar_url, role, xp_total, streak_days, year_level, teaching_year_levels, section, teaching_sections, created_at, last_active');
 
-    if (error) throw error;
+    if (error) {
+      console.error(`❌ Database update error:`, error);
+      throw error;
+    }
+
+    console.log(`✅ PROFILE UPDATED: year_level=${user[0]?.year_level}`);
 
     return res.json({
       success: true,

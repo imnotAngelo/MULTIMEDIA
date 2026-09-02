@@ -700,6 +700,7 @@ router.post('/pptx', upload.single('file'), async (req: Request, res: Response) 
 
     const lessonId = uuidv4();
     const content = `Converted presentation generated from ${path.basename(req.file.originalname)}.`;
+    const creatorYearLevel = (req as any).user?.year_level || 1;
     const lessonPayload = {
       id: lessonId,
       module_id: lessonModuleId,
@@ -715,6 +716,7 @@ router.post('/pptx', upload.single('file'), async (req: Request, res: Response) 
       video_url: null,
       graphic_url: null,
       created_at: new Date().toISOString(),
+      year_level: creatorYearLevel,
     };
 
     let savedLesson: any = null;

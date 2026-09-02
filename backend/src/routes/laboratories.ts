@@ -68,7 +68,7 @@ router.post('/metadata', async (req: any, res) => {
       ? [...new Set(targetSections.map((s: any) => String(s).trim()).filter(Boolean))]
       : [];
     const cleanedTargetYearLevels = Array.isArray(targetYearLevels)
-      ? [...new Set(targetYearLevels.map((y: any) => Number(y)).filter((y: number) => Number.isInteger(y) && y >= 1 && y <= 4))]
+      ? [...new Set(targetYearLevels.map((y: any) => Number(y)).filter((y: number) => Number.isInteger(y) && y >= 1 && y <= 3))]
       : [];
 
     let resolvedUnitName = unitName || null;
@@ -208,9 +208,11 @@ router.post('/create-from-unit', async (req: any, res) => {
     }
 
     // Upsert minimal columns that we know exist.
+    const creatorYearLevel = req.user?.year_level || 1;
     const labRow: any = {
       id: unitId,
       instructor_id: userId,
+      year_level: creatorYearLevel,
     };
 
     const { data: existingLab, error: existingLabError } = await supabase

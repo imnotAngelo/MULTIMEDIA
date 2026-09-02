@@ -299,9 +299,10 @@ export const createAssessment = async (req: AuthRequest, res: Response) => {
       ? [...new Set(targetSections.map((s: any) => String(s).trim()).filter(Boolean))]
       : [];
     const cleanedTargetYearLevels = Array.isArray(targetYearLevels)
-      ? [...new Set(targetYearLevels.map((y: any) => Number(y)).filter((y: number) => Number.isInteger(y) && y >= 1 && y <= 4))]
+      ? [...new Set(targetYearLevels.map((y: any) => Number(y)).filter((y: number) => Number.isInteger(y) && y >= 1 && y <= 3))]
       : [];
 
+    const creatorYearLevel = (req as any).user?.year_level || 1;
     const insertPayload = {
       id: assessmentId,
       created_by: instructorId,
@@ -318,6 +319,7 @@ export const createAssessment = async (req: AuthRequest, res: Response) => {
       show_correct_answers: showCorrectAnswers || false,
       target_sections: cleanedTargetSections,
       target_year_levels: cleanedTargetYearLevels,
+      year_level: creatorYearLevel,
     };
 
     const createResult = await safeSupabaseCall(

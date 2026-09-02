@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { authFetch } from '@/lib/authFetch';
 import { API_BASE_URL } from '@/lib/apiConfig';
 import { FileToPptxUploader } from '../../components/FileToPptxUploader';
+import { useAuthStore } from '@/stores/authStore';
 
 interface UploadLessonProps {
   unitId: string;
@@ -15,6 +16,7 @@ interface UploadLessonProps {
 }
 
 export function UploadLesson({ unitId, onSuccess }: UploadLessonProps) {
+  const { user } = useAuthStore();
   const [format, setFormat] = useState<'pdf' | 'pptx'>('pdf');
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState('');
@@ -22,6 +24,7 @@ export function UploadLesson({ unitId, onSuccess }: UploadLessonProps) {
   const [videoUrl, setVideoUrl] = useState('');
   const [graphicUrl, setGraphicUrl] = useState('');
   const [graphicFile, setGraphicFile] = useState<File | null>(null);
+  const [targetSections, setTargetSections] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -89,6 +92,9 @@ export function UploadLesson({ unitId, onSuccess }: UploadLessonProps) {
       if (graphicUrl.trim()) formData.append('graphicUrl', graphicUrl.trim());
       if (graphicFile) formData.append('graphicFile', graphicFile);
       formData.append('unitId', unitId);
+      if (targetSections.length > 0) {
+        formData.append('targetSections', JSON.stringify(targetSections));
+      }
 
       const uploadUrl = `${API_BASE_URL}/lessons/upload-pdf`;
       
@@ -233,6 +239,35 @@ export function UploadLesson({ unitId, onSuccess }: UploadLessonProps) {
             className="mt-2 w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500"
           />
         </div>
+
+        {/* Teaching Sections Selection */}
+        {user?.teaching_sections && user.teaching_sections.length > 0 && (
+          <div className="rounded-xl border border-slate-700 bg-slate-950/40 p-4 space-y-3">
+            <div>
+              <h4 className="text-sm font-semibold text-slate-200">Assign to Sections</h4>
+              <p className="text-xs text-slate-400 mt-1">Select which sections can access this lesson (leave unchecked for all sections)</p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              {user.teaching_sections.map((section) => (
+                <label key={section} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={targetSections.includes(section)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setTargetSections([...targetSections, section]);
+                      } else {
+                        setTargetSections(targetSections.filter(s => s !== section));
+                      }
+                    }}
+                    className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-violet-500 focus:ring-violet-500 cursor-pointer"
+                  />
+                  <span className="text-sm text-slate-300">{section}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Class Media Section */}
         <div className="rounded-xl border border-slate-700 bg-slate-950/40 p-4 space-y-4">

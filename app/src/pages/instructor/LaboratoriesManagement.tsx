@@ -580,6 +580,35 @@ export function LaboratoriesManagement() {
                 </div>
               </div>
 
+              {/* Teaching Sections Selection */}
+              {user?.teaching_sections && user.teaching_sections.length > 0 && (
+                <div className="rounded-lg border border-slate-800 bg-slate-950/40 p-3 space-y-3">
+                  <div>
+                    <h4 className="text-sm font-semibold text-slate-200">Assign to Sections</h4>
+                    <p className="text-xs text-slate-400 mt-1">Select which sections can access this laboratory (leave unchecked for all sections)</p>
+                  </div>
+                  <div className="flex flex-wrap gap-3">
+                    {user.teaching_sections.map((section) => (
+                      <label key={section} className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={formData.targetSections.includes(section)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setFormData(f => ({ ...f, targetSections: [...f.targetSections, section] }));
+                            } else {
+                              setFormData(f => ({ ...f, targetSections: f.targetSections.filter(s => s !== section) }));
+                            }
+                          }}
+                          className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-violet-500 focus:ring-violet-500 cursor-pointer"
+                        />
+                        <span className="text-sm text-slate-300">{section}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <SectionYearTargetPicker
                 yearLevels={formData.targetYearLevels}
                 onYearLevelsChange={(levels) => setFormData(f => ({ ...f, targetYearLevels: levels }))}

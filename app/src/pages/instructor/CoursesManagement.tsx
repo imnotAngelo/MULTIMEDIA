@@ -8,7 +8,12 @@ import {
   Upload,
   Plus,
   Eye,
-  Clock
+  Clock,
+  Video,
+  Link as LinkIcon,
+  Edit2,
+  Check,
+  X
 } from 'lucide-react';
 import { AetherSpinner } from '@/components/AetherSpinner';
 import { toast } from 'sonner';
@@ -49,6 +54,9 @@ interface Lesson {
   createdAt: string;
   slideCount?: number;
   slides?: any[];
+  video_url?: string;
+  app_link?: string;
+  app_name?: string;
 }
 
 function LessonItem({ lesson, isActive, onClick }: {
@@ -93,6 +101,37 @@ function LessonItem({ lesson, isActive, onClick }: {
     </button>
   );
 }
+
+// Helper function to convert numbers to Roman numerals
+const numberToRoman = (num: number): string => {
+  const romanNumerals = [
+    { value: 1000, numeral: 'M' },
+    { value: 900, numeral: 'CM' },
+    { value: 500, numeral: 'D' },
+    { value: 400, numeral: 'CD' },
+    { value: 100, numeral: 'C' },
+    { value: 90, numeral: 'XC' },
+    { value: 50, numeral: 'L' },
+    { value: 40, numeral: 'XL' },
+    { value: 10, numeral: 'X' },
+    { value: 9, numeral: 'IX' },
+    { value: 5, numeral: 'V' },
+    { value: 4, numeral: 'IV' },
+    { value: 1, numeral: 'I' }
+  ];
+
+  let result = '';
+  let remaining = num;
+
+  for (const { value, numeral } of romanNumerals) {
+    while (remaining >= value) {
+      result += numeral;
+      remaining -= value;
+    }
+  }
+
+  return result;
+};
 
 function UnitSection({
   unit,
@@ -221,6 +260,14 @@ export function CoursesManagement() {
   const [lessonSectionInput, setLessonSectionInput] = useState('');
   const [lessonFormat, setLessonFormat] = useState<'pdf' | 'pptx'>('pdf');
 
+  // State for editing lesson metadata (video/app)
+  const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
+  const [editVideoUrl, setEditVideoUrl] = useState('');
+  const [editVideoType, setEditVideoType] = useState<'url' | 'upload'>('url');
+  const [editAppLink, setEditAppLink] = useState('');
+  const [editAppName, setEditAppName] = useState('');
+  const [savingMetadata, setSavingMetadata] = useState(false);
+
   useEffect(() => {
     loadData();
   }, []);
@@ -283,19 +330,25 @@ export function CoursesManagement() {
   };
 
   const handleCreateUnit = async () => {
-    if (!newUnitTitle.trim()) {
-      toast.error('Unit title is required');
-      return;
-    }
-
     try {
       setCreatingUnit(true);
+      
+      // Generate auto-numbered title: UNIT I, UNIT II, etc.
+      const nextUnitNumber = units.length + 1;
+      const romanNumeral = numberToRoman(nextUnitNumber);
+      const autoTitle = `UNIT ${romanNumeral}`;
+      
+      // Combine topic and description
+      const fullDescription = newUnitTitle.trim() 
+        ? `${newUnitTitle.trim()} - ${newUnitDescription.trim()}`
+        : newUnitDescription.trim();
+
       const response = await authFetch(`${API_BASE_URL}/units`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: newUnitTitle.trim(),
-          description: newUnitDescription.trim(),
+          title: autoTitle,
+          description: fullDescription,
           targetSections: unitTargetSections,
           targetYearLevels: unitTargetYearLevels,
         }),
@@ -304,7 +357,7 @@ export function CoursesManagement() {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        notificationService.notifyUnitAdded(newUnitTitle);
+        notificationService.notifyUnitAdded(autoTitle);
         setNewUnitTitle('');
         setNewUnitDescription('');
         setUnitTargetSections([]);
@@ -321,6 +374,72 @@ export function CoursesManagement() {
     } finally {
       setCreatingUnit(false);
     }
+  };
+
+  const handleUpdateLessonMetadata = async () => {
+    if (!editingLessonId) return;
+
+    try {
+      setSavingMetadata(true);
+      
+      const response = await authFetch(`${API_BASE_URL}/units/lessons/${editingLessonId}/metadata`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          video_url: editVideoUrl || null,
+          app_link: editAppLink || null,
+          app_name: editAppName || null,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        toast.success('Lesson updated successfully');
+        
+        // Update the lesson in state
+        setLessons(prev =>
+          prev.map(lesson =>
+            lesson.id === editingLessonId
+              ? {
+                  ...lesson,
+                  video_url: editVideoUrl || undefined,
+                  app_link: editAppLink || undefined,
+                  app_name: editAppName || undefined,
+                }
+              : lesson
+          )
+        );
+
+        // Close edit mode
+        setEditingLessonId(null);
+        setEditVideoUrl('');
+        setEditAppLink('');
+        setEditAppName('');
+      } else {
+        toast.error(data.error?.message || 'Failed to update lesson');
+      }
+    } catch (error) {
+      console.error('❌ Failed to update lesson metadata:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to update lesson');
+    } finally {
+      setSavingMetadata(false);
+    }
+  };
+
+  const handleEditLesson = (lesson: Lesson) => {
+    setEditingLessonId(lesson.id);
+    setEditVideoUrl(lesson.video_url || '');
+    setEditAppLink(lesson.app_link || '');
+    setEditAppName(lesson.app_name || '');
+    setEditVideoType('url');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingLessonId(null);
+    setEditVideoUrl('');
+    setEditAppLink('');
+    setEditAppName('');
   };
 
   const handleCreateLaboratory = async (unitId: string) => {
@@ -453,24 +572,31 @@ export function CoursesManagement() {
             <DialogContent className="bg-slate-900 border-slate-800 text-slate-100">
               <DialogHeader>
                 <DialogTitle>Create New Unit</DialogTitle>
-                <DialogDescription>Add a new unit to organize your lessons</DialogDescription>
+                <DialogDescription>
+                  Unit title will be auto-generated as UNIT I, UNIT II, etc.
+                </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
+                <div className="bg-slate-800/40 border border-slate-700 rounded-lg p-3">
+                  <p className="text-sm text-slate-400 font-medium">
+                    Auto-Generated Title: <span className="text-violet-400 font-semibold">UNIT {numberToRoman(units.length + 1)}</span>
+                  </p>
+                </div>
                 <div>
-                  <Label htmlFor="unitTitle" className="text-slate-300">Unit Title</Label>
+                  <Label htmlFor="unitTitle" className="text-slate-300">Topic/Subject (Optional)</Label>
                   <Input
                     id="unitTitle"
-                    placeholder="e.g., Advanced Python"
+                    placeholder="e.g., Advanced Python, Web Development, etc."
                     value={newUnitTitle}
                     onChange={(e) => setNewUnitTitle(e.target.value)}
                     className="bg-slate-800 border-slate-700 text-slate-100"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="unitDescription" className="text-slate-300">Description</Label>
+                  <Label htmlFor="unitDescription" className="text-slate-300">Description (Optional)</Label>
                   <Input
                     id="unitDescription"
-                    placeholder="Brief description of the unit"
+                    placeholder="Brief description of the unit content"
                     value={newUnitDescription}
                     onChange={(e) => setNewUnitDescription(e.target.value)}
                     className="bg-slate-800 border-slate-700 text-slate-100"
@@ -576,6 +702,125 @@ export function CoursesManagement() {
                     </p>
                   </div>
                 </div>
+
+                {editingLessonId === activeLesson.id ? (
+                  <div className="bg-slate-800/40 border border-slate-700 rounded-lg p-4 space-y-3 mb-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-sm font-semibold text-slate-300">Edit Lesson Media</h4>
+                    </div>
+
+                    {/* Video URL Input */}
+                    <div>
+                      <Label htmlFor="videoUrl" className="text-slate-400 text-xs">Video URL (YouTube, Vimeo, etc.)</Label>
+                      <Input
+                        id="videoUrl"
+                        placeholder="https://youtube.com/watch?v=..."
+                        value={editVideoUrl}
+                        onChange={(e) => setEditVideoUrl(e.target.value)}
+                        className="bg-slate-700 border-slate-600 text-slate-100 text-sm mt-1"
+                      />
+                    </div>
+
+                    {/* App Link Section */}
+                    <div className="space-y-2">
+                      <Label htmlFor="appName" className="text-slate-400 text-xs">App/Tool Used (Name)</Label>
+                      <Input
+                        id="appName"
+                        placeholder="e.g., Adobe Photoshop, Figma, Blender"
+                        value={editAppName}
+                        onChange={(e) => setEditAppName(e.target.value)}
+                        className="bg-slate-700 border-slate-600 text-slate-100 text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="appLink" className="text-slate-400 text-xs">App/Tool Link</Label>
+                      <Input
+                        id="appLink"
+                        placeholder="https://www.adobe.com/products/photoshop"
+                        value={editAppLink}
+                        onChange={(e) => setEditAppLink(e.target.value)}
+                        className="bg-slate-700 border-slate-600 text-slate-100 text-sm mt-1"
+                      />
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={handleUpdateLessonMetadata}
+                        disabled={savingMetadata}
+                        className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-xs"
+                      >
+                        {savingMetadata ? (
+                          <>
+                            <AetherSpinner className="w-3 h-3 mr-1" />
+                            Saving...
+                          </>
+                        ) : (
+                          <>
+                            <Check className="w-3 h-3 mr-1" />
+                            Save
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        onClick={handleCancelEdit}
+                        variant="outline"
+                        className="flex-1 border-slate-600 text-slate-400 text-xs"
+                      >
+                        <X className="w-3 h-3 mr-1" />
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2 mb-4">
+                    {/* Display Video URL */}
+                    {activeLesson.video_url && (
+                      <div className="bg-slate-800/40 border border-slate-700 rounded-lg p-3">
+                        <div className="flex items-start gap-2">
+                          <Video className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs text-slate-500 font-medium">Video</p>
+                            <a href={activeLesson.video_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 hover:text-blue-300 truncate break-all">
+                              {activeLesson.video_url}
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Display App Link */}
+                    {activeLesson.app_link && (
+                      <div className="bg-slate-800/40 border border-slate-700 rounded-lg p-3">
+                        <div className="flex items-start gap-2">
+                          <LinkIcon className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs text-slate-500 font-medium">{activeLesson.app_name || 'App/Tool'}</p>
+                            <a href={activeLesson.app_link} target="_blank" rel="noopener noreferrer" className="text-xs text-emerald-400 hover:text-emerald-300 truncate break-all">
+                              {activeLesson.app_link}
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {!activeLesson.video_url && !activeLesson.app_link && (
+                      <div className="bg-slate-800/40 border border-dashed border-slate-700 rounded-lg p-3 text-center">
+                        <p className="text-xs text-slate-500">No video or app link added yet</p>
+                      </div>
+                    )}
+
+                    <Button
+                      onClick={() => handleEditLesson(activeLesson)}
+                      size="sm"
+                      variant="outline"
+                      className="w-full border-slate-600 text-slate-400 text-xs"
+                    >
+                      <Edit2 className="w-3 h-3 mr-1" />
+                      Edit Media & Tools
+                    </Button>
+                  </div>
+                )}
 
                 <Button 
                   className="w-full bg-violet-600 hover:bg-violet-700"

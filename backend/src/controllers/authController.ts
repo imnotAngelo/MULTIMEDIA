@@ -87,10 +87,10 @@ export const register = async (req: AuthRequest, res: Response) => {
       parsedSection = parsedTeachingSections[0];
     } else {
       parsedYear = Number(year_level);
-      if (!Number.isInteger(parsedYear) || parsedYear < 1 || parsedYear > 4) {
+      if (!Number.isInteger(parsedYear) || parsedYear < 1 || parsedYear > 3) {
         return res.status(400).json({
           success: false,
-          error: { code: 'INVALID_YEAR_LEVEL', message: 'Year level must be 1, 2, 3, or 4' },
+          error: { code: 'INVALID_YEAR_LEVEL', message: 'Academic year must be 1 (1st Sem), 2 (2nd Sem), or 3 (Summer)' },
         });
       }
 

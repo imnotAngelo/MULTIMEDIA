@@ -199,8 +199,9 @@ class ApiService {
   async updateProfile(updates: {
     full_name?: string;
     avatar_url?: string;
-    year_level?: 1 | 2 | 3 | 4 | null;
-    teaching_year_levels?: (1 | 2 | 3 | 4)[];
+    year_level?: 1 | 2 | 3 | null;
+    teaching_year_levels?: (1 | 2 | 3)[];
+    teaching_sections?: string[];
   }) {
     return this.request('/users/profile', {
       method: 'PUT',

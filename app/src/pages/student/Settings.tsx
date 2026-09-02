@@ -1,10 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
-import { GraduationCap, Save, User as UserIcon, Flame, Calendar, Image as ImageIcon, Upload } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { GraduationCap, Save, User as UserIcon, Flame, Calendar, Image as ImageIcon, Upload, RotateCcw } from 'lucide-react';
 import { AetherSpinner } from '@/components/AetherSpinner';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/stores/authStore';
 import { api } from '@/services/api';
+
+const ACADEMIC_YEAR_OPTIONS = [
+  { value: 1, label: '1st Sem' },
+  { value: 2, label: '2nd Sem' },
+  { value: 3, label: 'Summer' },
+];
 
 function getInitials(name: string) {
   if (!name) return '?';
@@ -27,12 +34,15 @@ function formatDate(iso?: string) {
 
 export function StudentSettings() {
   const { user, setUser } = useAuthStore();
+  const navigate = useNavigate();
   const initialAvatar = user?.avatar_url ?? '';
 
   const [fullName, setFullName] = useState(user?.full_name ?? '');
   const [avatarUrl, setAvatarUrl] = useState(initialAvatar);
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [updatingSemester, setUpdatingSemester] = useState(false);
+  const [newSemester, setNewSemester] = useState<1 | 2 | 3>(user?.year_level as 1 | 2 | 3 ?? 1);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleAvatarFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -66,6 +76,7 @@ export function StudentSettings() {
   useEffect(() => {
     setFullName(user?.full_name ?? '');
     setAvatarUrl(user?.avatar_url ?? '');
+    setNewSemester(user?.year_level as 1 | 2 | 3 ?? 1);
   }, [user]);
 
   const dirty =
@@ -97,6 +108,69 @@ export function StudentSettings() {
     }
   };
 
+  const handleUpdateSemester = async () => {
+    if (newSemester === user?.year_level || updatingSemester) return;
+    
+    const confirmUpdate = window.confirm(
+      `Are you sure you want to change your semester to ${ACADEMIC_YEAR_OPTIONS.find(o => o.value === newSemester)?.label}? ` +
+      'Your previous semester content will be archived and moved to the Archives section.'
+    );
+    
+    if (!confirmUpdate) return;
+    
+    setUpdatingSemester(true);
+    console.log(`🔄 [SEMESTER UPDATE] Starting semester change from ${user?.year_level} to ${newSemester}`);
+    try {
+      console.log(`📝 [SEMESTER UPDATE] Sending request to update profile...`);
+      console.log(`📝 [SEMESTER UPDATE] User ID:`, user?.id);
+      console.log(`📝 [SEMESTER UPDATE] Request body:`, { year_level: newSemester });
+      
+      const res: any = await api.updateProfile({
+        year_level: newSemester,
+      });
+      
+      console.log(`📝 [SEMESTER UPDATE] Full response received:`, res);
+      console.log(`📝 [SEMESTER UPDATE] Response success:`, res?.success);
+      console.log(`📝 [SEMESTER UPDATE] Response data:`, res?.data);
+      console.log(`📝 [SEMESTER UPDATE] Response error:`, res?.error);
+      
+      if (!res?.success) {
+        const errorMsg = res?.error?.message || res?.message || 'Failed to update semester (no error message)';
+        console.error(`❌ [SEMESTER UPDATE] API returned success=false with error:`, errorMsg);
+        throw new Error(errorMsg);
+      }
+      
+      const updated = res.data;
+      if (!updated) {
+        console.error(`❌ [SEMESTER UPDATE] No user data in response`);
+        throw new Error('No user data returned from API');
+      }
+      
+      console.log(`✅ [SEMESTER UPDATE] User data received:`, updated);
+      console.log(`✅ [SEMESTER UPDATE] New year_level:`, updated.year_level);
+      
+      // Update auth store with new user data IMMEDIATELY
+      const updatedUser = { ...(user as any), ...updated };
+      setUser(updatedUser);
+      console.log(`✅ [SEMESTER UPDATE] Auth store updated with new user data`);
+      
+      toast.success(`✅ Semester updated to ${ACADEMIC_YEAR_OPTIONS.find(o => o.value === newSemester)?.label}. Previous content has been archived.`);
+      console.log(`✅ [SEMESTER UPDATE] Toast shown, waiting before navigation...`);
+      
+      // Wait 2 seconds for archiving to complete, then navigate (NOT reload)
+      setTimeout(() => {
+        console.log(`🔄 [SEMESTER UPDATE] Navigating to dashboard...`);
+        navigate('/dashboard');
+      }, 2000);
+    } catch (err: any) {
+      console.error(`❌ [SEMESTER UPDATE] Error caught:`, err);
+      console.error(`❌ [SEMESTER UPDATE] Error message:`, err?.message);
+      console.error(`❌ [SEMESTER UPDATE] Full error object:`, err);
+      toast.error(err?.message || 'Failed to update semester.');
+      setUpdatingSemester(false);
+    }
+  };
+
   const roleLabel = user?.role
     ? user.role.charAt(0).toUpperCase() + user.role.slice(1)
     : 'Student';
@@ -112,6 +186,54 @@ export function StudentSettings() {
           <p className="text-slate-400 text-sm">
             Manage your profile and avatar.
           </p>
+        </div>
+      </div>
+
+      {/* Semester Update Card */}
+      <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-amber-500/10 to-orange-500/10 p-6 mb-6">
+        <div className="flex items-center gap-2 mb-4">
+          <RotateCcw className="w-4 h-4 text-amber-300" />
+          <h2 className="text-white text-sm font-semibold tracking-wide uppercase">
+            Update Academic Semester
+          </h2>
+        </div>
+        <p className="text-slate-300 text-sm mb-4">
+          Change your current semester. Your previous semester content will be automatically archived.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-3 items-end">
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-slate-300 mb-2">
+              Current Semester
+            </label>
+            <select
+              value={newSemester}
+              onChange={(e) => setNewSemester(Number(e.target.value) as 1 | 2 | 3)}
+              className="w-full rounded-lg bg-slate-800/60 border border-white/10 px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/40"
+            >
+              {ACADEMIC_YEAR_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <Button
+            onClick={handleUpdateSemester}
+            disabled={newSemester === user?.year_level || updatingSemester}
+            className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white"
+          >
+            {updatingSemester ? (
+              <>
+                <AetherSpinner className="w-4 h-4 mr-2" />
+                Updating...
+              </>
+            ) : (
+              <>
+                <RotateCcw className="w-4 h-4 mr-2" />
+                Update Semester
+              </>
+            )}
+          </Button>
         </div>
       </div>
 

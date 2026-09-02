@@ -8,7 +8,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Eye, EyeOff, Mail, Lock, User, GraduationCap, Presentation, X } from 'lucide-react';
 import { AetherSpinner } from '@/components/AetherSpinner';
 
-const YEAR_LEVEL_OPTIONS: Array<1 | 2 | 3 | 4> = [1, 2, 3, 4];
+const ACADEMIC_YEAR_OPTIONS: Array<{ value: 1 | 2 | 3; label: string }> = [
+  { value: 1, label: '1st Sem' },
+  { value: 2, label: '2nd Sem' },
+  { value: 3, label: 'Summer' },
+];
 
 export function SignupPage() {
   const [fullName, setFullName] = useState('');
@@ -16,9 +20,9 @@ export function SignupPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState<'student' | 'instructor'>('student');
-  const [yearLevel, setYearLevel] = useState<1 | 2 | 3 | 4>(1);
+  const [yearLevel, setYearLevel] = useState<1 | 2 | 3>(1);
   const [section, setSection] = useState('');
-  const [teachingYearLevels, setTeachingYearLevels] = useState<(1 | 2 | 3 | 4)[]>([]);
+  const [teachingYearLevels, setTeachingYearLevels] = useState<(1 | 2 | 3)[]>([]);
   const [teachingSections, setTeachingSections] = useState<string[]>([]);
   const [sectionInput, setSectionInput] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -26,7 +30,7 @@ export function SignupPage() {
   const { registerAsync, isLoading, error } = useAuthStore();
   const navigate = useNavigate();
 
-  const toggleTeachingYear = (level: 1 | 2 | 3 | 4) => {
+  const toggleTeachingYear = (level: 1 | 2 | 3) => {
     setTeachingYearLevels((current) =>
       current.includes(level) ? current.filter((l) => l !== level) : [...current, level].sort()
     );
@@ -66,7 +70,7 @@ export function SignupPage() {
 
     if (role === 'instructor') {
       if (teachingYearLevels.length === 0) {
-        setValidationError('Select at least one year level you teach');
+        setValidationError('Select at least one academic semester/term you teach');
         return;
       }
       if (teachingSections.length === 0) {
@@ -181,18 +185,17 @@ export function SignupPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-2">
                     <Label htmlFor="yearLevel" className="text-slate-300 text-sm">
-                      Year Level
+                      Academic School Year
                     </Label>
                     <select
                       id="yearLevel"
                       value={yearLevel}
-                      onChange={(e) => setYearLevel(Number(e.target.value) as 1 | 2 | 3 | 4)}
+                      onChange={(e) => setYearLevel(Number(e.target.value) as 1 | 2 | 3)}
                       className="h-11 w-full rounded-md border border-slate-700 bg-slate-800/60 px-3 text-sm text-white focus:border-violet-500/50 focus:outline-none focus:ring-2 focus:ring-violet-500/30"
                     >
-                      <option value={1}>1st Year</option>
-                      <option value={2}>2nd Year</option>
-                      <option value={3}>3rd Year</option>
-                      <option value={4}>4th Year</option>
+                      <option value={1}>1st Sem</option>
+                      <option value={2}>2nd Sem</option>
+                      <option value={3}>Summer</option>
                     </select>
                   </div>
                   <div className="space-y-2">
@@ -210,32 +213,32 @@ export function SignupPage() {
                       className="bg-slate-800/60 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-violet-500/50 focus-visible:border-violet-500/50 h-11"
                     />
                     <p className="text-xs text-slate-500">
-                      Your account will need approval from the instructor assigned to this section and year before you can sign in.
+                      Your account will need approval from the instructor assigned to this section and term before you can sign in.
                     </p>
                   </div>
                 </div>
               ) : (
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label className="text-slate-300 text-sm">Year Levels You Teach</Label>
-                    <div className="grid grid-cols-4 gap-2">
-                      {YEAR_LEVEL_OPTIONS.map((level) => (
+                    <Label className="text-slate-300 text-sm">Academic Semesters You Teach</Label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {ACADEMIC_YEAR_OPTIONS.map((opt) => (
                         <button
-                          key={level}
+                          key={opt.value}
                           type="button"
-                          aria-pressed={teachingYearLevels.includes(level)}
-                          onClick={() => toggleTeachingYear(level)}
+                          aria-pressed={teachingYearLevels.includes(opt.value)}
+                          onClick={() => toggleTeachingYear(opt.value)}
                           className={`h-11 rounded-md border text-sm font-medium transition-all ${
-                            teachingYearLevels.includes(level)
+                            teachingYearLevels.includes(opt.value)
                               ? 'border-fuchsia-500/60 bg-fuchsia-500/10 text-white shadow-sm shadow-fuchsia-500/20'
                               : 'border-slate-700 bg-slate-800/40 text-slate-300 hover:bg-slate-800/70 hover:text-white'
                           }`}
                         >
-                          Year {level}
+                          {opt.label}
                         </button>
                       ))}
                     </div>
-                    <p className="text-xs text-slate-500">Select every year level you handle.</p>
+                    <p className="text-xs text-slate-500">Select every academic term/semester you handle.</p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="teachingSections" className="text-slate-300 text-sm">
@@ -282,7 +285,7 @@ export function SignupPage() {
                       </div>
                     )}
                     <p className="text-xs text-slate-500">
-                      Add every section you handle. Students in these sections and year levels will need your approval.
+                      Add every section you handle. Students in these sections and terms will need your approval.
                     </p>
                   </div>
                 </div>
