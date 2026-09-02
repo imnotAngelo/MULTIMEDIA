@@ -11,6 +11,7 @@ import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { createCanvas } from '@napi-rs/canvas';
 import { supabase } from '../config/supabase.js';
 import { createLocalLesson } from '../lib/lessonStore.js';
+import { extractTextFromLessonFile } from '../lib/lessonDocumentText.js';
 
 const router = Router();
 const routeDir = path.dirname(fileURLToPath(import.meta.url));
@@ -26,7 +27,7 @@ const upload = multer({
   limits: { fileSize: 50 * 1024 * 1024 },
 });
 
-const supportedExtensions = new Set(['.pdf', '.docx', '.png', '.jpg', '.jpeg', '.webp', '.md', '.markdown', '.txt']);
+const supportedExtensions = new Set(['.pdf', '.ppt', '.pptx', '.docx', '.png', '.jpg', '.jpeg', '.webp', '.md', '.markdown', '.txt']);
 const contentWidth = 11.2;
 const contentHeight = 5.55;
 
@@ -611,7 +612,7 @@ router.post('/pptx', upload.single('file'), async (req: Request, res: Response) 
   try {
     if (!req.file) return res.status(400).json({ success: false, error: { code: 'NO_FILE', message: 'Please upload a file' } });
     const extension = path.extname(req.file.originalname).toLowerCase();
-    if (!supportedExtensions.has(extension)) return res.status(400).json({ success: false, error: { code: 'UNSUPPORTED_FILE', message: 'Supported files: PDF, DOCX, images, Markdown, and TXT' } });
+    if (!supportedExtensions.has(extension)) return res.status(400).json({ success: false, error: { code: 'UNSUPPORTED_FILE', message: 'Supported files: PDF, PPT, PPTX, DOCX, images, Markdown, and TXT' } });
 
     const title = String(req.body.title || path.basename(req.file.originalname, extension) || 'Converted Lesson').trim();
     const unitId = String(req.body.unitId || req.body.moduleId || '').trim();
@@ -631,10 +632,15 @@ router.post('/pptx', upload.single('file'), async (req: Request, res: Response) 
     pptx.title = title;
     pptx.company = 'Multimedia Learning';
 
+    const isNativePowerpoint = extension === '.ppt' || extension === '.pptx';
     const presentationTitle = title;
-    addTitleSlide(pptx, presentationTitle, 'Prepared for classroom discussion and guided study');
+    if (!isNativePowerpoint) {
+      addTitleSlide(pptx, presentationTitle, 'Prepared for classroom discussion and guided study');
+    }
 
-    if (extension === '.pdf') {
+    if (isNativePowerpoint) {
+      // Keep the original PowerPoint and extract its text for quizzes.
+    } else if (extension === '.pdf') {
       await addPdfSlides(pptx, req.file.buffer, req.file.originalname);
     } else if (['.png', '.jpg', '.jpeg', '.webp'].includes(extension)) {
       addImageSlide(pptx, req.file.buffer, extension, req.file.originalname);
@@ -690,23 +696,28 @@ router.post('/pptx', upload.single('file'), async (req: Request, res: Response) 
       slides.forEach((slide, index) => addTextSlide(pptx, slide.title, slide.body, slides.length > 1 ? index + 1 : index, { callout: slide.title }));
     }
 
-    const output = await pptx.write({ outputType: 'nodebuffer' }) as Buffer;
+    const output = isNativePowerpoint
+      ? req.file.buffer
+      : await pptx.write({ outputType: 'nodebuffer' }) as Buffer;
     const safeName = title.replace(/[^a-z0-9-_]+/gi, '-').replace(/^-|-$/g, '') || 'converted-presentation';
     if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-    const fileName = `${safeName}-${Date.now()}.pptx`;
+    const fileName = `${safeName}-${Date.now()}${isNativePowerpoint ? extension : '.pptx'}`;
     const filePath = path.join(uploadDir, fileName);
     fs.writeFileSync(filePath, output);
     const fileUrl = `/uploads/${fileName}`;
 
     const lessonId = uuidv4();
     let sourceContent = '';
-    if (extension === '.pdf') {
+    if (isNativePowerpoint) {
+      sourceContent = await extractTextFromLessonFile(req.file.buffer, req.file.originalname, extension.slice(1));
+    } else if (extension === '.pdf') {
       sourceContent = (await pdfParser(req.file.buffer)).text || '';
     } else if (extension === '.docx') {
       sourceContent = (await mammoth.extractRawText({ buffer: req.file.buffer })).value || '';
     } else if (['.txt', '.md', '.markdown'].includes(extension)) {
       sourceContent = req.file.buffer.toString('utf8');
     }
+    const originalFormat = isNativePowerpoint ? extension.slice(1) : 'pptx';
     const content = sourceContent.trim() || `Converted presentation generated from ${path.basename(req.file.originalname)}.`;
     const creatorYearLevel = (req as any).user?.year_level || 1;
     const lessonPayload = {
@@ -720,7 +731,7 @@ router.post('/pptx', upload.single('file'), async (req: Request, res: Response) 
       order_index: 1,
       status: 'published',
       pdf_url: fileUrl,
-      original_format: 'pptx',
+      original_format: originalFormat,
       video_url: null,
       graphic_url: null,
       created_at: new Date().toISOString(),
@@ -760,14 +771,14 @@ router.post('/pptx', upload.single('file'), async (req: Request, res: Response) 
         status: 'published',
         createdAt: new Date().toISOString(),
         pdfUrl: fileUrl,
-        originalFormat: 'pptx',
+        originalFormat,
       });
       savedLesson = {
         id: localLesson.id,
         title: localLesson.title,
         module_id: localLesson.moduleId || lessonModuleId,
         pdf_url: localLesson.pdfUrl || fileUrl,
-        original_format: localLesson.originalFormat || 'pptx',
+        original_format: localLesson.originalFormat || originalFormat,
       };
     }
 
@@ -779,7 +790,7 @@ router.post('/pptx', upload.single('file'), async (req: Request, res: Response) 
       content,
       fileUrl,
       pdfUrl: fileUrl,
-      originalFormat: 'pptx',
+      originalFormat,
     });
 
     return res.status(201).json({

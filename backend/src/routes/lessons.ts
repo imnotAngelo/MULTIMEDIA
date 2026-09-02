@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import pdfParser from 'pdf-parse';
 import { v4 as uuidv4 } from 'uuid';
 import { createLocalLesson, getLocalLessonById, listLocalLessonsByModuleId } from '../lib/lessonStore.js';
+import { clipQuizSource, extractTextFromLessonFile, isThinLessonContent } from '../lib/lessonDocumentText.js';
 
 const router = Router();
 const routeDir = path.dirname(fileURLToPath(import.meta.url));
@@ -144,47 +145,46 @@ async function extractPdf(filePath: string): Promise<ParsedPdf> {
 }
 
 async function extractLessonDocumentText(lesson: any): Promise<string> {
-  const storedUrl = String(lesson.pdf_url || lesson.pdfUrl || '').trim();
+  const storedUrl = String(lesson.pdf_url || lesson.pdfUrl || lesson.fileUrl || '').trim();
   if (!storedUrl) return '';
 
   const fileName = path.basename(new URL(storedUrl, 'http://localhost').pathname);
+  const originalFormat = String(lesson.original_format || lesson.originalFormat || '').trim();
   const localPaths = [
     path.join(uploadDir, fileName),
     path.join(process.cwd(), 'uploads', fileName),
   ];
-  let temporaryPath = '';
 
-  try {
-    for (const localPath of localPaths) {
-      if (fs.existsSync(localPath)) {
-        return (await extractPdf(localPath)).text;
-      }
+  const extractFromBuffer = (buffer: Buffer) => extractTextFromLessonFile(buffer, fileName, originalFormat);
+
+  for (const localPath of localPaths) {
+    if (fs.existsSync(localPath)) {
+      return extractFromBuffer(fs.readFileSync(localPath));
     }
+  }
 
-    let buffer: Buffer | null = null;
-    if (!/^(https?:\/\/)(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?/i.test(storedUrl)) {
+  let buffer: Buffer | null = null;
+  if (!/^(https?:\/\/)(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?/i.test(storedUrl)) {
+    try {
       const response = await fetch(storedUrl);
       if (response.ok) buffer = Buffer.from(await response.arrayBuffer());
+    } catch (fetchError: any) {
+      console.warn('⚠️ Could not download lesson document:', fetchError?.message || fetchError);
     }
+  }
 
-    if (!buffer && supabase) {
-      for (const storagePath of [`lessons/${fileName}`, fileName]) {
-        const { data: file } = await supabase.storage.from('lesson-pdfs').download(storagePath);
-        if (file) {
-          buffer = Buffer.from(await file.arrayBuffer());
-          break;
-        }
+  if (!buffer && supabase) {
+    for (const storagePath of [`lessons/${fileName}`, fileName]) {
+      const { data: file } = await supabase.storage.from('lesson-pdfs').download(storagePath);
+      if (file) {
+        buffer = Buffer.from(await file.arrayBuffer());
+        break;
       }
     }
-
-    if (!buffer) return '';
-    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-    temporaryPath = path.join(uploadDir, `.quiz-${Date.now()}-${fileName}`);
-    fs.writeFileSync(temporaryPath, buffer);
-    return (await extractPdf(temporaryPath)).text;
-  } finally {
-    if (temporaryPath && fs.existsSync(temporaryPath)) fs.unlinkSync(temporaryPath);
   }
+
+  if (!buffer) return '';
+  return extractFromBuffer(buffer);
 }
 
 function splitForReadableSlides(text: string, maxCharacters = 900): string[] {
@@ -1227,10 +1227,10 @@ router.post(
         });
       }
 
-      // Build comprehensive content from lesson summary + slides
+      // Build comprehensive content from lesson summary + slides + uploaded PDF/PPT
       let fullContent = '';
       const lessonText = lesson.content || lesson.description || lesson.summary || lesson.text || '';
-      if (lessonText) {
+      if (lessonText && !isThinLessonContent(String(lessonText), 1)) {
         fullContent += String(lessonText) + '\n\n';
       }
       let lessonSlides = lesson.slides;
@@ -1257,7 +1257,7 @@ router.post(
         });
       }
 
-      if (fullContent.trim().length < 50) {
+      if (isThinLessonContent(fullContent)) {
         const { data: storedSlides, error: storedSlidesError } = supabase
           ? await supabase
             .from('lesson_slides')
@@ -1281,9 +1281,7 @@ router.post(
         }
       }
 
-      // PDF lessons keep the original document outside the slides column.
-      // Extract it so generation works for PDFs as well as slide lessons.
-      if (fullContent.trim().length < 50 && (lesson.pdf_url || lesson.pdfUrl)) {
+      if (lesson.pdf_url || lesson.pdfUrl || lesson.fileUrl) {
         try {
           const documentText = await extractLessonDocumentText(lesson);
           if (documentText.trim()) fullContent += `\n\n${documentText}`;
@@ -1292,10 +1290,15 @@ router.post(
         }
       }
 
-      if (!fullContent || fullContent.trim().length < 50) {
+      fullContent = clipQuizSource(fullContent);
+
+      if (isThinLessonContent(fullContent)) {
         return res.status(400).json({
           success: false,
-          error: { code: 'NO_CONTENT', message: 'Lesson has insufficient content to generate questions' },
+          error: {
+            code: 'NO_CONTENT',
+            message: 'Lesson has insufficient content to generate questions. Upload a PDF or PowerPoint (PPT/PPTX) with readable text.',
+          },
         });
       }
 

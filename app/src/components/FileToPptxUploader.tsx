@@ -7,6 +7,8 @@ import { API_BASE_URL } from '@/lib/apiConfig';
 
 const acceptedTypes = {
   'application/pdf': ['.pdf'],
+  'application/vnd.ms-powerpoint': ['.ppt'],
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation': ['.pptx'],
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
   'image/png': ['.png'],
   'image/jpeg': ['.jpg', '.jpeg'],
@@ -111,7 +113,7 @@ export function FileToPptxUploader({ className = '', unitId, onSuccess }: FileTo
         <input {...getInputProps()} />
         {file ? <FileArchive className="mx-auto h-9 w-9 text-cyan-300" /> : <UploadCloud className="mx-auto h-9 w-9 text-slate-500" />}
         <p className="mt-3 text-sm font-medium text-slate-200">{file ? file.name : isDragActive ? 'Drop your file here' : 'Drag and drop a file, or click to browse'}</p>
-        <p className="mt-1 text-xs text-slate-500">PDF, DOCX, PNG, JPG, WEBP, Markdown, or TXT up to 50MB</p>
+        <p className="mt-1 text-xs text-slate-500">PDF, PPT, PPTX, DOCX, PNG, JPG, WEBP, Markdown, or TXT up to 50MB</p>
       </div>
 
       {file && (
