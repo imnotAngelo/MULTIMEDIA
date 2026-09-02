@@ -3,6 +3,16 @@ import multer from 'multer';
 import { authMiddleware, optionalAuthMiddleware } from '../middleware/auth.js';
 import { instructorMiddleware } from '../middleware/admin.js';
 import { supabase } from '../config/supabase.js';
+import {
+  createUnit,
+  getUnits,
+  getUnitLessons,
+  updateLessonSlides,
+  deleteUnit,
+  unarchiveUnit,
+  unarchiveLesson,
+  updateLessonMetadata,
+} from '../controllers/unitsController.js';
 
 const ALLOWED_VIDEO_MIME = new Set([
   'video/mp4',
@@ -25,16 +35,6 @@ const videoUpload = multer({
     cb(null, true);
   },
 });
-import {
-  createUnit,
-  getUnits,
-  getUnitLessons,
-  updateLessonSlides,
-  deleteUnit,
-  unarchiveUnit,
-  unarchiveLesson,
-  updateLessonMetadata,
-} from '../controllers/unitsController.js';
 
 const router = Router();
 

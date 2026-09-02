@@ -264,9 +264,11 @@ export function CoursesManagement() {
   const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
   const [editVideoUrl, setEditVideoUrl] = useState('');
   const [editVideoType, setEditVideoType] = useState<'url' | 'upload'>('url');
+  const [editVideoFile, setEditVideoFile] = useState<File | null>(null);
   const [editAppLink, setEditAppLink] = useState('');
   const [editAppName, setEditAppName] = useState('');
   const [savingMetadata, setSavingMetadata] = useState(false);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -381,12 +383,42 @@ export function CoursesManagement() {
 
     try {
       setSavingMetadata(true);
-      
+
+      let videoUrlToSave = editVideoUrl;
+
+      // Handle video file upload if selected
+      if (editVideoType === 'upload' && editVideoFile) {
+        setUploadingVideo(true);
+        console.log('📹 Uploading video file:', editVideoFile.name);
+
+        const formData = new FormData();
+        formData.append('video', editVideoFile);
+
+        const uploadResponse = await authFetch(
+          `${API_BASE_URL}/units/lessons/${editingLessonId}/upload-video`,
+          {
+            method: 'POST',
+            body: formData,
+          }
+        );
+
+        const uploadData = await uploadResponse.json();
+
+        if (!uploadResponse.ok || !uploadData.success) {
+          throw new Error(uploadData.error?.message || 'Failed to upload video');
+        }
+
+        videoUrlToSave = uploadData.data.video_url;
+        console.log('✅ Video uploaded successfully:', videoUrlToSave);
+        setUploadingVideo(false);
+      }
+
+      // Now update metadata with video URL and app info
       const response = await authFetch(`${API_BASE_URL}/units/lessons/${editingLessonId}/metadata`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          video_url: editVideoUrl || null,
+          video_url: videoUrlToSave || null,
           app_link: editAppLink || null,
           app_name: editAppName || null,
         }),
@@ -403,7 +435,7 @@ export function CoursesManagement() {
             lesson.id === editingLessonId
               ? {
                   ...lesson,
-                  video_url: editVideoUrl || undefined,
+                  video_url: videoUrlToSave || undefined,
                   app_link: editAppLink || undefined,
                   app_name: editAppName || undefined,
                 }
@@ -414,8 +446,10 @@ export function CoursesManagement() {
         // Close edit mode
         setEditingLessonId(null);
         setEditVideoUrl('');
+        setEditVideoFile(null);
         setEditAppLink('');
         setEditAppName('');
+        setEditVideoType('url');
       } else {
         toast.error(data.error?.message || 'Failed to update lesson');
       }
@@ -424,22 +458,26 @@ export function CoursesManagement() {
       toast.error(error instanceof Error ? error.message : 'Failed to update lesson');
     } finally {
       setSavingMetadata(false);
+      setUploadingVideo(false);
     }
   };
 
   const handleEditLesson = (lesson: Lesson) => {
     setEditingLessonId(lesson.id);
     setEditVideoUrl(lesson.video_url || '');
+    setEditVideoType('url');
+    setEditVideoFile(null);
     setEditAppLink(lesson.app_link || '');
     setEditAppName(lesson.app_name || '');
-    setEditVideoType('url');
   };
 
   const handleCancelEdit = () => {
     setEditingLessonId(null);
     setEditVideoUrl('');
+    setEditVideoFile(null);
     setEditAppLink('');
     setEditAppName('');
+    setEditVideoType('url');
   };
 
   const handleCreateLaboratory = async (unitId: string) => {
@@ -704,26 +742,86 @@ export function CoursesManagement() {
                 </div>
 
                 {editingLessonId === activeLesson.id ? (
-                  <div className="bg-slate-800/40 border border-slate-700 rounded-lg p-4 space-y-3 mb-4">
+                  <div className="bg-slate-800/40 border border-slate-700 rounded-lg p-4 space-y-4 mb-4">
                     <div className="flex items-center justify-between mb-3">
-                      <h4 className="text-sm font-semibold text-slate-300">Edit Lesson Media</h4>
+                      <h4 className="text-sm font-semibold text-slate-300">Edit Lesson Media (Optional)</h4>
+                    </div>
+
+                    {/* Video Type Selection */}
+                    <div>
+                      <Label className="text-slate-400 text-xs mb-2 block">Video Source</Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditVideoType('url');
+                            setEditVideoFile(null);
+                          }}
+                          className={`p-3 rounded-lg border text-xs font-medium transition-all ${
+                            editVideoType === 'url'
+                              ? 'border-violet-500/60 bg-violet-500/10 text-violet-300'
+                              : 'border-slate-600 bg-slate-700/50 text-slate-400 hover:bg-slate-700'
+                          }`}
+                        >
+                          <LinkIcon className="w-3 h-3 mb-1" />
+                          Video URL
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditVideoType('upload');
+                            setEditVideoUrl('');
+                          }}
+                          className={`p-3 rounded-lg border text-xs font-medium transition-all ${
+                            editVideoType === 'upload'
+                              ? 'border-cyan-500/60 bg-cyan-500/10 text-cyan-300'
+                              : 'border-slate-600 bg-slate-700/50 text-slate-400 hover:bg-slate-700'
+                          }`}
+                        >
+                          <Upload className="w-3 h-3 mb-1" />
+                          Upload File
+                        </button>
+                      </div>
                     </div>
 
                     {/* Video URL Input */}
-                    <div>
-                      <Label htmlFor="videoUrl" className="text-slate-400 text-xs">Video URL (YouTube, Vimeo, etc.)</Label>
-                      <Input
-                        id="videoUrl"
-                        placeholder="https://youtube.com/watch?v=..."
-                        value={editVideoUrl}
-                        onChange={(e) => setEditVideoUrl(e.target.value)}
-                        className="bg-slate-700 border-slate-600 text-slate-100 text-sm mt-1"
-                      />
-                    </div>
+                    {editVideoType === 'url' && (
+                      <div>
+                        <Label htmlFor="videoUrl" className="text-slate-400 text-xs">Video URL (YouTube, Vimeo, etc.)</Label>
+                        <Input
+                          id="videoUrl"
+                          placeholder="https://youtube.com/watch?v=..."
+                          value={editVideoUrl}
+                          onChange={(e) => setEditVideoUrl(e.target.value)}
+                          className="bg-slate-700 border-slate-600 text-slate-100 text-sm mt-1"
+                        />
+                      </div>
+                    )}
+
+                    {/* Video File Upload */}
+                    {editVideoType === 'upload' && (
+                      <div>
+                        <Label htmlFor="videoFile" className="text-slate-400 text-xs">Upload Video File (MP4, WebM, OGG, MOV - Max 500MB)</Label>
+                        <div className="mt-1 relative">
+                          <input
+                            id="videoFile"
+                            type="file"
+                            accept="video/*"
+                            onChange={(e) => setEditVideoFile(e.target.files?.[0] || null)}
+                            className="block w-full text-sm text-slate-400 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-violet-600 file:text-white hover:file:bg-violet-700"
+                          />
+                          {editVideoFile && (
+                            <p className="text-xs text-emerald-400 mt-2">
+                              ✓ Selected: {editVideoFile.name} ({(editVideoFile.size / 1024 / 1024).toFixed(2)} MB)
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     {/* App Link Section */}
                     <div className="space-y-2">
-                      <Label htmlFor="appName" className="text-slate-400 text-xs">App/Tool Used (Name)</Label>
+                      <Label htmlFor="appName" className="text-slate-400 text-xs">App/Tool Used Name (Optional)</Label>
                       <Input
                         id="appName"
                         placeholder="e.g., Adobe Photoshop, Figma, Blender"
@@ -734,7 +832,7 @@ export function CoursesManagement() {
                     </div>
 
                     <div>
-                      <Label htmlFor="appLink" className="text-slate-400 text-xs">App/Tool Link</Label>
+                      <Label htmlFor="appLink" className="text-slate-400 text-xs">App/Tool Link (Optional)</Label>
                       <Input
                         id="appLink"
                         placeholder="https://www.adobe.com/products/photoshop"
@@ -747,10 +845,15 @@ export function CoursesManagement() {
                     <div className="flex gap-2">
                       <Button
                         onClick={handleUpdateLessonMetadata}
-                        disabled={savingMetadata}
+                        disabled={savingMetadata || uploadingVideo}
                         className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-xs"
                       >
-                        {savingMetadata ? (
+                        {uploadingVideo ? (
+                          <>
+                            <AetherSpinner className="w-3 h-3 mr-1" />
+                            Uploading video...
+                          </>
+                        ) : savingMetadata ? (
                           <>
                             <AetherSpinner className="w-3 h-3 mr-1" />
                             Saving...
@@ -764,6 +867,7 @@ export function CoursesManagement() {
                       </Button>
                       <Button
                         onClick={handleCancelEdit}
+                        disabled={savingMetadata || uploadingVideo}
                         variant="outline"
                         className="flex-1 border-slate-600 text-slate-400 text-xs"
                       >
