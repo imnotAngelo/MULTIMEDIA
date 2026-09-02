@@ -310,31 +310,53 @@ export function InstructorSettings() {
       setUser(updatedUser);
       setNewSemester(newSemester);
       
-      // Show success with details of what was cleared
+      // Show success with details of what was archived and cleared
+      const archived = data.data?.archived || {};
       const cleared = data.data?.cleared || {};
+      
+      const archivedUnits = archived.units || 0;
+      const archivedLessons = archived.lessons || 0;
+      const archivedLabs = archived.laboratories || 0;
+      const archivedAssessments = archived.assessments || 0;
+      
       const progressCount = cleared.lesson_progress || 0;
       const labCount = cleared.lab_submissions || 0;
       const quizCount = cleared.assessment_submissions || 0;
       
+      const archiveDetails = [
+        archivedUnits > 0 ? `${archivedUnits} unit${archivedUnits !== 1 ? 's' : ''}` : null,
+        archivedLessons > 0 ? `${archivedLessons} lesson${archivedLessons !== 1 ? 's' : ''}` : null,
+        archivedLabs > 0 ? `${archivedLabs} lab${archivedLabs !== 1 ? 's' : ''}` : null,
+        archivedAssessments > 0 ? `${archivedAssessments} assessment${archivedAssessments !== 1 ? 's' : ''}` : null,
+      ].filter(Boolean).join(', ') || 'no content';
+      
       const clearDetails = [
         progressCount > 0 ? `${progressCount} lesson progress` : null,
-        labCount > 0 ? `${labCount} lab submissions` : null,
-        quizCount > 0 ? `${quizCount} quiz submissions` : null,
-      ].filter(Boolean).join(', ') || 'all student data';
+        labCount > 0 ? `${labCount} lab submission${labCount !== 1 ? 's' : ''}` : null,
+        quizCount > 0 ? `${quizCount} quiz submission${quizCount !== 1 ? 's' : ''}` : null,
+      ].filter(Boolean).join(', ') || 'no student data';
       
       toast.success(
-        `✅ Semester updated to ${semesterLabel}!\n🗑️ Cleared: ${clearDetails}\n📦 Previous content archived.`
+        `✅ Semester updated to ${semesterLabel}!\n📦 Archived: ${archiveDetails}\n🗑️ Cleared: ${clearDetails}`
       );
       
-      console.log(`✅ [SEMESTER UPDATE] Semester update complete`);
+      console.log(`✅ [SEMESTER UPDATE] Semester update complete. Refreshing data...`);
+      
+      // Force reload archives to reflect new data
+      await loadArchives();
+      
+      // Reload page after 1 second to ensure all cached data is cleared
+      setTimeout(() => {
+        console.log(`🔄 [SEMESTER UPDATE] Hard refresh of page...`);
+        window.location.reload();
+      }, 1000);
+      
     } catch (err: any) {
       console.error(`❌ [SEMESTER UPDATE] Error:`, err);
       toast.error(err?.message || 'Failed to update semester.');
       setUpdatingSemester(false);
     } finally {
-      if (updatingSemester) {
-        setUpdatingSemester(false);
-      }
+      // Don't reset here as we're doing a page reload
     }
   };
 

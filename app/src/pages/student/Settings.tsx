@@ -138,8 +138,9 @@ export function StudentSettings() {
   const handleUpdateSemester = async () => {
     if (newSemester === user?.year_level || updatingSemester) return;
     
+    const semesterLabel = ACADEMIC_YEAR_OPTIONS.find(o => o.value === newSemester)?.label;
     const confirmUpdate = window.confirm(
-      `Are you sure you want to change your semester to ${ACADEMIC_YEAR_OPTIONS.find(o => o.value === newSemester)?.label}? ` +
+      `Are you sure you want to change your semester to ${semesterLabel}? ` +
       'Your previous semester content will be archived and moved to the Archives section.'
     );
     
@@ -181,17 +182,17 @@ export function StudentSettings() {
       setUser(updatedUser);
       console.log(`✅ [SEMESTER UPDATE] Auth store updated with new user data`);
       
-      toast.success(`✅ Semester updated to ${ACADEMIC_YEAR_OPTIONS.find(o => o.value === newSemester)?.label}. Previous content has been archived.`);
-      console.log(`✅ [SEMESTER UPDATE] Toast shown, waiting before navigation...`);
+      toast.success(`✅ Semester updated to ${semesterLabel}! Previous content has been archived.`);
+      console.log(`✅ [SEMESTER UPDATE] Toast shown, loading archives...`);
       
       // Reload archives
       await loadArchives();
       
-      // Wait 2 seconds for archiving to complete, then navigate (NOT reload)
+      // Hard refresh page after 1 second to ensure all cached data is cleared
       setTimeout(() => {
-        console.log(`🔄 [SEMESTER UPDATE] Navigating to dashboard...`);
-        navigate('/dashboard');
-      }, 2000);
+        console.log(`🔄 [SEMESTER UPDATE] Hard refresh of page...`);
+        window.location.reload();
+      }, 1000);
     } catch (err: any) {
       console.error(`❌ [SEMESTER UPDATE] Error caught:`, err);
       console.error(`❌ [SEMESTER UPDATE] Error message:`, err?.message);

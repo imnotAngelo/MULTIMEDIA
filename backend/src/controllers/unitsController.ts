@@ -277,16 +277,19 @@ export const createUnit = async (req: AuthRequest, res: Response) => {
 // Get all units (modules)
 export const getUnits = async (req: AuthRequest, res: Response) => {
   try {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+
     const unitsFromDb = await safeSupabaseCall(async () => {
       if (!supabase) {
         throw new Error('Supabase unavailable');
       }
 
-      // Get all courses to find all modules
+      // Get all courses so archived modules remain discoverable in Archives.
       const { data: courses, error: coursesError } = await supabase
         .from('courses')
-        .select('id')
-        .eq('status', 'published');
+        .select('id');
 
       if (coursesError) throw coursesError;
 
@@ -543,32 +546,42 @@ export const deleteUnit = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Delete all lessons in this unit first
-    await supabase
+    console.log('📦 Archiving unit:', unitId);
+    
+    // Archive all lessons in this unit first
+    console.log('  📝 Step 1: Archiving lessons in this unit...');
+    const { error: lessonsError } = await supabase
       .from('lessons')
-      .delete()
+      .update({ status: 'archived' })
       .eq('module_id', unitId);
 
-    // Delete the unit
+    if (lessonsError) {
+      console.error('  ⚠️  WARNING: Could not archive lessons:', lessonsError.message);
+    } else {
+      console.log('  ✅ Lessons archived');
+    }
+
+    // Archive the unit instead of deleting it
+    console.log('  📝 Step 2: Archiving the unit itself...');
     const { error } = await supabase
       .from('modules')
-      .delete()
+      .update({ status: 'archived' })
       .eq('id', unitId);
 
     if (error) throw error;
 
-    console.log('✅ Unit deleted:', unitId);
+    console.log('✅ Unit and all its lessons archived successfully:', unitId);
 
     return res.json({
       success: true,
-      message: 'Unit deleted successfully',
+      message: 'Unit archived successfully',
     });
   } catch (error: any) {
-    console.error('❌ Delete unit error:', error);
+    console.error('❌ Archive unit error:', error);
     return res.status(500).json({
       success: false,
       error: {
-        code: 'DELETE_FAILED',
+        code: 'ARCHIVE_FAILED',
         message: error.message,
       },
     });

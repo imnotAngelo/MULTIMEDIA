@@ -163,8 +163,11 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
         console.log(`📦 ARCHIVING: ${currentUser.role} ${userId} changing from semester ${oldYearLevel} to ${updates.year_level}`);
 
         if (currentUser.role === 'instructor') {
-          // For instructors: Archive ALL unarchived content (clean semester start)
+          // For instructors: Archive ALL unarchived content and clear student progress
           console.log(`  📝 Instructor mode: archiving ALL unarchived content for clean semester switch...`);
+
+          const startTime = Date.now();
+          const TIMEOUT_MS = 30000; // 30 second timeout
 
           // Step 1: Get instructor's courses
           const { data: courses } = await supabase
@@ -176,71 +179,87 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
             const courseIds = courses.map(c => c.id);
             console.log(`  📝 Found ${courseIds.length} courses`);
 
-            // Step 2: Get ALL unarchived modules for these courses
             const { data: modules } = await supabase
               .from('modules')
               .select('id')
               .in('course_id', courseIds)
               .neq('status', 'archived');
 
-            if (modules && modules.length > 0) {
-              const moduleIds = modules.map(m => m.id);
-              
-              // Archive all modules
-              await supabase
-                .from('modules')
-                .update({ status: 'archived' })
-                .in('id', moduleIds);
-              console.log(`  ✅ Archived ${moduleIds.length} modules`);
-
-              // Step 3: Archive all lessons in these modules
-              await supabase
-                .from('lessons')
-                .update({ status: 'archived' })
-                .in('module_id', moduleIds)
-                .neq('status', 'archived');
-              console.log(`  ✅ Archived lessons`);
-
-              // Step 4: Archive all assessments in these modules
-              await supabase
-                .from('assessments')
-                .update({ status: 'archived' })
-                .in('module_id', moduleIds)
-                .neq('status', 'archived');
-              console.log(`  ✅ Archived assessments`);
-
-              // Step 5: Archive all laboratories in these modules
-              await supabase
-                .from('laboratories')
-                .update({ status: 'archived' })
-                .in('unit_id', moduleIds)
-                .neq('status', 'archived');
-              console.log(`  ✅ Archived laboratories`);
+            const moduleIds = modules?.map(m => m.id) || [];
+            if (moduleIds.length === 0) {
+              console.log('  ℹ️ No active modules found for these courses');
             }
+
+            // Fetch content using module IDs, which are the actual parent IDs.
+            const [
+              { data: lessons },
+              { data: assessments },
+              { data: laboratories }
+            ] = moduleIds.length > 0 ? await Promise.all([
+              supabase.from('lessons').select('id').in('module_id', moduleIds).neq('status', 'archived'),
+              supabase.from('assessments').select('id').in('module_id', moduleIds).neq('status', 'archived'),
+              supabase.from('laboratories').select('id').in('unit_id', moduleIds).neq('status', 'archived'),
+            ]) : [{ data: [] }, { data: [] }, { data: [] }];
+
+            const lessonIds = lessons?.map(l => l.id) || [];
+            const assessmentIds = assessments?.map(a => a.id) || [];
+            const labIds = laboratories?.map(l => l.id) || [];
+
+            console.log(`  📝 Archiving: ${moduleIds.length} modules, ${lessonIds.length} lessons, ${assessmentIds.length} assessments, ${labIds.length} labs`);
+
+            // Archive all content in parallel
+            await Promise.all([
+              moduleIds.length > 0 ? supabase.from('modules').update({ status: 'archived' }).in('id', moduleIds) : Promise.resolve(),
+              lessonIds.length > 0 ? supabase.from('lessons').update({ status: 'archived' }).in('id', lessonIds) : Promise.resolve(),
+              assessmentIds.length > 0 ? supabase.from('assessments').update({ status: 'archived' }).in('id', assessmentIds) : Promise.resolve(),
+              labIds.length > 0 ? supabase.from('laboratories').update({ status: 'archived' }).in('id', labIds) : Promise.resolve(),
+            ]);
+
+            // Clear student progress
+            if (lessonIds.length > 0) {
+              await supabase.from('lesson_progress').delete().in('lesson_id', lessonIds);
+            }
+            if (labIds.length > 0) {
+              await supabase.from('laboratory_submissions').delete().in('laboratory_id', labIds);
+            }
+            if (assessmentIds.length > 0) {
+              await supabase.from('assessment_submissions').delete().in('assessment_id', assessmentIds);
+            }
+
+            console.log(`  ✅ All content archived and progress cleared`);
           }
         } else {
-          // For students: Archive all their unarchived content (complete fresh start)
-          console.log(`  📝 Student mode: archiving ALL unarchived content...`);
+          // For students: Archive their old semester content by year_level
+          console.log(`  📝 Student mode: archiving student's ${oldYearLevel} semester content...`);
 
-          // Archive all lessons
-          await supabase
-            .from('lessons')
-            .update({ status: 'archived' })
-            .neq('status', 'archived');
+          // Get all content that matches the OLD year_level
+          const [
+            { data: oldLessons },
+            { data: oldAssessments },
+            { data: oldLaboratories }
+          ] = await Promise.all([
+            supabase.from('lessons').select('id').eq('year_level', oldYearLevel).neq('status', 'archived'),
+            supabase.from('assessments').select('id').eq('year_level', oldYearLevel).neq('status', 'archived'),
+            supabase.from('laboratories').select('id').eq('year_level', oldYearLevel).neq('status', 'archived'),
+          ]);
 
-          // Archive all assessments
-          await supabase
-            .from('assessments')
-            .update({ status: 'archived' })
-            .neq('status', 'archived');
+          const oldLessonIds = oldLessons?.map(l => l.id) || [];
+          const oldAssessmentIds = oldAssessments?.map(a => a.id) || [];
+          const oldLabIds = oldLaboratories?.map(l => l.id) || [];
 
-          // Archive all laboratories
-          await supabase
-            .from('laboratories')
-            .update({ status: 'archived' })
-            .neq('status', 'archived');
+          console.log(`  📝 Archiving ${oldYearLevel} semester: ${oldLessonIds.length} lessons, ${oldAssessmentIds.length} assessments, ${oldLabIds.length} labs`);
 
-          console.log(`  ✅ Archived all student content`);
+          // Archive old content and clear student progress
+          await Promise.all([
+            oldLessonIds.length > 0 ? supabase.from('lessons').update({ status: 'archived' }).in('id', oldLessonIds) : Promise.resolve(),
+            oldAssessmentIds.length > 0 ? supabase.from('assessments').update({ status: 'archived' }).in('id', oldAssessmentIds) : Promise.resolve(),
+            oldLabIds.length > 0 ? supabase.from('laboratories').update({ status: 'archived' }).in('id', oldLabIds) : Promise.resolve(),
+            oldLessonIds.length > 0 ? supabase.from('lesson_progress').delete().in('lesson_id', oldLessonIds) : Promise.resolve(),
+            oldLabIds.length > 0 ? supabase.from('laboratory_submissions').delete().in('laboratory_id', oldLabIds) : Promise.resolve(),
+            oldAssessmentIds.length > 0 ? supabase.from('assessment_submissions').delete().in('assessment_id', oldAssessmentIds) : Promise.resolve(),
+          ]);
+
+          console.log(`  ✅ Student's ${oldYearLevel} semester archived and progress cleared`);
         }
 
         console.log(`📦 ARCHIVING COMPLETE for ${currentUser.role} ${userId}`);
@@ -651,9 +670,13 @@ export const getLeaderboard = async (req: AuthRequest, res: Response) => {
  * - Dashboard data for students in these courses
  */
 export const updateSemesterAndClearProgress = async (req: AuthRequest, res: Response) => {
+  const startTime = Date.now();
+  const TIMEOUT_MS = 30000; // 30 second timeout
+  
   try {
     const instructorId = req.user?.id;
     const { teaching_year_levels, teaching_sections } = req.body;
+    const selectedSemester = Array.isArray(teaching_year_levels) ? Number(teaching_year_levels[0]) : NaN;
 
     if (!instructorId) {
       return res.status(401).json({
@@ -690,6 +713,12 @@ export const updateSemesterAndClearProgress = async (req: AuthRequest, res: Resp
       timestamp: new Date().toISOString(),
       instructor_id: instructorId,
       steps: [],
+      archived: {
+        units: 0,
+        lessons: 0,
+        laboratories: 0,
+        assessments: 0,
+      },
       cleared: {
         lesson_progress: 0,
         lab_submissions: 0,
@@ -697,11 +726,20 @@ export const updateSemesterAndClearProgress = async (req: AuthRequest, res: Resp
       },
     };
 
+    // Helper function to check timeout
+    const checkTimeout = () => {
+      if (Date.now() - startTime > TIMEOUT_MS) {
+        throw new Error('Semester update operation timed out after 30 seconds');
+      }
+    };
+
     // Step 1: Update instructor's teaching years and sections
     console.log(`\n📝 Step 1: Updating instructor profile...`);
+    checkTimeout();
     const { error: updateError } = await supabase
       .from('users')
       .update({
+        ...(Number.isInteger(selectedSemester) ? { year_level: selectedSemester } : {}),
         teaching_year_levels: teaching_year_levels || [],
         teaching_sections: teaching_sections || [],
         updated_at: new Date().toISOString(),
@@ -723,6 +761,7 @@ export const updateSemesterAndClearProgress = async (req: AuthRequest, res: Resp
 
     // Step 2: Get all modules created by this instructor
     console.log(`\n📝 Step 2: Fetching instructor's modules...`);
+    checkTimeout();
     const { data: courses, error: coursesError } = await supabase
       .from('courses')
       .select('id')
@@ -740,116 +779,189 @@ export const updateSemesterAndClearProgress = async (req: AuthRequest, res: Resp
     }
 
     const courseIds = courses?.map(c => c.id) || [];
-    console.log(`   ✅ Found ${courseIds.length} courses`);
-    results.steps.push({ name: 'Fetch instructor courses', count: courseIds.length, status: 'success' });
-
-    // Step 3: Clear lesson progress for all students in instructor's courses
-    console.log(`\n📝 Step 3: Clearing lesson progress...`);
-    if (courseIds.length > 0) {
-      // Get all lessons in instructor's courses
-      const { data: lessons, error: lessonsError } = await supabase
-        .from('lessons')
+    const { data: modules, error: modulesError } = courseIds.length > 0
+      ? await supabase
+        .from('modules')
         .select('id')
-        .in('module_id', courseIds);
+        .in('course_id', courseIds)
+        .neq('status', 'archived')
+      : { data: [], error: null };
 
-      if (lessonsError) {
-        console.error(`   ⚠️  WARNING: ${lessonsError.message}`);
+    if (modulesError) {
+      throw new Error(`Failed to fetch modules: ${modulesError.message}`);
+    }
+
+    const moduleIds = modules?.map(m => m.id) || [];
+    let archiveModuleIds = moduleIds;
+
+    // Older records may have been created through the shared/default course,
+    // so they are visible in the dashboard but not linked to this instructor's
+    // course row. Archive those visible active modules as a compatibility fallback.
+    if (archiveModuleIds.length === 0) {
+      const { data: visibleModules, error: visibleModulesError } = await supabase
+        .from('modules')
+        .select('id')
+        .neq('status', 'archived');
+
+      if (visibleModulesError) {
+        throw new Error(`Failed to find active modules: ${visibleModulesError.message}`);
+      }
+
+      archiveModuleIds = visibleModules?.map(m => m.id) || [];
+      console.warn(`   ⚠️ No modules linked to instructor courses; using ${archiveModuleIds.length} active shared modules`);
+    }
+    console.log(`   ✅ Found ${courseIds.length} courses and ${archiveModuleIds.length} active modules`);
+    results.steps.push({ name: 'Fetch instructor modules', count: archiveModuleIds.length, status: 'success' });
+
+    if (archiveModuleIds.length === 0) {
+      // No courses, just update and return
+      return res.json({
+        success: true,
+        message: 'Semester updated successfully (no content to archive)',
+        data: results,
+      });
+    }
+
+    // Step 3: Fetch all lessons and assessments in one go
+    console.log(`\n📝 Step 3: Fetching instructor's content (lessons, labs, assessments)...`);
+    checkTimeout();
+    const [
+      { data: lessons, error: lessonsError },
+      { data: labs, error: labsError },
+      { data: assessments, error: assessError }
+    ] = await Promise.all([
+      supabase.from('lessons').select('id').in('module_id', archiveModuleIds),
+      supabase.from('laboratories').select('id').in('unit_id', archiveModuleIds),
+      supabase.from('assessments').select('id').in('module_id', archiveModuleIds),
+    ]);
+
+    const lessonIds = lessons?.map(l => l.id) || [];
+    const labIds = labs?.map(l => l.id) || [];
+    const assessmentIds = assessments?.map(a => a.id) || [];
+
+    console.log(`   ✅ Found ${lessonIds.length} lessons, ${labIds.length} labs, ${assessmentIds.length} assessments`);
+    results.steps.push({ 
+      name: 'Fetch content', 
+      lessons: lessonIds.length,
+      labs: labIds.length,
+      assessments: assessmentIds.length,
+      status: 'success' 
+    });
+
+    // Step 4-10: PARALLEL archive all content and clear all progress at once
+    console.log(`\n📝 Step 4-10: Archiving all content and clearing progress in parallel...`);
+    checkTimeout();
+    
+    const archiveAndClearPromises: Promise<any>[] = [];
+
+    // Archive operations
+    if (archiveModuleIds.length > 0) {
+      archiveAndClearPromises.push(
+        supabase.from('modules').update({ status: 'archived' }).in('id', archiveModuleIds)
+          .then(res => ({ type: 'archive_units', result: res }))
+      );
+    }
+
+    if (lessonIds.length > 0) {
+      archiveAndClearPromises.push(
+        supabase.from('lessons').update({ status: 'archived' }).in('id', lessonIds)
+          .then(res => ({ type: 'archive_lessons', result: res }))
+      );
+    }
+
+    if (labIds.length > 0) {
+      archiveAndClearPromises.push(
+        supabase.from('laboratories').update({ status: 'archived' }).in('id', labIds)
+          .then(res => ({ type: 'archive_labs', result: res }))
+      );
+    }
+
+    if (assessmentIds.length > 0) {
+      archiveAndClearPromises.push(
+        supabase.from('assessments').update({ status: 'archived' }).in('id', assessmentIds)
+          .then(res => ({ type: 'archive_assessments', result: res }))
+      );
+    }
+
+    // Clear progress operations
+    if (lessonIds.length > 0) {
+      archiveAndClearPromises.push(
+        supabase.from('lesson_progress').delete().in('lesson_id', lessonIds)
+          .then(res => ({ type: 'clear_lesson_progress', result: res }))
+      );
+    }
+
+    if (labIds.length > 0) {
+      archiveAndClearPromises.push(
+        supabase.from('laboratory_submissions').delete().in('laboratory_id', labIds)
+          .then(res => ({ type: 'clear_lab_submissions', result: res }))
+      );
+    }
+
+    if (assessmentIds.length > 0) {
+      archiveAndClearPromises.push(
+        supabase.from('assessment_submissions').delete().in('assessment_id', assessmentIds)
+          .then(res => ({ type: 'clear_assessment_submissions', result: res }))
+      );
+    }
+
+    // Execute all operations in parallel
+    const allResults = await Promise.all(archiveAndClearPromises);
+
+    // Process results
+    for (const res of allResults) {
+      checkTimeout();
+      const { type, result } = res;
+      const { error, count } = result;
+
+      if (error) {
+        throw new Error(`${type} failed: ${error.message}`);
       } else {
-        const lessonIds = lessons?.map(l => l.id) || [];
-        if (lessonIds.length > 0) {
-          const { error: deleteProgressError, count } = await supabase
-            .from('lesson_progress')
-            .delete()
-            .in('lesson_id', lessonIds);
-
-          if (deleteProgressError) {
-            console.error(`   ⚠️  WARNING: ${deleteProgressError.message}`);
-          } else {
-            console.log(`   ✅ Cleared ${count || 0} lesson progress records`);
-            results.cleared.lesson_progress = count || 0;
-          }
-        }
+        const finalCount = count || 0;
+        console.log(`   ✅ ${type}: ${finalCount} items processed`);
+        
+        if (type === 'archive_units') results.archived.units = finalCount;
+        else if (type === 'archive_lessons') results.archived.lessons = finalCount;
+        else if (type === 'archive_labs') results.archived.laboratories = finalCount;
+        else if (type === 'archive_assessments') results.archived.assessments = finalCount;
+        else if (type === 'clear_lesson_progress') results.cleared.lesson_progress = finalCount;
+        else if (type === 'clear_lab_submissions') results.cleared.lab_submissions = finalCount;
+        else if (type === 'clear_assessment_submissions') results.cleared.assessment_submissions = finalCount;
       }
     }
-    results.steps.push({ name: 'Clear lesson progress', count: results.cleared.lesson_progress, status: 'success' });
 
-    // Step 4: Clear laboratory submissions
-    console.log(`\n📝 Step 4: Clearing laboratory submissions...`);
-    if (courseIds.length > 0) {
-      // Get all laboratories in instructor's courses
-      const { data: labs, error: labsError } = await supabase
-        .from('laboratories')
-        .select('id')
-        .in('module_id', courseIds);
+    results.steps.push({ name: 'Archive and clear all (parallel)', status: 'success' });
 
-      if (labsError) {
-        console.error(`   ⚠️  WARNING: ${labsError.message}`);
-      } else {
-        const labIds = labs?.map(l => l.id) || [];
-        if (labIds.length > 0) {
-          const { error: deleteSubmissionsError, count } = await supabase
-            .from('laboratory_submissions')
-            .delete()
-            .in('laboratory_id', labIds);
+    const { data: remainingActiveModules, error: verifyError } = await supabase
+      .from('modules')
+      .select('id')
+      .in('id', archiveModuleIds)
+      .neq('status', 'archived');
 
-          if (deleteSubmissionsError) {
-            console.error(`   ⚠️  WARNING: ${deleteSubmissionsError.message}`);
-          } else {
-            console.log(`   ✅ Cleared ${count || 0} laboratory submissions`);
-            results.cleared.lab_submissions = count || 0;
-          }
-        }
-      }
+    if (verifyError) {
+      throw new Error(`Could not verify archived modules: ${verifyError.message}`);
     }
-    results.steps.push({ name: 'Clear lab submissions', count: results.cleared.lab_submissions, status: 'success' });
 
-    // Step 5: Clear assessment/quiz submissions
-    console.log(`\n📝 Step 5: Clearing assessment/quiz submissions...`);
-    if (courseIds.length > 0) {
-      // Get all assessments in instructor's courses
-      const { data: assessments, error: assessError } = await supabase
-        .from('assessments')
-        .select('id')
-        .in('module_id', courseIds);
-
-      if (assessError) {
-        console.error(`   ⚠️  WARNING: ${assessError.message}`);
-      } else {
-        const assessmentIds = assessments?.map(a => a.id) || [];
-        if (assessmentIds.length > 0) {
-          const { error: deleteSubmissionsError, count } = await supabase
-            .from('assessment_submissions')
-            .delete()
-            .in('assessment_id', assessmentIds);
-
-          if (deleteSubmissionsError) {
-            console.error(`   ⚠️  WARNING: ${deleteSubmissionsError.message}`);
-          } else {
-            console.log(`   ✅ Cleared ${count || 0} assessment submissions`);
-            results.cleared.assessment_submissions = count || 0;
-          }
-        }
-      }
+    if ((remainingActiveModules?.length || 0) > 0) {
+      throw new Error(`Archive verification failed: ${remainingActiveModules!.length} module(s) remain active`);
     }
-    results.steps.push({ name: 'Clear assessment submissions', count: results.cleared.assessment_submissions, status: 'success' });
 
-    console.log(`\n✅ SEMESTER UPDATE COMPLETE`);
-    console.log(`   Total lesson progress cleared: ${results.cleared.lesson_progress}`);
-    console.log(`   Total lab submissions cleared: ${results.cleared.lab_submissions}`);
-    console.log(`   Total quiz submissions cleared: ${results.cleared.assessment_submissions}`);
+    console.log(`\n✅ SEMESTER UPDATE COMPLETE (${Date.now() - startTime}ms)`);
+    console.log(`   📦 Archived: ${results.archived.units} units, ${results.archived.lessons} lessons, ${results.archived.laboratories} labs, ${results.archived.assessments} assessments`);
+    console.log(`   🗑️  Cleared: ${results.cleared.lesson_progress} lesson progress, ${results.cleared.lab_submissions} lab submissions, ${results.cleared.assessment_submissions} quiz submissions`);
 
     return res.json({
       success: true,
-      message: 'Semester updated and student progress cleared successfully',
+      message: 'Semester updated and all content archived successfully',
       data: results,
     });
   } catch (error: any) {
-    console.error('Semester update error:', error);
+    console.error('❌ Semester update error:', error);
     return res.status(500).json({
       success: false,
       error: {
         code: 'INTERNAL_SERVER_ERROR',
-        message: error.message,
+        message: error.message || 'Semester update failed',
       },
     });
   }

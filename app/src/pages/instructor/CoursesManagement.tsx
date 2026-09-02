@@ -279,7 +279,7 @@ export function CoursesManagement() {
       setLoading(true);
       console.log('📚 Fetching units from API...');
       
-      const unitsResponse = await authFetch('/units');
+      const unitsResponse = await authFetch('/units', { cache: 'no-store' });
       const unitsData = await unitsResponse.json();
       console.log('✅ Units fetched:', unitsData.data || []);
 

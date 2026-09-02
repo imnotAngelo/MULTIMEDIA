@@ -64,20 +64,30 @@ export function InstructorDashboard() {
       console.log('📚 Fetching units from API...');
       
       // Fetch units from API
-      const unitsResponse = await authFetch('http://localhost:3001/api/units');
+      const unitsResponse = await authFetch('http://localhost:3001/api/units', { cache: 'no-store' });
       const unitsData = await unitsResponse.json();
       console.log('✅ Units fetched:', unitsData.data || []);
       
       const activeUnits: Unit[] = unitsData.success ? (unitsData.data || []) : [];
       setUnits(activeUnits);
 
-      // Fetch all lessons from all active units
+      // Fetch lessons from ALL units IN PARALLEL (not sequentially)
+      console.log(`📚 Loading lessons for ${activeUnits.length} units in parallel...`);
+      const lessonResponses = await Promise.all(
+        activeUnits.map(unit => 
+          authFetch(`http://localhost:3001/api/units/${unit.id}/lessons`)
+            .then(res => res.json())
+            .catch(err => {
+              console.error(`❌ Failed to load lessons for unit ${unit.id}:`, err);
+              return { success: false, data: [] };
+            })
+        )
+      );
+
+      // Combine all lessons
       const allLessons: Lesson[] = [];
-      
-      for (const unit of activeUnits) {
-        const lessonsResponse = await authFetch(`http://localhost:3001/api/units/${unit.id}/lessons`);
-        const lessonsData = await lessonsResponse.json();
-        
+      lessonResponses.forEach((lessonsData, index) => {
+        const unit = activeUnits[index];
         if (lessonsData.success) {
           const activeLessons = lessonsData.data || [];
           console.log(`✅ Lessons for unit "${unit.title}": ${activeLessons.length} active`);
@@ -86,7 +96,7 @@ export function InstructorDashboard() {
             unitId: unit.id,
           })));
         }
-      }
+      });
 
       console.log('📚 Total lessons loaded:', allLessons.length);
       setLessons(allLessons);
