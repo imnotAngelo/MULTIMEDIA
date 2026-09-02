@@ -6,7 +6,10 @@ import {
   FileText,
   ChevronDown,
   ArrowLeft,
-  RefreshCw
+  RefreshCw,
+  Video,
+  Link as LinkIcon,
+  ExternalLink
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { authFetch } from '@/lib/authFetch';
@@ -35,6 +38,27 @@ interface Lesson {
   slides?: any[];
   pdfUrl?: string;
   originalFormat?: string;
+  video_url?: string;
+  app_link?: string;
+  app_name?: string;
+}
+
+// Helper function to get correct MIME type for video
+function getVideoMimeType(url: string): string {
+  if (!url) return 'video/mp4';
+  
+  const lowerUrl = url.toLowerCase();
+  
+  if (lowerUrl.endsWith('.webm')) return 'video/webm';
+  if (lowerUrl.endsWith('.mp4') || lowerUrl.includes('mp4')) return 'video/mp4';
+  if (lowerUrl.endsWith('.webm')) return 'video/webm';
+  if (lowerUrl.endsWith('.ogg')) return 'video/ogg';
+  if (lowerUrl.endsWith('.mov')) return 'video/quicktime';
+  if (lowerUrl.endsWith('.avi')) return 'video/x-msvideo';
+  if (lowerUrl.endsWith('.mkv')) return 'video/x-matroska';
+  
+  // Default to mp4
+  return 'video/mp4';
 }
 
 function LessonItem({ lesson, isActive, onClick }: {
@@ -198,7 +222,19 @@ export function Lessons() {
       }));
       const allLessons: Lesson[] = lessonResults.flat();
 
-      console.log('✅ Total lessons loaded:', allLessons.length, allLessons);
+      console.log('✅ Total lessons loaded:', allLessons.length);
+      
+      // 🎬 VIDEO DEBUGGING: Log which lessons have videos
+      const lessonsWithVideos = allLessons.filter(l => l.video_url);
+      console.log(`🎬 Lessons WITH videos: ${lessonsWithVideos.length}`, lessonsWithVideos);
+      
+      allLessons.forEach((lesson) => {
+        if (lesson.video_url) {
+          console.log(`  ✅ "${lesson.title}" has video: ${lesson.video_url.substring(0, 80)}...`);
+        } else {
+          console.log(`  ❌ "${lesson.title}" has NO video`);
+        }
+      });
       
       setLessons(allLessons);
 
@@ -323,16 +359,99 @@ export function Lessons() {
               </div>
 
               {/* Lesson Info */}
-              <div className="p-6">
-                <div className="mb-6">
+              <div className="p-6 space-y-6">
+                <div>
                   <h3 className="text-sm font-semibold text-slate-300 mb-2">Description</h3>
                   <p className="text-slate-400 text-sm leading-relaxed">
                     {activeLesson.content || 'This lesson was automatically generated from a PDF. Click "View Slides" to see the full presentation.'}
                   </p>
                 </div>
 
+                {/* Media & Tools Section */}
+                {(activeLesson.video_url || activeLesson.app_link) && (
+                  <div className="space-y-6 border-t border-slate-700/50 pt-8">
+                    <h3 className="text-lg font-semibold text-slate-100 flex items-center gap-2">
+                      <div className="w-1 h-6 bg-gradient-to-b from-violet-500 to-violet-600 rounded"></div>
+                      Media & Learning Resources
+                    </h3>
+                    
+                    {/* Video Player - Professional Design */}
+                    {activeLesson.video_url && (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500/20 to-violet-600/20 flex items-center justify-center border border-violet-500/30">
+                            <Video className="w-4 h-4 text-violet-400" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-slate-200">Lesson Video</p>
+                            <p className="text-xs text-slate-500">Click play to watch the lesson</p>
+                          </div>
+                        </div>
+                        
+                        {/* Professional Video Container */}
+                        <div className="relative group">
+                          <div className="absolute inset-0 bg-gradient-to-r from-violet-600/20 to-purple-600/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                          <div className="relative rounded-2xl overflow-hidden border border-slate-700/50 bg-gradient-to-b from-slate-900/50 to-slate-950 shadow-2xl">
+                            {/* Aspect Ratio Container */}
+                            <div className="relative w-full bg-black" style={{ paddingBottom: '56.25%' }}>
+                              <video
+                                controls
+                                className="absolute inset-0 w-full h-full"
+                                controlsList="nodownload"
+                                preload="metadata"
+                              >
+                                <source src={activeLesson.video_url} type={getVideoMimeType(activeLesson.video_url)} />
+                                Your browser does not support the video tag.
+                              </video>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Video Info */}
+                        <div className="flex items-center gap-4 px-1 text-xs text-slate-400">
+                          <span className="flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 bg-violet-500 rounded-full"></span>
+                            HD Ready
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 bg-violet-500 rounded-full"></span>
+                            Full Screen Support
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* App Link - Enhanced Design */}
+                    {activeLesson.app_link && (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500/20 to-emerald-600/20 flex items-center justify-center border border-emerald-500/30">
+                            <LinkIcon className="w-4 h-4 text-emerald-400" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-slate-200">Interactive Tool</p>
+                            <p className="text-xs text-slate-500">Practice with this tool</p>
+                          </div>
+                        </div>
+                        
+                        <a
+                          href={activeLesson.app_link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-between p-4 rounded-xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 to-emerald-500/5 hover:from-emerald-500/20 hover:to-emerald-500/10 hover:border-emerald-500/50 transition-all duration-300 group shadow-lg hover:shadow-emerald-500/10"
+                        >
+                          <span className="text-sm font-semibold text-emerald-300 group-hover:text-emerald-200 transition-colors">
+                            {activeLesson.app_name || 'Open Interactive Tool'}
+                          </span>
+                          <ExternalLink className="w-5 h-5 text-emerald-400 group-hover:text-emerald-300 group-hover:translate-x-1 transition-all" />
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Stats */}
-                <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="grid grid-cols-2 gap-4">
                   <div className="bg-slate-800/30 rounded-lg p-3">
                     <p className="text-xs text-slate-500 mb-1">Slide Count</p>
                     <p className="text-lg font-semibold text-violet-400">

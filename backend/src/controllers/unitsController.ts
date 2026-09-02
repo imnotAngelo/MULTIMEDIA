@@ -447,6 +447,9 @@ export const getUnitLessons = async (req: AuthRequest, res: Response) => {
           unitId,
           pdfUrl: l.pdf_url || l.pdfUrl || '',
           originalFormat: l.original_format || l.originalFormat || (l.pdf_url || l.pdfUrl ? 'pdf' : 'slides'),
+          video_url: l.video_url || '',
+          app_link: l.app_link || '',
+          app_name: l.app_name || '',
         };
         return mappedLesson;
       }),
@@ -462,6 +465,9 @@ export const getUnitLessons = async (req: AuthRequest, res: Response) => {
           unitId,
           pdfUrl: l.pdf_url || l.pdfUrl || '',
           originalFormat: l.original_format || l.originalFormat || (l.pdf_url || l.pdfUrl ? 'pdf' : 'slides'),
+          video_url: l.video_url || '',
+          app_link: l.app_link || '',
+          app_name: l.app_name || '',
         };
         return mappedLesson;
       }),

@@ -74,6 +74,9 @@ router.post('/lessons/:lessonId/upload-video', authMiddleware, instructorMiddlew
       });
     }
 
+    console.log(`📹 Starting video upload for lesson: ${lessonId}`);
+    console.log(`   File: ${req.file.originalname}, Size: ${req.file.size} bytes, Type: ${req.file.mimetype}`);
+
     // Generate unique video filename
     const timestamp = Date.now();
     const randomId = Math.random().toString(36).substring(2, 10);
@@ -83,9 +86,9 @@ router.post('/lessons/:lessonId/upload-video', authMiddleware, instructorMiddlew
                      req.file.mimetype === 'video/webm' ? '.webm' :
                      req.file.mimetype === 'video/ogg' ? '.ogg' : '.mp4';
     const videoFileName = `lesson-${lessonId}-${timestamp}-${randomId}${extension}`;
-    const videoPath = `lesson-videos/${videoFileName}`;
+    const videoPath = `lesson-videos/${videoFileName}`; // Files need to go in lesson-videos subfolder
 
-    console.log(`📹 Uploading video: ${videoPath}, size: ${req.file.size} bytes`);
+    console.log(`   Uploading to: ${videoPath}`);
 
     // Upload to Supabase storage
     const { error: uploadError } = await supabase.storage
@@ -96,8 +99,11 @@ router.post('/lessons/:lessonId/upload-video', authMiddleware, instructorMiddlew
       });
 
     if (uploadError) {
+      console.error(`❌ Storage upload failed:`, uploadError);
       throw uploadError;
     }
+
+    console.log(`✅ File uploaded to storage successfully`);
 
     // Get public URL
     const { data: publicData } = supabase.storage
@@ -105,18 +111,26 @@ router.post('/lessons/:lessonId/upload-video', authMiddleware, instructorMiddlew
       .getPublicUrl(videoPath);
 
     const videoUrl = publicData?.publicUrl || `https://ciopmrwvmgqsbapyljih.supabase.co/storage/v1/object/public/lesson-videos/${videoPath}`;
+    console.log(`   Public URL: ${videoUrl}`);
 
     // Update lesson with video URL
+    console.log(`📝 Updating lesson ${lessonId} in database...`);
     const { data: lesson, error: updateError } = await supabase
       .from('lessons')
-      .update({ video_url: videoUrl, updated_at: new Date().toISOString() })
+      .update({ 
+        video_url: videoUrl,
+        updated_at: new Date().toISOString()
+      })
       .eq('id', lessonId)
       .select('id, title, video_url')
       .single();
 
-    if (updateError) throw updateError;
+    if (updateError) {
+      console.error(`❌ Database update failed:`, updateError);
+      throw updateError;
+    }
 
-    console.log('✅ Video uploaded and lesson updated:', { lessonId, videoUrl });
+    console.log(`✅ Lesson updated successfully:`, { lessonId, videoUrl });
 
     return res.json({
       success: true,
@@ -133,7 +147,7 @@ router.post('/lessons/:lessonId/upload-video', authMiddleware, instructorMiddlew
       success: false,
       error: {
         code: 'VIDEO_UPLOAD_ERROR',
-        message: error.message,
+        message: error.message || 'Failed to upload video',
       },
     });
   }

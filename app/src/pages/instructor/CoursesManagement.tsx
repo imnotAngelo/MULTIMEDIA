@@ -307,6 +307,17 @@ export function CoursesManagement() {
       const allLessons: Lesson[] = lessonResults.flat();
 
       console.log('✅ Total lessons loaded:', allLessons.length);
+      
+      // 🎬 VIDEO DEBUGGING: Log which lessons have videos
+      const lessonsWithVideos = allLessons.filter(l => l.video_url);
+      console.log(`🎬 Instructor view - Lessons WITH videos: ${lessonsWithVideos.length}`, lessonsWithVideos);
+      
+      allLessons.forEach((lesson) => {
+        if (lesson.video_url) {
+          console.log(`  ✅ "${lesson.title}" has video: ${lesson.video_url.substring(0, 80)}...`);
+        }
+      });
+      
       setLessons(allLessons);
 
       if (unitList.length > 0) {
@@ -741,6 +752,31 @@ export function CoursesManagement() {
                   </div>
                 </div>
 
+                {/* Current Video Preview */}
+                {activeLesson.video_url && (
+                  <div className="mb-6 rounded-lg overflow-hidden border border-slate-700/50 bg-gradient-to-b from-slate-900/50 to-slate-950">
+                    <div className="p-4 border-b border-slate-700/50 flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500/20 to-violet-600/20 flex items-center justify-center border border-violet-500/30">
+                        <Video className="w-4 h-4 text-violet-400" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-slate-200">Current Video</p>
+                        <p className="text-xs text-slate-500">Click play to preview</p>
+                      </div>
+                    </div>
+                    <div className="relative bg-black" style={{ paddingBottom: '56.25%' }}>
+                      <video
+                        controls
+                        className="absolute inset-0 w-full h-full"
+                        preload="metadata"
+                      >
+                        <source src={activeLesson.video_url} type="video/mp4" />
+                        Your browser does not support the video tag.
+                      </video>
+                    </div>
+                  </div>
+                )}
+
                 {editingLessonId === activeLesson.id ? (
                   <div className="bg-slate-800/40 border border-slate-700 rounded-lg p-4 space-y-4 mb-4">
                     <div className="flex items-center justify-between mb-3">
@@ -800,22 +836,41 @@ export function CoursesManagement() {
 
                     {/* Video File Upload */}
                     {editVideoType === 'upload' && (
-                      <div>
-                        <Label htmlFor="videoFile" className="text-slate-400 text-xs">Upload Video File (MP4, WebM, OGG, MOV - Max 500MB)</Label>
-                        <div className="mt-1 relative">
+                      <div className="space-y-3">
+                        <Label htmlFor="videoFile" className="text-slate-300 text-sm font-semibold">Upload Video File</Label>
+                        <p className="text-xs text-slate-400">Supported: MP4, WebM, OGG, MOV, AVI, MKV (Maximum 500MB)</p>
+                        
+                        <div className="mt-3">
                           <input
                             id="videoFile"
                             type="file"
                             accept="video/*"
                             onChange={(e) => setEditVideoFile(e.target.files?.[0] || null)}
-                            className="block w-full text-sm text-slate-400 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-violet-600 file:text-white hover:file:bg-violet-700"
+                            className="block w-full text-sm text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-gradient-to-r file:from-violet-600 file:to-violet-700 file:text-white hover:file:from-violet-700 hover:file:to-violet-800 file:cursor-pointer transition-all"
                           />
-                          {editVideoFile && (
-                            <p className="text-xs text-emerald-400 mt-2">
-                              ✓ Selected: {editVideoFile.name} ({(editVideoFile.size / 1024 / 1024).toFixed(2)} MB)
-                            </p>
-                          )}
                         </div>
+                        
+                        {editVideoFile && (
+                          <div className="mt-4 p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/30 space-y-3">
+                            <div className="flex items-start gap-3">
+                              <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center flex-shrink-0 border border-emerald-500/30">
+                                <Video className="w-5 h-5 text-emerald-400" />
+                              </div>
+                              <div className="flex-1">
+                                <p className="text-sm font-semibold text-emerald-300">✓ File Selected</p>
+                                <p className="text-xs text-emerald-200/70">{editVideoFile.name}</p>
+                                <p className="text-xs text-emerald-200/50 mt-1">{(editVideoFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setEditVideoFile(null)}
+                              className="text-xs text-emerald-400 hover:text-emerald-300 font-medium transition-colors"
+                            >
+                              Remove Selection
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -877,39 +932,91 @@ export function CoursesManagement() {
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-2 mb-4">
-                    {/* Display Video URL */}
+                  <div className="space-y-3 mb-4">
+                    {/* Display Video - File Upload or URL */}
                     {activeLesson.video_url && (
-                      <div className="bg-slate-800/40 border border-slate-700 rounded-lg p-3">
-                        <div className="flex items-start gap-2">
-                          <Video className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs text-slate-500 font-medium">Video</p>
-                            <a href={activeLesson.video_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 hover:text-blue-300 truncate break-all">
-                              {activeLesson.video_url}
-                            </a>
+                      (() => {
+                        const isFileUpload = activeLesson.video_url.includes('/lesson-videos/');
+                        const urlObj = new URL(activeLesson.video_url);
+                        const domain = urlObj.hostname.replace('www.', '');
+                        
+                        return isFileUpload ? (
+                          // For uploaded files: Show video title, not URL
+                          <div className="bg-gradient-to-r from-violet-500/10 to-violet-600/10 border border-violet-500/30 rounded-lg p-4 hover:border-violet-500/50 transition-colors">
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-3 flex-1 min-w-0">
+                                <div className="w-10 h-10 rounded-lg bg-violet-500/20 flex items-center justify-center flex-shrink-0 border border-violet-500/30">
+                                  <Video className="w-5 h-5 text-violet-400" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs text-slate-400 font-medium">Uploaded Video</p>
+                                  <p className="text-sm font-semibold text-violet-300 truncate">{activeLesson.title}</p>
+                                </div>
+                              </div>
+                              <a 
+                                href={activeLesson.video_url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="px-3 py-1.5 bg-violet-600 hover:bg-violet-700 text-white text-xs font-medium rounded-lg transition-colors flex-shrink-0"
+                              >
+                                Open
+                              </a>
+                            </div>
                           </div>
-                        </div>
-                      </div>
+                        ) : (
+                          // For URL links: Show domain with better design
+                          <div className="bg-gradient-to-r from-blue-500/10 to-cyan-600/10 border border-blue-500/30 rounded-lg p-4 hover:border-blue-500/50 transition-colors">
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-3 flex-1 min-w-0">
+                                <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center flex-shrink-0 border border-blue-500/30">
+                                  <LinkIcon className="w-5 h-5 text-blue-400" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs text-slate-400 font-medium">Video Link</p>
+                                  <p className="text-sm font-semibold text-blue-300 truncate">{domain}</p>
+                                </div>
+                              </div>
+                              <a 
+                                href={activeLesson.video_url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors flex-shrink-0"
+                              >
+                                Visit
+                              </a>
+                            </div>
+                          </div>
+                        );
+                      })()
                     )}
 
                     {/* Display App Link */}
                     {activeLesson.app_link && (
-                      <div className="bg-slate-800/40 border border-slate-700 rounded-lg p-3">
-                        <div className="flex items-start gap-2">
-                          <LinkIcon className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs text-slate-500 font-medium">{activeLesson.app_name || 'App/Tool'}</p>
-                            <a href={activeLesson.app_link} target="_blank" rel="noopener noreferrer" className="text-xs text-emerald-400 hover:text-emerald-300 truncate break-all">
-                              {activeLesson.app_link}
-                            </a>
+                      <div className="bg-gradient-to-r from-emerald-500/10 to-teal-600/10 border border-emerald-500/30 rounded-lg p-4 hover:border-emerald-500/50 transition-colors">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center flex-shrink-0 border border-emerald-500/30">
+                              <LinkIcon className="w-5 h-5 text-emerald-400" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs text-slate-400 font-medium">{activeLesson.app_name || 'App/Tool'}</p>
+                              <p className="text-sm font-semibold text-emerald-300 truncate">{activeLesson.app_name || 'External Link'}</p>
+                            </div>
                           </div>
+                          <a 
+                            href={activeLesson.app_link} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium rounded-lg transition-colors flex-shrink-0"
+                          >
+                            Visit
+                          </a>
                         </div>
                       </div>
                     )}
 
                     {!activeLesson.video_url && !activeLesson.app_link && (
-                      <div className="bg-slate-800/40 border border-dashed border-slate-700 rounded-lg p-3 text-center">
+                      <div className="bg-slate-800/40 border border-dashed border-slate-700 rounded-lg p-4 text-center">
                         <p className="text-xs text-slate-500">No video or app link added yet</p>
                       </div>
                     )}
