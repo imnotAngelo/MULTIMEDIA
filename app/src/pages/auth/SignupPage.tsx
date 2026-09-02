@@ -185,7 +185,7 @@ export function SignupPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-2">
                     <Label htmlFor="yearLevel" className="text-slate-300 text-sm">
-                      Academic School Year
+                      Academic Semester
                     </Label>
                     <select
                       id="yearLevel"

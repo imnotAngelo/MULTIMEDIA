@@ -173,51 +173,66 @@ export function InstructorDashboard() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        <div className="bg-slate-900/60 border border-slate-800/60 rounded-xl p-5 hover:border-violet-500/30 transition-all">
+        <button
+          onClick={() => navigate('/instructor/courses')}
+          className="bg-slate-900/60 border border-slate-800/60 rounded-xl p-5 hover:border-violet-500/30 hover:bg-slate-900/80 transition-all cursor-pointer group"
+        >
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-9 h-9 rounded-lg bg-violet-500/10 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-lg bg-violet-500/10 flex items-center justify-center group-hover:bg-violet-500/20 transition-colors">
               <Layers className="w-4 h-4 text-violet-400" />
             </div>
           </div>
           <div className="text-2xl font-bold text-white">{stats.totalUnits}</div>
           <p className="text-slate-500 text-xs mt-1">Total Units</p>
-        </div>
-        <div className="bg-slate-900/60 border border-slate-800/60 rounded-xl p-5 hover:border-emerald-500/30 transition-all">
+        </button>
+        <button
+          onClick={() => navigate('/instructor/student-approvals')}
+          className="bg-slate-900/60 border border-slate-800/60 rounded-xl p-5 hover:border-emerald-500/30 hover:bg-slate-900/80 transition-all cursor-pointer group"
+        >
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center group-hover:bg-emerald-500/20 transition-colors">
               <Users className="w-4 h-4 text-emerald-400" />
             </div>
           </div>
           <div className="text-2xl font-bold text-white">{stats.totalStudents}</div>
           <p className="text-slate-500 text-xs mt-1">Total Students</p>
-        </div>
-        <div className="bg-slate-900/60 border border-slate-800/60 rounded-xl p-5 hover:border-blue-500/30 transition-all">
+        </button>
+        <button
+          onClick={() => navigate('/instructor/courses')}
+          className="bg-slate-900/60 border border-slate-800/60 rounded-xl p-5 hover:border-blue-500/30 hover:bg-slate-900/80 transition-all cursor-pointer group"
+        >
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
               <FileText className="w-4 h-4 text-blue-400" />
             </div>
           </div>
           <div className="text-2xl font-bold text-white">{stats.lessonsCreated}</div>
           <p className="text-slate-500 text-xs mt-1">Lessons Created</p>
-        </div>
-        <div className="bg-slate-900/60 border border-slate-800/60 rounded-xl p-5 hover:border-green-500/30 transition-all">
+        </button>
+        <button
+          onClick={() => navigate('/instructor/student-approvals')}
+          className="bg-slate-900/60 border border-slate-800/60 rounded-xl p-5 hover:border-green-500/30 hover:bg-slate-900/80 transition-all cursor-pointer group"
+        >
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-9 h-9 rounded-lg bg-green-500/10 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-lg bg-green-500/10 flex items-center justify-center group-hover:bg-green-500/20 transition-colors">
               <CheckCircle2 className="w-4 h-4 text-green-400" />
             </div>
           </div>
           <div className="text-2xl font-bold text-white">{stats.lessonsCompleted}</div>
           <p className="text-slate-500 text-xs mt-1">Lessons Completed</p>
-        </div>
-        <div className="bg-slate-900/60 border border-slate-800/60 rounded-xl p-5 hover:border-amber-500/30 transition-all">
+        </button>
+        <button
+          onClick={() => navigate('/instructor/laboratory-submissions')}
+          className="bg-slate-900/60 border border-slate-800/60 rounded-xl p-5 hover:border-amber-500/30 hover:bg-slate-900/80 transition-all cursor-pointer group"
+        >
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center group-hover:bg-amber-500/20 transition-colors">
               <ClipboardList className="w-4 h-4 text-amber-400" />
             </div>
           </div>
           <div className="text-2xl font-bold text-white">{stats.totalSubmissions}</div>
           <p className="text-slate-500 text-xs mt-1">Submissions</p>
-        </div>
+        </button>
       </div>
 
       {loading ? (
