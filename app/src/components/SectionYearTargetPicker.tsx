@@ -11,6 +11,8 @@ interface SectionYearTargetPickerProps {
   onSectionsChange: (sections: string[]) => void;
   sectionInput: string;
   onSectionInputChange: (value: string) => void;
+  showYearLevels?: boolean;
+  sectionOptions?: string[];
 }
 
 /**
@@ -25,6 +27,8 @@ export function SectionYearTargetPicker({
   onSectionsChange,
   sectionInput,
   onSectionInputChange,
+  showYearLevels = true,
+  sectionOptions = [],
 }: SectionYearTargetPickerProps) {
   const toggleYear = (level: number) => {
     onYearLevelsChange(
@@ -45,29 +49,52 @@ export function SectionYearTargetPicker({
 
   return (
     <div className="space-y-3 rounded-lg border border-slate-800 bg-slate-900/40 p-3">
-      <div className="space-y-2">
-        <Label className="text-slate-300 text-sm">Visible to year levels (leave blank for all you teach)</Label>
-        <div className="grid grid-cols-4 gap-2">
+      {showYearLevels && <div className="space-y-2">
+        <Label className="text-slate-300 text-sm">Year levels</Label>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {YEAR_LEVEL_OPTIONS.map((level) => (
-            <button
+            <label
               key={level}
-              type="button"
-              aria-pressed={yearLevels.includes(level)}
-              onClick={() => toggleYear(level)}
-              className={`h-9 rounded-md border text-sm font-medium transition-all ${
+              className={`flex h-9 cursor-pointer items-center gap-2 rounded-md border px-3 text-sm font-medium transition-all ${
                 yearLevels.includes(level)
                   ? 'border-violet-500/60 bg-violet-500/10 text-white'
                   : 'border-slate-700 bg-slate-800/40 text-slate-300 hover:bg-slate-800/70'
               }`}
             >
+              <input
+                type="checkbox"
+                checked={yearLevels.includes(level)}
+                onChange={() => toggleYear(level)}
+                className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-violet-500 focus:ring-violet-500"
+              />
               Year {level}
-            </button>
+            </label>
           ))}
         </div>
-      </div>
+      </div>}
       <div className="space-y-2">
-        <Label className="text-slate-300 text-sm">Visible to sections (leave blank for all you teach)</Label>
-        <div className="flex gap-2">
+        <Label className="text-slate-300 text-sm">Sections</Label>
+        {sectionOptions.length > 0 ? (
+          <div className="flex flex-wrap gap-3">
+            {sectionOptions.map((section) => (
+              <label key={section} className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={sections.includes(section)}
+                  onChange={(event) => {
+                    onSectionsChange(
+                      event.target.checked
+                        ? [...sections, section]
+                        : sections.filter((value) => value !== section)
+                    );
+                  }}
+                  className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-violet-500 focus:ring-violet-500"
+                />
+                <span className="text-sm text-slate-300">{section}</span>
+              </label>
+            ))}
+          </div>
+        ) : <div className="flex gap-2">
           <Input
             type="text"
             placeholder="e.g. A, then press Enter"
@@ -89,7 +116,7 @@ export function SectionYearTargetPicker({
           >
             Add
           </button>
-        </div>
+        </div>}
         {sections.length > 0 && (
           <div className="flex flex-wrap gap-2 pt-1">
             {sections.map((s) => (

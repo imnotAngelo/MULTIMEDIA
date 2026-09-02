@@ -18,6 +18,10 @@ const router: Router = express.Router();
 router.use(authMiddleware);
 
 const laboratoryColumns = 'id, instructor_id, title, description, platform, platform_url, unit_id, unit_name, lesson_id, lesson_title, due_date, points, created_at, target_sections, target_year_levels';
+const laboratoryColumnsWithoutTargeting = 'id, instructor_id, title, description, platform, platform_url, unit_id, unit_name, lesson_id, lesson_title, due_date, points, created_at';
+
+const isMissingTargetingColumns = (error: any) =>
+  /target_sections|target_year_levels|column .* does not exist|42703/i.test(error?.message || '');
 
 const toLaboratory = (row: any) => ({
   id: row.id,
@@ -37,12 +41,18 @@ const toLaboratory = (row: any) => ({
 });
 
 // List laboratories saved in Supabase for the current instructor/student view.
-router.post('/metadata', instructorMiddleware, async (req: any, res) => {
+router.get('/metadata', instructorMiddleware, async (req: any, res) => {
   try {
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('laboratories')
       .select(laboratoryColumns)
       .order('created_at', { ascending: false });
+    if (error && isMissingTargetingColumns(error)) {
+      ({ data, error } = await supabase
+        .from('laboratories')
+        .select(laboratoryColumnsWithoutTargeting)
+        .order('created_at', { ascending: false }));
+    }
     if (error) throw error;
     const rows = data ?? [];
     const visibleRows = req.user?.role === 'student'
@@ -136,11 +146,21 @@ router.post('/metadata', async (req: any, res) => {
       }
     }
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('laboratories')
       .upsert(row, { onConflict: 'id' })
       .select(laboratoryColumns)
       .single();
+    if (error && isMissingTargetingColumns(error)) {
+      const rowWithoutTargeting = { ...row } as Record<string, any>;
+      delete rowWithoutTargeting.target_sections;
+      delete rowWithoutTargeting.target_year_levels;
+      ({ data, error } = await supabase
+        .from('laboratories')
+        .upsert(rowWithoutTargeting, { onConflict: 'id' })
+        .select(laboratoryColumnsWithoutTargeting)
+        .single());
+    }
     if (error) throw error;
     return res.status(id ? 200 : 201).json({ success: true, data: toLaboratory(data) });
   } catch (error: any) {

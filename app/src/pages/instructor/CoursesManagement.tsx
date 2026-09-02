@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '@/stores/authStore';
 import { 
   BookOpen, 
   FileText,
@@ -41,7 +42,6 @@ interface Unit {
   title: string;
   description: string;
   createdAt: string;
-  labExists?: boolean;
   yearLevel?: number;
   section?: string;
 }
@@ -141,7 +141,6 @@ function UnitSection({
   onToggle,
   onLessonClick,
   onUploadClick,
-  onCreateLaboratory,
 }: {
   unit: Unit;
   lessons: Lesson[];
@@ -150,7 +149,6 @@ function UnitSection({
   onToggle: () => void;
   onLessonClick: (lessonId: string) => void;
   onUploadClick: (unitId: string) => void;
-  onCreateLaboratory: (unitId: string) => void;
 }) {
   const unitLessons = lessons.filter(l => l.unitId === unit.id);
 
@@ -208,7 +206,7 @@ function UnitSection({
           )}
 
           <div className="border-t border-slate-800 p-2">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 gap-2">
               <Button
                 onClick={() => onUploadClick(unit.id)}
                 variant="outline"
@@ -216,14 +214,6 @@ function UnitSection({
               >
                 <Upload className="w-3 h-3 mr-1" />
                 Add Lesson
-              </Button>
-              <Button
-                onClick={() => onCreateLaboratory(unit.id)}
-                disabled={unit.labExists || unitLessons.length === 0}
-                className="w-full text-xs bg-violet-600 hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                title={unitLessons.length === 0 ? 'Upload at least one lesson first' : undefined}
-              >
-                {unit.labExists ? 'Laboratory created' : 'Create laboratory'}
               </Button>
             </div>
           </div>
@@ -234,6 +224,7 @@ function UnitSection({
 }
 
 export function CoursesManagement() {
+  const { user } = useAuthStore();
   const navigate = useNavigate();
   const [units, setUnits] = useState<Unit[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
@@ -285,19 +276,9 @@ export function CoursesManagement() {
 
       const unitList: Unit[] = unitsData.success ? (unitsData.data || []) : [];
       
-      const unitListWithLabs = await Promise.all(unitList.map(async (unit) => {
-        try {
-          const existsRes = await authFetch(`/laboratories/exists/${unit.id}`);
-          const existsJson = await existsRes.json();
-          return { ...unit, labExists: !!existsJson?.data?.exists };
-        } catch {
-          return { ...unit, labExists: false };
-        }
-      }));
+      setUnits(unitList);
 
-      setUnits(unitListWithLabs);
-
-      const lessonResults = await Promise.all(unitListWithLabs.map(async (unit) => {
+      const lessonResults = await Promise.all(unitList.map(async (unit) => {
         const lessonsResponse = await authFetch(`/units/${unit.id}/lessons`);
         const lessonsData = await lessonsResponse.json();
         const unitLessons = lessonsData.success ? lessonsData.data || [] : [];
@@ -363,7 +344,6 @@ export function CoursesManagement() {
           title: autoTitle,
           description: fullDescription,
           targetSections: unitTargetSections,
-          targetYearLevels: unitTargetYearLevels,
         }),
       });
 
@@ -491,24 +471,6 @@ export function CoursesManagement() {
     setEditVideoType('url');
   };
 
-  const handleCreateLaboratory = async (unitId: string) => {
-    try {
-      const res = await authFetch('/laboratories/create-from-unit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ unitId }),
-      });
-      const json = await res.json();
-      if (!res.ok || !json?.success) {
-        throw new Error(json?.error?.message || 'Failed to create laboratory');
-      }
-      toast.success('Laboratory created');
-      setUnits((prev) => prev.map((u) => (u.id === unitId ? { ...u, labExists: true } : u)));
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to create laboratory');
-    }
-  };
-
   const handleUploadLesson = async () => {
     if (!lessonTitle.trim()) {
       toast.error('Lesson title is required');
@@ -533,7 +495,6 @@ export function CoursesManagement() {
       formData.append('description', lessonDescription.trim() || 'Lesson uploaded from PDF');
       formData.append('moduleId', selectedUnitForUpload);
       formData.append('targetSections', JSON.stringify(lessonTargetSections));
-      formData.append('targetYearLevels', JSON.stringify(lessonTargetYearLevels));
 
       const response = await authFetch(`${API_BASE_URL}/lessons/upload-pdf`, {
         method: 'POST',
@@ -652,12 +613,14 @@ export function CoursesManagement() {
                   />
                 </div>
                 <SectionYearTargetPicker
-                  yearLevels={unitTargetYearLevels}
+                  yearLevels={[]}
                   onYearLevelsChange={setUnitTargetYearLevels}
                   sections={unitTargetSections}
                   onSectionsChange={setUnitTargetSections}
                   sectionInput={unitSectionInput}
                   onSectionInputChange={setUnitSectionInput}
+                  showYearLevels={false}
+                  sectionOptions={user?.teaching_sections ?? []}
                 />
                 <div className="flex gap-2 justify-end">
                   <Button
@@ -708,7 +671,6 @@ export function CoursesManagement() {
                     setSelectedUnitForUpload(unitId);
                     setShowUploadDialog(true);
                   }}
-                  onCreateLaboratory={handleCreateLaboratory}
                 />
               ))}
             </div>
@@ -720,7 +682,7 @@ export function CoursesManagement() {
             <div className="bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden">
               <div className="p-6 border-b border-slate-800">
                 <h2 className="text-2xl font-bold text-white">{activeLesson.title}</h2>
-                <div className="flex items-center gap-4 mt-3 text-sm text-slate-400">
+                <div className="flex items-center gap-4 mt-3 text-sm text-slate-400"> 
                   <span>{activeLesson.slideCount || 0} slides</span>
                   <span>•</span>
                   <span>
@@ -1153,12 +1115,14 @@ export function CoursesManagement() {
               />
             </div>
             <SectionYearTargetPicker
-              yearLevels={lessonTargetYearLevels}
+              yearLevels={[]}
               onYearLevelsChange={setLessonTargetYearLevels}
               sections={lessonTargetSections}
               onSectionsChange={setLessonTargetSections}
               sectionInput={lessonSectionInput}
               onSectionInputChange={setLessonSectionInput}
+              showYearLevels={false}
+              sectionOptions={user?.teaching_sections ?? []}
             />
             <div className="flex gap-2 justify-end">
               <Button

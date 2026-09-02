@@ -22,7 +22,6 @@ import {
 } from 'lucide-react';
 import { AetherLoader } from '@/components/AetherLoader';
 import { authFetch } from '@/lib/authFetch';
-import { SectionYearTargetPicker } from '@/components/SectionYearTargetPicker';
 
 interface Laboratory {
   id: string;
@@ -92,7 +91,6 @@ interface FormData {
   dueDate: string;
   points: number;
   targetSections: string[];
-  targetYearLevels: number[];
 }
 
 const EMPTY_FORM: FormData = {
@@ -105,7 +103,6 @@ const EMPTY_FORM: FormData = {
   dueDate: '',
   points: 100,
   targetSections: [],
-  targetYearLevels: [],
 };
 
 export function LaboratoriesManagement() {
@@ -119,7 +116,6 @@ export function LaboratoriesManagement() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<FormData>(EMPTY_FORM);
-  const [labSectionInput, setLabSectionInput] = useState('');
   const [formError, setFormError] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -177,7 +173,7 @@ export function LaboratoriesManagement() {
     setLoading(true);
     try {
       const [labsResponse, unitsResponse] = await Promise.all([
-        authFetch('/laboratories'),
+        authFetch('/laboratories/metadata'),
         authFetch('/units'),
       ]);
       const labsJson = await labsResponse.json();
@@ -214,7 +210,6 @@ export function LaboratoriesManagement() {
     setFormData(EMPTY_FORM);
     setEditingId(null);
     setFormError('');
-    setLabSectionInput('');
     setShowCreateForm(true);
     refreshUnits();
   };
@@ -230,11 +225,9 @@ export function LaboratoriesManagement() {
       dueDate: lab.dueDate,
       points: lab.points ?? 100,
       targetSections: lab.targetSections ?? [],
-      targetYearLevels: lab.targetYearLevels ?? [],
     });
     setEditingId(lab.id);
     setFormError('');
-    setLabSectionInput('');
     setShowCreateForm(true);
     refreshUnits();
   };
@@ -279,7 +272,7 @@ export function LaboratoriesManagement() {
           dueDate: formData.dueDate,
           points: formData.points,
           targetSections: formData.targetSections,
-          targetYearLevels: formData.targetYearLevels,
+          targetYearLevels: [],
         }),
       });
       const json = await response.json();
@@ -580,25 +573,25 @@ export function LaboratoriesManagement() {
                 </div>
               </div>
 
-              {/* Teaching Sections Selection */}
               {user?.teaching_sections && user.teaching_sections.length > 0 && (
                 <div className="rounded-lg border border-slate-800 bg-slate-950/40 p-3 space-y-3">
                   <div>
                     <h4 className="text-sm font-semibold text-slate-200">Assign to Sections</h4>
-                    <p className="text-xs text-slate-400 mt-1">Select which sections can access this laboratory (leave unchecked for all sections)</p>
+                    <p className="text-xs text-slate-400 mt-1">Select the sections that can access this laboratory.</p>
                   </div>
                   <div className="flex flex-wrap gap-3">
-                    {user.teaching_sections.map((section) => (
+                    {user.teaching_sections.map((section: string) => (
                       <label key={section} className="flex items-center gap-2 cursor-pointer">
                         <input
                           type="checkbox"
                           checked={formData.targetSections.includes(section)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setFormData(f => ({ ...f, targetSections: [...f.targetSections, section] }));
-                            } else {
-                              setFormData(f => ({ ...f, targetSections: f.targetSections.filter(s => s !== section) }));
-                            }
+                          onChange={(event) => {
+                            setFormData(current => ({
+                              ...current,
+                              targetSections: event.target.checked
+                                ? [...current.targetSections, section]
+                                : current.targetSections.filter(value => value !== section),
+                            }));
                           }}
                           className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-violet-500 focus:ring-violet-500 cursor-pointer"
                         />
@@ -609,14 +602,6 @@ export function LaboratoriesManagement() {
                 </div>
               )}
 
-              <SectionYearTargetPicker
-                yearLevels={formData.targetYearLevels}
-                onYearLevelsChange={(levels) => setFormData(f => ({ ...f, targetYearLevels: levels }))}
-                sections={formData.targetSections}
-                onSectionsChange={(sections) => setFormData(f => ({ ...f, targetSections: sections }))}
-                sectionInput={labSectionInput}
-                onSectionInputChange={setLabSectionInput}
-              />
               </div>
 
               {/* Actions */}
@@ -663,13 +648,13 @@ export function LaboratoriesManagement() {
         </div>
       ) : (
         <div className="space-y-3">
-          {laboratories.map(lab => {
+          {laboratories.map((lab, index) => {
             const isExpanded = expandedId === lab.id;
             const daysLabel = getDaysLabel(lab.dueDate);
 
             return (
               <div
-                key={lab.id}
+                key={`${lab.id || 'laboratory'}-${index}`}
                 className="bg-gradient-to-r from-slate-900/60 to-slate-900/30 border border-slate-800 rounded-xl overflow-hidden"
               >
                 {/* Row Header */}
