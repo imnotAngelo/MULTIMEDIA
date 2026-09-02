@@ -699,7 +699,15 @@ router.post('/pptx', upload.single('file'), async (req: Request, res: Response) 
     const fileUrl = `/uploads/${fileName}`;
 
     const lessonId = uuidv4();
-    const content = `Converted presentation generated from ${path.basename(req.file.originalname)}.`;
+    let sourceContent = '';
+    if (extension === '.pdf') {
+      sourceContent = (await pdfParser(req.file.buffer)).text || '';
+    } else if (extension === '.docx') {
+      sourceContent = (await mammoth.extractRawText({ buffer: req.file.buffer })).value || '';
+    } else if (['.txt', '.md', '.markdown'].includes(extension)) {
+      sourceContent = req.file.buffer.toString('utf8');
+    }
+    const content = sourceContent.trim() || `Converted presentation generated from ${path.basename(req.file.originalname)}.`;
     const creatorYearLevel = (req as any).user?.year_level || 1;
     const lessonPayload = {
       id: lessonId,

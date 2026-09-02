@@ -102,9 +102,11 @@ export function AutoGenerateQuiz() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
+    const isNumericField = name === 'timeLimit' || name === 'numberOfQuestions';
+    const numericValue = value === '' ? 1 : Number.parseInt(value, 10);
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'timeLimit' || name === 'numberOfQuestions' ? parseInt(value) : value,
+      [name]: isNumericField && Number.isFinite(numericValue) ? numericValue : value,
     }));
   };
 
@@ -153,11 +155,11 @@ export function AutoGenerateQuiz() {
                   text: String(opt || '').trim(),
                   isCorrect: String(opt || '').trim() === String(q.correctAnswer || '').trim(),
                 }))
-                .filter((opt) => opt.text.length > 0)
+                .filter((opt: { text: string | any[]; }) => opt.text.length > 0)
                 .slice(0, 4)
             : [],
         }))
-        .filter((q) => q.title.length > 0);
+        .filter((q: { title: string | any[]; }) => q.title.length > 0);
 
       const cleanedQuestions = normalizeQuestionSet(aiQuestions);
       if (cleanedQuestions.length === 0) {

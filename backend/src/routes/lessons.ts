@@ -143,6 +143,50 @@ async function extractPdf(filePath: string): Promise<ParsedPdf> {
   }
 }
 
+async function extractLessonDocumentText(lesson: any): Promise<string> {
+  const storedUrl = String(lesson.pdf_url || lesson.pdfUrl || '').trim();
+  if (!storedUrl) return '';
+
+  const fileName = path.basename(new URL(storedUrl, 'http://localhost').pathname);
+  const localPaths = [
+    path.join(uploadDir, fileName),
+    path.join(process.cwd(), 'uploads', fileName),
+  ];
+  let temporaryPath = '';
+
+  try {
+    for (const localPath of localPaths) {
+      if (fs.existsSync(localPath)) {
+        return (await extractPdf(localPath)).text;
+      }
+    }
+
+    let buffer: Buffer | null = null;
+    if (!/^(https?:\/\/)(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?/i.test(storedUrl)) {
+      const response = await fetch(storedUrl);
+      if (response.ok) buffer = Buffer.from(await response.arrayBuffer());
+    }
+
+    if (!buffer && supabase) {
+      for (const storagePath of [`lessons/${fileName}`, fileName]) {
+        const { data: file } = await supabase.storage.from('lesson-pdfs').download(storagePath);
+        if (file) {
+          buffer = Buffer.from(await file.arrayBuffer());
+          break;
+        }
+      }
+    }
+
+    if (!buffer) return '';
+    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+    temporaryPath = path.join(uploadDir, `.quiz-${Date.now()}-${fileName}`);
+    fs.writeFileSync(temporaryPath, buffer);
+    return (await extractPdf(temporaryPath)).text;
+  } finally {
+    if (temporaryPath && fs.existsSync(temporaryPath)) fs.unlinkSync(temporaryPath);
+  }
+}
+
 function splitForReadableSlides(text: string, maxCharacters = 900): string[] {
   const sourceText = text.trim();
   const paragraphs = text
@@ -1140,7 +1184,7 @@ router.post(
           const result = await Promise.race([
             supabase
               .from('lessons')
-              .select('id, title, content, slides')
+              .select('id, title, content, slides, pdf_url, original_format')
               .eq('id', lessonId)
               .single(),
             new Promise<never>((_, reject) =>
@@ -1156,6 +1200,17 @@ router.post(
         }
       } else {
         dbUnavailable = true;
+      }
+
+      // Uploads can use the local lesson store when the database schema or
+      // insert is unavailable. Use that same source for quiz generation.
+      if (!lesson) {
+        const localLesson = getLocalLessonById(lessonId);
+        if (localLesson) {
+          lesson = localLesson;
+          lessonError = null;
+          dbUnavailable = false;
+        }
       }
 
       if (dbUnavailable) {
@@ -1174,21 +1229,67 @@ router.post(
 
       // Build comprehensive content from lesson summary + slides
       let fullContent = '';
-      if (lesson.content) {
-        fullContent += lesson.content + '\n\n';
+      const lessonText = lesson.content || lesson.description || lesson.summary || lesson.text || '';
+      if (lessonText) {
+        fullContent += String(lessonText) + '\n\n';
       }
-      if (lesson.slides && Array.isArray(lesson.slides)) {
-        lesson.slides.forEach((slide: any) => {
+      let lessonSlides = lesson.slides;
+      if (typeof lessonSlides === 'string') {
+        try {
+          lessonSlides = JSON.parse(lessonSlides);
+        } catch {
+          lessonSlides = [];
+        }
+      }
+      if (Array.isArray(lessonSlides)) {
+        lessonSlides.forEach((slide: any) => {
           if (slide.title) fullContent += `Topic: ${slide.title}\n`;
-          if (slide.content) fullContent += `${slide.content}\n`;
-          if (slide.keyPoints && Array.isArray(slide.keyPoints)) {
-            slide.keyPoints.forEach((kp: string) => {
+          const slideText = slide.content || slide.text || slide.body || slide.description || '';
+          if (slideText) fullContent += `${slideText}\n`;
+          const keyPoints = slide.keyPoints || slide.key_points;
+          if (Array.isArray(keyPoints)) {
+            keyPoints.forEach((kp: string) => {
               fullContent += `- ${kp}\n`;
             });
           }
           if (slide.summary) fullContent += `Summary: ${slide.summary}\n`;
           fullContent += '\n';
         });
+      }
+
+      if (fullContent.trim().length < 50) {
+        const { data: storedSlides, error: storedSlidesError } = supabase
+          ? await supabase
+            .from('lesson_slides')
+            .select('*')
+            .eq('lesson_id', lessonId)
+            .order('slide_number', { ascending: true })
+          : { data: [], error: null };
+
+        if (storedSlidesError) {
+          console.warn('⚠️ Could not read stored lesson slides:', storedSlidesError.message);
+        } else if (storedSlides?.length) {
+          for (const slide of storedSlides) {
+            if (slide.title) fullContent += `Topic: ${slide.title}\n`;
+            if (slide.content) fullContent += `${slide.content}\n`;
+            const keyPoints = slide.key_points || slide.keyPoints;
+            if (Array.isArray(keyPoints)) {
+              fullContent += keyPoints.map((point: string) => `- ${point}`).join('\n') + '\n';
+            }
+            if (slide.summary) fullContent += `Summary: ${slide.summary}\n`;
+          }
+        }
+      }
+
+      // PDF lessons keep the original document outside the slides column.
+      // Extract it so generation works for PDFs as well as slide lessons.
+      if (fullContent.trim().length < 50 && (lesson.pdf_url || lesson.pdfUrl)) {
+        try {
+          const documentText = await extractLessonDocumentText(lesson);
+          if (documentText.trim()) fullContent += `\n\n${documentText}`;
+        } catch (documentError: any) {
+          console.warn('⚠️ Could not extract lesson document text:', documentError.message);
+        }
       }
 
       if (!fullContent || fullContent.trim().length < 50) {
@@ -1210,7 +1311,7 @@ router.post(
       const prompt = `You are a professional quiz generator. Based ONLY on the lesson content below, generate exactly ${numQuestions} unique quiz questions.
 
 LESSON CONTENT:
-${fullContent.substring(0, 5000)}
+${fullContent}
 
 RULES:
 - Generate exactly ${numQuestions} questions, no more and no fewer.

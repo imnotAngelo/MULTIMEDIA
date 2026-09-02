@@ -18,10 +18,7 @@ export function StudentLayout() {
         section={user.section}
       />
       <div className="lg:ml-64 min-h-screen flex flex-col">
-        <Header
-          title="Learning studio"
-          subtitle="Explore lessons, laboratories, and assessments"
-        />
+        <Header />
         <main className="flex-1 p-6">
           <Outlet />
         </main>
