@@ -4,9 +4,10 @@ import { ChevronLeft, ChevronRight, MessageCircle, ThumbsUp, Lock, Download, Che
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
+import { PDFViewer } from '@/components/PDFViewer';
 import { authFetch } from '@/lib/authFetch';
 import { downloadLessonAsPDF } from '@/lib/downloadUtils';
-import { buildOfficeViewerUrl, resolveBackendAssetUrl } from '@/lib/apiConfig';
+import { API_BASE_URL, buildOfficeViewerUrl, resolveBackendAssetUrl } from '@/lib/apiConfig';
 import { useAuthStore } from '@/stores/authStore';
 import { toast } from 'sonner';
 import { AetherLoader } from '@/components/AetherLoader';
@@ -23,6 +24,7 @@ interface Slide {
 interface SlideViewerProps {
   lessonId: string;
   lessonTitle: string;
+  lesson?: any;
 }
 
 interface Comment {
@@ -35,7 +37,7 @@ interface Comment {
   slideNumber?: number;
 }
 
-export function SlideViewer({ lessonId, lessonTitle }: SlideViewerProps) {
+export function SlideViewer({ lessonId, lessonTitle, lesson: initialLesson }: SlideViewerProps) {
   const [slides, setSlides] = useState<Slide[]>([]);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -106,69 +108,70 @@ export function SlideViewer({ lessonId, lessonTitle }: SlideViewerProps) {
 
       console.log('🔍 Loading slides for lesson:', lessonId);
 
-      // Try to fetch all units to find the lesson
-      const unitsResponse = await authFetch('http://localhost:3001/api/units');
+      if (initialLesson && String(initialLesson.id) === String(lessonId)) {
+        const isPdfLesson = Boolean(
+          initialLesson.pdfUrl || initialLesson.pdf_url ||
+          initialLesson.originalFormat === 'pdf' || initialLesson.original_format === 'pdf'
+        );
+        const foundSlides = Array.isArray(initialLesson.slides)
+          ? initialLesson.slides.map((slide: any, idx: number) => ({
+              id: slide.slideNumber || idx,
+              slideNumber: slide.slideNumber || idx + 1,
+              title: slide.title || 'Untitled Slide',
+              content: slide.content || '',
+              summary: slide.summary || '',
+              keyPoints: Array.isArray(slide.keyPoints) ? slide.keyPoints : [],
+            }))
+          : [];
 
-      const unitsData = await unitsResponse.json();
-      console.log('📚 Units fetched:', unitsData.data?.length || 0);
-
-      if (!unitsData.success) {
-        throw new Error('Failed to fetch units');
-      }
-
-      const units = unitsData.data || [];
-      let foundSlides: Slide[] = [];
-      let foundLesson: any = null;
-
-      // Search through all units for this lesson
-      for (const unit of units) {
-        const lessonsResponse = await authFetch(`http://localhost:3001/api/units/${unit.id}/lessons`);
-
-        const lessonsData = await lessonsResponse.json();
-        console.log(`📖 Lessons for unit ${unit.id}:`, lessonsData.data?.length || 0);
-
-        if (lessonsData.success) {
-          const lessons = lessonsData.data || [];
-          const lesson = lessons.find((l: any) => l.id === lessonId);
-
-          if (lesson) {
-            console.log('✅ Found lesson:', lesson);
-            console.log('🎬 Lesson has slides?', lesson.slides);
-            console.log('📊 Slide count:', lesson.slides?.length || lesson.slideCount || 0);
-
-            const isPdfLesson = Boolean(
-              lesson.pdfUrl || lesson.pdf_url || lesson.originalFormat === 'pdf' || lesson.original_format === 'pdf'
-            );
-
-            if (isPdfLesson) {
-              foundLesson = lesson;
-              const resolvedPdfUrl = resolveBackendAssetUrl(lesson.pdfUrl || lesson.pdf_url || '');
-              setPdfUrl(resolvedPdfUrl);
-              console.log('📄 PDF lesson detected:', resolvedPdfUrl);
-              setLesson(foundLesson);
-              setSlides([]);
-              setLoading(false);
-              return;
-            }
-
-            if (lesson.slides && Array.isArray(lesson.slides) && lesson.slides.length > 0) {
-              foundLesson = lesson;
-              foundSlides = lesson.slides.map((slide: any, idx: number) => ({
-                id: slide.slideNumber || idx,
-                slideNumber: slide.slideNumber || idx + 1,
-                title: slide.title || 'Untitled Slide',
-                content: slide.content || '',
-                summary: slide.summary || '',
-                keyPoints: Array.isArray(slide.keyPoints) ? slide.keyPoints : [],
-              }));
-              console.log('✨ Mapped slides:', foundSlides.length);
-              break;
-            }
-          }
+        setLesson(initialLesson);
+        setSlides(foundSlides);
+        if (isPdfLesson) {
+          setPdfUrl(resolveBackendAssetUrl(initialLesson.pdfUrl || initialLesson.pdf_url || ''));
         }
+        setLoading(false);
+        return;
       }
 
-      if (foundSlides.length === 0 && !pdfUrl && !foundLesson?.pdfUrl && !foundLesson?.pdf_url && !foundLesson?.originalFormat && !foundLesson?.original_format) {
+      const lessonResponse = await authFetch(`${API_BASE_URL}/lessons/by-id/${lessonId}`, { cache: 'no-store' });
+      const lessonData = await lessonResponse.json();
+      if (!lessonResponse.ok || !lessonData.success || !lessonData.data) {
+        throw new Error(lessonData.error?.message || 'Failed to fetch lesson');
+      }
+
+      const foundLesson = lessonData.data;
+      console.log('✅ Found lesson directly:', foundLesson);
+      console.log('🎬 Lesson has slides?', foundLesson.slides);
+      console.log('📊 Slide count:', foundLesson.slides?.length || foundLesson.slide_count || 0);
+
+      const isPdfLesson = Boolean(
+        foundLesson.pdfUrl || foundLesson.pdf_url || foundLesson.originalFormat === 'pdf' || foundLesson.original_format === 'pdf'
+      );
+
+      if (isPdfLesson) {
+        const resolvedPdfUrl = resolveBackendAssetUrl(foundLesson.pdfUrl || foundLesson.pdf_url || '');
+        setPdfUrl(resolvedPdfUrl);
+        console.log('📄 PDF lesson detected:', resolvedPdfUrl);
+        setLesson(foundLesson);
+        setSlides([]);
+        setLoading(false);
+        return;
+      }
+
+      let foundSlides: Slide[] = [];
+      if (Array.isArray(foundLesson.slides) && foundLesson.slides.length > 0) {
+        foundSlides = foundLesson.slides.map((slide: any, idx: number) => ({
+          id: slide.slideNumber || idx,
+          slideNumber: slide.slideNumber || idx + 1,
+          title: slide.title || 'Untitled Slide',
+          content: slide.content || '',
+          summary: slide.summary || '',
+          keyPoints: Array.isArray(slide.keyPoints) ? slide.keyPoints : [],
+        }));
+        console.log('✨ Mapped slides:', foundSlides.length);
+      }
+
+      if (foundSlides.length === 0 && !foundLesson?.pdfUrl && !foundLesson?.pdf_url && !foundLesson?.originalFormat && !foundLesson?.original_format) {
         console.warn('⚠️ No slides found in database');
         setError('No slides found for this lesson.');
       } else {
@@ -319,17 +322,11 @@ export function SlideViewer({ lessonId, lessonTitle }: SlideViewerProps) {
           </a>
         </div>
 
-        <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-950">
-          {pdfViewerUrl ? (
-            <iframe
-              src={pdfViewerUrl}
-              title={lessonTitle}
-              className="h-[80vh] w-full border-0"
-            />
-          ) : (
-            <div className="p-12 text-center text-slate-400">PDF preview is not available for this lesson.</div>
-          )}
-        </div>
+        {pdfViewerUrl ? (
+          <PDFViewer url={pdfViewerUrl} title={lessonTitle} onDownload={handleDownloadPDF} />
+        ) : (
+          <div className="p-12 text-center text-slate-400">PDF preview is not available for this lesson.</div>
+        )}
       </div>
     );
   }

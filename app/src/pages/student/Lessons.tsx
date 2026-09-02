@@ -279,7 +279,7 @@ export function Lessons() {
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Lessons
         </Button>
-        <SlideViewer lessonId={activeLesson.id} lessonTitle={activeLesson.title} />
+        <SlideViewer lessonId={activeLesson.id} lessonTitle={activeLesson.title} lesson={activeLesson} />
       </div>
     );
   }

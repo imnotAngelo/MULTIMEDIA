@@ -2,6 +2,7 @@ import express, { Express, Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
+import { fileURLToPath } from 'node:url';
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
 import courseRoutes from './routes/courses.js';
@@ -25,6 +26,7 @@ dotenv.config();
 const app: Express = express();
 const PORT = Number(process.env.PORT) || 3001;
 const HOST = process.env.HOST || '0.0.0.0';
+const backendRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 const allowedOrigins = [
   'http://localhost:5173',
@@ -65,7 +67,7 @@ app.use('/api/auth/forgot-password', createRateLimiter(15 * 60 * 1000, 20));
 app.use('/api/auth/reset-password', createRateLimiter(15 * 60 * 1000, 40));
 
 // Serve uploaded files statically
-app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+app.use('/uploads', express.static(path.join(backendRoot, 'uploads')));
 
 // Apply JSON parser everywhere EXCEPT multipart upload routes
 app.use((req, res, next) => {

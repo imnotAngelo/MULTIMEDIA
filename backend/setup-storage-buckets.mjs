@@ -62,6 +62,23 @@ async function setupStorageBuckets() {
       console.log('✅ avatars bucket already exists');
     }
 
+    // Create lesson-pdfs bucket so PDF lessons work across all frontend devices.
+    const pdfBucketExists = buckets?.some(b => b.name === 'lesson-pdfs');
+    if (!pdfBucketExists) {
+      const { error } = await supabase.storage.createBucket('lesson-pdfs', {
+        public: true,
+        allowedMimeTypes: ['application/pdf'],
+      });
+
+      if (error) {
+        console.error('❌ Failed to create lesson-pdfs bucket:', error);
+      } else {
+        console.log('✅ Created lesson-pdfs bucket');
+      }
+    } else {
+      console.log('✅ lesson-pdfs bucket already exists');
+    }
+
     console.log('✅ Storage buckets setup complete!');
   } catch (error) {
     console.error('❌ Error setting up buckets:', error);

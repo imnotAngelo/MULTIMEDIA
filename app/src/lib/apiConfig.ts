@@ -36,10 +36,15 @@ export function resolveBackendAssetUrl(pathOrUrl?: string | null): string {
       const url = new URL(trimmed);
       const isLocalBackendHost = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname.toLowerCase());
 
-      // In local development, prefer the browser's same-origin /uploads path so the Vite
-      // proxy can reach the backend reliably instead of hardcoding 127.0.0.1:3001.
-      if (isLocalBackendHost && !useOnlineApi) {
-        return url.pathname + url.search;
+      // Lesson records created locally can contain a localhost URL. That URL
+      // must be replaced with the current configured backend in every mode,
+      // otherwise deployed students try to connect to their own computer.
+      if (isLocalBackendHost) {
+        if (API_BASE_URL.startsWith('/')) {
+          return `${url.pathname}${url.search}`;
+        }
+
+        return `${new URL(API_BASE_URL).origin}${url.pathname}${url.search}`;
       }
 
       return trimmed;

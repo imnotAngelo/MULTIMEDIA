@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Download, AlertCircle, Maximize2, Minimize2, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { resolveBackendAssetUrl } from '@/lib/apiConfig';
+import { authFetch } from '@/lib/authFetch';
 
 // Set up the worker - use the file served from public directory
 pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
@@ -39,23 +41,28 @@ export function PDFViewer({ url, title = 'PDF Document', onDownload }: PDFViewer
           return;
         }
 
-        // Resolve the URL - handle both relative and absolute paths
-        let absoluteUrl = url;
-        if (!url.startsWith('http')) {
-          // If it's a relative path, try multiple approaches
-          if (url.startsWith('/')) {
-            absoluteUrl = `${window.location.origin}${url}`;
-          } else {
-            absoluteUrl = `${window.location.origin}/${url}`;
-          }
-        }
+        // Normalize relative and legacy localhost URLs to the configured API.
+        const absoluteUrl = resolveBackendAssetUrl(url);
 
         console.log('📄 Resolved PDF URL:', absoluteUrl);
         setDebugInfo(`Loading from: ${absoluteUrl}`);
 
+        const response = await authFetch(absoluteUrl, {
+          cache: 'no-store',
+          headers: { Accept: 'application/pdf' },
+        });
+
+        if (!response.ok) {
+          throw new Error(`PDF request failed (${response.status})`);
+        }
+
+        const pdfBytes = await response.arrayBuffer();
+        if (pdfBytes.byteLength === 0) {
+          throw new Error('PDF response was empty');
+        }
+
         const pdf = await pdfjsLib.getDocument({
-          url: absoluteUrl,
-          withCredentials: true,
+          data: new Uint8Array(pdfBytes),
         }).promise;
 
         console.log('✅ PDF loaded successfully, pages:', pdf.numPages);

@@ -8,7 +8,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'node:url';
 import pdfParser from 'pdf-parse';
 import { v4 as uuidv4 } from 'uuid';
-import { createLocalLesson, listLocalLessonsByModuleId } from '../lib/lessonStore.js';
+import { createLocalLesson, getLocalLessonById, listLocalLessonsByModuleId } from '../lib/lessonStore.js';
 
 const router = Router();
 const routeDir = path.dirname(fileURLToPath(import.meta.url));
@@ -462,7 +462,48 @@ router.post(
       const destinationPath = path.join(uploadDir, fileName);
       fs.renameSync(uploadedFile.path, destinationPath);
 
-      const pdfUrl = `/uploads/${fileName}`;
+      let pdfUrl = `/uploads/${fileName}`;
+      if (supabase) {
+        const pdfBuffer = fs.readFileSync(destinationPath);
+        const storagePath = `lessons/${fileName}`;
+        const bucketName = 'lesson-pdfs';
+
+        let { error: storageError } = await supabase.storage
+          .from(bucketName)
+          .upload(storagePath, pdfBuffer, {
+            contentType: 'application/pdf',
+            upsert: true,
+          });
+
+        // Create the public bucket automatically when setting up a new environment.
+        if (storageError && /not found|does not exist|bucket/i.test(storageError.message || '')) {
+          await supabase.storage.createBucket(bucketName, {
+            public: true,
+            allowedMimeTypes: ['application/pdf'],
+          });
+          ({ error: storageError } = await supabase.storage
+            .from(bucketName)
+            .upload(storagePath, pdfBuffer, {
+              contentType: 'application/pdf',
+              upsert: true,
+            }));
+        }
+
+        if (!storageError) {
+          const { data: publicData } = supabase.storage
+            .from(bucketName)
+            .getPublicUrl(storagePath);
+          if (publicData?.publicUrl) {
+            pdfUrl = publicData.publicUrl;
+            console.log('✅ PDF copied to shared storage:', pdfUrl);
+          } else {
+            throw new Error('Shared PDF storage returned no public URL');
+          }
+        } else {
+          throw new Error(`Shared PDF storage unavailable: ${storageError.message}`);
+        }
+      }
+
       const lessonId = uuidv4();
       let extractedPdfText = '';
       try {
@@ -767,6 +808,126 @@ router.get('/unit/:unitId', optionalAuthMiddleware, async (req: Request, res: Re
     return res.status(500).json({
       success: false,
       error: { code: 'GET_UNIT_LESSONS_FAILED', message: error.message },
+    });
+  }
+});
+
+// Get one lesson directly by ID. This avoids requiring the client to scan units.
+router.get('/by-id/:lessonId', optionalAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { lessonId } = req.params;
+
+    if (supabase) {
+      const { data: lesson, error } = await supabase
+        .from('lessons')
+        .select('id, title, content, slides, slide_count, created_at, status, module_id, video_url, graphic_url, pdf_url, original_format')
+        .eq('id', lessonId)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (lesson) {
+        return res.json({ success: true, data: lesson });
+      }
+    }
+
+    const localLesson = getLocalLessonById(lessonId);
+    if (localLesson) {
+      return res.json({
+        success: true,
+        data: {
+          id: localLesson.id,
+          title: localLesson.title,
+          content: localLesson.content || '',
+          slides: localLesson.slides || [],
+          slide_count: localLesson.slideCount || 0,
+          created_at: localLesson.createdAt,
+          status: localLesson.status || 'published',
+          module_id: localLesson.moduleId,
+          video_url: localLesson.videoUrl || '',
+          graphic_url: localLesson.graphicUrl || '',
+          pdf_url: localLesson.pdfUrl || '',
+          original_format: localLesson.originalFormat || (localLesson.pdfUrl ? 'pdf' : 'slides'),
+        },
+      });
+    }
+
+    return res.status(404).json({
+      success: false,
+      error: { code: 'LESSON_NOT_FOUND', message: 'Lesson was not found' },
+    });
+  } catch (error: any) {
+    console.error('Get lesson error:', error);
+    return res.status(500).json({
+      success: false,
+      error: { code: 'GET_LESSON_FAILED', message: error.message || 'Failed to load lesson' },
+    });
+  }
+});
+
+// Get slides for a lesson
+router.get('/:lessonId/pdf', optionalAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { lessonId } = req.params;
+
+    if (!supabase) return sendSupabaseUnavailable(res);
+
+    const { data: lesson, error } = await supabase
+      .from('lessons')
+      .select('pdf_url, original_format')
+      .eq('id', lessonId)
+      .single();
+
+    if (error || !lesson?.pdf_url) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'PDF_NOT_FOUND', message: 'PDF file was not found for this lesson' },
+      });
+    }
+
+    const storedUrl = String(lesson.pdf_url);
+    const fileName = path.basename(new URL(storedUrl, 'http://localhost').pathname);
+    const localPath = path.join(uploadDir, fileName);
+
+    if (fs.existsSync(localPath)) {
+      return res.sendFile(localPath);
+    }
+
+    // Try the stored remote URL first when it is not a localhost URL.
+    if (!/^(https?:\/\/)(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?/i.test(storedUrl)) {
+      try {
+        const remoteResponse = await fetch(storedUrl);
+        if (remoteResponse.ok) {
+          res.setHeader('Content-Type', 'application/pdf');
+          res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
+          return res.send(Buffer.from(await remoteResponse.arrayBuffer()));
+        }
+      } catch (remoteError) {
+        console.warn('⚠️ Stored PDF URL could not be fetched:', remoteError);
+      }
+    }
+
+    // Support both the current lessons/<file> path and legacy root uploads.
+    for (const storagePath of [`lessons/${fileName}`, fileName]) {
+      const { data: file, error: storageError } = await supabase.storage
+        .from('lesson-pdfs')
+        .download(storagePath);
+
+      if (!storageError && file) {
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
+        return res.send(Buffer.from(await file.arrayBuffer()));
+      }
+    }
+
+    return res.status(404).json({
+      success: false,
+      error: { code: 'PDF_NOT_FOUND', message: 'PDF file is no longer available on this server' },
+    });
+  } catch (error: any) {
+    console.error('Get lesson PDF error:', error);
+    return res.status(500).json({
+      success: false,
+      error: { code: 'GET_PDF_FAILED', message: error.message || 'Failed to load PDF' },
     });
   }
 });
