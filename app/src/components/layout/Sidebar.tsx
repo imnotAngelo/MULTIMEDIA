@@ -243,7 +243,9 @@ export function Sidebar({
           <div className="flex-1 min-w-0">
             <p className="text-white text-sm font-medium truncate">{userName}</p>
             <p className="text-slate-400 text-xs truncate">
-              {yearLevel ? `Year ${yearLevel}` : 'Year not set'}
+              {yearLevel ? (
+                yearLevel === 1 ? '1st Sem' : yearLevel === 2 ? '2nd Sem' : 'Summer'
+              ) : 'Semester not set'}
               {section ? ` · Section ${section}` : ''}
             </p>
           </div>
