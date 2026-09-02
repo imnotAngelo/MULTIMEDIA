@@ -16,6 +16,16 @@ const routeDir = path.dirname(fileURLToPath(import.meta.url));
 const backendRoot = path.resolve(routeDir, '..', '..');
 const uploadDir = path.join(backendRoot, 'uploads');
 
+async function fetchWithTimeout(input: string, init: RequestInit = {}, timeoutMs = 15000): Promise<globalThis.Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 // Log all incoming requests to this router
 router.use((req: Request, res: Response, next) => {
   console.log(`📨 [LESSON_ROUTER] Received ${req.method} request to path: "${req.path}", Full URL: "${req.originalUrl}"`);
@@ -145,7 +155,7 @@ async function extractPdf(filePath: string): Promise<ParsedPdf> {
 }
 
 async function extractLessonDocumentText(lesson: any): Promise<string> {
-  const storedUrl = String(lesson.pdf_url || lesson.pdfUrl || lesson.fileUrl || '').trim();
+  const storedUrl = String(lesson.pdf_url || lesson.pdfUrl || lesson.file_url || lesson.fileUrl || '').trim();
   if (!storedUrl) return '';
 
   const fileName = path.basename(new URL(storedUrl, 'http://localhost').pathname);
@@ -166,7 +176,7 @@ async function extractLessonDocumentText(lesson: any): Promise<string> {
   let buffer: Buffer | null = null;
   if (!/^(https?:\/\/)(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?/i.test(storedUrl)) {
     try {
-      const response = await fetch(storedUrl);
+      const response = await fetchWithTimeout(storedUrl, {}, 15000);
       if (response.ok) buffer = Buffer.from(await response.arrayBuffer());
     } catch (fetchError: any) {
       console.warn('⚠️ Could not download lesson document:', fetchError?.message || fetchError);
@@ -287,8 +297,11 @@ export function buildOriginalPdfLessonRecord({
   graphicUrl?: string;
   pdfText?: string;
 }) {
-  const rawText = summarizePdfText(pdfText || description);
-  const content = (description && description.trim()) || rawText || `Original PDF uploaded: ${title}`;
+  const rawText = summarizePdfText(pdfText);
+  const descriptionText = String(description || '').trim();
+  const content = rawText || (
+    descriptionText && !isThinLessonContent(descriptionText, 1) ? descriptionText : ''
+  ) || `Original PDF uploaded: ${title}`;
 
   return {
     id: lessonId || uuidv4(),
@@ -1227,77 +1240,29 @@ router.post(
         });
       }
 
-      // Build comprehensive content from lesson summary + slides + uploaded PDF/PPT
-      let fullContent = '';
-      const lessonText = lesson.content || lesson.description || lesson.summary || lesson.text || '';
-      if (lessonText && !isThinLessonContent(String(lessonText), 1)) {
-        fullContent += String(lessonText) + '\n\n';
-      }
-      let lessonSlides = lesson.slides;
-      if (typeof lessonSlides === 'string') {
+      let originalDocumentText = '';
+      if (lesson.pdf_url || lesson.pdfUrl || lesson.file_url || lesson.fileUrl) {
         try {
-          lessonSlides = JSON.parse(lessonSlides);
-        } catch {
-          lessonSlides = [];
-        }
-      }
-      if (Array.isArray(lessonSlides)) {
-        lessonSlides.forEach((slide: any) => {
-          if (slide.title) fullContent += `Topic: ${slide.title}\n`;
-          const slideText = slide.content || slide.text || slide.body || slide.description || '';
-          if (slideText) fullContent += `${slideText}\n`;
-          const keyPoints = slide.keyPoints || slide.key_points;
-          if (Array.isArray(keyPoints)) {
-            keyPoints.forEach((kp: string) => {
-              fullContent += `- ${kp}\n`;
-            });
-          }
-          if (slide.summary) fullContent += `Summary: ${slide.summary}\n`;
-          fullContent += '\n';
-        });
-      }
-
-      if (isThinLessonContent(fullContent)) {
-        const { data: storedSlides, error: storedSlidesError } = supabase
-          ? await supabase
-            .from('lesson_slides')
-            .select('*')
-            .eq('lesson_id', lessonId)
-            .order('slide_number', { ascending: true })
-          : { data: [], error: null };
-
-        if (storedSlidesError) {
-          console.warn('⚠️ Could not read stored lesson slides:', storedSlidesError.message);
-        } else if (storedSlides?.length) {
-          for (const slide of storedSlides) {
-            if (slide.title) fullContent += `Topic: ${slide.title}\n`;
-            if (slide.content) fullContent += `${slide.content}\n`;
-            const keyPoints = slide.key_points || slide.keyPoints;
-            if (Array.isArray(keyPoints)) {
-              fullContent += keyPoints.map((point: string) => `- ${point}`).join('\n') + '\n';
-            }
-            if (slide.summary) fullContent += `Summary: ${slide.summary}\n`;
-          }
-        }
-      }
-
-      if (lesson.pdf_url || lesson.pdfUrl || lesson.fileUrl) {
-        try {
-          const documentText = await extractLessonDocumentText(lesson);
-          if (documentText.trim()) fullContent += `\n\n${documentText}`;
+          originalDocumentText = await extractLessonDocumentText(lesson);
         } catch (documentError: any) {
           console.warn('⚠️ Could not extract lesson document text:', documentError.message);
         }
       }
 
+      let fullContent = originalDocumentText.trim();
+      const lessonText = lesson.content || lesson.description || lesson.summary || lesson.text || '';
+      if (!fullContent && lessonText && !isThinLessonContent(String(lessonText), 1)) {
+        fullContent = String(lessonText).trim();
+      }
+
       fullContent = clipQuizSource(fullContent);
 
-      if (isThinLessonContent(fullContent)) {
+      if (isThinLessonContent(fullContent, 1)) {
         return res.status(400).json({
           success: false,
           error: {
             code: 'NO_CONTENT',
-            message: 'Lesson has insufficient content to generate questions. Upload a PDF or PowerPoint (PPT/PPTX) with readable text.',
+            message: 'The original lesson file is unavailable or has no readable text. Please re-upload the original PDF, PPT, PPTX, DOCX, TXT, or Markdown file.',
           },
         });
       }
@@ -1311,6 +1276,7 @@ router.post(
 
       const numQuestions = Math.min(Math.max(numberOfQuestions, 2), 10);
       const model = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
+      const modelsToTry = [model, ...(model !== 'gemini-2.5-flash' ? ['gemini-2.5-flash'] : [])];
       const prompt = `You are a professional quiz generator. Based ONLY on the lesson content below, generate exactly ${numQuestions} unique quiz questions.
 
 LESSON CONTENT:
@@ -1331,26 +1297,37 @@ RULES:
 Return ONLY a JSON object in this exact format:
 {"questions":[{"id":"1","text":"Question text?","type":"multiple-choice","points":2,"options":["Option A","Option B","Option C","Option D"],"correctAnswer":"Option A"}]}`;
 
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.2,
-            maxOutputTokens: 4096,
-            responseMimeType: 'application/json',
-          },
-        }),
-      });
+      let response: globalThis.Response | null = null;
+      let responseBody: any = null;
+      let lastBusyError: any = null;
+      for (const candidateModel of modelsToTry) {
+        response = await fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/${candidateModel}:generateContent?key=${encodeURIComponent(apiKey)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: 0.2,
+              maxOutputTokens: 4096,
+              responseMimeType: 'application/json',
+            },
+          }),
+        }, 20000);
+        responseBody = await response.json();
+        if (response.ok) break;
 
-      const responseBody: any = await response.json();
-      if (!response.ok) {
         const message = responseBody?.error?.message || `Gemini request failed with status ${response.status}`;
-        const error: any = new Error(message);
-        error.code = responseBody?.error?.status || responseBody?.error?.code;
-        throw error;
+        const isBusy = response.status === 429 || responseBody?.error?.status === 'RESOURCE_EXHAUSTED' || /high demand|try again later|rate limit/i.test(message);
+        if (!isBusy || candidateModel === modelsToTry.at(-1)) {
+          const error: any = new Error(message);
+          error.code = responseBody?.error?.status || responseBody?.error?.code;
+          error.httpStatus = response.status;
+          throw error;
+        }
+        lastBusyError = new Error(message);
       }
+
+      if (!response?.ok) throw lastBusyError || new Error('Gemini request failed');
 
       const aiContent = responseBody?.candidates?.[0]?.content?.parts?.[0]?.text;
       if (!aiContent) {
@@ -1389,6 +1366,13 @@ Return ONLY a JSON object in this exact format:
             code: 'AI_MODEL_UNAVAILABLE',
             message: `The configured Gemini model is unavailable: ${process.env.GEMINI_MODEL || 'gemini-3.6-flash'}. Update GEMINI_MODEL to a supported model.`,
           },
+        });
+      }
+
+      if (error.httpStatus === 429 || error.code === 'RESOURCE_EXHAUSTED' || /high demand|try again later|rate limit/i.test(error.message || '')) {
+        return res.status(503).json({
+          success: false,
+          error: { code: 'AI_BUSY', message: 'The AI service is temporarily busy. Please try again in a moment.' },
         });
       }
 

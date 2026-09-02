@@ -17,8 +17,8 @@ const router: Router = express.Router();
 // Require authentication for all laboratory progress endpoints
 router.use(authMiddleware);
 
-const laboratoryColumns = 'id, instructor_id, title, description, platform, platform_url, unit_id, unit_name, lesson_id, lesson_title, due_date, points, created_at, target_sections, target_year_levels';
-const laboratoryColumnsWithoutTargeting = 'id, instructor_id, title, description, platform, platform_url, unit_id, unit_name, lesson_id, lesson_title, due_date, points, created_at';
+const laboratoryColumns = 'id, instructor_id, title, description, platform, platform_url, unit_id, unit_name, lesson_id, lesson_title, due_date, allow_late_submissions, points, created_at, target_sections, target_year_levels';
+const laboratoryColumnsWithoutTargeting = 'id, instructor_id, title, description, platform, platform_url, unit_id, unit_name, lesson_id, lesson_title, due_date, allow_late_submissions, points, created_at';
 
 const isMissingTargetingColumns = (error: any) =>
   /target_sections|target_year_levels|column .* does not exist|42703/i.test(error?.message || '');
@@ -34,6 +34,7 @@ const toLaboratory = (row: any) => ({
   lessonId: row.lesson_id ?? '',
   lessonTitle: row.lesson_title ?? '',
   dueDate: row.due_date ?? '',
+  allowLateSubmissions: row.allow_late_submissions === true,
   points: row.points ?? 100,
   targetSections: row.target_sections ?? [],
   targetYearLevels: row.target_year_levels ?? [],
@@ -69,7 +70,7 @@ router.get('/metadata', instructorMiddleware, async (req: any, res) => {
 router.post('/metadata', async (req: any, res) => {
   try {
     const instructorId = req.user?.id;
-    const { id, title, description, platform, platformUrl, unitId, unitName, lessonId, lessonTitle, dueDate, points, targetSections, targetYearLevels } = req.body ?? {};
+    const { id, title, description, platform, platformUrl, unitId, unitName, lessonId, lessonTitle, dueDate, allowLateSubmissions, points, targetSections, targetYearLevels } = req.body ?? {};
     if (!instructorId || !title?.trim() || !platformUrl?.trim()) {
       return res.status(400).json({ success: false, error: { code: 'MISSING_FIELDS', message: 'Title and platform link are required' } });
     }
@@ -129,6 +130,7 @@ router.post('/metadata', async (req: any, res) => {
       lesson_id: lessonId || null,
       lesson_title: resolvedLessonTitle,
       due_date: dueDate || null,
+      allow_late_submissions: allowLateSubmissions === true,
       points: Number.isFinite(Number(points)) ? Number(points) : 100,
       target_sections: cleanedTargetSections,
       target_year_levels: cleanedTargetYearLevels,

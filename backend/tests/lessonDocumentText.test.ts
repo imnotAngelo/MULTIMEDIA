@@ -4,6 +4,7 @@ import JSZip from 'jszip';
 import {
   extractTextFromLessonFile,
   extractTextFromPptxBuffer,
+  extractTextFromPlainTextBuffer,
   isThinLessonContent,
 } from '../src/lib/lessonDocumentText.ts';
 
@@ -11,6 +12,11 @@ test('treats placeholder lesson copy as insufficient quiz source', () => {
   assert.equal(isThinLessonContent('Original PDF uploaded: Intro'), true);
   assert.equal(isThinLessonContent('Converted presentation generated from week-1.pptx.'), true);
   assert.equal(isThinLessonContent('Photosynthesis converts light energy into chemical energy stored in glucose.'), false);
+});
+
+test('accepts short real lesson text when a caller only needs to reject empty content', () => {
+  assert.equal(isThinLessonContent('Light makes glucose.', 1), false);
+  assert.equal(isThinLessonContent('   ', 1), true);
 });
 
 test('extracts readable text from a PowerPoint lesson file', async () => {
@@ -31,4 +37,17 @@ test('extracts readable text from a PowerPoint lesson file', async () => {
   assert.match(slideText, /Photosynthesis uses sunlight to make glucose/);
   assert.match(slideText, /Chlorophyll absorbs light in plant leaves/);
   assert.equal(fileText, slideText);
+});
+
+test('uses the declared format when a stored filename has a legacy PDF extension', async () => {
+  const zip = new JSZip();
+  zip.file('ppt/slides/slide1.xml', '<a:t xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">Original presentation text.</a:t>');
+  const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+
+  const text = await extractTextFromLessonFile(buffer, 'legacy-file.pdf', 'pptx');
+  assert.equal(text, 'Original presentation text.');
+});
+
+test('extracts readable plain text lesson files', () => {
+  assert.equal(extractTextFromPlainTextBuffer(Buffer.from('  A lesson about motion.\n\n  ')), 'A lesson about motion.');
 });

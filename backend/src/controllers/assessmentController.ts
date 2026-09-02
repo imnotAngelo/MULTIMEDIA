@@ -232,6 +232,7 @@ export const createAssessment = async (req: AuthRequest, res: Response) => {
       description, 
       type, 
       dueDate, 
+      allowLateSubmissions = false,
       totalPoints, 
       unitId,
       questions,
@@ -310,6 +311,7 @@ export const createAssessment = async (req: AuthRequest, res: Response) => {
       description: description || '',
       type,
       due_date: dueDate || null,
+      allow_late_submissions: allowLateSubmissions === true,
       total_points: totalPoints || 100,
       module_id: moduleId,
       status: 'published',
@@ -518,7 +520,8 @@ export const getInstructorAssessments = async (req: AuthRequest, res: Response) 
         `,
           { count: 'exact' }
         )
-        .eq('created_by', instructorId);
+        .eq('created_by', instructorId)
+        .eq('status', 'published');
 
       if (filter && filter !== 'all') {
         query = query.eq('type', filter);
@@ -786,7 +789,7 @@ export const submitAssessmentResponse = async (req: AuthRequest, res: Response) 
 
     const { data: assessment, error: assessmentError } = await supabase
       .from('assessments')
-      .select('id, questions_data')
+      .select('id, questions_data, due_date, allow_late_submissions')
       .eq('id', assessmentId)
       .single();
 
@@ -794,6 +797,13 @@ export const submitAssessmentResponse = async (req: AuthRequest, res: Response) 
       return res.status(404).json({
         success: false,
         error: { code: 'ASSESSMENT_NOT_FOUND', message: 'Quiz not found' },
+      });
+    }
+
+    if (assessment.due_date && new Date(assessment.due_date).getTime() <= Date.now() && !assessment.allow_late_submissions) {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'ASSESSMENT_LOCKED', message: 'This quiz is closed because its due date has passed.' },
       });
     }
 

@@ -14,6 +14,9 @@ ADD COLUMN IF NOT EXISTS year_level SMALLINT DEFAULT 1 CHECK (year_level IS NULL
 ALTER TABLE laboratories 
 ADD COLUMN IF NOT EXISTS year_level SMALLINT DEFAULT 1 CHECK (year_level IS NULL OR year_level BETWEEN 1 AND 3);
 
+ALTER TABLE laboratories
+ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'published';
+
 -- Step 2: Tag existing content with default semester (1st Sem)
 -- This ensures all existing content is tagged so archiving can work
 
@@ -54,8 +57,15 @@ SELECT
 FROM laboratories;
 
 -- Sample data check
-SELECT 'lessons' as table_name, id::text, title, year_level, status FROM lessons LIMIT 3
-UNION ALL
-SELECT 'assessments' as table_name, id::text, title, year_level, status FROM assessments LIMIT 3
-UNION ALL
-SELECT 'laboratories' as table_name, id::text, name as title, year_level, status FROM laboratories LIMIT 3;
+SELECT *
+FROM (
+  SELECT 'lessons' AS table_name, id::text, title, year_level, status
+  FROM lessons
+  UNION ALL
+  SELECT 'assessments' AS table_name, id::text, title, year_level, status
+  FROM assessments
+  UNION ALL
+  SELECT 'laboratories' AS table_name, id::text, title, year_level, status
+  FROM laboratories
+) AS sample_data
+LIMIT 9;

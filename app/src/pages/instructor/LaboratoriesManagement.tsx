@@ -34,6 +34,7 @@ interface Laboratory {
   lessonId: string;
   lessonTitle: string;
   dueDate: string;
+  allowLateSubmissions?: boolean;
   points: number;
   targetSections?: string[];
   targetYearLevels?: number[];
@@ -89,6 +90,7 @@ interface FormData {
   unitId: string;
   lessonId: string;
   dueDate: string;
+  allowLateSubmissions: boolean;
   points: number;
   targetSections: string[];
 }
@@ -101,6 +103,7 @@ const EMPTY_FORM: FormData = {
   unitId: '',
   lessonId: '',
   dueDate: '',
+  allowLateSubmissions: false,
   points: 100,
   targetSections: [],
 };
@@ -223,6 +226,7 @@ export function LaboratoriesManagement() {
       unitId: lab.unitId,
       lessonId: lab.lessonId,
       dueDate: lab.dueDate,
+      allowLateSubmissions: lab.allowLateSubmissions ?? false,
       points: lab.points ?? 100,
       targetSections: lab.targetSections ?? [],
     });
@@ -270,6 +274,7 @@ export function LaboratoriesManagement() {
           lessonId: formData.lessonId,
           lessonTitle: selectedLesson?.title ?? '',
           dueDate: formData.dueDate,
+          allowLateSubmissions: formData.allowLateSubmissions,
           points: formData.points,
           targetSections: formData.targetSections,
           targetYearLevels: [],
@@ -572,6 +577,15 @@ export function LaboratoriesManagement() {
                   <p className="text-slate-500 text-xs mt-1">Max score students can earn</p>
                 </div>
               </div>
+              <label className="flex items-center gap-2 text-sm text-slate-300">
+                <input
+                  type="checkbox"
+                  checked={formData.allowLateSubmissions}
+                  onChange={e => setFormData(f => ({ ...f, allowLateSubmissions: e.target.checked }))}
+                  className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-violet-500"
+                />
+                Allow late submissions after the due date
+              </label>
 
               {user?.teaching_sections && user.teaching_sections.length > 0 && (
                 <div className="rounded-lg border border-slate-800 bg-slate-950/40 p-3 space-y-3">

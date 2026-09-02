@@ -80,6 +80,10 @@ export async function extractTextFromDocxBuffer(buffer: Buffer): Promise<string>
   return String(result?.value || '').trim();
 }
 
+export function extractTextFromPlainTextBuffer(buffer: Buffer): string {
+  return buffer.toString('utf8').replace(/\u0000/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
 function looksLikePdf(buffer: Buffer): boolean {
   return buffer.subarray(0, 5).toString('utf8') === '%PDF-';
 }
@@ -95,7 +99,8 @@ export async function extractTextFromLessonFile(
 ): Promise<string> {
   const extension = path.extname(fileName).toLowerCase().replace('.', '');
   const format = String(originalFormat || '').toLowerCase().replace('.', '');
-  const kind = extension || format;
+  // Lesson metadata is authoritative when a legacy URL has the wrong extension.
+  const kind = format || extension;
 
   try {
     if (kind === 'pptx' || (looksLikeZip(buffer) && format === 'pptx')) {
@@ -109,6 +114,9 @@ export async function extractTextFromLessonFile(
     }
     if (kind === 'docx' || format === 'docx') {
       return await extractTextFromDocxBuffer(buffer);
+    }
+    if (kind === 'txt' || kind === 'md' || kind === 'markdown') {
+      return extractTextFromPlainTextBuffer(buffer);
     }
     if (looksLikeZip(buffer)) {
       const zip = await JSZip.loadAsync(buffer);

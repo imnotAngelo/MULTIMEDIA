@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Trash2, Sparkles, Settings2, BookOpen, Wand2, CheckCircle2 } from 'lucide-react';
 import { AetherSpinner } from '@/components/AetherSpinner';
 import { SectionYearTargetPicker } from '@/components/SectionYearTargetPicker';
+import { useAuthStore } from '@/stores/authStore';
 
 interface Unit {
   id: string;
@@ -32,6 +33,7 @@ interface Question {
 
 export function AutoGenerateQuiz() {
   const navigate = useNavigate();
+  const { user } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [units, setUnits] = useState<Unit[]>([]);
@@ -41,14 +43,15 @@ export function AutoGenerateQuiz() {
   const [selectedLesson, setSelectedLesson] = useState('');
   const [generatedQuestions, setGeneratedQuestions] = useState<Question[]>([]);
   const [questionsGenerated, setQuestionsGenerated] = useState(false);
-  const [targetYearLevels, setTargetYearLevels] = useState<number[]>([]);
   const [targetSections, setTargetSections] = useState<string[]>([]);
   const [sectionInput, setSectionInput] = useState('');
+  const [generationError, setGenerationError] = useState('');
 
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     dueDate: '',
+    allowLateSubmissions: false,
     timeLimit: 30,
     shuffleQuestions: true,
     showCorrectAnswers: false,
@@ -118,6 +121,7 @@ export function AutoGenerateQuiz() {
 
     try {
       setGenerating(true);
+      setGenerationError('');
 
       // Call the AI-powered question generation endpoint
       const response = await authFetch(`http://localhost:3001/api/lessons/${selectedLesson}/generate-questions`, {
@@ -169,7 +173,10 @@ export function AutoGenerateQuiz() {
       setGeneratedQuestions(cleanedQuestions);
       setQuestionsGenerated(true);
     } catch (error: any) {
-      alert('Failed to generate questions: ' + error.message);
+      const message = error?.name === 'AbortError'
+        ? 'Quiz generation timed out. Please try again or reduce the number of questions.'
+        : error?.message || 'Unable to generate questions.';
+      setGenerationError(`Failed to generate questions: ${message}`);
     } finally {
       setGenerating(false);
     }
@@ -269,6 +276,7 @@ export function AutoGenerateQuiz() {
         unitId: selectedUnit,
         lessonName: selectedLesson,
         dueDate: formData.dueDate,
+        allowLateSubmissions: formData.allowLateSubmissions,
         totalPoints: transformedQuestions.reduce((sum, q) => sum + q.points, 0),
         timeLimit: formData.timeLimit,
         shuffleQuestions: formData.shuffleQuestions,
@@ -276,7 +284,6 @@ export function AutoGenerateQuiz() {
         questions: transformedQuestions,
         generatedAutomatically: true,
         targetSections,
-        targetYearLevels,
       };
 
       const createQuiz = (allowDuplicate = false) => authFetch('http://localhost:3001/api/assessments', {
@@ -455,6 +462,15 @@ export function AutoGenerateQuiz() {
                   className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:border-violet-500 focus:outline-none"
                 />
               </div>
+              <label className="flex items-center gap-2 self-end pb-2 text-sm text-slate-300">
+                <input
+                  type="checkbox"
+                  checked={formData.allowLateSubmissions}
+                  onChange={(e) => setFormData(prev => ({ ...prev, allowLateSubmissions: e.target.checked }))}
+                  className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-violet-500"
+                />
+                Allow late submissions
+              </label>
 
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">Time Limit (minutes)</label>
@@ -483,17 +499,24 @@ export function AutoGenerateQuiz() {
             </div>
 
             <SectionYearTargetPicker
-              yearLevels={targetYearLevels}
-              onYearLevelsChange={setTargetYearLevels}
+              yearLevels={[]}
+              onYearLevelsChange={() => undefined}
               sections={targetSections}
               onSectionsChange={setTargetSections}
               sectionInput={sectionInput}
               onSectionInputChange={setSectionInput}
+              showYearLevels={false}
+              sectionOptions={user?.teaching_sections || []}
             />
 
             {/* Generate Button */}
             {!questionsGenerated && (
               <div className="pt-4">
+                {generationError && (
+                  <div role="alert" className="mb-3 rounded-md border border-red-400/30 bg-red-400/10 px-3 py-2 text-sm text-red-200">
+                    {generationError}
+                  </div>
+                )}
                 <Button
                   type="button"
                   onClick={generateQuestions}

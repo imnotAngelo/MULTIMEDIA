@@ -138,6 +138,33 @@ export const register = async (req: AuthRequest, res: Response) => {
           },
         });
       }
+
+      if (role === 'instructor') {
+        const { data: existingInstructors, error: instructorLookupError } = await supabase
+          .from('users')
+          .select('id, teaching_sections, section')
+          .eq('role', 'instructor');
+
+        if (instructorLookupError) throw instructorLookupError;
+
+        const requestedSections = new Set(parsedTeachingSections.map((value) => value.toLowerCase()));
+        const duplicateInstructor = (existingInstructors || []).find((instructor: any) => {
+          const assignedSections = Array.isArray(instructor.teaching_sections) && instructor.teaching_sections.length > 0
+            ? instructor.teaching_sections
+            : [instructor.section];
+          return assignedSections.some((value: any) => requestedSections.has(String(value || '').trim().toLowerCase()));
+        });
+
+        if (duplicateInstructor) {
+          return res.status(409).json({
+            success: false,
+            error: {
+              code: 'SECTION_ALREADY_ASSIGNED',
+              message: 'An instructor is already registered for one or more of these sections. Please choose a different section.',
+            },
+          });
+        }
+      }
     } catch (error: any) {
       throw error;
     }

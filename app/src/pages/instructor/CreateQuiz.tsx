@@ -27,6 +27,11 @@ interface Unit {
   title: string;
 }
 
+interface Lesson {
+  id: string;
+  title: string;
+}
+
 const initialQuestion: Question = {
   id: '1',
   text: '',
@@ -43,11 +48,15 @@ export function CreateQuiz() {
     title: '',
     description: '',
     unitId: '',
+    lessonId: '',
+    allowLateSubmissions: false,
     timeLimit: 60,
     passingScore: 70,
   });
 
   const [units, setUnits] = useState<Unit[]>([]);
+  const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [loadingLessons, setLoadingLessons] = useState(false);
   const [questions, setQuestions] = useState<Question[]>([initialQuestion]);
   const [targetSections, setTargetSections] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,6 +66,28 @@ export function CreateQuiz() {
   useEffect(() => {
     loadUnits();
   }, []);
+
+  useEffect(() => {
+    if (!formData.unitId) {
+      setLessons([]);
+      return;
+    }
+
+    const loadLessons = async () => {
+      try {
+        setLoadingLessons(true);
+        const response = await authFetch(`${API_BASE_URL}/units/${formData.unitId}/lessons`);
+        const data = await response.json();
+        setLessons(response.ok && Array.isArray(data.data) ? data.data : []);
+      } catch {
+        setLessons([]);
+      } finally {
+        setLoadingLessons(false);
+      }
+    };
+
+    loadLessons();
+  }, [formData.unitId]);
 
   const loadUnits = async () => {
     try {
@@ -96,7 +127,7 @@ export function CreateQuiz() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title.trim() || !formData.unitId || questions.length === 0) {
+    if (!formData.title.trim() || !formData.unitId || !formData.lessonId || questions.length === 0) {
       alert('Please fill in all required fields');
       return;
     }
@@ -109,6 +140,8 @@ export function CreateQuiz() {
           title: formData.title,
           description: formData.description,
           unitId: formData.unitId,
+          lessonId: formData.lessonId,
+          allowLateSubmissions: formData.allowLateSubmissions,
           type: 'quiz',
           totalPoints: questions.reduce((total, question) => total + question.points, 0),
           timeLimit: formData.timeLimit,
@@ -167,7 +200,7 @@ export function CreateQuiz() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-slate-300">Unit</Label>
-                    <Select value={formData.unitId} onValueChange={(value) => setFormData({ ...formData, unitId: value })}>
+                    <Select value={formData.unitId} onValueChange={(value) => setFormData({ ...formData, unitId: value, lessonId: '' })}>
                       <SelectTrigger className="bg-slate-800 border-slate-700 text-white mt-1">
                         <SelectValue placeholder="Select a unit" />
                       </SelectTrigger>
@@ -191,6 +224,37 @@ export function CreateQuiz() {
                     />
                   </div>
                 </div>
+                <div>
+                  <Label className="text-slate-300">Lesson</Label>
+                  <Select
+                    value={formData.lessonId}
+                    onValueChange={(value) => setFormData({ ...formData, lessonId: value })}
+                    disabled={!formData.unitId || loadingLessons || lessons.length === 0}
+                  >
+                    <SelectTrigger className="bg-slate-800 border-slate-700 text-white mt-1">
+                      <SelectValue placeholder={loadingLessons ? 'Loading lessons...' : formData.unitId ? 'Select a lesson' : 'Select a unit first'} />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-800 border-slate-700">
+                      {lessons.map(lesson => (
+                        <SelectItem key={lesson.id} value={lesson.id} className="text-white">
+                          {lesson.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {formData.unitId && !loadingLessons && lessons.length === 0 && (
+                    <p className="mt-1 text-xs text-amber-300">No lessons are available in this unit.</p>
+                  )}
+                </div>
+                <label className="flex items-center gap-2 text-sm text-slate-300">
+                  <input
+                    type="checkbox"
+                    checked={formData.allowLateSubmissions}
+                    onChange={(e) => setFormData({ ...formData, allowLateSubmissions: e.target.checked })}
+                    className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-violet-500"
+                  />
+                  Allow late submissions after the due date
+                </label>
                 <div>
                   <Label className="text-slate-300">Passing Score (%)</Label>
                   <Input

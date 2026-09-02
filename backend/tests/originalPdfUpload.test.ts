@@ -23,6 +23,18 @@ test('keeps uploaded PDFs as original documents without slide generation', () =>
   assert.equal(record.originalFormat, 'pdf');
 });
 
+test('persists extracted document text instead of the default upload description', () => {
+  const record = buildOriginalPdfLessonRecord({
+    title: 'Text PDF Lesson',
+    description: 'Lesson uploaded from PDF',
+    pdfText: 'Photosynthesis uses sunlight to make glucose in plant leaves.',
+    moduleId: '8d78f6f6-9c42-4f7b-9975-2c4c6d4c7d1a',
+    fileName: 'lesson-text.pdf',
+  });
+
+  assert.equal(record.content, 'Photosynthesis uses sunlight to make glucose in plant leaves.');
+});
+
 test('creates unique upload names to prevent overwriting earlier PDF files', () => {
   const nameA = createUniqueStorageName('.pdf', 'lesson');
   const nameB = createUniqueStorageName('.pdf', 'lesson');

@@ -96,7 +96,7 @@ router.post("/upload-file", authMiddleware, async (req: AuthRequest, res: Respon
     const studentId = req.user?.id;
 
     const { data: labRecord } = labId
-      ? await supabase.from("laboratories").select("id, instructor_id, target_sections, target_year_levels").eq("id", labId).maybeSingle()
+      ? await supabase.from("laboratories").select("id, instructor_id, due_date, allow_late_submissions, target_sections, target_year_levels").eq("id", labId).maybeSingle()
       : { data: null };
 
     if (!labId || !studentId || !file) {
@@ -108,6 +108,11 @@ router.post("/upload-file", authMiddleware, async (req: AuthRequest, res: Respon
 
     if (!labRecord) {
       return res.status(404).json({ error: "Laboratory not found" });
+    }
+
+    if (labRecord.due_date && new Date(labRecord.due_date).getTime() <= Date.now() && !labRecord.allow_late_submissions) {
+      if (file) fs.unlinkSync(file.path);
+      return res.status(403).json({ error: "This laboratory is closed because its due date has passed." });
     }
 
     if (req.user?.role === 'student' && !matchesContentTarget(

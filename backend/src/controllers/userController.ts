@@ -813,8 +813,17 @@ export const updateSemesterAndClearProgress = async (req: AuthRequest, res: Resp
     console.log(`   ✅ Found ${courseIds.length} courses and ${archiveModuleIds.length} active modules`);
     results.steps.push({ name: 'Fetch instructor modules', count: archiveModuleIds.length, status: 'success' });
 
-    if (archiveModuleIds.length === 0) {
-      // No courses, just update and return
+    const { data: ownedAssessments, error: ownedAssessmentsError } = await supabase
+      .from('assessments')
+      .select('id')
+      .eq('created_by', instructorId)
+      .neq('status', 'archived');
+
+    if (ownedAssessmentsError) {
+      throw new Error(`Failed to fetch instructor assessments: ${ownedAssessmentsError.message}`);
+    }
+
+    if (archiveModuleIds.length === 0 && !ownedAssessments?.length) {
       return res.json({
         success: true,
         message: 'Semester updated successfully (no content to archive)',
@@ -830,14 +839,23 @@ export const updateSemesterAndClearProgress = async (req: AuthRequest, res: Resp
       { data: labs, error: labsError },
       { data: assessments, error: assessError }
     ] = await Promise.all([
-      supabase.from('lessons').select('id').in('module_id', archiveModuleIds),
-      supabase.from('laboratories').select('id').in('unit_id', archiveModuleIds),
-      supabase.from('assessments').select('id').in('module_id', archiveModuleIds),
+      archiveModuleIds.length > 0
+        ? supabase.from('lessons').select('id').in('module_id', archiveModuleIds)
+        : Promise.resolve({ data: [], error: null }),
+      archiveModuleIds.length > 0
+        ? supabase.from('laboratories').select('id').in('unit_id', archiveModuleIds)
+        : Promise.resolve({ data: [], error: null }),
+      archiveModuleIds.length > 0
+        ? supabase.from('assessments').select('id').in('module_id', archiveModuleIds)
+        : Promise.resolve({ data: [], error: null }),
     ]);
 
     const lessonIds = lessons?.map(l => l.id) || [];
     const labIds = labs?.map(l => l.id) || [];
-    const assessmentIds = assessments?.map(a => a.id) || [];
+    const assessmentIds = [...new Set([
+      ...(assessments?.map(a => a.id) || []),
+      ...(ownedAssessments?.map(a => a.id) || []),
+    ])];
 
     console.log(`   ✅ Found ${lessonIds.length} lessons, ${labIds.length} labs, ${assessmentIds.length} assessments`);
     results.steps.push({ 
@@ -915,6 +933,9 @@ export const updateSemesterAndClearProgress = async (req: AuthRequest, res: Resp
       const { error, count } = result;
 
       if (error) {
+        if (type === 'archive_labs' && /status.*column|column.*status|schema cache/i.test(error.message || '')) {
+          throw new Error('Laboratory archiving is not configured. Run backend/setup-archiving.sql in Supabase, then try again.');
+        }
         throw new Error(`${type} failed: ${error.message}`);
       } else {
         const finalCount = count || 0;
