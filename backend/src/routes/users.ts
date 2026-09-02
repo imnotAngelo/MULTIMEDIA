@@ -11,6 +11,7 @@ import {
   upsertLessonProgress,
   getMyLessonProgress,
   getLessonProgressStats,
+  updateSemesterAndClearProgress,
 } from '../controllers/userController.js';
 import { supabase } from '../config/supabase.js';
 
@@ -25,6 +26,7 @@ router.get('/lesson-progress/me', authMiddleware, getMyLessonProgress);
 router.get('/lesson-progress/stats', authMiddleware, getLessonProgressStats);
 router.post('/lesson-progress', authMiddleware, upsertLessonProgress);
 router.get('/leaderboard', authMiddleware, getLeaderboard);
+router.post('/update-semester', authMiddleware, updateSemesterAndClearProgress);
 
 // Migration check endpoint - verify if SQL migration has been executed
 router.get('/debug/migration-status', authMiddleware, async (req: any, res) => {

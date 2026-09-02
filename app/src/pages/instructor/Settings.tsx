@@ -188,7 +188,13 @@ export function InstructorSettings() {
       });
       const data = await response.json();
       if (!data.success) throw new Error(data.error?.message);
-      toast.success('✅ Unit restored successfully');
+      
+      const lessonCount = data.data?.restoredLessonCount || 0;
+      if (lessonCount > 0) {
+        toast.success(`✅ Unit restored with ${lessonCount} lesson${lessonCount !== 1 ? 's' : ''} and all videos`);
+      } else {
+        toast.success('✅ Unit restored successfully');
+      }
       await loadArchives();
     } catch (err: any) {
       toast.error(err?.message || 'Failed to restore unit');
@@ -206,7 +212,9 @@ export function InstructorSettings() {
       });
       const data = await response.json();
       if (!data.success) throw new Error(data.error?.message);
-      toast.success('✅ Lesson restored successfully');
+      
+      const hasVideo = data.data?.video_url ? ' with video' : '';
+      toast.success(`✅ Lesson restored successfully${hasVideo}`);
       await loadArchives();
     } catch (err: any) {
       toast.error(err?.message || 'Failed to restore lesson');
@@ -262,9 +270,14 @@ export function InstructorSettings() {
   const handleUpdateSemester = async () => {
     if (newSemester === user?.year_level || updatingSemester) return;
     
+    const semesterLabel = ACADEMIC_YEAR_OPTIONS.find(o => o.value === newSemester)?.label;
     const confirmUpdate = window.confirm(
-      `Are you sure you want to change your teaching semester to ${ACADEMIC_YEAR_OPTIONS.find(o => o.value === newSemester)?.label}? ` +
-      'Your previous semester content will be archived and moved to the Archives section.'
+      `Are you sure you want to change to ${semesterLabel}?\n\n` +
+      `This will:\n` +
+      `✓ Update your teaching semester\n` +
+      `✓ Clear all student progress & submissions\n` +
+      `✓ Archive your previous semester's content\n\n` +
+      `This action cannot be undone.`
     );
     
     if (!confirmUpdate) return;
@@ -272,53 +285,56 @@ export function InstructorSettings() {
     setUpdatingSemester(true);
     console.log(`🔄 [SEMESTER UPDATE] Starting semester change from ${user?.year_level} to ${newSemester}`);
     try {
-      console.log(`📝 [SEMESTER UPDATE] Sending request to update profile...`);
-      console.log(`📝 [SEMESTER UPDATE] User ID:`, user?.id);
-      console.log(`📝 [SEMESTER UPDATE] Request body:`, { year_level: newSemester });
+      console.log(`📝 [SEMESTER UPDATE] Calling /api/users/update-semester...`);
       
-      const res: any = await api.updateProfile({
-        year_level: newSemester,
+      const response = await authFetch('/users/update-semester', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          teaching_year_levels: [newSemester],
+          teaching_sections: teachingSections.length > 0 ? teachingSections : null,
+        }),
       });
       
-      console.log(`📝 [SEMESTER UPDATE] Full response received:`, res);
-      console.log(`📝 [SEMESTER UPDATE] Response success:`, res?.success);
-      console.log(`📝 [SEMESTER UPDATE] Response data:`, res?.data);
-      console.log(`📝 [SEMESTER UPDATE] Response error:`, res?.error);
+      const data = await response.json();
+      console.log(`📝 [SEMESTER UPDATE] API Response:`, data);
       
-      if (!res?.success) {
-        const errorMsg = res?.error?.message || res?.message || 'Failed to update semester (no error message)';
-        console.error(`❌ [SEMESTER UPDATE] API returned success=false with error:`, errorMsg);
-        throw new Error(errorMsg);
+      if (!response.ok) {
+        throw new Error(data.error?.message || 'Failed to update semester');
       }
       
-      const updated = res.data;
-      if (!updated) {
-        console.error(`❌ [SEMESTER UPDATE] No user data in response`);
-        throw new Error('No user data returned from API');
-      }
-      
-      console.log(`✅ [SEMESTER UPDATE] User data received:`, updated);
-      console.log(`✅ [SEMESTER UPDATE] New year_level:`, updated.year_level);
-      
-      // Update auth store with new user data IMMEDIATELY
-      const updatedUser = { ...(user as any), ...updated };
+      // Update user's year_level in auth store
+      const updatedUser = { ...(user as any), year_level: newSemester };
       setUser(updatedUser);
-      console.log(`✅ [SEMESTER UPDATE] Auth store updated with new user data`);
+      setNewSemester(newSemester);
       
-      toast.success(`✅ Semester updated to ${ACADEMIC_YEAR_OPTIONS.find(o => o.value === newSemester)?.label}. Previous content has been archived.`);
-      console.log(`✅ [SEMESTER UPDATE] Toast shown, waiting before navigation...`);
+      // Show success with details of what was cleared
+      const cleared = data.data?.cleared || {};
+      const progressCount = cleared.lesson_progress || 0;
+      const labCount = cleared.lab_submissions || 0;
+      const quizCount = cleared.assessment_submissions || 0;
       
-      // Wait 2 seconds for archiving to complete, then navigate (NOT reload)
-      setTimeout(() => {
-        console.log(`🔄 [SEMESTER UPDATE] Navigating to instructor dashboard...`);
-        navigate('/instructor/dashboard');
-      }, 2000);
+      const clearDetails = [
+        progressCount > 0 ? `${progressCount} lesson progress` : null,
+        labCount > 0 ? `${labCount} lab submissions` : null,
+        quizCount > 0 ? `${quizCount} quiz submissions` : null,
+      ].filter(Boolean).join(', ') || 'all student data';
+      
+      toast.success(
+        `✅ Semester updated to ${semesterLabel}!\n🗑️ Cleared: ${clearDetails}\n📦 Previous content archived.`
+      );
+      
+      console.log(`✅ [SEMESTER UPDATE] Semester update complete`);
     } catch (err: any) {
-      console.error(`❌ [SEMESTER UPDATE] Error caught:`, err);
-      console.error(`❌ [SEMESTER UPDATE] Error message:`, err?.message);
-      console.error(`❌ [SEMESTER UPDATE] Full error object:`, err);
+      console.error(`❌ [SEMESTER UPDATE] Error:`, err);
       toast.error(err?.message || 'Failed to update semester.');
       setUpdatingSemester(false);
+    } finally {
+      if (updatingSemester) {
+        setUpdatingSemester(false);
+      }
     }
   };
 

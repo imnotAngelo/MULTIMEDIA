@@ -1,17 +1,29 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { GraduationCap, Save, User as UserIcon, Flame, Calendar, Image as ImageIcon, Upload, RotateCcw } from 'lucide-react';
+import { GraduationCap, Save, User as UserIcon, Flame, Calendar, Image as ImageIcon, Upload, RotateCcw, Archive, ArrowRight } from 'lucide-react';
 import { AetherSpinner } from '@/components/AetherSpinner';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/stores/authStore';
 import { api } from '@/services/api';
+import { authFetch } from '@/lib/authFetch';
 
 const ACADEMIC_YEAR_OPTIONS = [
   { value: 1, label: '1st Sem' },
   { value: 2, label: '2nd Sem' },
   { value: 3, label: 'Summer' },
 ];
+
+interface Unit {
+  id: string;
+  title: string;
+  description: string;
+}
+
+interface Lesson {
+  id: string;
+  title: string;
+}
 
 function getInitials(name: string) {
   if (!name) return '?';
@@ -45,6 +57,13 @@ export function StudentSettings() {
   const [newSemester, setNewSemester] = useState<1 | 2 | 3>(user?.year_level as 1 | 2 | 3 ?? 1);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Archive states
+  const [archivedUnits, setArchivedUnits] = useState<Unit[]>([]);
+  const [archivedLessons, setArchivedLessons] = useState<Lesson[]>([]);
+  const [showArchives, setShowArchives] = useState(false);
+  const [restoringId, setRestoringId] = useState<string | null>(null);
+  const [loadingArchives, setLoadingArchives] = useState(false);
+
   const handleAvatarFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
@@ -77,7 +96,15 @@ export function StudentSettings() {
     setFullName(user?.full_name ?? '');
     setAvatarUrl(user?.avatar_url ?? '');
     setNewSemester(user?.year_level as 1 | 2 | 3 ?? 1);
+    // Load archives on component mount so they're available
+    loadArchives();
   }, [user]);
+
+  useEffect(() => {
+    if (showArchives) {
+      loadArchives();
+    }
+  }, [showArchives]);
 
   const dirty =
     fullName.trim() !== (user?.full_name ?? '').trim() ||
@@ -157,6 +184,9 @@ export function StudentSettings() {
       toast.success(`✅ Semester updated to ${ACADEMIC_YEAR_OPTIONS.find(o => o.value === newSemester)?.label}. Previous content has been archived.`);
       console.log(`✅ [SEMESTER UPDATE] Toast shown, waiting before navigation...`);
       
+      // Reload archives
+      await loadArchives();
+      
       // Wait 2 seconds for archiving to complete, then navigate (NOT reload)
       setTimeout(() => {
         console.log(`🔄 [SEMESTER UPDATE] Navigating to dashboard...`);
@@ -168,6 +198,87 @@ export function StudentSettings() {
       console.error(`❌ [SEMESTER UPDATE] Full error object:`, err);
       toast.error(err?.message || 'Failed to update semester.');
       setUpdatingSemester(false);
+    }
+  };
+
+  const loadArchives = async () => {
+    setLoadingArchives(true);
+    try {
+      const response = await authFetch('http://localhost:3001/api/units', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await response.json();
+      console.log('📦 [ARCHIVES] API Response:', data);
+      if (data?.success) {
+        const archived = data.archived || [];
+        console.log('📦 [ARCHIVES] Archived units count:', archived.length);
+        setArchivedUnits(archived);
+        
+        // Fetch archived lessons from archived units
+        const allArchivedLessons: Lesson[] = [];
+        for (const unit of archived) {
+          const lessonRes = await authFetch(`http://localhost:3001/api/units/${unit.id}/lessons`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+          });
+          const lessonData = await lessonRes.json();
+          console.log(`📖 [ARCHIVES] Lessons for unit ${unit.id}:`, lessonData);
+          if (lessonData?.data?.archived) {
+            allArchivedLessons.push(...lessonData.data.archived);
+          }
+        }
+        console.log('📖 [ARCHIVES] Total archived lessons:', allArchivedLessons.length);
+        setArchivedLessons(allArchivedLessons);
+      }
+    } catch (err) {
+      console.error('Failed to load archives:', err);
+    } finally {
+      setLoadingArchives(false);
+    }
+  };
+
+  const handleUnarchiveUnit = async (unitId: string) => {
+    setRestoringId(unitId);
+    try {
+      const response = await authFetch(`http://localhost:3001/api/units/${unitId}/unarchive`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await response.json();
+      if (!data.success) throw new Error(data.error?.message);
+      
+      const lessonCount = data.data?.restoredLessonCount || 0;
+      if (lessonCount > 0) {
+        toast.success(`✅ Unit restored with ${lessonCount} lesson${lessonCount !== 1 ? 's' : ''} and all videos`);
+      } else {
+        toast.success('✅ Unit restored successfully');
+      }
+      await loadArchives();
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to restore unit');
+    } finally {
+      setRestoringId(null);
+    }
+  };
+
+  const handleUnarchiveLesson = async (lessonId: string) => {
+    setRestoringId(lessonId);
+    try {
+      const response = await authFetch(`http://localhost:3001/api/units/lessons/${lessonId}/unarchive`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await response.json();
+      if (!data.success) throw new Error(data.error?.message);
+      
+      const hasVideo = data.data?.video_url ? ' with video' : '';
+      toast.success(`✅ Lesson restored successfully${hasVideo}`);
+      await loadArchives();
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to restore lesson');
+    } finally {
+      setRestoringId(null);
     }
   };
 
@@ -235,6 +346,92 @@ export function StudentSettings() {
             )}
           </Button>
         </div>
+      </div>
+
+      {/* Archives Section */}
+      <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-6 mb-6">
+        <div
+          className="flex items-center justify-between cursor-pointer hover:opacity-80 transition-opacity"
+          onClick={() => setShowArchives(!showArchives)}
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+              <Archive className="w-5 h-5 text-amber-400" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-white">Archives</h2>
+              <p className="text-xs text-amber-400">
+                {archivedUnits.length + archivedLessons.length} item{archivedUnits.length + archivedLessons.length !== 1 ? 's' : ''}
+              </p>
+            </div>
+          </div>
+          <ArrowRight className={`w-4 h-4 text-slate-600 transform transition-transform ${showArchives ? 'rotate-90' : ''}`} />
+        </div>
+
+        {showArchives && (
+          <div className="mt-4">
+            {loadingArchives && (
+              <div className="flex justify-center py-8">
+                <AetherSpinner className="w-6 h-6" />
+              </div>
+            )}
+            
+            {!loadingArchives && archivedUnits.length === 0 && archivedLessons.length === 0 && (
+              <div className="text-center py-8">
+                <p className="text-slate-400">No archived content yet</p>
+              </div>
+            )}
+
+            {!loadingArchives && archivedUnits.length > 0 && (
+              <div className="mb-4">
+                <h3 className="text-sm font-semibold text-amber-300 mb-3">Archived Units</h3>
+                <div className="space-y-2">
+                  {archivedUnits.map((unit) => (
+                    <div key={unit.id} className="flex items-center justify-between p-3 bg-slate-800/40 rounded-lg">
+                      <div>
+                        <p className="text-white text-sm font-medium">{unit.title}</p>
+                      </div>
+                      <button
+                        onClick={() => handleUnarchiveUnit(unit.id)}
+                        disabled={restoringId === unit.id}
+                        className="flex items-center gap-1 text-xs text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded"
+                      >
+                        <RotateCcw className={`w-3 h-3 ${restoringId === unit.id ? 'animate-spin' : ''}`} />
+                        {restoringId === unit.id ? 'Restoring...' : 'Restore'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {!loadingArchives && archivedLessons.length > 0 && (
+              <div>
+                <h3 className="text-sm font-semibold text-amber-300 mb-3">Archived Lessons</h3>
+                <div className="space-y-2">
+                  {archivedLessons.slice(0, 5).map((lesson) => (
+                    <div key={lesson.id} className="flex items-center justify-between p-3 bg-slate-800/40 rounded-lg">
+                      <p className="text-white text-sm">{lesson.title}</p>
+                      <button
+                        onClick={() => handleUnarchiveLesson(lesson.id)}
+                        disabled={restoringId === lesson.id}
+                        className="flex items-center gap-1 text-xs text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded"
+                      >
+                        <RotateCcw className={`w-3 h-3 ${restoringId === lesson.id ? 'animate-spin' : ''}`} />
+                        {restoringId === lesson.id ? 'Restoring...' : 'Restore'}
+                      </button>
+                    </div>
+                  ))}
+                  {archivedLessons.length > 5 && (
+                    <p className="text-xs text-slate-500 text-center mt-2">
+                      +{archivedLessons.length - 5} more archived lessons
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Profile card */}

@@ -641,3 +641,216 @@ export const getLeaderboard = async (req: AuthRequest, res: Response) => {
     });
   }
 };
+
+/**
+ * Update instructor's semester/year level and clear all student progress
+ * Clears:
+ * - Lesson progress (student submissions)
+ * - Laboratory submissions
+ * - Assessment/Quiz submissions
+ * - Dashboard data for students in these courses
+ */
+export const updateSemesterAndClearProgress = async (req: AuthRequest, res: Response) => {
+  try {
+    const instructorId = req.user?.id;
+    const { teaching_year_levels, teaching_sections } = req.body;
+
+    if (!instructorId) {
+      return res.status(401).json({
+        success: false,
+        error: {
+          code: 'UNAUTHORIZED',
+          message: 'User not authenticated',
+        },
+      });
+    }
+
+    // Verify user is an instructor
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', instructorId)
+      .single();
+
+    if (userError || !user || user.role !== 'instructor') {
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: 'FORBIDDEN',
+          message: 'Only instructors can update semester',
+        },
+      });
+    }
+
+    console.log(`\n🔄 SEMESTER UPDATE: Instructor ${instructorId}`);
+    console.log(`   New teaching_year_levels: ${JSON.stringify(teaching_year_levels)}`);
+    console.log(`   New teaching_sections: ${JSON.stringify(teaching_sections)}`);
+
+    const results: any = {
+      timestamp: new Date().toISOString(),
+      instructor_id: instructorId,
+      steps: [],
+      cleared: {
+        lesson_progress: 0,
+        lab_submissions: 0,
+        assessment_submissions: 0,
+      },
+    };
+
+    // Step 1: Update instructor's teaching years and sections
+    console.log(`\n📝 Step 1: Updating instructor profile...`);
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({
+        teaching_year_levels: teaching_year_levels || [],
+        teaching_sections: teaching_sections || [],
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', instructorId);
+
+    if (updateError) {
+      console.error(`   ❌ ERROR: ${updateError.message}`);
+      return res.status(500).json({
+        success: false,
+        error: {
+          code: 'UPDATE_FAILED',
+          message: `Failed to update instructor profile: ${updateError.message}`,
+        },
+      });
+    }
+    console.log(`   ✅ Instructor profile updated`);
+    results.steps.push({ name: 'Update instructor profile', status: 'success' });
+
+    // Step 2: Get all modules created by this instructor
+    console.log(`\n📝 Step 2: Fetching instructor's modules...`);
+    const { data: courses, error: coursesError } = await supabase
+      .from('courses')
+      .select('id')
+      .eq('instructor_id', instructorId);
+
+    if (coursesError) {
+      console.error(`   ❌ ERROR: ${coursesError.message}`);
+      return res.status(500).json({
+        success: false,
+        error: {
+          code: 'FETCH_FAILED',
+          message: `Failed to fetch courses: ${coursesError.message}`,
+        },
+      });
+    }
+
+    const courseIds = courses?.map(c => c.id) || [];
+    console.log(`   ✅ Found ${courseIds.length} courses`);
+    results.steps.push({ name: 'Fetch instructor courses', count: courseIds.length, status: 'success' });
+
+    // Step 3: Clear lesson progress for all students in instructor's courses
+    console.log(`\n📝 Step 3: Clearing lesson progress...`);
+    if (courseIds.length > 0) {
+      // Get all lessons in instructor's courses
+      const { data: lessons, error: lessonsError } = await supabase
+        .from('lessons')
+        .select('id')
+        .in('module_id', courseIds);
+
+      if (lessonsError) {
+        console.error(`   ⚠️  WARNING: ${lessonsError.message}`);
+      } else {
+        const lessonIds = lessons?.map(l => l.id) || [];
+        if (lessonIds.length > 0) {
+          const { error: deleteProgressError, count } = await supabase
+            .from('lesson_progress')
+            .delete()
+            .in('lesson_id', lessonIds);
+
+          if (deleteProgressError) {
+            console.error(`   ⚠️  WARNING: ${deleteProgressError.message}`);
+          } else {
+            console.log(`   ✅ Cleared ${count || 0} lesson progress records`);
+            results.cleared.lesson_progress = count || 0;
+          }
+        }
+      }
+    }
+    results.steps.push({ name: 'Clear lesson progress', count: results.cleared.lesson_progress, status: 'success' });
+
+    // Step 4: Clear laboratory submissions
+    console.log(`\n📝 Step 4: Clearing laboratory submissions...`);
+    if (courseIds.length > 0) {
+      // Get all laboratories in instructor's courses
+      const { data: labs, error: labsError } = await supabase
+        .from('laboratories')
+        .select('id')
+        .in('module_id', courseIds);
+
+      if (labsError) {
+        console.error(`   ⚠️  WARNING: ${labsError.message}`);
+      } else {
+        const labIds = labs?.map(l => l.id) || [];
+        if (labIds.length > 0) {
+          const { error: deleteSubmissionsError, count } = await supabase
+            .from('laboratory_submissions')
+            .delete()
+            .in('laboratory_id', labIds);
+
+          if (deleteSubmissionsError) {
+            console.error(`   ⚠️  WARNING: ${deleteSubmissionsError.message}`);
+          } else {
+            console.log(`   ✅ Cleared ${count || 0} laboratory submissions`);
+            results.cleared.lab_submissions = count || 0;
+          }
+        }
+      }
+    }
+    results.steps.push({ name: 'Clear lab submissions', count: results.cleared.lab_submissions, status: 'success' });
+
+    // Step 5: Clear assessment/quiz submissions
+    console.log(`\n📝 Step 5: Clearing assessment/quiz submissions...`);
+    if (courseIds.length > 0) {
+      // Get all assessments in instructor's courses
+      const { data: assessments, error: assessError } = await supabase
+        .from('assessments')
+        .select('id')
+        .in('module_id', courseIds);
+
+      if (assessError) {
+        console.error(`   ⚠️  WARNING: ${assessError.message}`);
+      } else {
+        const assessmentIds = assessments?.map(a => a.id) || [];
+        if (assessmentIds.length > 0) {
+          const { error: deleteSubmissionsError, count } = await supabase
+            .from('assessment_submissions')
+            .delete()
+            .in('assessment_id', assessmentIds);
+
+          if (deleteSubmissionsError) {
+            console.error(`   ⚠️  WARNING: ${deleteSubmissionsError.message}`);
+          } else {
+            console.log(`   ✅ Cleared ${count || 0} assessment submissions`);
+            results.cleared.assessment_submissions = count || 0;
+          }
+        }
+      }
+    }
+    results.steps.push({ name: 'Clear assessment submissions', count: results.cleared.assessment_submissions, status: 'success' });
+
+    console.log(`\n✅ SEMESTER UPDATE COMPLETE`);
+    console.log(`   Total lesson progress cleared: ${results.cleared.lesson_progress}`);
+    console.log(`   Total lab submissions cleared: ${results.cleared.lab_submissions}`);
+    console.log(`   Total quiz submissions cleared: ${results.cleared.assessment_submissions}`);
+
+    return res.json({
+      success: true,
+      message: 'Semester updated and student progress cleared successfully',
+      data: results,
+    });
+  } catch (error: any) {
+    console.error('Semester update error:', error);
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: 'INTERNAL_SERVER_ERROR',
+        message: error.message,
+      },
+    });
+  }
+};

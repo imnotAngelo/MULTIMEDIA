@@ -56,6 +56,8 @@ export function InstructorDashboard() {
     loadUnitsAndLessons();
   }, []);
 
+
+
   const loadUnitsAndLessons = async () => {
     try {
       setLoading(true);
@@ -170,6 +172,8 @@ export function InstructorDashboard() {
           Refresh
         </Button>
       </div>
+
+
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">

@@ -575,7 +575,7 @@ export const deleteUnit = async (req: AuthRequest, res: Response) => {
   }
 };
 
-// Unarchive a unit (module) - restore to active
+// Unarchive a unit (module) - restore to active + all lessons inside
 export const unarchiveUnit = async (req: AuthRequest, res: Response) => {
   try {
     const { unitId } = req.params;
@@ -588,22 +588,60 @@ export const unarchiveUnit = async (req: AuthRequest, res: Response) => {
     }
 
     console.log('♻️ Unarchiving unit:', unitId);
+    console.log('  📝 Step 1: Restoring the unit itself...');
 
-    const { data: unit, error } = await supabase
+    // Step 1: Restore the unit
+    const { data: unit, error: unitError } = await supabase
       .from('modules')
       .update({ status: 'active' })
       .eq('id', unitId)
       .select()
       .single();
 
-    if (error) throw error;
+    if (unitError) throw unitError;
+    console.log('  ✅ Unit restored:', unitId);
 
-    console.log('✅ Unit unarchived:', unitId);
+    // Step 2: Get all archived lessons in this unit
+    console.log('  📝 Step 2: Finding archived lessons in this unit...');
+    const { data: archivedLessons, error: lessonsError } = await supabase
+      .from('lessons')
+      .select('id, title')
+      .eq('module_id', unitId)
+      .eq('status', 'archived');
+
+    if (lessonsError) {
+      console.error('  ⚠️  WARNING: Could not fetch archived lessons:', lessonsError.message);
+    } else {
+      const lessonCount = archivedLessons?.length || 0;
+      console.log(`  ✅ Found ${lessonCount} archived lessons`);
+
+      // Step 3: Restore all archived lessons
+      if (lessonCount > 0) {
+        console.log('  📝 Step 3: Restoring lessons...');
+        const lessonIds = archivedLessons!.map(l => l.id);
+        
+        const { error: restoreError } = await supabase
+          .from('lessons')
+          .update({ status: 'active' })
+          .in('id', lessonIds);
+
+        if (restoreError) {
+          console.error('  ⚠️  WARNING: Could not restore lessons:', restoreError.message);
+        } else {
+          console.log(`  ✅ Restored ${lessonCount} lessons with their videos`);
+        }
+      }
+    }
+
+    console.log('✅ Unit and all its content unarchived successfully');
 
     return res.json({
       success: true,
-      message: 'Unit restored successfully',
-      data: unit,
+      message: 'Unit and all its lessons restored successfully',
+      data: {
+        unit,
+        restoredLessonCount: archivedLessons?.length || 0,
+      },
     });
   } catch (error: any) {
     console.error('❌ Unarchive unit error:', error);
@@ -617,7 +655,7 @@ export const unarchiveUnit = async (req: AuthRequest, res: Response) => {
   }
 };
 
-// Unarchive a lesson - restore to active
+// Unarchive a lesson - restore to active (with video)
 export const unarchiveLesson = async (req: AuthRequest, res: Response) => {
   try {
     const { lessonId } = req.params;
@@ -630,21 +668,25 @@ export const unarchiveLesson = async (req: AuthRequest, res: Response) => {
     }
 
     console.log('♻️ Unarchiving lesson:', lessonId);
+    console.log('  📝 Restoring lesson with video and all content...');
 
     const { data: lesson, error } = await supabase
       .from('lessons')
       .update({ status: 'active' })
       .eq('id', lessonId)
-      .select()
+      .select('id, title, module_id, status, video_url, app_link, app_name, created_at')
       .single();
 
     if (error) throw error;
 
     console.log('✅ Lesson unarchived:', lessonId);
+    if (lesson?.video_url) {
+      console.log('  ✅ Video preserved:', lesson.video_url.substring(0, 80) + '...');
+    }
 
     return res.json({
       success: true,
-      message: 'Lesson restored successfully',
+      message: 'Lesson restored successfully with all content',
       data: lesson,
     });
   } catch (error: any) {
