@@ -937,19 +937,43 @@ export function CoursesManagement() {
                     {activeLesson.video_url && (
                       (() => {
                         const isFileUpload = activeLesson.video_url.includes('/lesson-videos/');
-                        const urlObj = new URL(activeLesson.video_url);
-                        const domain = urlObj.hostname.replace('www.', '');
+                        
+                        // Function to get clean platform name
+                        const getPlatformName = () => {
+                          try {
+                            const videoUrl = activeLesson.video_url || '';
+                            const urlObj = new URL(videoUrl);
+                            const hostname = urlObj.hostname.replace('www.', '').toLowerCase();
+                            
+                            // Map common video platforms to clean names
+                            if (hostname.includes('youtube')) return 'YouTube';
+                            if (hostname.includes('vimeo')) return 'Vimeo';
+                            if (hostname.includes('youtu.be')) return 'YouTube';
+                            if (hostname.includes('loom')) return 'Loom';
+                            if (hostname.includes('wistia')) return 'Wistia';
+                            if (hostname.includes('cloudinary')) return 'Cloudinary';
+                            if (hostname.includes('bunny')) return 'Bunny CDN';
+                            if (hostname.includes('dropbox')) return 'Dropbox';
+                            if (hostname.includes('google')) return 'Google Drive';
+                            if (hostname.includes('onedrive')) return 'OneDrive';
+                            
+                            // Return clean domain for others
+                            return hostname.charAt(0).toUpperCase() + hostname.slice(1);
+                          } catch {
+                            return 'Video Link';
+                          }
+                        };
                         
                         return isFileUpload ? (
                           // For uploaded files: Show video title, not URL
-                          <div className="bg-gradient-to-r from-violet-500/10 to-violet-600/10 border border-violet-500/30 rounded-lg p-4 hover:border-violet-500/50 transition-colors">
+                          <div className="bg-gradient-to-r from-violet-500/10 to-violet-600/10 border border-violet-500/30 rounded-lg p-4 hover:border-violet-500/50 transition-colors shadow-sm">
                             <div className="flex items-center justify-between gap-3">
                               <div className="flex items-center gap-3 flex-1 min-w-0">
                                 <div className="w-10 h-10 rounded-lg bg-violet-500/20 flex items-center justify-center flex-shrink-0 border border-violet-500/30">
                                   <Video className="w-5 h-5 text-violet-400" />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-xs text-slate-400 font-medium">Uploaded Video</p>
+                                  <p className="text-xs text-slate-400 font-medium uppercase tracking-wide">Uploaded Video</p>
                                   <p className="text-sm font-semibold text-violet-300 truncate">{activeLesson.title}</p>
                                 </div>
                               </div>
@@ -957,30 +981,30 @@ export function CoursesManagement() {
                                 href={activeLesson.video_url} 
                                 target="_blank" 
                                 rel="noopener noreferrer"
-                                className="px-3 py-1.5 bg-violet-600 hover:bg-violet-700 text-white text-xs font-medium rounded-lg transition-colors flex-shrink-0"
+                                className="px-3 py-1.5 bg-violet-600 hover:bg-violet-700 text-white text-xs font-medium rounded-lg transition-colors flex-shrink-0 whitespace-nowrap"
                               >
                                 Open
                               </a>
                             </div>
                           </div>
                         ) : (
-                          // For URL links: Show domain with better design
-                          <div className="bg-gradient-to-r from-blue-500/10 to-cyan-600/10 border border-blue-500/30 rounded-lg p-4 hover:border-blue-500/50 transition-colors">
+                          // For URL links: Show clean platform name with better design
+                          <div className="bg-gradient-to-r from-blue-500/10 to-cyan-600/10 border border-blue-500/30 rounded-lg p-4 hover:border-blue-500/50 transition-colors shadow-sm">
                             <div className="flex items-center justify-between gap-3">
                               <div className="flex items-center gap-3 flex-1 min-w-0">
                                 <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center flex-shrink-0 border border-blue-500/30">
                                   <LinkIcon className="w-5 h-5 text-blue-400" />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-xs text-slate-400 font-medium">Video Link</p>
-                                  <p className="text-sm font-semibold text-blue-300 truncate">{domain}</p>
+                                  <p className="text-xs text-slate-400 font-medium uppercase tracking-wide">External Video</p>
+                                  <p className="text-sm font-semibold text-blue-300 truncate">{getPlatformName()}</p>
                                 </div>
                               </div>
                               <a 
                                 href={activeLesson.video_url} 
                                 target="_blank" 
                                 rel="noopener noreferrer"
-                                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors flex-shrink-0"
+                                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors flex-shrink-0 whitespace-nowrap"
                               >
                                 Visit
                               </a>
