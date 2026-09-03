@@ -891,9 +891,7 @@ export const submitAssessmentResponse = async (req: AuthRequest, res: Response) 
     }
 
     const submissionId = uuidv4();
-    const { data: submissionRows, error } = await supabase
-      .from('assessment_submissions')
-      .upsert({
+    const submissionPayload = {
         id: submissionId,
         assessment_id: assessmentId,
         user_id: userId,
@@ -903,9 +901,25 @@ export const submitAssessmentResponse = async (req: AuthRequest, res: Response) 
         earned_points: earnedPointsValue,
         status: 'submitted',
         submitted_at: new Date().toISOString(),
-      }, { onConflict: 'assessment_id,user_id', ignoreDuplicates: true })
+    };
+    let { data: submissionRows, error } = await supabase
+      .from('assessment_submissions')
+      .upsert(submissionPayload, { onConflict: 'assessment_id,user_id', ignoreDuplicates: true })
       .select('*')
       .limit(1);
+
+    if (error && /earned_points|possible_points|schema cache|column .* does not exist/i.test(error.message || '')) {
+      const legacyPayload = { ...submissionPayload } as Record<string, any>;
+      delete legacyPayload.earned_points;
+      delete legacyPayload.possible_points;
+      const legacyResult = await supabase
+        .from('assessment_submissions')
+        .upsert(legacyPayload, { onConflict: 'assessment_id,user_id', ignoreDuplicates: true })
+        .select('*')
+        .limit(1);
+      submissionRows = legacyResult.data;
+      error = legacyResult.error;
+    }
 
     if (error) throw error;
 

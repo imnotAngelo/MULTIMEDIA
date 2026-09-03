@@ -2,6 +2,7 @@ import { Router, Response } from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { fileURLToPath } from "node:url";
 import { supabase } from "../config/supabase.js";
 import { authMiddleware, type AuthRequest } from "../middleware/auth.js";
 import { matchesContentTarget } from "../lib/contentTargeting.js";
@@ -33,6 +34,39 @@ const labUpload = multer({
 });
 
 const router = Router();
+const backendRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+
+router.get("/file/:submissionId", authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId || !supabase) return res.status(401).json({ error: "Unauthorized" });
+
+    const { data: submission, error } = await supabase
+      .from("lab_file_submissions")
+      .select("id, student_id, lab_id, file_path")
+      .eq("id", req.params.submissionId)
+      .maybeSingle();
+    if (error || !submission) return res.status(404).json({ error: "File not found" });
+
+    const { data: laboratory, error: laboratoryError } = await supabase
+      .from("laboratories")
+      .select("instructor_id")
+      .eq("id", submission.lab_id)
+      .maybeSingle();
+    if (laboratoryError || !laboratory) return res.status(404).json({ error: "File not found" });
+
+    const allowed = submission.student_id === userId
+      || (req.user?.role === "instructor" && laboratory?.instructor_id === userId);
+    if (!allowed) return res.status(404).json({ error: "File not found" });
+
+    const filePath = path.join(backendRoot, "uploads", submission.file_path);
+    if (!fs.existsSync(filePath)) return res.status(404).json({ error: "File not found" });
+    return res.sendFile(filePath);
+  } catch (error: any) {
+    console.error("Error serving laboratory submission file:", error);
+    return res.status(404).json({ error: "File not found" });
+  }
+});
 
 /**
  * GET /api/laboratory-submissions/my-files
@@ -62,7 +96,7 @@ router.get(
           labId: row.lab_id,
           fileName: row.file_name,
           fileType: row.file_type,
-          fileUrl: `/uploads/${row.file_path}`,
+          fileUrl: `/api/laboratory-submissions/file/${row.id}`,
           note: row.note ?? "",
           submittedAt: row.submitted_at,
         };
@@ -158,11 +192,23 @@ router.post("/upload-file", authMiddleware, async (req: AuthRequest, res: Respon
       submitted_at: new Date().toISOString(),
     };
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from("lab_file_submissions")
       .insert([submissionPayload])
       .select()
       .single();
+
+    if (error && /instructor_id|schema cache|column .* does not exist/i.test(error.message || "")) {
+      const legacyPayload = { ...submissionPayload };
+      delete legacyPayload.instructor_id;
+      const legacyResult = await supabase
+        .from("lab_file_submissions")
+        .insert([legacyPayload])
+        .select()
+        .single();
+      data = legacyResult.data;
+      error = legacyResult.error;
+    }
 
     if (error) throw error;
 
@@ -171,7 +217,7 @@ router.post("/upload-file", authMiddleware, async (req: AuthRequest, res: Respon
       labId: data.lab_id,
       fileName: data.file_name,
       fileType: data.file_type,
-      fileUrl: `/uploads/${data.file_path}`,
+          fileUrl: `/api/laboratory-submissions/file/${data.id}`,
       note: data.note ?? "",
       submittedAt: data.submitted_at,
     });
@@ -302,7 +348,7 @@ router.get(
           studentName: userMap[row.student_id]?.full_name ?? userMap[row.student_id]?.email ?? row.student_id,
           fileName: row.file_name,
           fileType: row.file_type,
-          fileUrl: `/uploads/${row.file_path}`,
+          fileUrl: `/api/laboratory-submissions/file/${row.id}`,
           fileSize: row.file_size,
           note: row.note ?? "",
           submittedAt: row.submitted_at,

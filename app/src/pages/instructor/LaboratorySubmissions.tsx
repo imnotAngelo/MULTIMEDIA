@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { authFetch } from '@/lib/authFetch';
+import { resolveBackendAssetUrl } from '@/lib/apiConfig';
 import { Save, Beaker, ImageIcon, FileVideo, Eye, X, Calendar, User, Star, CheckCircle, Clock, XCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import { AetherSpinner } from '@/components/AetherSpinner';
 
@@ -34,6 +35,33 @@ export function LaboratorySubmissions() {
   const [gradeForm, setGradeForm] = useState({ grade: 0, feedback: '', status: 'reviewed' });
   const [savingGrade, setSavingGrade] = useState(false);
   const [expandedLabs, setExpandedLabs] = useState<Record<string, boolean>>({});
+  const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    const objectUrls: string[] = [];
+    if (fileSubs.length === 0) return;
+
+    Promise.all(fileSubs.map(async (submission) => {
+      try {
+        const response = await authFetch(resolveBackendAssetUrl(submission.fileUrl));
+        if (!response.ok) return null;
+        const objectUrl = URL.createObjectURL(await response.blob());
+        objectUrls.push(objectUrl);
+        return [submission.id, objectUrl] as const;
+      } catch {
+        return null;
+      }
+    })).then((entries) => {
+      if (cancelled) return;
+      setPreviewUrls(Object.fromEntries(entries.filter((entry): entry is readonly [string, string] => Boolean(entry))));
+    });
+
+    return () => {
+      cancelled = true;
+      objectUrls.forEach((objectUrl) => URL.revokeObjectURL(objectUrl));
+    };
+  }, [fileSubs]);
 
   const groupedFileSubs = useMemo(() => {
     const groups = new Map<string, { title: string; submissions: FileSubmission[] }>();
@@ -206,9 +234,9 @@ export function LaboratorySubmissions() {
             <div className="p-6 space-y-4">
               <div className="rounded-xl overflow-hidden border border-slate-700 bg-slate-800">
                 {viewingFile.fileType.startsWith('video/') ? (
-                  <video src={viewingFile.fileUrl} controls className="w-full max-h-80 object-contain" />
+                  <video src={previewUrls[viewingFile.id]} controls className="w-full max-h-80 object-contain" />
                 ) : (
-                  <img src={viewingFile.fileUrl} alt={viewingFile.fileName} className="w-full max-h-80 object-contain" />
+                  <img src={previewUrls[viewingFile.id]} alt={viewingFile.fileName} className="w-full max-h-80 object-contain" />
                 )}
               </div>
               <div className="flex items-center justify-between text-xs text-slate-400">
@@ -274,9 +302,9 @@ export function LaboratorySubmissions() {
                   onClick={() => setViewingFile(sub)}
                 >
                   {sub.fileType.startsWith('video/') ? (
-                    <video src={sub.fileUrl} muted preload="metadata" className="w-full h-full object-cover" />
+                    <video src={previewUrls[sub.id]} muted preload="metadata" className="w-full h-full object-cover" />
                   ) : (
-                    <img src={sub.fileUrl} alt={sub.fileName} className="w-full h-full object-cover" />
+                    <img src={previewUrls[sub.id]} alt={sub.fileName} className="w-full h-full object-cover" />
                   )}
                   <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                     <Eye className="w-7 h-7 text-white" />

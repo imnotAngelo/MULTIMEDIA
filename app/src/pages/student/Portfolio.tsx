@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { getUserDesigns } from '@/components/laboratories/CanvaDesignStudio';
 import { authFetch } from '@/lib/authFetch';
+import { resolveBackendAssetUrl } from '@/lib/apiConfig';
 
 interface PortfolioDesign {
   id: string;
@@ -42,6 +43,34 @@ export function Portfolio() {
   const [labSubmissions, setLabSubmissions] = useState<LabSubmission[]>([]);
   const [labsLoading, setLabsLoading] = useState(true);
   const [viewingSub, setViewingSub] = useState<LabSubmission | null>(null);
+  const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    const objectUrls: string[] = [];
+    if (labSubmissions.length === 0) return;
+
+    Promise.all(labSubmissions.map(async (submission) => {
+      try {
+        const response = await authFetch(resolveBackendAssetUrl(submission.fileUrl));
+        if (!response.ok) return null;
+        const objectUrl = URL.createObjectURL(await response.blob());
+        objectUrls.push(objectUrl);
+        return [submission.id, objectUrl] as const;
+      } catch {
+        return null;
+      }
+    })).then((entries) => {
+      if (!cancelled) {
+        setPreviewUrls(Object.fromEntries(entries.filter((entry): entry is readonly [string, string] => Boolean(entry))));
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      objectUrls.forEach((objectUrl) => URL.revokeObjectURL(objectUrl));
+    };
+  }, [labSubmissions]);
 
   useEffect(() => {
     // Load Canva designs from localStorage
@@ -192,13 +221,13 @@ export function Portfolio() {
                 <div className="relative w-full h-40 bg-slate-800 flex items-center justify-center overflow-hidden">
                   {sub.fileType.startsWith('video/') ? (
                     <video
-                      src={sub.fileUrl}
+                      src={previewUrls[sub.id]}
                       className="w-full h-full object-cover"
                       muted
                       preload="metadata"
                     />
                   ) : (
-                    <img src={sub.fileUrl} alt={sub.fileName} className="w-full h-full object-cover" />
+                    <img src={previewUrls[sub.id]} alt={sub.fileName} className="w-full h-full object-cover" />
                   )}
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                     <Eye className="w-8 h-8 text-white" />
@@ -253,9 +282,9 @@ export function Portfolio() {
               </div>
               <div className="rounded-xl overflow-hidden border border-slate-700 bg-slate-800">
                 {viewingSub.fileType.startsWith('video/') ? (
-                  <video src={viewingSub.fileUrl} controls className="w-full max-h-80 object-contain" />
+                  <video src={previewUrls[viewingSub.id]} controls className="w-full max-h-80 object-contain" />
                 ) : (
-                  <img src={viewingSub.fileUrl} alt={viewingSub.fileName} className="w-full max-h-80 object-contain" />
+                  <img src={previewUrls[viewingSub.id]} alt={viewingSub.fileName} className="w-full max-h-80 object-contain" />
                 )}
               </div>
               <div className="flex items-center justify-between text-xs text-slate-400">
@@ -267,168 +296,6 @@ export function Portfolio() {
                   <p className="text-xs text-slate-300">{viewingSub.note}</p>
                 </div>
               )}
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {/* ── Canva/Design work ────────────────────────────────── */}
-      <div className="space-y-4">
-        <h2 className="text-lg font-semibold text-white">Design Studio Work</h2>
-
-        {/* Filters */}
-        <div className="flex gap-2">
-          {(['all', 'recent', 'favorite'] as const).map(f => (
-            <Button
-              key={f}
-              variant={filter === f ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setFilter(f)}
-              className={cn(
-                filter === f
-                  ? 'bg-violet-600 hover:bg-violet-700'
-                  : 'border-slate-600 hover:bg-slate-800'
-              )}
-            >
-              {f.charAt(0).toUpperCase() + f.slice(1)}
-            </Button>
-          ))}
-        </div>
-
-        {/* Content */}
-        {isLoading ? (
-        <div className="flex items-center justify-center p-12">
-          <AetherSpinner className="w-8 h-8 text-violet-400" />
-          <span className="ml-3 text-slate-300">Loading portfolio...</span>
-        </div>
-      ) : filteredDesigns.length === 0 ? (
-        <Card className="bg-slate-900/60 border-slate-800 p-12 text-center">
-          <p className="text-slate-400 mb-4">No designs yet</p>
-          <p className="text-sm text-slate-500">
-            Complete laboratory projects to create your portfolio
-          </p>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredDesigns.map(design => (
-            <Card
-              key={design.id}
-              className="bg-slate-900/60 border-slate-800 overflow-hidden hover:border-slate-700 transition-all cursor-pointer group"
-              onClick={() => setSelectedDesign(design)}
-            >
-              {/* Thumbnail */}
-              <div className="relative w-full h-40 bg-gradient-to-br from-slate-800 to-slate-900 floor items-center justify-center overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-violet-500/10 to-pink-500/10 group-hover:from-violet-500/20 group-hover:to-pink-500/20 transition-all" />
-                <Eye className="w-8 h-8 text-slate-500 group-hover:text-slate-300 transition-all" />
-              </div>
-
-              {/* Content */}
-              <div className="p-4 space-y-3">
-                <div>
-                  <h3 className="font-semibold text-white truncate">{design.title}</h3>
-                  <p className="text-xs text-slate-500">
-                    {new Date(design.completedAt).toLocaleDateString()}
-                  </p>
-                </div>
-
-                <p className="text-sm text-slate-400 line-clamp-2">{design.prompt}</p>
-
-                {/* Actions */}
-                <div className="flex gap-2 pt-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleShare(design);
-                    }}
-                    className="flex-1 border-slate-600 hover:bg-slate-700 h-8"
-                  >
-                    <Share2 className="w-3 h-3" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDownload(design);
-                    }}
-                    className="flex-1 border-slate-600 hover:bg-slate-700 h-8"
-                  >
-                    <Download className="w-3 h-3" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDelete(design.id);
-                    }}
-                    className="border-red-600/30 hover:bg-red-500/10 h-8"
-                  >
-                    <Trash2 className="w-3 h-3 text-red-400" />
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
-      )}
-      </div>{/* end Canva section */}
-
-      {/* Detail Modal */}
-      {selectedDesign && (
-        <div
-          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
-          onClick={() => setSelectedDesign(null)}
-        >
-          <Card
-            className="bg-slate-900 border-slate-800 w-full max-w-2xl max-h-96 overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p-6">
-              <h2 className="text-2xl font-bold text-white mb-4">{selectedDesign.title}</h2>
-
-              <div className="space-y-4">
-                <div>
-                  <h3 className="font-semibold text-slate-300 mb-2">Design Prompt</h3>
-                  <p className="text-slate-400">{selectedDesign.prompt}</p>
-                </div>
-
-                {selectedDesign.notes && (
-                  <div>
-                    <h3 className="font-semibold text-slate-300 mb-2">Student Reflection</h3>
-                    <p className="text-slate-400">{selectedDesign.notes}</p>
-                  </div>
-                )}
-
-                <div>
-                  <h3 className="font-semibold text-slate-300 mb-2">Completed</h3>
-                  <p className="text-slate-400">
-                    {new Date(selectedDesign.completedAt).toLocaleString()}
-                  </p>
-                </div>
-
-                <div className="flex gap-2 pt-4">
-                  <Button
-                    onClick={() => {
-                      handleShare(selectedDesign);
-                      setSelectedDesign(null);
-                    }}
-                    className="flex-1 bg-violet-600 hover:bg-violet-700"
-                  >
-                    <Share2 className="w-4 h-4 mr-2" />
-                    Share Portfolio
-                  </Button>
-                  <Button
-                    onClick={() => setSelectedDesign(null)}
-                    variant="outline"
-                    className="border-slate-600"
-                  >
-                    Close
-                  </Button>
-                </div>
-              </div>
             </div>
           </Card>
         </div>
