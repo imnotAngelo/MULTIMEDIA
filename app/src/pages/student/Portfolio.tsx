@@ -28,6 +28,9 @@ interface LabSubmission {
   fileUrl: string;
   note: string;
   submittedAt: string;
+  grade: number | null;
+  feedback: string;
+  status: string;
 }
 
 /**
@@ -90,10 +93,22 @@ export function Portfolio() {
     const loadLabSubs = async () => {
       try {
         setLabsLoading(true);
-        const res = await authFetch('/laboratory-submissions/my-files');
+        const res = await authFetch('/laboratory-submissions/my-files', { cache: 'no-store' });
         if (!res.ok) return;
-        const map: Record<string, LabSubmission> = await res.json();
-        setLabSubmissions(Object.values(map));
+        const map: Record<string, any> = await res.json();
+        const normalized = Object.values(map).map((row: any) => ({
+          ...row,
+          grade: row.grade !== undefined && row.grade !== null && row.grade !== ''
+            ? Number(row.grade)
+            : row.score !== undefined && row.score !== null && row.score !== ''
+            ? Number(row.score)
+            : row.points !== undefined && row.points !== null && row.points !== ''
+            ? Number(row.points)
+            : null,
+          feedback: row.feedback ?? '',
+          status: row.status ?? 'submitted',
+        })) as LabSubmission[];
+        setLabSubmissions(normalized);
       } catch {
         // offline — show nothing
       } finally {
@@ -103,6 +118,10 @@ export function Portfolio() {
 
     loadDesigns();
     loadLabSubs();
+
+    const refreshOnReturn = () => loadLabSubs();
+    window.addEventListener('focus', refreshOnReturn);
+    return () => window.removeEventListener('focus', refreshOnReturn);
   }, []);
 
   const handleDelete = (designId: string) => {
@@ -256,6 +275,9 @@ export function Portfolio() {
                   {sub.note && (
                     <p className="text-xs text-slate-400 line-clamp-2 italic">"{sub.note}"</p>
                   )}
+                  <p className="text-xs text-emerald-400">
+                    {sub.grade !== null ? `Grade: ${sub.grade}/100` : 'Not graded yet'}
+                  </p>
                 </div>
               </Card>
             ))}
@@ -296,6 +318,12 @@ export function Portfolio() {
                   <p className="text-xs text-slate-300">{viewingSub.note}</p>
                 </div>
               )}
+              <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3">
+                <p className="text-sm font-semibold text-emerald-300">
+                  {viewingSub.grade !== null ? `Grade: ${viewingSub.grade}/100` : 'Not graded yet'}
+                </p>
+                {viewingSub.feedback && <p className="mt-1 text-sm text-slate-300">{viewingSub.feedback}</p>}
+              </div>
             </div>
           </Card>
         </div>

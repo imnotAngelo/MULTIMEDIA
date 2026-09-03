@@ -99,6 +99,9 @@ router.get(
           fileUrl: `/api/laboratory-submissions/file/${row.id}`,
           note: row.note ?? "",
           submittedAt: row.submitted_at,
+          grade: row.grade ?? null,
+          feedback: row.feedback ?? "",
+          status: row.status ?? "submitted",
         };
       }
       res.json(map);

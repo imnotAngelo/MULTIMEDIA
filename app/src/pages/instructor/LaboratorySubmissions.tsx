@@ -86,7 +86,12 @@ export function LaboratorySubmissions() {
         }
         return r.json();
       })
-      .then((rows: FileSubmission[]) => setFileSubs(rows))
+      .then((rows: FileSubmission[]) => setFileSubs(rows.map((row) => ({
+        ...row,
+        grade: row.grade === null || row.grade === undefined || (row.grade as any) === ''
+          ? null
+          : Number(row.grade),
+      }))))
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load file submissions'))
       .finally(() => setLoadingFileSubs(false));
   }, []);
@@ -323,7 +328,7 @@ export function LaboratorySubmissions() {
                     <h3 className="font-semibold text-slate-100 text-sm truncate">{sub.labTitle}</h3>
                     <span className="flex items-center gap-1 shrink-0">
                       {statusIcon(sub.status)}
-                      {sub.grade !== null
+                      {sub.grade !== null && sub.grade !== undefined
                         ? <span className="text-xs font-bold text-amber-400">{sub.grade}/100</span>
                         : <span className="text-xs text-slate-500">Ungraded</span>
                       }

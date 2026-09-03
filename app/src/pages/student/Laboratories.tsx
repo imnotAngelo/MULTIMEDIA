@@ -15,6 +15,7 @@ import {
   Eye,
 } from 'lucide-react';
 import { authFetch } from '@/lib/authFetch';
+import { resolveBackendAssetUrl } from '@/lib/apiConfig';
 
 // --- Instructor-assigned labs (loaded from Supabase) ---
 interface InstructorLab {
@@ -75,7 +76,37 @@ export function Laboratories() {
   const [submitError, setSubmitError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [viewingLabId, setViewingLabId] = useState<string | null>(null);
+  const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const objectUrls: string[] = [];
+    const entries = Object.entries(submissions);
+    if (entries.length === 0) return;
+
+    Promise.all(entries.map(async ([labId, submission]) => {
+      if (!submission.id) return null;
+      try {
+        const response = await authFetch(resolveBackendAssetUrl(submission.fileUrl));
+        if (!response.ok) return null;
+        const objectUrl = URL.createObjectURL(await response.blob());
+        objectUrls.push(objectUrl);
+        return [labId, objectUrl] as const;
+      } catch {
+        return null;
+      }
+    })).then((results) => {
+      if (!cancelled) {
+        setPreviewUrls(Object.fromEntries(results.filter((result): result is readonly [string, string] => Boolean(result))));
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      objectUrls.forEach((objectUrl) => URL.revokeObjectURL(objectUrl));
+    };
+  }, [submissions]);
 
   // Load laboratories and submissions from Supabase on mount.
   useEffect(() => {
@@ -344,9 +375,9 @@ export function Laboratories() {
             <div className="p-6 space-y-4">
               <div className="rounded-xl overflow-hidden border border-slate-700 bg-slate-800">
                 {submissions[viewingLabId].fileType.startsWith('video/') ? (
-                  <video src={submissions[viewingLabId].fileUrl} controls className="w-full max-h-96 object-contain" />
+                  <video src={previewUrls[viewingLabId]} controls className="w-full max-h-96 object-contain" />
                 ) : (
-                  <img src={submissions[viewingLabId].fileUrl} alt="submission" className="w-full max-h-96 object-contain" />
+                  <img src={previewUrls[viewingLabId]} alt="submission" className="w-full max-h-96 object-contain" />
                 )}
               </div>
               <div className="flex items-center justify-between text-xs text-slate-400">
