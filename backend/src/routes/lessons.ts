@@ -316,6 +316,18 @@ function buildFallbackSummary(slides: any[], pdfText?: string): string {
     : cleaned || `Lesson content for ${slides[0]?.title || 'this lesson'}`;
 }
 
+function buildShortLessonDescription(text: string, title: string): string {
+  const normalized = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!normalized) return `Lesson materials about ${title}.`;
+
+  const sentences = normalized.match(/[^.!?]+[.!?]+/g) || [];
+  const source = (sentences.length > 0 ? sentences.slice(0, 2).join(' ') : normalized).trim();
+  const words = source.split(/\s+/).slice(0, 30);
+  let shortDescription = words.join(' ').replace(/[,:;\-]+$/, '').trim();
+  if (!/[.!?]$/.test(shortDescription)) shortDescription += '.';
+  return shortDescription;
+}
+
 export function buildOriginalPdfLessonRecord({
   lessonId,
   title,
@@ -339,9 +351,10 @@ export function buildOriginalPdfLessonRecord({
 }) {
   const rawText = summarizePdfText(pdfText);
   const descriptionText = String(description || '').trim();
-  const content = rawText || (
-    descriptionText && !isThinLessonContent(descriptionText, 1) ? descriptionText : ''
-  ) || `Original PDF uploaded: ${title}`;
+  const sourceDescription = descriptionText && !isThinLessonContent(descriptionText, 1)
+    ? descriptionText
+    : rawText;
+  const content = buildShortLessonDescription(sourceDescription, title);
 
   return {
     id: lessonId || uuidv4(),
@@ -1753,6 +1766,7 @@ router.post('/', authMiddleware, instructorMiddleware, (req: Request, res: Respo
         console.log('✅ Slides generated:', slides.length);
 
         const summary = await generateSummary(slides, pdfText);
+        const shortDescription = buildShortLessonDescription(description || summary, title);
         slides.push({
           slideNumber: slides.length + 1,
           title: 'Lesson Summary',
@@ -1775,7 +1789,7 @@ router.post('/', authMiddleware, instructorMiddleware, (req: Request, res: Respo
             id: uuidv4(),
             module_id: lessonModuleId,
             title,
-            content: description || summary,
+            content: shortDescription,
             slides: slides,
             slide_count: slides.length,
             status: 'published',

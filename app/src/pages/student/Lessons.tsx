@@ -360,13 +360,6 @@ export function Lessons() {
 
               {/* Lesson Info */}
               <div className="p-6 space-y-6">
-                <div>
-                  <h3 className="text-sm font-semibold text-slate-300 mb-2">Description</h3>
-                  <p className="text-slate-400 text-sm leading-relaxed">
-                    {activeLesson.content || 'This lesson was automatically generated from a PDF. Click "View Slides" to see the full presentation.'}
-                  </p>
-                </div>
-
                 {/* Media & Tools Section */}
                 {(activeLesson.video_url || activeLesson.app_link) && (
                   <div className="space-y-6 border-t border-slate-700/50 pt-8">

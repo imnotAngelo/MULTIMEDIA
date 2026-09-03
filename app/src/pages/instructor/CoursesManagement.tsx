@@ -224,7 +224,7 @@ function UnitSection({
 }
 
 export function CoursesManagement() {
-  const { user } = useAuthStore();
+  const { user, isAuthenticated, isHydrated } = useAuthStore();
   const navigate = useNavigate();
   const [units, setUnits] = useState<Unit[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
@@ -235,7 +235,6 @@ export function CoursesManagement() {
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [selectedUnitForUpload, setSelectedUnitForUpload] = useState<string | null>(null);
   const [lessonTitle, setLessonTitle] = useState('');
-  const [lessonDescription, setLessonDescription] = useState('');
   const [lessonFile, setLessonFile] = useState<File | null>(null);
   const [uploadingLesson, setUploadingLesson] = useState(false);
 
@@ -262,8 +261,10 @@ export function CoursesManagement() {
   const [uploadingVideo, setUploadingVideo] = useState(false);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (isHydrated && isAuthenticated && user?.id) {
+      loadData();
+    }
+  }, [isHydrated, isAuthenticated, user?.id]);
 
   const loadData = async () => {
     try {
@@ -272,6 +273,9 @@ export function CoursesManagement() {
       
       const unitsResponse = await authFetch('/units', { cache: 'no-store' });
       const unitsData = await unitsResponse.json();
+      if (!unitsResponse.ok || !unitsData.success) {
+        throw new Error(unitsData.error?.message || 'Could not load courses');
+      }
       console.log('✅ Units fetched:', unitsData.data || []);
 
       const unitList: Unit[] = unitsData.success ? (unitsData.data || []) : [];
@@ -281,6 +285,9 @@ export function CoursesManagement() {
       const lessonResults = await Promise.all(unitList.map(async (unit) => {
         const lessonsResponse = await authFetch(`/units/${unit.id}/lessons`);
         const lessonsData = await lessonsResponse.json();
+        if (!lessonsResponse.ok || !lessonsData.success) {
+          throw new Error(lessonsData.error?.message || `Could not load lessons for ${unit.title}`);
+        }
         const unitLessons = lessonsData.success ? lessonsData.data || [] : [];
         console.log(`✅ Lessons for unit "${unit.title}": ${unitLessons.length}`);
         return unitLessons.map((lesson: any) => ({ ...lesson, unitId: unit.id }));
@@ -492,7 +499,6 @@ export function CoursesManagement() {
       const formData = new FormData();
       formData.append('file', lessonFile);
       formData.append('title', lessonTitle.trim());
-      formData.append('description', lessonDescription.trim() || 'Lesson uploaded from PDF');
       formData.append('moduleId', selectedUnitForUpload);
       formData.append('targetSections', JSON.stringify(lessonTargetSections));
 
@@ -517,7 +523,6 @@ export function CoursesManagement() {
 
         // Clear the form and reload
         setLessonTitle('');
-        setLessonDescription('');
         setLessonFile(null);
         setLessonTargetSections([]);
         setLessonTargetYearLevels([]);
@@ -692,13 +697,6 @@ export function CoursesManagement() {
               </div>
 
               <div className="p-6">
-                <div className="mb-6">
-                  <h3 className="text-sm font-semibold text-slate-300 mb-2">Description</h3>
-                  <p className="text-slate-400 text-sm leading-relaxed">
-                    {activeLesson.content || 'Lesson details will appear here'}
-                  </p>
-                </div>
-
                 <div className="grid grid-cols-2 gap-4 mb-6">
                   <div className="bg-slate-800/30 rounded-lg p-3">
                     <p className="text-xs text-slate-500 mb-1">Slide Count</p>
@@ -1091,16 +1089,6 @@ export function CoursesManagement() {
                 placeholder="Enter lesson title"
                 value={lessonTitle}
                 onChange={(e) => setLessonTitle(e.target.value)}
-                className="bg-slate-800 border-slate-700 text-slate-100"
-              />
-            </div>
-            <div>
-              <Label htmlFor="lessonDescription" className="text-slate-300">Description (Optional)</Label>
-              <Input
-                id="lessonDescription"
-                placeholder="Brief lesson description"
-                value={lessonDescription}
-                onChange={(e) => setLessonDescription(e.target.value)}
                 className="bg-slate-800 border-slate-700 text-slate-100"
               />
             </div>

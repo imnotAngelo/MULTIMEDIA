@@ -307,9 +307,7 @@ export function ViewLesson() {
               </div>
 
               <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
-                <h2 className="text-xl font-semibold text-white mb-3">Lesson content</h2>
-                <p className="text-slate-300 whitespace-pre-wrap">{lesson.content || 'This lesson was converted to a presentation file.'}</p>
-                <div className="mt-6 flex flex-wrap gap-3">
+                <div className="flex flex-wrap gap-3">
                   <Button
                     onClick={() => window.open(presentationUrl, '_blank', 'noopener,noreferrer')}
                     className="bg-cyan-600 hover:bg-cyan-700 text-white"
@@ -433,7 +431,6 @@ export function ViewLesson() {
         {!hasSlides ? (
           <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-12 text-center">
             <p className="text-slate-400 mb-4">No slides available for this lesson</p>
-            <p className="text-slate-500 text-sm max-w-2xl mx-auto mb-4">{lesson.content}</p>
             <p className="text-yellow-400 text-xs">Slides: {lesson.slideCount || lesson.slides?.length || 0}</p>
             <p className="text-yellow-400 text-xs mt-2">Try clicking View again or check browser console for details</p>
           </div>

@@ -30,7 +30,7 @@ async function safeSupabaseCall<T>(operation: () => Promise<T>, fallback: T): Pr
       throw new Error('Supabase unavailable');
     }
     const timeout = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('Supabase request timed out')), 3000);
+      setTimeout(() => reject(new Error('Supabase request timed out')), 10000);
     });
     return await Promise.race([operation(), timeout]);
   } catch (error: any) {
@@ -283,16 +283,19 @@ export const getUnits = async (req: AuthRequest, res: Response) => {
 
       const courseIds = courses.map(c => c.id);
 
-      const instructorIds = [...new Set(courses.map((course) => course.instructor_id).filter(Boolean))];
-      const { data: instructors, error: instructorsError } = instructorIds.length
-        ? await supabase
-          .from('users')
-          .select('id, section, teaching_sections, teaching_year_levels')
-          .in('id', instructorIds)
-        : { data: [], error: null };
-      if (instructorsError) throw instructorsError;
-      const instructorById = Object.fromEntries((instructors ?? []).map((instructor: any) => [instructor.id, instructor]));
-      const courseOwnerById = Object.fromEntries(courses.map((course: any) => [course.id, instructorById[course.instructor_id]]));
+      const courseOwnerById: Record<string, any> = {};
+      if (req.user?.role === 'student') {
+        const instructorIds = [...new Set(courses.map((course) => course.instructor_id).filter(Boolean))];
+        const { data: instructors, error: instructorsError } = instructorIds.length
+          ? await supabase
+            .from('users')
+            .select('id, section, teaching_sections, teaching_year_levels')
+            .in('id', instructorIds)
+          : { data: [], error: null };
+        if (instructorsError) throw instructorsError;
+        const instructorById = Object.fromEntries((instructors ?? []).map((instructor: any) => [instructor.id, instructor]));
+        for (const course of courses) courseOwnerById[course.id] = instructorById[course.instructor_id];
+      }
 
       // Get all modules for those courses (both active and archived so we can separate them)
       const { data: units, error } = await supabase

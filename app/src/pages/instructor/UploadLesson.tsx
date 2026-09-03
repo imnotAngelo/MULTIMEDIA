@@ -20,7 +20,6 @@ export function UploadLesson({ unitId, onSuccess }: UploadLessonProps) {
   const [format, setFormat] = useState<'pdf' | 'pptx'>('pdf');
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
   const [graphicUrl, setGraphicUrl] = useState('');
   const [graphicFile, setGraphicFile] = useState<File | null>(null);
@@ -87,7 +86,6 @@ export function UploadLesson({ unitId, onSuccess }: UploadLessonProps) {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('title', title);
-      formData.append('description', description);
       if (videoUrl.trim()) formData.append('videoUrl', videoUrl.trim());
       if (graphicUrl.trim()) formData.append('graphicUrl', graphicUrl.trim());
       if (graphicFile) formData.append('graphicFile', graphicFile);
@@ -133,7 +131,7 @@ export function UploadLesson({ unitId, onSuccess }: UploadLessonProps) {
         id: responseData.lessonId || uuidv4(),
         unitId,
         title,
-        content: responseData.content || responseData.lesson?.content || responseData.summary || description || 'Original PDF lesson uploaded without changes',
+        content: responseData.content || responseData.lesson?.content || responseData.summary || '',
         createdAt: new Date().toISOString(),
         slideCount: responseData.slideCount || 0,
         slides: responseData.slides || [],
@@ -149,7 +147,6 @@ export function UploadLesson({ unitId, onSuccess }: UploadLessonProps) {
       setSuccess(true);
       setFile(null);
       setTitle('');
-      setDescription('');
       setVideoUrl('');
       setGraphicUrl('');
       setGraphicFile(null);
@@ -222,21 +219,6 @@ export function UploadLesson({ unitId, onSuccess }: UploadLessonProps) {
             onChange={(e) => setTitle(e.target.value)}
             placeholder="e.g., Introduction to React Hooks"
             className="mt-2 bg-slate-800 border-slate-700 text-white placeholder:text-slate-500"
-          />
-        </div>
-
-        {/* Description Input */}
-        <div>
-          <Label htmlFor="description" className="text-slate-300">
-            Description (optional)
-          </Label>
-          <textarea
-            id="description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Brief description of the lesson..."
-            rows={3}
-            className="mt-2 w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500"
           />
         </div>
 

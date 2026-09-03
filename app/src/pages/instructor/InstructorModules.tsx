@@ -253,9 +253,6 @@ export function InstructorModules() {
                                   {lesson.slideCount ? `${lesson.slideCount} slides • ` : ''}
                                   Created {new Date(lesson.createdAt).toLocaleDateString()}
                                 </p>
-                                <p className="text-sm text-slate-400 line-clamp-2">
-                                  {lesson.content || 'No description available'}
-                                </p>
                               </div>
                               <div className="flex gap-2 ml-4">
                                 <button
