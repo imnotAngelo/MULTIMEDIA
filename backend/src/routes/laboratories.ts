@@ -42,7 +42,7 @@ const toLaboratory = (row: any) => ({
 });
 
 // List laboratories saved in Supabase for the current instructor/student view.
-router.get('/metadata', authMiddleware, async (req: any, res) => {
+router.get(['/', '/metadata'], authMiddleware, async (req: any, res) => {
   try {
     let { data, error } = await supabase
       .from('laboratories')
