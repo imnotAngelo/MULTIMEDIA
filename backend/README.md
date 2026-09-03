@@ -29,6 +29,7 @@ JWT_REFRESH_EXPIRATION=86400
 PORT=3001
 NODE_ENV=development
 FRONTEND_URL=http://localhost:5173
+
 ```
 
 ### 3. Run Development Server

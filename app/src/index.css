@@ -2,6 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+#msdoc-renderer,
+#msdoc-iframe {
+  width: 100% !important;
+  min-width: 100% !important;
+  height: 80vh !important;
+  min-height: 600px !important;
+  border: 0 !important;
+  display: block !important;
+  background: #0b1115 !important;
+}
+
 @layer base {
   :root {
     --background: 215 44% 5%;

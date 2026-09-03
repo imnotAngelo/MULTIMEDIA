@@ -4,10 +4,11 @@ import { ChevronLeft, ChevronRight, MessageCircle, ThumbsUp, Lock, Download, Che
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
+import { DocumentViewer } from '@/components/DocumentViewer';
 import { PDFViewer } from '@/components/PDFViewer';
 import { authFetch } from '@/lib/authFetch';
 import { downloadLessonAsPDF } from '@/lib/downloadUtils';
-import { API_BASE_URL, buildOfficeViewerUrl, resolveBackendAssetUrl } from '@/lib/apiConfig';
+import { API_BASE_URL, resolveBackendAssetUrl } from '@/lib/apiConfig';
 import { useAuthStore } from '@/stores/authStore';
 import { toast } from 'sonner';
 import { AetherLoader } from '@/components/AetherLoader';
@@ -334,10 +335,6 @@ export function SlideViewer({ lessonId, lessonTitle, lesson: initialLesson }: Sl
   if (isPptLesson) {
     const pptSourceUrl = pdfUrl || lesson?.pdfUrl || lesson?.pdf_url || '';
     const resolvedPptUrl = resolveBackendAssetUrl(pptSourceUrl);
-    const isLocalAssetUrl = /^(https?:\/\/)?(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?/i.test(resolvedPptUrl) || resolvedPptUrl.startsWith('/');
-    const pptViewerUrl = resolvedPptUrl && !isLocalAssetUrl
-      ? `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(resolvedPptUrl)}`
-      : '';
 
     return (
       <div className="space-y-4">
@@ -358,33 +355,7 @@ export function SlideViewer({ lessonId, lessonTitle, lesson: initialLesson }: Sl
         </div>
 
         <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-950">
-          {pptViewerUrl ? (
-            <iframe
-              src={pptViewerUrl}
-              title={lessonTitle}
-              className="h-[80vh] w-full border-0"
-              allowFullScreen
-            />
-          ) : (
-            <div className="flex min-h-[420px] flex-col items-center justify-center gap-4 p-12 text-center">
-              <div className="rounded-full bg-cyan-500/10 border border-cyan-500/20 p-4 text-cyan-300">
-                <Download className="h-8 w-8" />
-              </div>
-              <div>
-                <p className="text-lg font-semibold text-white">PowerPoint preview is not available in this local environment.</p>
-                <p className="mt-2 text-sm text-slate-400">Open the presentation in a new tab to view it.</p>
-              </div>
-              <a
-                href={resolvedPptUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-2 rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-700"
-              >
-                <Download className="h-4 w-4" />
-                View presentation
-              </a>
-            </div>
-          )}
+          <DocumentViewer lessonId={lessonId} documentUrl={pptSourceUrl} title={lessonTitle} fileType="pptx" />
         </div>
       </div>
     );

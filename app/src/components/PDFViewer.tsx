@@ -334,6 +334,7 @@ export function PDFViewer({ url, title = 'PDF Document', onDownload }: PDFViewer
           ref={canvasRef}
           className="bg-white shadow-lg rounded"
           style={{
+            width: '100%',
             maxWidth: '100%',
             height: 'auto',
             display: 'block',

@@ -704,7 +704,50 @@ router.post('/pptx', upload.single('file'), async (req: Request, res: Response) 
     const fileName = `${safeName}-${Date.now()}${isNativePowerpoint ? extension : '.pptx'}`;
     const filePath = path.join(uploadDir, fileName);
     fs.writeFileSync(filePath, output);
-    const fileUrl = `/uploads/${fileName}`;
+    let fileUrl = `/uploads/${fileName}`;
+    if (supabase) {
+      await supabase.storage.updateBucket('lesson-pdfs', {
+        public: true,
+        allowedMimeTypes: [
+          'application/pdf',
+          'application/vnd.ms-powerpoint',
+          'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        ],
+      }).catch(() => undefined);
+      const storagePath = `converted/${fileName}`;
+      let { error: storageError } = await supabase.storage
+        .from('lesson-pdfs')
+        .upload(storagePath, output, {
+          contentType: isNativePowerpoint
+            ? (extension === '.ppt' ? 'application/vnd.ms-powerpoint' : 'application/vnd.openxmlformats-officedocument.presentationml.presentation')
+            : 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+          upsert: true,
+        });
+      if (storageError && /not found|does not exist|bucket/i.test(storageError.message || '')) {
+        await supabase.storage.createBucket('lesson-pdfs', {
+          public: true,
+          allowedMimeTypes: [
+            'application/pdf',
+            'application/vnd.ms-powerpoint',
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+          ],
+        });
+        ({ error: storageError } = await supabase.storage
+          .from('lesson-pdfs')
+          .upload(storagePath, output, {
+            contentType: isNativePowerpoint
+              ? (extension === '.ppt' ? 'application/vnd.ms-powerpoint' : 'application/vnd.openxmlformats-officedocument.presentationml.presentation')
+              : 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            upsert: true,
+          }));
+      }
+      if (!storageError) {
+        const { data: publicData } = supabase.storage.from('lesson-pdfs').getPublicUrl(storagePath);
+        if (publicData?.publicUrl) fileUrl = publicData.publicUrl;
+      } else {
+        console.warn('Converted presentation storage upload failed; using local file:', storageError.message);
+      }
+    }
 
     const lessonId = uuidv4();
     let sourceContent = '';

@@ -86,12 +86,3 @@ export function isLocalAssetUrl(pathOrUrl?: string | null): boolean {
   }
 }
 
-export function buildOfficeViewerUrl(pathOrUrl?: string | null): string {
-  const resolvedUrl = resolveBackendAssetUrl(pathOrUrl);
-
-  if (!resolvedUrl || isLocalAssetUrl(resolvedUrl)) {
-    return '';
-  }
-
-  return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(resolvedUrl)}`;
-} 

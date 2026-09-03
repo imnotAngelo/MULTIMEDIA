@@ -57,6 +57,8 @@ interface Lesson {
   video_url?: string;
   app_link?: string;
   app_name?: string;
+  pdfUrl?: string;
+  originalFormat?: string;
 }
 
 function LessonItem({ lesson, isActive, onClick }: {
@@ -290,7 +292,12 @@ export function CoursesManagement() {
         }
         const unitLessons = lessonsData.success ? lessonsData.data || [] : [];
         console.log(`✅ Lessons for unit "${unit.title}": ${unitLessons.length}`);
-        return unitLessons.map((lesson: any) => ({ ...lesson, unitId: unit.id }));
+        return unitLessons.map((lesson: any) => ({
+          ...lesson,
+          unitId: unit.id,
+          pdfUrl: lesson.pdfUrl || lesson.pdf_url || '',
+          originalFormat: lesson.originalFormat || lesson.original_format || '',
+        }));
       }));
       const allLessons: Lesson[] = lessonResults.flat();
 

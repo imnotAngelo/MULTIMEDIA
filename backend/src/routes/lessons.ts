@@ -940,6 +940,38 @@ router.get('/by-id/:lessonId', authMiddleware, async (req: AuthRequest, res: Res
 
       if (error) throw error;
       if (lesson) {
+        const isPowerpoint = ['ppt', 'pptx'].includes(String(lesson.original_format || '').toLowerCase())
+          || /\.pptx?$/i.test(String(lesson.pdf_url || ''));
+        const localUrl = String(lesson.pdf_url || '');
+        const localFileName = path.basename(new URL(localUrl, 'http://localhost').pathname);
+        const localFilePath = path.join(uploadDir, localFileName);
+        if (isPowerpoint && /^(\/uploads\/|https?:\/\/(localhost|127\.0\.0\.1|\[::1\]))/i.test(localUrl) && fs.existsSync(localFilePath)) {
+          const storagePath = `converted/${localFileName}`;
+          await supabase.storage.updateBucket('lesson-pdfs', {
+            public: true,
+            allowedMimeTypes: [
+              'application/pdf',
+              'application/vnd.ms-powerpoint',
+              'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            ],
+          }).catch(() => undefined);
+          const fileBuffer = fs.readFileSync(localFilePath);
+          const { error: storageError } = await supabase.storage.from('lesson-pdfs').upload(storagePath, fileBuffer, {
+            contentType: String(lesson.original_format || '').toLowerCase() === 'ppt'
+              ? 'application/vnd.ms-powerpoint'
+              : 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            upsert: true,
+          });
+          if (!storageError) {
+            const { data: publicData } = supabase.storage.from('lesson-pdfs').getPublicUrl(storagePath);
+            if (publicData?.publicUrl) {
+              lesson.pdf_url = publicData.publicUrl;
+              await supabase.from('lessons').update({ pdf_url: publicData.publicUrl }).eq('id', lesson.id);
+            }
+          } else {
+            console.warn('Could not migrate local PowerPoint to public storage:', storageError.message);
+          }
+        }
         return res.json({ success: true, data: lesson });
       }
     }

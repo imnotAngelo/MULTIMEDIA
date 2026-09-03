@@ -4,8 +4,9 @@ import { ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { Button } from '@/components/ui/button';
 import { authFetch } from '@/lib/authFetch';
-import { API_BASE_URL, buildOfficeViewerUrl, resolveBackendAssetUrl } from '@/lib/apiConfig';
+import { API_BASE_URL, resolveBackendAssetUrl } from '@/lib/apiConfig';
 import { downloadLessonAsPDF } from '@/lib/downloadUtils';
+import { DocumentViewer } from '@/components/DocumentViewer';
 import { PDFViewer } from '@/components/PDFViewer';
 
 interface Lesson {
@@ -272,7 +273,10 @@ export function ViewLesson() {
 
       const currentSlideData = lesson.slides?.[currentSlide];
       const hasSlides = lesson.slides && lesson.slides.length > 0;
-      const isPdfLesson = !!lesson.pdfUrl && lesson.originalFormat !== 'pptx' && lesson.originalFormat !== 'ppt' && !/\.pptx?$/i.test(String(lesson.pdfUrl));
+      const normalizedFormat = String(lesson.originalFormat || '').trim().toLowerCase();
+      const lessonFileUrl = String(lesson.pdfUrl || '').trim();
+      const isPowerPointLesson = ['ppt', 'pptx'].includes(normalizedFormat) || /\.pptx?(?:[?#].*)?$/i.test(lessonFileUrl);
+      const isPdfLesson = !!lessonFileUrl && !isPowerPointLesson;
 
       console.log('🎬 Rendering ViewLesson:', {
         lessonTitle: lesson.title,
@@ -285,9 +289,8 @@ export function ViewLesson() {
         originalFormat: lesson.originalFormat,
       });
 
-      if (lesson.originalFormat === 'pptx' || /\.pptx?$/i.test(String(lesson.pdfUrl || ''))) {
+      if (isPowerPointLesson) {
         const presentationUrl = resolveBackendAssetUrl(lesson.pdfUrl || '');
-        const pptViewerUrl = buildOfficeViewerUrl(lesson.pdfUrl || '');
 
         return (
           <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-6">
@@ -325,22 +328,7 @@ export function ViewLesson() {
               </div>
 
               <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 shadow-2xl shadow-cyan-500/10">
-                {pptViewerUrl ? (
-                  <iframe
-                    src={pptViewerUrl}
-                    title={lesson.title}
-                    className="h-[80vh] w-full border-0"
-                    allowFullScreen
-                  />
-                ) : (
-                  <div className="flex min-h-[420px] flex-col items-center justify-center gap-4 p-12 text-center text-slate-400">
-                    <p className="text-lg font-semibold text-white">Preview is unavailable for this local lesson file.</p>
-                    <p className="text-sm text-slate-400">Open the presentation in a new tab to view it.</p>
-                    <Button onClick={() => window.open(presentationUrl, '_blank', 'noopener,noreferrer')} className="bg-cyan-600 hover:bg-cyan-700 text-white">
-                      View presentation
-                    </Button>
-                  </div>
-                )}
+                <DocumentViewer lessonId={lesson.id} documentUrl={lesson.pdfUrl || ''} title={lesson.title} fileType="pptx" />
               </div>
             </div>
           </div>
@@ -370,13 +358,9 @@ export function ViewLesson() {
                   <h1 className="text-4xl font-bold text-white">{lesson.title}</h1>
                   <p className="text-slate-400 mt-2">PDF Document</p>
                 </div>
-              </div>
+              </div>  
 
-              <PDFViewer 
-                url={pdfViewerUrl} 
-                title={lesson.title}
-                onDownload={handleDownloadPDF}
-              />
+              <PDFViewer url={pdfViewerUrl} title={lesson.title} onDownload={handleDownloadPDF} />
             </div>
           </div>
         );
