@@ -165,8 +165,8 @@ export function Laboratories() {
     const file = e.target.files?.[0];
     if (!file) return;
     setSubmitError('');
-    if (file.size > 50 * 1024 * 1024) {
-      setSubmitError('File is too large. Maximum size is 50 MB.');
+    if (file.size > 500 * 1024 * 1024) {
+      setSubmitError('File is too large. Maximum size is 500 MB.');
       return;
     }
     setSelectedFile(file);
@@ -309,7 +309,7 @@ export function Laboratories() {
                     ) : (
                       <div className="text-center">
                         <p className="text-sm text-slate-300">Click to choose a photo or video</p>
-                        <p className="text-xs text-slate-500 mt-0.5">PNG, JPG, GIF, MP4, MOV — max 50 MB</p>
+                        <p className="text-xs text-slate-500 mt-0.5">PNG, JPG, GIF, MP4, MOV — max 500 MB</p>
                       </div>
                     )}
                   </button>
