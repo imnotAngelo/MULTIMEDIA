@@ -103,7 +103,15 @@ export function QuizManagement() {
       const data = await response.json();
 
       if (data.success && Array.isArray(data.data)) {
-        const quizList = data.data.filter((a: any) => a.type === 'quiz');
+        const quizList = data.data
+          .filter((a: any) => a.type === 'quiz')
+          .map((a: any) => ({
+            ...a,
+            dueDate: a.dueDate || a.due_date || '',
+            totalPoints: a.totalPoints ?? a.total_points ?? 0,
+            createdAt: a.createdAt || a.created_at || '',
+            updatedAt: a.updatedAt || a.updated_at || '',
+          }));
         setQuizzes(quizList);
         calculateStats(quizList);
         setError('');
@@ -172,6 +180,7 @@ export function QuizManagement() {
     const due = new Date(dueDate);
     const today = new Date();
     const diffTime = due.getTime() - today.getTime();
+    if (!Number.isFinite(diffTime)) return null;
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays;
   };
@@ -334,10 +343,12 @@ export function QuizManagement() {
                       <Users className="w-4 h-4" />
                       {quiz.submissions} submissions
                     </span>
-                    <span className="inline-flex items-center gap-1 text-sm text-slate-300">
-                      <Calendar className="w-4 h-4" />
-                      Due in {daysUntilDue(quiz.dueDate)} days
-                    </span>
+                    {quiz.dueDate && daysUntilDue(quiz.dueDate) !== null && (
+                      <span className="inline-flex items-center gap-1 text-sm text-slate-300">
+                        <Calendar className="w-4 h-4" />
+                        Due in {daysUntilDue(quiz.dueDate)} days
+                      </span>
+                    )}
                     <span className="inline-flex items-center gap-1 text-sm text-slate-300">
                       <TrendingUp className="w-4 h-4" />
                       {quiz.totalPoints} points

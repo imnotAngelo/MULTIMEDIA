@@ -56,6 +56,8 @@ export function AutoGenerateQuiz() {
     shuffleQuestions: true,
     showCorrectAnswers: false,
     numberOfQuestions: 5,
+    startPage: 1,
+    endPage: 1,
   });
 
   useEffect(() => {
@@ -105,7 +107,7 @@ export function AutoGenerateQuiz() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    const isNumericField = name === 'timeLimit' || name === 'numberOfQuestions';
+    const isNumericField = ['timeLimit', 'numberOfQuestions', 'startPage', 'endPage'].includes(name);
     const numericValue = value === '' ? 1 : Number.parseInt(value, 10);
     setFormData(prev => ({
       ...prev,
@@ -116,6 +118,10 @@ export function AutoGenerateQuiz() {
   const generateQuestions = async () => {
     if (!selectedUnit || !selectedLesson || !formData.title) {
       alert('Please fill in all required fields');
+      return;
+    }
+    if (formData.startPage < 1 || formData.endPage < formData.startPage) {
+      alert('End page must be greater than or equal to start page');
       return;
     }
 
@@ -131,6 +137,8 @@ export function AutoGenerateQuiz() {
         },
         body: JSON.stringify({
           numberOfQuestions: formData.numberOfQuestions,
+          startPage: formData.startPage,
+          endPage: formData.endPage,
         }),
       });
 
@@ -378,6 +386,30 @@ export function AutoGenerateQuiz() {
                   onChange={handleInputChange}
                   placeholder="e.g., Chapter 5 Quiz"
                   className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder:text-slate-600 focus:border-violet-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Start Page</label>
+                <input
+                  type="number"
+                  name="startPage"
+                  value={formData.startPage}
+                  onChange={handleInputChange}
+                  min="1"
+                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:border-violet-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">End Page</label>
+                <input
+                  type="number"
+                  name="endPage"
+                  value={formData.endPage}
+                  onChange={handleInputChange}
+                  min={formData.startPage}
+                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:border-violet-500 focus:outline-none"
                 />
               </div>
 

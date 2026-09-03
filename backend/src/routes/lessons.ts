@@ -1285,7 +1285,7 @@ router.post(
   async (req: Request, res: Response) => {
     try {
       const { lessonId } = req.params;
-      const { numberOfQuestions = 5 } = req.body;
+      const { numberOfQuestions = 5, startPage = 1, endPage } = req.body;
 
       console.log('🧠 Generating quiz questions for lesson:', lessonId);
 
@@ -1355,6 +1355,18 @@ router.post(
       const lessonText = lesson.content || lesson.description || lesson.summary || lesson.text || '';
       if (!fullContent && lessonText && !isThinLessonContent(String(lessonText), 1)) {
         fullContent = String(lessonText).trim();
+      }
+
+      const start = Math.max(1, Number(startPage) || 1);
+      const requestedEnd = Number(endPage);
+      const end = Number.isInteger(requestedEnd) && requestedEnd >= start ? requestedEnd : Number.MAX_SAFE_INTEGER;
+      const sourcePages = Array.isArray(lesson.slides) && lesson.slides.length > 0
+        ? lesson.slides.map((slide: any) => String(slide.content || slide.summary || '').trim()).filter(Boolean)
+        : fullContent.split(/\f+/).map((page: string) => page.trim()).filter(Boolean);
+      if (sourcePages.length > 1) {
+        fullContent = sourcePages.slice(start - 1, end).join('\n\n').trim();
+      } else if (start > 1) {
+        fullContent = '';
       }
 
       fullContent = clipQuizSource(fullContent);

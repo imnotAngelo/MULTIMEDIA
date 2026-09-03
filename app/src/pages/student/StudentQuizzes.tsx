@@ -137,7 +137,9 @@ export function StudentQuizzes() {
 
   const getDaysLabel = (dateStr: string) => {
     if (!dateStr) return null;
-    const diff = Math.ceil((new Date(dateStr).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    const dueTime = new Date(dateStr).getTime();
+    if (!Number.isFinite(dueTime)) return null;
+    const diff = Math.ceil((dueTime - Date.now()) / (1000 * 60 * 60 * 24));
     if (diff < 0) return { text: `${Math.abs(diff)}d overdue`, color: 'text-red-400' };
     if (diff === 0) return { text: 'Due today', color: 'text-amber-400' };
     if (diff <= 3) return { text: `Due in ${diff}d`, color: 'text-amber-400' };
