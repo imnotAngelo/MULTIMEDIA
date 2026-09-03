@@ -27,3 +27,5 @@ services:
         value: "3600"
       - key: JWT_REFRESH_EXPIRATION
         value: "86400"
+      - key: GEMINI_MODEL
+        value: gemini-3.6-flash

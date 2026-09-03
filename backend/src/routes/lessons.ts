@@ -61,6 +61,11 @@ async function fetchWithTimeout(input: string, init: RequestInit = {}, timeoutMs
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
     return await fetch(input, { ...init, signal: controller.signal });
+  } catch (error: any) {
+    if (error?.name === 'AbortError') {
+      throw new Error(`Request timed out after ${Math.round(timeoutMs / 1000)} seconds`);
+    }
+    throw error;
   } finally {
     clearTimeout(timeout);
   }
@@ -1372,8 +1377,10 @@ router.post(
       }
 
       const numQuestions = Math.min(Math.max(numberOfQuestions, 2), 10);
-      const model = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
-      const modelsToTry = [model, ...(model !== 'gemini-2.5-flash' ? ['gemini-2.5-flash'] : [])];
+      const configuredModel = process.env.GEMINI_MODEL?.trim();
+      const model = configuredModel || 'gemini-3.6-flash';
+      const fallbackModel = 'gemini-3.6-flash';
+      const modelsToTry = [...new Set([model, fallbackModel])];
       const prompt = `You are a professional quiz generator. Based ONLY on the lesson content below, generate exactly ${numQuestions} unique quiz questions.
 
 LESSON CONTENT:
@@ -1409,13 +1416,14 @@ Return ONLY a JSON object in this exact format:
               responseMimeType: 'application/json',
             },
           }),
-        }, 20000);
+        }, 120000);
         responseBody = await response.json();
         if (response.ok) break;
 
         const message = responseBody?.error?.message || `Gemini request failed with status ${response.status}`;
         const isBusy = response.status === 429 || responseBody?.error?.status === 'RESOURCE_EXHAUSTED' || /high demand|try again later|rate limit/i.test(message);
-        if (!isBusy || candidateModel === modelsToTry.at(-1)) {
+        const isInvalidModel = [400, 404].includes(response.status) && /model|not found|not supported|invalid|no longer available/i.test(message);
+        if ((!isBusy && !isInvalidModel) || candidateModel === modelsToTry.at(-1)) {
           const error: any = new Error(message);
           error.code = responseBody?.error?.status || responseBody?.error?.code;
           error.httpStatus = response.status;

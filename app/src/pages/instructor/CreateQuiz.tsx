@@ -41,6 +41,17 @@ const initialQuestion: Question = {
   points: 1,
 };
 
+function createAutomaticChoices(question: Question): string[] {
+  const answer = String(question.correctAnswer || '').trim() || 'Correct answer';
+  const base = answer.replace(/[.!?]+$/, '').trim();
+  const distractors = [
+    `An unrelated idea about ${question.text.trim().slice(0, 35) || 'the topic'}`,
+    `A common misunderstanding of ${base}`,
+    `A detail that is not supported by the lesson`,
+  ];
+  return [answer, ...distractors];
+}
+
 export function CreateQuiz() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
@@ -123,6 +134,18 @@ export function CreateQuiz() {
 
   const handleUpdateQuestion = (id: string, updates: Partial<Question>) => {
     setQuestions(questions.map(q => (q.id === id ? { ...q, ...updates } : q)));
+  };
+
+  const handleQuestionTypeChange = (question: Question, value: Question['type']) => {
+    if (value === 'multiple-choice' && question.type !== 'multiple-choice') {
+      handleUpdateQuestion(question.id, {
+        type: value,
+        options: createAutomaticChoices(question),
+        correctAnswer: String(question.correctAnswer || '').trim() || 'Correct answer',
+      });
+      return;
+    }
+    handleUpdateQuestion(question.id, { type: value });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -337,7 +360,7 @@ export function CreateQuiz() {
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <Label className="text-slate-300">Question Type</Label>
-                            <Select value={question.type} onValueChange={(value) => handleUpdateQuestion(question.id, { type: value as any })}>
+                            <Select value={question.type} onValueChange={(value) => handleQuestionTypeChange(question, value as Question['type'])}>
                               <SelectTrigger className="mt-1 bg-slate-800 border-slate-700 text-white">
                                 <SelectValue />
                               </SelectTrigger>
@@ -359,6 +382,42 @@ export function CreateQuiz() {
                             />
                           </div>
                         </div>
+                        {question.type === 'multiple-choice' && (
+                          <div className="space-y-3">
+                            <Label className="text-slate-300">Answer Choices</Label>
+                            {(question.options || ['', '', '', '']).map((option, optionIndex) => (
+                              <Input
+                                key={`${question.id}-option-${optionIndex}`}
+                                value={option}
+                                onChange={(e) => {
+                                  const options = [...(question.options || ['', '', '', ''])];
+                                  const previousAnswer = String(question.correctAnswer || '');
+                                  options[optionIndex] = e.target.value;
+                                  handleUpdateQuestion(question.id, {
+                                    options,
+                                    correctAnswer: optionIndex === 0 || previousAnswer === option
+                                      ? e.target.value
+                                      : question.correctAnswer,
+                                  });
+                                }}
+                                placeholder={`Choice ${String.fromCharCode(65 + optionIndex)}`}
+                                className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500"
+                              />
+                            ))}
+                            <p className="text-xs text-slate-500">The first choice is automatically marked as correct. Edit the choices as needed.</p>
+                          </div>
+                        )}
+                        {question.type === 'short-answer' && (
+                          <div>
+                            <Label className="text-slate-300">Correct Answer</Label>
+                            <Input
+                              value={typeof question.correctAnswer === 'string' ? question.correctAnswer : ''}
+                              onChange={(e) => handleUpdateQuestion(question.id, { correctAnswer: e.target.value })}
+                              placeholder="Enter the expected answer"
+                              className="mt-1 bg-slate-800 border-slate-700 text-white placeholder:text-slate-500"
+                            />
+                          </div>
+                        )}
                         <div className="flex justify-end gap-2">
                           {questions.length > 1 && (
                             <Button
