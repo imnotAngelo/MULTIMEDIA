@@ -42,7 +42,7 @@ const toLaboratory = (row: any) => ({
 });
 
 // List laboratories saved in Supabase for the current instructor/student view.
-router.get('/metadata', instructorMiddleware, async (req: any, res) => {
+router.get('/metadata', authMiddleware, async (req: any, res) => {
   try {
     let { data, error } = await supabase
       .from('laboratories')
@@ -56,9 +56,23 @@ router.get('/metadata', instructorMiddleware, async (req: any, res) => {
     }
     if (error) throw error;
     const rows = data ?? [];
-    const visibleRows = req.user?.role === 'student'
-      ? rows.filter((row: any) => matchesContentTarget(row.target_sections, row.target_year_levels, req.user.section, req.user.year_level))
-      : rows;
+    let visibleRows = rows.filter((row: any) => row.instructor_id === req.user?.id);
+    if (req.user?.role === 'student') {
+      const ownerIds = [...new Set(rows.map((row: any) => row.instructor_id).filter(Boolean))];
+      const { data: owners, error: ownersError } = ownerIds.length
+        ? await supabase.from('users').select('id, section, teaching_sections, teaching_year_levels').in('id', ownerIds)
+        : { data: [], error: null };
+      if (ownersError) throw ownersError;
+      const ownerById = Object.fromEntries((owners ?? []).map((owner: any) => [owner.id, owner]));
+      visibleRows = rows.filter((row: any) => {
+        const owner = ownerById[row.instructor_id];
+        const ownerSections = owner?.teaching_sections?.length ? owner.teaching_sections : (owner?.section ? [owner.section] : []);
+        const ownerYears = Array.isArray(owner?.teaching_year_levels) ? owner.teaching_year_levels : [];
+        return !!owner
+          && matchesContentTarget(row.target_sections, row.target_year_levels, req.user.section, req.user.year_level)
+          && matchesContentTarget(ownerSections, ownerYears, req.user.section, req.user.year_level);
+      });
+    }
     return res.json({ success: true, data: visibleRows.map(toLaboratory) });
   } catch (error: any) {
     console.error('❌ List laboratories error:', error);
@@ -67,7 +81,7 @@ router.get('/metadata', instructorMiddleware, async (req: any, res) => {
 });
 
 // Create or update a laboratory's instructor-managed metadata.
-router.post('/metadata', async (req: any, res) => {
+router.post('/metadata', authMiddleware, instructorMiddleware, async (req: any, res) => {
   try {
     const instructorId = req.user?.id;
     const { id, title, description, platform, platformUrl, unitId, unitName, lessonId, lessonTitle, dueDate, allowLateSubmissions, points, targetSections, targetYearLevels } = req.body ?? {};
@@ -88,8 +102,9 @@ router.post('/metadata', async (req: any, res) => {
     if (unitId) {
       const { data: unit, error: unitError } = await supabase
         .from('modules')
-        .select('id, title')
+        .select('id, title, courses!inner(instructor_id)')
         .eq('id', unitId)
+        .eq('courses.instructor_id', instructorId)
         .single();
 
       if (unitError || !unit) {
@@ -171,7 +186,7 @@ router.post('/metadata', async (req: any, res) => {
   }
 });
 
-router.delete('/:id', async (req: any, res) => {
+router.delete('/:id', authMiddleware, instructorMiddleware, async (req: any, res) => {
   try {
     const { error } = await supabase
       .from('laboratories')
@@ -193,7 +208,7 @@ router.delete('/:id', async (req: any, res) => {
  * (e.g. submissions review). So we create a `laboratories` row whose `id` is
  * the unitId, and set `instructor_id` to the current user.
  */
-router.post('/create-from-unit', async (req: any, res) => {
+router.post('/create-from-unit', authMiddleware, instructorMiddleware, async (req: any, res) => {
   try {
     const userId = req.user?.id;
     const { unitId } = req.body ?? {};
@@ -208,8 +223,9 @@ router.post('/create-from-unit', async (req: any, res) => {
     // Verify unit exists
     const { data: unit, error: unitError } = await supabase
       .from('modules')
-      .select('id, title')
+      .select('id, title, courses!inner(instructor_id)')
       .eq('id', unitId)
+      .eq('courses.instructor_id', userId)
       .single();
     if (unitError || !unit) {
       return res.status(404).json({ success: false, error: { code: 'UNIT_NOT_FOUND', message: 'Unit not found' } });

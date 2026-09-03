@@ -7,6 +7,8 @@ CREATE INDEX IF NOT EXISTS idx_users_password_reset_token ON users(password_rese
 ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'student';
 ALTER TABLE users ADD COLUMN IF NOT EXISTS instructor_approved BOOLEAN NOT NULL DEFAULT TRUE;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS student_approved BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS approved_by_instructor_id UUID REFERENCES users(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_users_approved_by_instructor ON users(approved_by_instructor_id);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS year_level SMALLINT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS teaching_year_levels SMALLINT[] NOT NULL DEFAULT '{}';
 ALTER TABLE users ADD COLUMN IF NOT EXISTS section TEXT;

@@ -159,7 +159,7 @@ router.post('/lessons/:lessonId/upload-video', authMiddleware, instructorMiddlew
 router.post('/', authMiddleware, instructorMiddleware, createUnit);
 
 // Get all units
-router.get('/', optionalAuthMiddleware, getUnits);
+router.get('/', authMiddleware, getUnits);
 
 // DEBUG: Get ALL lessons in database (no filtering)
 router.get('/debug/all-lessons', authMiddleware, instructorMiddleware, async (req, res) => {
@@ -306,7 +306,7 @@ router.post('/debug/fix-orphaned-lessons', authMiddleware, instructorMiddleware,
 });
 
 // Get lessons for a unit
-router.get('/:unitId/lessons', optionalAuthMiddleware, getUnitLessons);
+router.get('/:unitId/lessons', authMiddleware, getUnitLessons);
 
 // Update lesson slides (optional auth)
 router.put('/lessons/:lessonId/slides', authMiddleware, instructorMiddleware, updateLessonSlides);

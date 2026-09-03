@@ -95,6 +95,11 @@ router.post("/upload-file", authMiddleware, async (req: AuthRequest, res: Respon
     const { labId, labTitle, note } = req.body ?? {};
     const studentId = req.user?.id;
 
+    if (req.user?.role !== "student") {
+      if (file) fs.unlinkSync(file.path);
+      return res.status(403).json({ error: "Only students can submit laboratory files" });
+    }
+
     const { data: labRecord } = labId
       ? await supabase.from("laboratories").select("id, instructor_id, due_date, allow_late_submissions, target_sections, target_year_levels").eq("id", labId).maybeSingle()
       : { data: null };
@@ -286,7 +291,7 @@ router.get(
       const rows = (data ?? [])
         .filter((row: any) => {
           const labInstructorId = labInstructorById[row.lab_id] ?? null;
-          return !labInstructorId || labInstructorId === userId;
+          return labInstructorId === userId;
         })
         .map((row: any) => ({
           id: row.id,

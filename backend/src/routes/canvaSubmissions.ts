@@ -1,6 +1,7 @@
 import { Router, Response } from "express";
 import { supabase } from "../config/supabase.js";
 import { authMiddleware, type AuthRequest } from "../middleware/auth.js";
+import { matchesContentTarget } from "../lib/contentTargeting.js";
 
 const router = Router();
 
@@ -66,8 +67,27 @@ router.post("/", authMiddleware, async (req: AuthRequest, res: Response) => {
       req.body;
     const studentId = req.user?.id;
 
+    if (req.user?.role !== "student") {
+      return res.status(403).json({ error: "Only students can submit laboratory work" });
+    }
+
     if (!laboratoryId || !phaseId || !studentId) {
       return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    const { data: laboratory, error: laboratoryError } = await supabase
+      .from("laboratories")
+      .select("id, target_sections, target_year_levels")
+      .eq("id", laboratoryId)
+      .maybeSingle();
+    if (laboratoryError) throw laboratoryError;
+    if (!laboratory || !matchesContentTarget(
+      laboratory.target_sections,
+      laboratory.target_year_levels,
+      req.user.section,
+      req.user.year_level
+    )) {
+      return res.status(403).json({ error: "This laboratory is not assigned to your section and year level" });
     }
 
     const submissionData: any = {

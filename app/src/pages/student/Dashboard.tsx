@@ -65,8 +65,8 @@ export function Dashboard() {
       const unitsData = await unitsResponse.json();
       console.log('✅ Units fetched:', unitsData.data || []);
 
-      const activeUnits = unitsData.data || [];
-      const archived = unitsData.archived || [];
+      const activeUnits: Unit[] = unitsData.data || [];
+      const archived: Unit[] = unitsData.archived || [];
       
       setUnits(activeUnits);
       setArchivedUnits(archived);
@@ -116,6 +116,7 @@ export function Dashboard() {
       } catch (err) {
         console.error('❌ Failed to load my lesson progress:', err);
       }
+
     } catch (error) {
       console.error('❌ Failed to load units and lessons:', error);
     } finally {

@@ -101,16 +101,18 @@ export function InstructorDashboard() {
       console.log('📚 Total lessons loaded:', allLessons.length);
       setLessons(allLessons);
 
-      // Fetch students (active = last_active within last 30 days)
+      // Fetch only students handled by this instructor; active is last_active within 30 days.
       let studentList: ActiveStudent[] = [];
       let activeCount = 0;
+      let handledStudentTotal = 0;
       try {
         const studentsResponse = await authFetch('http://localhost:3001/api/users/students');
         const studentsData = await studentsResponse.json();
         if (studentsData?.success) {
           studentList = (studentsData.data?.students ?? []) as ActiveStudent[];
           activeCount = Number(studentsData.data?.active ?? 0);
-          console.log(`👥 Students: ${studentList.length} total, ${activeCount} active`);
+          handledStudentTotal = Number(studentsData.data?.total ?? studentList.length);
+          console.log(`👥 Handled students: ${handledStudentTotal} total, ${activeCount} active`);
         }
       } catch (err) {
         console.error('❌ Failed to load students:', err);
@@ -150,7 +152,7 @@ export function InstructorDashboard() {
       setStats({
         totalUnits: activeUnits.length,
         activeStudents: activeCount,
-        totalStudents: studentList.length,
+        totalStudents: handledStudentTotal,
         lessonsCreated: allLessons.length,
         lessonsCompleted: lessonsCompletedTotal ?? fallbackCompleted,
         totalSubmissions: submissionsTotal,
@@ -209,7 +211,7 @@ export function InstructorDashboard() {
             </div>
           </div>
           <div className="text-2xl font-bold text-white">{stats.totalStudents}</div>
-          <p className="text-slate-500 text-xs mt-1">Total Students</p>
+          <p className="text-slate-500 text-xs mt-1">Students I Handle</p>
         </button>
         <button
           onClick={() => navigate('/instructor/courses')}
@@ -262,7 +264,7 @@ export function InstructorDashboard() {
                   <h2 className="text-lg font-semibold text-white">Your Units</h2>
                 </div>
                 <span className="text-xs text-slate-500 bg-slate-800/60 px-2.5 py-1 rounded-full">
-                  {units.length} unit{units.length !== 1 ? 's' : ''} • {lessons.length} lesson{lessons.length !== 1 ? 's' : ''} • {stats.lessonsCompleted} completed • {stats.activeStudents} active student{stats.activeStudents !== 1 ? 's' : ''}
+                  {units.length} unit{units.length !== 1 ? 's' : ''} • {lessons.length} lesson{lessons.length !== 1 ? 's' : ''} • {stats.lessonsCompleted} completed • {stats.activeStudents} active handled student{stats.activeStudents !== 1 ? 's' : ''}
                 </span>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

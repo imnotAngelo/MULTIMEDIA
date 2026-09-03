@@ -57,32 +57,10 @@ async function ensureUserExistsInSupabase(userId: string): Promise<string> {
 
     if (error && error.code !== 'PGRST116') throw error;
 
-    const localUser = findUserById(userId);
-    if (localUser) {
-      console.warn('⚠️ Syncing locally-known user into Supabase before creating course:', userId);
-      const { error: insertError } = await supabase
-        .from('users')
-        .insert({
-          id: localUser.id,
-          email: localUser.email,
-          full_name: localUser.full_name,
-          role: localUser.role,
-          xp_total: localUser.xp_total || 0,
-          streak_days: localUser.streak_days || 0,
-        });
-
-      if (!insertError) {
-        return userId;
-      }
-      console.warn('⚠️ Could not sync local user into Supabase, falling back to default instructor:', insertError.message);
-    } else {
-      console.warn('⚠️ Authenticated user not found in Supabase or local store, falling back to default instructor:', userId);
-    }
-
-    return getOrCreateDefaultInstructor();
+    throw new Error('Authenticated user was not found in the content database');
   } catch (error: any) {
-    console.warn('⚠️ Error verifying user in Supabase, falling back to default instructor:', error.message);
-    return getOrCreateDefaultInstructor();
+    console.error('❌ Could not verify authenticated user:', error.message);
+    throw error;
   }
 }
 
@@ -141,17 +119,8 @@ async function getOrCreateDefaultInstructor() {
 // Get or create default course for units
 async function getOrCreateDefaultCourse(userId?: string) {
   try {
-    let instructorId = userId;
-
-    // If no user ID provided, use/create default instructor
-    if (!instructorId) {
-      instructorId = await getOrCreateDefaultInstructor();
-    } else {
-      // The JWT may reference a user created under a previous/different Supabase
-      // project. Verify the user actually exists here (or sync it from the local
-      // auth store) before using it as a foreign key, otherwise fall back.
-      instructorId = await ensureUserExistsInSupabase(instructorId);
-    }
+    if (!userId) throw new Error('Authentication is required to create content');
+    const instructorId = await ensureUserExistsInSupabase(userId);
 
     console.log('📚 Getting/creating course for instructor:', instructorId);
     
@@ -189,6 +158,17 @@ async function getOrCreateDefaultCourse(userId?: string) {
     console.error('❌ Error getting/creating default course:', error);
     throw error;
   }
+}
+
+async function requireOwnedUnit(unitId: string, instructorId: string) {
+  const { data: unit, error } = await supabase
+    .from('modules')
+    .select('id, courses!inner(instructor_id)')
+    .eq('id', unitId)
+    .eq('courses.instructor_id', instructorId)
+    .maybeSingle();
+  if (error) throw error;
+  return unit;
 }
 
 // Create a new unit (module)
@@ -286,10 +266,14 @@ export const getUnits = async (req: AuthRequest, res: Response) => {
         throw new Error('Supabase unavailable');
       }
 
-      // Get all courses so archived modules remain discoverable in Archives.
-      const { data: courses, error: coursesError } = await supabase
+      // Instructors only see modules from courses they own.
+      let coursesQuery = supabase
         .from('courses')
-        .select('id');
+        .select('id, instructor_id');
+      if (req.user?.role === 'instructor') {
+        coursesQuery = coursesQuery.eq('instructor_id', req.user.id);
+      }
+      const { data: courses, error: coursesError } = await coursesQuery;
 
       if (coursesError) throw coursesError;
 
@@ -299,32 +283,57 @@ export const getUnits = async (req: AuthRequest, res: Response) => {
 
       const courseIds = courses.map(c => c.id);
 
+      const instructorIds = [...new Set(courses.map((course) => course.instructor_id).filter(Boolean))];
+      const { data: instructors, error: instructorsError } = instructorIds.length
+        ? await supabase
+          .from('users')
+          .select('id, section, teaching_sections, teaching_year_levels')
+          .in('id', instructorIds)
+        : { data: [], error: null };
+      if (instructorsError) throw instructorsError;
+      const instructorById = Object.fromEntries((instructors ?? []).map((instructor: any) => [instructor.id, instructor]));
+      const courseOwnerById = Object.fromEntries(courses.map((course: any) => [course.id, instructorById[course.instructor_id]]));
+
       // Get all modules for those courses (both active and archived so we can separate them)
       const { data: units, error } = await supabase
         .from('modules')
-        .select('id, title, description, created_at, status, target_sections, target_year_levels')
+        .select('id, course_id, title, description, created_at, status, target_sections, target_year_levels')
         .in('course_id', courseIds)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      return (units || []) as Array<{ id: string; title: string; description: string; created_at: string; status: string; target_sections: string[]; target_year_levels: number[] }>;
+      return (units || []).map((unit: any) => {
+        const owner = courseOwnerById[unit.course_id];
+        return {
+          ...unit,
+          owner_sections: owner?.teaching_sections?.length ? owner.teaching_sections : (owner?.section ? [owner.section] : []),
+          owner_year_levels: Array.isArray(owner?.teaching_year_levels) ? owner.teaching_year_levels : [],
+        };
+      }) as Array<{ id: string; title: string; description: string; created_at: string; status: string; target_sections: string[]; target_year_levels: number[]; owner_sections: string[]; owner_year_levels: number[] }>;
     }, null as any);
 
     if (unitsFromDb !== null) {
       console.log('📚 Units fetched from Supabase:', unitsFromDb.length);
       const requester = (req as any).user;
+      if (!requester) {
+        return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Login required' } });
+      }
       
       // Separate active and archived units
       const activeUnits = unitsFromDb.filter(u => u.status !== 'archived');
       const archivedUnits = unitsFromDb.filter(u => u.status === 'archived');
       
       const visibleActiveUnits = requester?.role === 'student'
-        ? activeUnits.filter((u) => matchesContentTarget(u.target_sections, u.target_year_levels, requester.section, requester.year_level))
+        ? activeUnits.filter((u) => matchesContentTarget(u.target_sections, u.target_year_levels, requester.section, requester.year_level)
+          && u.owner_sections !== undefined
+          && matchesContentTarget(u.owner_sections, u.owner_year_levels, requester.section, requester.year_level))
         : activeUnits;
       
       const visibleArchivedUnits = requester?.role === 'student'
-        ? archivedUnits.filter((u) => matchesContentTarget(u.target_sections, u.target_year_levels, requester.section, requester.year_level))
+        ? archivedUnits.filter((u) => matchesContentTarget(u.target_sections, u.target_year_levels, requester.section, requester.year_level)
+          && u.owner_sections !== undefined
+          && matchesContentTarget(u.owner_sections, u.owner_year_levels, requester.section, requester.year_level))
         : archivedUnits;
 
       return res.json({
@@ -382,9 +391,54 @@ export const getUnitLessons = async (req: AuthRequest, res: Response) => {
     }
 
     const requester = (req as any).user;
+    if (!requester) {
+      return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Login required' } });
+    }
     const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(unitId);
 
-    const localLessons = listLocalLessonsByModuleId(unitId).map((l) => ({
+    if (requester.role === 'instructor') {
+      const { data: ownedUnit, error: ownershipError } = await supabase
+        .from('modules')
+        .select('id, courses!inner(instructor_id)')
+        .eq('id', unitId)
+        .eq('courses.instructor_id', requester.id)
+        .maybeSingle();
+      if (ownershipError) throw ownershipError;
+      if (!ownedUnit) {
+        return res.status(404).json({ success: false, error: { code: 'UNIT_NOT_FOUND', message: 'Unit not found' } });
+      }
+    }
+
+    if (requester.role === 'student') {
+      const { data: visibleUnit, error: visibilityError } = await supabase
+        .from('modules')
+        .select('id, course_id, target_sections, target_year_levels')
+        .eq('id', unitId)
+        .maybeSingle();
+      if (visibilityError) throw visibilityError;
+      if (!visibleUnit || !matchesContentTarget(visibleUnit.target_sections, visibleUnit.target_year_levels, requester.section, requester.year_level)) {
+        return res.status(404).json({ success: false, error: { code: 'UNIT_NOT_FOUND', message: 'Unit not found' } });
+      }
+      const { data: course, error: courseError } = await supabase
+        .from('courses')
+        .select('instructor_id')
+        .eq('id', visibleUnit.course_id)
+        .maybeSingle();
+      if (courseError) throw courseError;
+      const { data: owner, error: ownerError } = course
+        ? await supabase.from('users').select('section, teaching_sections, teaching_year_levels').eq('id', course.instructor_id).maybeSingle()
+        : { data: null, error: null };
+      if (ownerError) throw ownerError;
+      const ownerSections = Array.isArray(owner?.teaching_sections) && owner.teaching_sections.length
+        ? owner.teaching_sections
+        : (owner?.section ? [owner.section] : []);
+      const ownerYears = Array.isArray(owner?.teaching_year_levels) ? owner.teaching_year_levels : [];
+      if (!course || !owner || !matchesContentTarget(ownerSections, ownerYears, requester.section, requester.year_level)) {
+        return res.status(404).json({ success: false, error: { code: 'UNIT_NOT_FOUND', message: 'Unit not found' } });
+      }
+    }
+
+    const localLessons = requester.role === 'student' ? [] : listLocalLessonsByModuleId(unitId).map((l) => ({
       id: l.id,
       title: l.title,
       content: l.content || '',
@@ -502,6 +556,16 @@ export const updateLessonSlides = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    const { data: lessonOwner, error: ownerError } = await supabase
+      .from('lessons')
+      .select('module_id')
+      .eq('id', lessonId)
+      .maybeSingle();
+    if (ownerError) throw ownerError;
+    if (!lessonOwner || !userId || !(await requireOwnedUnit(lessonOwner.module_id, userId))) {
+      return res.status(404).json({ success: false, error: { code: 'LESSON_NOT_FOUND', message: 'Lesson not found' } });
+    }
+
     const { data: lesson, error } = await supabase
       .from('lessons')
       .update({
@@ -544,6 +608,10 @@ export const deleteUnit = async (req: AuthRequest, res: Response) => {
         success: false,
         error: { code: 'MISSING_ID', message: 'Unit ID is required' },
       });
+    }
+
+    if (!userId || !(await requireOwnedUnit(unitId, userId))) {
+      return res.status(404).json({ success: false, error: { code: 'UNIT_NOT_FOUND', message: 'Unit not found' } });
     }
 
     console.log('📦 Archiving unit:', unitId);
@@ -598,6 +666,10 @@ export const unarchiveUnit = async (req: AuthRequest, res: Response) => {
         success: false,
         error: { code: 'MISSING_ID', message: 'Unit ID is required' },
       });
+    }
+
+    if (!req.user?.id || !(await requireOwnedUnit(unitId, req.user.id))) {
+      return res.status(404).json({ success: false, error: { code: 'UNIT_NOT_FOUND', message: 'Unit not found' } });
     }
 
     console.log('♻️ Unarchiving unit:', unitId);

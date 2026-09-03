@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { supabase } from '../config/supabase.js';
-import { authMiddleware, optionalAuthMiddleware } from '../middleware/auth.js';
+import { authMiddleware, optionalAuthMiddleware, AuthRequest } from '../middleware/auth.js';
 import { instructorMiddleware } from '../middleware/admin.js';
 import multer from 'multer';
 import path from 'path';
@@ -10,11 +10,51 @@ import pdfParser from 'pdf-parse';
 import { v4 as uuidv4 } from 'uuid';
 import { createLocalLesson, getLocalLessonById, listLocalLessonsByModuleId } from '../lib/lessonStore.js';
 import { clipQuizSource, extractTextFromLessonFile, isThinLessonContent } from '../lib/lessonDocumentText.js';
+import { matchesContentTarget } from '../lib/contentTargeting.js';
 
 const router = Router();
 const routeDir = path.dirname(fileURLToPath(import.meta.url));
 const backendRoot = path.resolve(routeDir, '..', '..');
 const uploadDir = path.join(backendRoot, 'uploads');
+
+async function canAccessLesson(lessonId: string, requester: AuthRequest['user']) {
+  if (!requester || !supabase) return false;
+  const { data: lesson, error: lessonError } = await supabase
+    .from('lessons')
+    .select('id, module_id, status, target_sections, target_year_levels')
+    .eq('id', lessonId)
+    .maybeSingle();
+  if (lessonError || !lesson) return false;
+
+  const { data: module, error: moduleError } = await supabase
+    .from('modules')
+    .select('course_id')
+    .eq('id', lesson.module_id)
+    .maybeSingle();
+  if (moduleError || !module) return false;
+
+  const { data: course, error: courseError } = await supabase
+    .from('courses')
+    .select('instructor_id')
+    .eq('id', module.course_id)
+    .maybeSingle();
+  if (courseError || !course) return false;
+  if (requester.role === 'instructor') return course.instructor_id === requester.id;
+  if (requester.role !== 'student' || lesson.status === 'archived' || lesson.status === 'draft') return false;
+
+  const { data: owner, error: ownerError } = await supabase
+    .from('users')
+    .select('section, teaching_sections, teaching_year_levels')
+    .eq('id', course.instructor_id)
+    .maybeSingle();
+  if (ownerError || !owner) return false;
+  const ownerSections = Array.isArray(owner.teaching_sections) && owner.teaching_sections.length
+    ? owner.teaching_sections
+    : (owner.section ? [owner.section] : []);
+  const ownerYears = Array.isArray(owner.teaching_year_levels) ? owner.teaching_year_levels : [];
+  return matchesContentTarget(lesson.target_sections, lesson.target_year_levels, requester.section, requester.year_level)
+    && matchesContentTarget(ownerSections, ownerYears, requester.section, requester.year_level);
+}
 
 async function fetchWithTimeout(input: string, init: RequestInit = {}, timeoutMs = 15000): Promise<globalThis.Response> {
   const controller = new AbortController();
@@ -590,8 +630,9 @@ router.post(
           console.log('🔍 Verifying module exists:', lessonModuleId);
           const { data: moduleExists, error: moduleError } = await supabase
             .from('modules')
-            .select('id')
+            .select('id, courses!inner(instructor_id)')
             .eq('id', lessonModuleId)
+            .eq('courses.instructor_id', userId)
             .single();
 
           if (moduleError || !moduleExists) {
@@ -870,11 +911,14 @@ router.get('/unit/:unitId', optionalAuthMiddleware, async (req: Request, res: Re
 });
 
 // Get one lesson directly by ID. This avoids requiring the client to scan units.
-router.get('/by-id/:lessonId', optionalAuthMiddleware, async (req: Request, res: Response) => {
+router.get('/by-id/:lessonId', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const { lessonId } = req.params;
 
     if (supabase) {
+      if (!(await canAccessLesson(lessonId, req.user))) {
+        return res.status(404).json({ success: false, error: { code: 'LESSON_NOT_FOUND', message: 'Lesson was not found' } });
+      }
       const { data: lesson, error } = await supabase
         .from('lessons')
         .select('id, title, content, slides, slide_count, created_at, status, module_id, video_url, graphic_url, pdf_url, original_format')
@@ -922,9 +966,13 @@ router.get('/by-id/:lessonId', optionalAuthMiddleware, async (req: Request, res:
 });
 
 // Get slides for a lesson
-router.get('/:lessonId/pdf', optionalAuthMiddleware, async (req: Request, res: Response) => {
+router.get('/:lessonId/pdf', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const { lessonId } = req.params;
+
+    if (!(await canAccessLesson(lessonId, req.user))) {
+      return res.status(404).json({ success: false, error: { code: 'PDF_NOT_FOUND', message: 'PDF file was not found for this lesson' } });
+    }
 
     if (!supabase) return sendSupabaseUnavailable(res);
 
@@ -990,9 +1038,13 @@ router.get('/:lessonId/pdf', optionalAuthMiddleware, async (req: Request, res: R
 });
 
 // Get slides for a lesson
-router.get('/:lessonId/slides', optionalAuthMiddleware, async (req: Request, res: Response) => {
+router.get('/:lessonId/slides', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const { lessonId } = req.params;
+
+    if (!(await canAccessLesson(lessonId, req.user))) {
+      return res.status(404).json({ success: false, error: { code: 'LESSON_NOT_FOUND', message: 'Lesson was not found' } });
+    }
 
       if (!supabase) {
         return sendSupabaseUnavailable(res);

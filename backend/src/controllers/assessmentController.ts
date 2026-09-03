@@ -123,25 +123,7 @@ async function resolveCourseInstructor(userId?: string): Promise<string> {
     throw fetchError;
   }
 
-  const localUser = findUserById(userId);
-  if (localUser) {
-    const { error: syncError } = await supabase
-      .from('users')
-      .insert({
-        id: localUser.id,
-        email: localUser.email,
-        full_name: localUser.full_name,
-        role: localUser.role,
-        xp_total: localUser.xp_total || 0,
-        streak_days: localUser.streak_days || 0,
-      });
-
-    if (!syncError || syncError.code === '23505') {
-      return userId;
-    }
-  }
-
-  return getOrCreateDefaultInstructor();
+  throw new Error('Authenticated user was not found in the content database');
 }
 
 // Get or create default course
@@ -226,6 +208,12 @@ export const createAssessment = async (req: AuthRequest, res: Response) => {
         error: { code: 'UNAUTHORIZED', message: 'Authentication required' },
       });
     }
+    if ((req as any).user?.role !== 'instructor') {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'Only instructors can create assessments' },
+      });
+    }
 
     const { 
       title, 
@@ -259,6 +247,17 @@ export const createAssessment = async (req: AuthRequest, res: Response) => {
 
     if (!moduleId) {
       moduleId = await getOrCreateDefaultModule(courseId);
+    } else {
+      const { data: ownedModule, error: moduleError } = await supabase
+        .from('modules')
+        .select('id, courses!inner(instructor_id)')
+        .eq('id', moduleId)
+        .eq('courses.instructor_id', userId)
+        .maybeSingle();
+      if (moduleError) throw moduleError;
+      if (!ownedModule) {
+        return res.status(404).json({ success: false, error: { code: 'UNIT_NOT_FOUND', message: 'Unit not found' } });
+      }
     }
 
     if (type === 'quiz' && !allowDuplicate) {
@@ -431,10 +430,29 @@ export const getStudentAssessments = async (req: AuthRequest, res: Response) => 
         }
       }
 
+      let ownerById: Record<string, any> = {};
+      if (requestUser?.role === 'student') {
+        const ownerIds = [...new Set((assessments || []).map((assessment: any) => assessment.created_by).filter(Boolean))];
+        if (ownerIds.length > 0) {
+          const { data: owners, error: ownersError } = await supabase
+            .from('users')
+            .select('id, section, teaching_sections, teaching_year_levels')
+            .in('id', ownerIds);
+          if (ownersError) throw ownersError;
+          ownerById = Object.fromEntries((owners || []).map((owner: any) => [owner.id, owner]));
+        }
+      }
+
       const transformedAssessments = (assessments || [])
         .filter((assessment: any) =>
           requestUser?.role === 'student'
-            ? matchesContentTarget(assessment.target_sections, assessment.target_year_levels, requestUser.section, requestUser.year_level)
+            ? (() => {
+              const owner = ownerById[assessment.created_by];
+              const ownerSections = owner?.teaching_sections?.length ? owner.teaching_sections : (owner?.section ? [owner.section] : []);
+              const ownerYears = Array.isArray(owner?.teaching_year_levels) ? owner.teaching_year_levels : [];
+              return !!owner && matchesContentTarget(assessment.target_sections, assessment.target_year_levels, requestUser.section, requestUser.year_level)
+                && matchesContentTarget(ownerSections, ownerYears, requestUser.section, requestUser.year_level);
+            })()
             : true
         )
         .map((assessment: any) => ({
@@ -630,6 +648,8 @@ export const getAssessmentById = async (req: AuthRequest, res: Response) => {
           created_at,
           created_by,
           module_id,
+          target_sections,
+          target_year_levels,
           instructor:created_by(id, full_name),
           submissions:assessment_submissions(*)
         `
@@ -643,6 +663,27 @@ export const getAssessmentById = async (req: AuthRequest, res: Response) => {
           success: false,
           error: { code: 'NOT_FOUND', message: 'Assessment not found' },
         });
+      }
+
+      const requester = (req as any).user;
+      if (requester?.role === 'student') {
+        const { data: owner } = await supabase
+          .from('users')
+          .select('section, teaching_sections, teaching_year_levels')
+          .eq('id', assessment.created_by)
+          .maybeSingle();
+        const ownerSections = owner?.teaching_sections?.length ? owner.teaching_sections : (owner?.section ? [owner.section] : []);
+        const ownerYears = Array.isArray(owner?.teaching_year_levels) ? owner.teaching_year_levels : [];
+        if (!owner || assessment.status !== 'published'
+          || !matchesContentTarget(assessment.target_sections, assessment.target_year_levels, requester.section, requester.year_level)
+          || !matchesContentTarget(ownerSections, ownerYears, requester.section, requester.year_level)) {
+          return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Assessment not found' } });
+        }
+        assessment.submissions = (assessment.submissions || []).filter((submission: any) => submission.user_id === requester.id);
+      } else if (!requester) {
+        return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Login required' } });
+      } else if (requester.role === 'instructor' && assessment.created_by !== requester.id) {
+        return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Assessment not found' } });
       }
 
       console.log('📝 Assessment data retrieved:');
@@ -787,9 +828,13 @@ export const submitAssessmentResponse = async (req: AuthRequest, res: Response) 
     const { assessmentId } = req.params;
     const { answers } = req.body;
 
+    if (requestUser?.role !== 'student') {
+      return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Only students can submit assessments' } });
+    }
+
     const { data: assessment, error: assessmentError } = await supabase
       .from('assessments')
-      .select('id, questions_data, due_date, allow_late_submissions')
+      .select('id, questions_data, due_date, allow_late_submissions, status, target_sections, target_year_levels')
       .eq('id', assessmentId)
       .single();
 
@@ -798,6 +843,15 @@ export const submitAssessmentResponse = async (req: AuthRequest, res: Response) 
         success: false,
         error: { code: 'ASSESSMENT_NOT_FOUND', message: 'Quiz not found' },
       });
+    }
+
+    if (assessment.status !== 'published' || !matchesContentTarget(
+      assessment.target_sections,
+      assessment.target_year_levels,
+      requestUser.section,
+      requestUser.year_level
+    )) {
+      return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'This assessment is not assigned to your section and year level' } });
     }
 
     if (assessment.due_date && new Date(assessment.due_date).getTime() <= Date.now() && !assessment.allow_late_submissions) {

@@ -2,6 +2,23 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth.js';
 import { supabase } from '../config/supabase.js';
 
+async function getInstructorOwnedModuleIds(instructorId: string): Promise<string[]> {
+  const { data: courses, error: coursesError } = await supabase
+    .from('courses')
+    .select('id')
+    .eq('instructor_id', instructorId);
+  if (coursesError) throw coursesError;
+  const courseIds = (courses ?? []).map((course) => course.id);
+  if (courseIds.length === 0) return [];
+
+  const { data: modules, error: modulesError } = await supabase
+    .from('modules')
+    .select('id')
+    .in('course_id', courseIds);
+  if (modulesError) throw modulesError;
+  return (modules ?? []).map((module) => module.id);
+}
+
 export const getProfile = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
@@ -312,13 +329,23 @@ export const getProgress = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const { data: progress, error } = await supabase
+    let ownedModuleIds: string[] | null = null;
+    if (requestedId && requestedId !== req.user?.id && req.user?.role === 'instructor') {
+      ownedModuleIds = await getInstructorOwnedModuleIds(req.user.id);
+      if (ownedModuleIds.length === 0) {
+        return res.json({ success: true, data: { overall_progress: 0, total_lessons: 0, completed_lessons: 0, modules_progress: [] } });
+      }
+    }
+
+    let progressQuery = supabase
       .from('user_progress')
       .select(`
         *,
         modules:module_id(id, title, lessons(id))
       `)
       .eq('user_id', userId);
+    if (ownedModuleIds) progressQuery = progressQuery.in('module_id', ownedModuleIds);
+    const { data: progress, error } = await progressQuery;
 
     if (error) throw error;
 
@@ -355,6 +382,13 @@ export const getAchievements = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({
         success: false,
         error: { code: 'FORBIDDEN', message: 'You can only view your own achievements' },
+      });
+    }
+
+    if (requestedId && requestedId !== req.user?.id && req.user?.role === 'instructor') {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'Instructor access to student achievements is not available' },
       });
     }
 
@@ -400,10 +434,35 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    const { data: instructor, error: instructorError } = await supabase
+      .from('users')
+      .select('role, section, teaching_sections, teaching_year_levels')
+      .eq('id', req.user.id)
+      .maybeSingle();
+    if (instructorError) throw instructorError;
+    if (!instructor || instructor.role !== 'instructor') {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'Instructor account not found' },
+      });
+    }
+
+    const teachingSections = Array.isArray(instructor.teaching_sections) && instructor.teaching_sections.length
+      ? instructor.teaching_sections
+      : (instructor.section ? [instructor.section] : []);
+    const teachingYearLevels = Array.isArray(instructor.teaching_year_levels)
+      ? instructor.teaching_year_levels.map(Number).filter(Number.isInteger)
+      : [];
+    if (teachingSections.length === 0 || teachingYearLevels.length === 0) {
+      return res.json({ success: true, data: { total: 0, active: 0, students: [] } });
+    }
+
     const { data: students, error } = await supabase
       .from('users')
-      .select('id, email, full_name, avatar_url, xp_total, streak_days, last_active, created_at')
+      .select('id, email, full_name, avatar_url, xp_total, streak_days, last_active, created_at, year_level, section, student_approved, approved_by_instructor_id')
       .eq('role', 'student')
+      .in('section', teachingSections)
+      .in('year_level', teachingYearLevels)
       .order('last_active', { ascending: false, nullsFirst: false });
 
     if (error) throw error;
@@ -435,6 +494,10 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
 };
 
 /**
+ * GET /api/users/section-students
+ * Returns the number of students in the authenticated student's section and year.
+ */
+/**
  * GET /api/users/submissions/stats
  * Instructor-only. Returns total submission counts across all students,
  * combining canva/laboratory link submissions and file submissions.
@@ -448,13 +511,26 @@ export const getSubmissionStats = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    const { data: ownedLabs, error: labsError } = await supabase
+      .from('laboratories')
+      .select('id')
+      .eq('instructor_id', req.user.id);
+    if (labsError) throw labsError;
+    const ownedLabIds = (ownedLabs ?? []).map((lab) => lab.id);
+
+    if (ownedLabIds.length === 0) {
+      return res.json({ success: true, data: { total: 0, canva: 0, files: 0 } });
+    }
+
     const [canvaResult, fileResult] = await Promise.all([
       supabase
         .from('canva_submissions')
-        .select('id', { count: 'exact', head: true }),
+        .select('id', { count: 'exact', head: true })
+        .in('laboratory_id', ownedLabIds),
       supabase
         .from('lab_file_submissions')
-        .select('id', { count: 'exact', head: true }),
+        .select('id', { count: 'exact', head: true })
+        .in('lab_id', ownedLabIds),
     ]);
 
     const canvaCount = canvaResult.error ? 0 : canvaResult.count ?? 0;
@@ -579,15 +655,32 @@ export const getLessonProgressStats = async (req: AuthRequest, res: Response) =>
       });
     }
 
+    const moduleIds = await getInstructorOwnedModuleIds(req.user.id);
+    if (moduleIds.length === 0) {
+      return res.json({ success: true, data: { totalCompletions: 0, distinctLessonsCompleted: 0, distinctStudentsWithCompletions: 0 } });
+    }
+
+    const { data: ownedLessons, error: lessonsError } = await supabase
+      .from('lessons')
+      .select('id')
+      .in('module_id', moduleIds);
+    if (lessonsError) throw lessonsError;
+    const lessonIds = (ownedLessons ?? []).map((lesson) => lesson.id);
+    if (lessonIds.length === 0) {
+      return res.json({ success: true, data: { totalCompletions: 0, distinctLessonsCompleted: 0, distinctStudentsWithCompletions: 0 } });
+    }
+
     const [totalRes, rowsRes] = await Promise.all([
       supabase
         .from('lesson_progress')
         .select('id', { count: 'exact', head: true })
-        .eq('completed', true),
+        .eq('completed', true)
+        .in('lesson_id', lessonIds),
       supabase
         .from('lesson_progress')
         .select('lesson_id, student_id')
-        .eq('completed', true),
+        .eq('completed', true)
+        .in('lesson_id', lessonIds),
     ]);
 
     if (totalRes.error) {

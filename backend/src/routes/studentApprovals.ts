@@ -7,11 +7,31 @@ const router = Router();
 
 router.use(authMiddleware, instructorMiddleware);
 
-// List all students assigned to the instructor's sections and teaching years.
+async function getInstructorScope(instructorId: string) {
+  const { data: instructor, error } = await supabase
+    .from('users')
+    .select('role, section, teaching_sections, teaching_year_levels')
+    .eq('id', instructorId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!instructor || instructor.role !== 'instructor') return null;
+
+  return {
+    sections: Array.isArray(instructor.teaching_sections) && instructor.teaching_sections.length
+      ? instructor.teaching_sections
+      : (instructor.section ? [instructor.section] : []),
+    yearLevels: Array.isArray(instructor.teaching_year_levels)
+      ? instructor.teaching_year_levels.map(Number).filter(Number.isInteger)
+      : [],
+  };
+}
+
+// List students waiting for assignment in the instructor's handled sections.
 router.get('/students', async (req: AuthRequest, res: Response) => {
   try {
-    const teachingSections = req.user?.teaching_sections?.length ? req.user.teaching_sections : (req.user?.section ? [req.user.section] : []);
-    const teachingYearLevels = req.user?.teaching_year_levels || [];
+    const scope = await getInstructorScope(req.user!.id);
+    if (!scope) return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Instructor account not found' } });
+    const { sections: teachingSections, yearLevels: teachingYearLevels } = scope;
 
     if (teachingSections.length === 0 || teachingYearLevels.length === 0) {
       return res.json({ success: true, data: [] });
@@ -26,10 +46,12 @@ router.get('/students', async (req: AuthRequest, res: Response) => {
 
     const { data, error } = await supabase
       .from('users')
-      .select('id, email, full_name, avatar_url, created_at, year_level, section, student_approved')
+      .select('id, email, full_name, avatar_url, created_at, year_level, section, student_approved, approved_by_instructor_id')
       .eq('role', 'student')
       .in('section', teachingSections)
       .in('year_level', teachingYearLevels)
+      .is('approved_by_instructor_id', null)
+      .eq('student_approved', false)
       .order('year_level', { ascending: true })
       .order('full_name', { ascending: true });
 
@@ -47,8 +69,9 @@ router.get('/students', async (req: AuthRequest, res: Response) => {
 // List pending students for the instructor's own sections + teaching year levels
 router.get('/student-requests', async (req: AuthRequest, res: Response) => {
   try {
-    const teachingSections = req.user?.teaching_sections?.length ? req.user.teaching_sections : (req.user?.section ? [req.user.section] : []);
-    const teachingYearLevels = req.user?.teaching_year_levels || [];
+    const scope = await getInstructorScope(req.user!.id);
+    if (!scope) return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Instructor account not found' } });
+    const { sections: teachingSections, yearLevels: teachingYearLevels } = scope;
 
     if (teachingSections.length === 0 || teachingYearLevels.length === 0) {
       return res.json({ success: true, data: [] });
@@ -63,13 +86,16 @@ router.get('/student-requests', async (req: AuthRequest, res: Response) => {
 
     let query = supabase
       .from('users')
-      .select('id, email, full_name, avatar_url, created_at, year_level, section, student_approved')
+      .select('id, email, full_name, avatar_url, created_at, year_level, section, student_approved, approved_by_instructor_id')
       .eq('role', 'student')
       .in('section', teachingSections)
       .order('created_at', { ascending: true });
 
     if (req.query.includeAll !== 'true') {
       query = query.eq('student_approved', false);
+      query = query.is('approved_by_instructor_id', null);
+    } else {
+      query = query.or(`approved_by_instructor_id.eq.${req.user!.id},and(approved_by_instructor_id.is.null,student_approved.eq.false)`);
     }
     query = query.in('year_level', teachingYearLevels);
 
@@ -90,8 +116,9 @@ router.get('/student-requests', async (req: AuthRequest, res: Response) => {
 router.patch('/student-requests/:id/approve', async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const teachingSections = req.user?.teaching_sections?.length ? req.user.teaching_sections : (req.user?.section ? [req.user.section] : []);
-    const teachingYearLevels = req.user?.teaching_year_levels || [];
+    const scope = await getInstructorScope(req.user!.id);
+    if (!scope) return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Instructor account not found' } });
+    const { sections: teachingSections, yearLevels: teachingYearLevels } = scope;
 
     if (!supabase) {
       return res.status(503).json({
@@ -109,12 +136,12 @@ router.patch('/student-requests/:id/approve', async (req: AuthRequest, res: Resp
 
     const { data, error } = await supabase
       .from('users')
-      .update({ student_approved: true, updated_at: new Date().toISOString() })
+      .update({ student_approved: true, approved_by_instructor_id: req.user!.id, updated_at: new Date().toISOString() })
       .eq('id', id)
       .eq('role', 'student')
       .in('section', teachingSections)
       .in('year_level', teachingYearLevels)
-      .select('id, email, full_name, avatar_url, created_at, year_level, section, student_approved')
+      .select('id, email, full_name, avatar_url, created_at, year_level, section, student_approved, approved_by_instructor_id')
       .single();
 
     if (error || !data) {

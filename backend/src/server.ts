@@ -17,7 +17,7 @@ import avatarRoutes from './routes/avatar.js';
 import adminRoutes from './routes/admin.js';
 import studentApprovalRoutes from './routes/studentApprovals.js';
 import convertRoutes from './routes/convert.js';
-import { errorHandler } from './middleware/auth.js';
+import { authMiddleware, errorHandler } from './middleware/auth.js';
 import { createRateLimiter, securityHeaders } from './middleware/security.js';
 import { supabase } from './config/supabase.js';
 
@@ -66,7 +66,33 @@ app.use('/api/auth/login', createRateLimiter(15 * 60 * 1000, 60));
 app.use('/api/auth/forgot-password', createRateLimiter(15 * 60 * 1000, 20));
 app.use('/api/auth/reset-password', createRateLimiter(15 * 60 * 1000, 40));
 
-// Serve uploaded files statically
+// Protect laboratory submission files before the general uploads handler.
+app.get('/uploads/lab-submissions/:filename', authMiddleware, async (req: any, res: Response) => {
+  try {
+    const filename = path.basename(req.params.filename);
+    const filePath = `lab-submissions/${filename}`;
+    const { data: submission, error } = await supabase
+      .from('lab_file_submissions')
+      .select('student_id, lab_id, laboratories!inner(instructor_id)')
+      .eq('file_path', filePath)
+      .maybeSingle();
+
+    if (error || !submission) return res.status(404).json({ success: false, error: 'File not found' });
+    const labOwnerId = Array.isArray(submission.laboratories)
+      ? submission.laboratories[0]?.instructor_id
+      : submission.laboratories?.instructor_id;
+    const allowed = submission.student_id === req.user?.id
+      || (req.user?.role === 'instructor' && labOwnerId === req.user.id);
+    if (!allowed) return res.status(404).json({ success: false, error: 'File not found' });
+
+    return res.sendFile(path.join(backendRoot, 'uploads', filePath));
+  } catch (error: any) {
+    console.error('Protected submission file error:', error);
+    return res.status(404).json({ success: false, error: 'File not found' });
+  }
+});
+
+// Serve other uploaded files through the existing lesson routes.
 app.use('/uploads', express.static(path.join(backendRoot, 'uploads')));
 
 // Apply JSON parser everywhere EXCEPT multipart upload routes

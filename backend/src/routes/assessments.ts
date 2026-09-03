@@ -26,7 +26,7 @@ router.get('/', optionalAuthMiddleware, getStudentAssessments);
 router.get('/:assessmentId/my-submission', authMiddleware, getMyAssessmentSubmission);
 
 // Get specific assessment (optional auth)
-router.get('/:id', optionalAuthMiddleware, getAssessmentById);
+router.get('/:id', authMiddleware, getAssessmentById);
 
 // Create assessment (requires auth)
 router.post('/', authMiddleware, createAssessment);
