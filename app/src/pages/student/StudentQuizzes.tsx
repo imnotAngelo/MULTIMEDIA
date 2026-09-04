@@ -234,7 +234,7 @@ export function StudentQuizzes() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         <div className="bg-slate-900/60 border border-slate-800/60 rounded-xl p-5">
           <div className="w-9 h-9 rounded-lg bg-violet-500/10 flex items-center justify-center mb-2">
             <Zap className="w-4 h-4 text-violet-400" />
@@ -270,15 +270,6 @@ export function StudentQuizzes() {
           </div>
           <p className="text-slate-500 text-xs mt-1">Completed Quizzes</p>
         </button>
-        <div className="bg-slate-900/60 border border-slate-800/60 rounded-xl p-5">
-          <div className="w-9 h-9 rounded-lg bg-cyan-500/10 flex items-center justify-center mb-2">
-            <Trophy className="w-4 h-4 text-cyan-400" />
-          </div>
-          <div className="text-2xl font-bold text-white">
-            {quizzes.reduce((sum, q) => sum + (q.total_points || 0), 0)}
-          </div>
-          <p className="text-slate-500 text-xs mt-1">Total Points</p>
-        </div>
       </div>
 
       {/* Error */}

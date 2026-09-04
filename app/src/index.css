@@ -1,4 +1,4 @@
-@tailwind base;
+﻿@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
@@ -442,17 +442,94 @@
 
   .aether-logo {
     position: relative;
-    width: 76px;
-    height: 76px;
-    display: grid;
-    place-items: center;
-    filter: drop-shadow(0 0 18px rgba(103, 232, 249, 0.24));
+    width: min(45vmin, 200px);
+    height: auto;
+    display: block;
+    filter: drop-shadow(0 0 18px rgba(103, 232, 249, 0.2));
   }
 
   .aether-logo--compact {
     width: 38px;
     height: 38px;
   }
+
+  .aether-logo svg {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    display: block;
+  }
+
+  .aether-logo__frame {
+    fill: none;
+    stroke-width: 15;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 1900;
+    stroke-dashoffset: 1900;
+    filter: drop-shadow(0 0 10px rgba(90, 170, 255, 0.35));
+    animation: logo-draw-frame 1.45s cubic-bezier(.65, 0, .35, 1) .35s forwards;
+  }
+
+  .aether-logo__bloom-piece,
+  .aether-logo__pop {
+    opacity: 0;
+    transform-box: fill-box;
+    transform-origin: center;
+    transform: scale(.55);
+    animation: logo-pop-in .62s cubic-bezier(.34, 1.56, .64, 1) forwards;
+  }
+
+  .aether-logo__bloom-piece {
+    transform: scale(0) translateY(6px);
+    animation-duration: .5s;
+  }
+
+  .aether-logo__drift {
+    animation: logo-bloom-in .5s cubic-bezier(.34, 1.56, .64, 1) forwards, logo-drift 4.5s ease-in-out .9s infinite alternate;
+  }
+
+  .aether-logo__bloom-piece:nth-child(1) { animation-delay: .05s; }
+  .aether-logo__bloom-piece:nth-child(2) { animation-delay: .12s; }
+  .aether-logo__bloom-piece:nth-child(3) { animation-delay: .10s; }
+  .aether-logo__bloom-piece:nth-child(4) { animation-delay: .20s; }
+  .aether-logo__bloom-piece:nth-child(5) { animation-delay: .28s; }
+  .aether-logo__bloom-piece:nth-child(6) { animation-delay: .18s; }
+  .aether-logo__bloom-piece:nth-child(7) { animation-delay: .34s; }
+  .aether-logo__bloom-piece:nth-child(8) { animation-delay: .26s; }
+  .aether-logo__bloom-piece:nth-child(9) { animation-delay: .40s; }
+
+  .aether-logo__image { animation-delay: 1.55s; }
+  .aether-logo__video-icon { animation-delay: 1.72s; }
+  .aether-logo__play { animation-delay: 1.90s; }
+  .aether-logo__book { animation-delay: 2.10s; }
+  .aether-logo__person { animation-delay: 2.05s; }
+  .aether-logo__orb { animation-delay: 1.95s; }
+
+  .aether-logo__eyebrow,
+  .aether-logo__main,
+  .aether-logo__sub {
+    opacity: 0;
+    transform: translateY(10px);
+    font-family: "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
+    text-anchor: middle;
+  }
+
+  .aether-logo__eyebrow { fill: #aab3e0; font-size: 20px; letter-spacing: 7px; font-weight: 600; animation: logo-fade-up .6s cubic-bezier(.22, 1, .36, 1) 2.55s forwards; }
+  .aether-logo__main { font-size: 56px; font-weight: 800; animation: logo-fade-up-big .7s cubic-bezier(.34, 1.56, .64, 1) 2.68s forwards; }
+  .aether-logo__sub { fill: #7c86b8; font-size: 12px; letter-spacing: 3px; font-weight: 600; animation: logo-fade-up .6s cubic-bezier(.22, 1, .36, 1) 2.95s forwards; }
+  .aether-logo__underline { transform-box: fill-box; transform-origin: left center; transform: scaleX(0); animation: logo-grow-line .7s cubic-bezier(.65, 0, .35, 1) 3.05s forwards; }
+
+  .aether-logo--compact .aether-logo__wordmark { display: none; }
+  .aether-logo--compact .aether-logo__frame { stroke-width: 18; }
+
+  @keyframes logo-pop-in { to { opacity: 1; transform: scale(1); } }
+  @keyframes logo-bloom-in { to { opacity: 1; transform: scale(1) translateY(0); } }
+  @keyframes logo-drift { from { transform: translateY(0); } to { transform: translateY(-6px); } }
+  @keyframes logo-draw-frame { to { stroke-dashoffset: 0; } }
+  @keyframes logo-fade-up { to { opacity: 1; transform: translateY(0); } }
+  @keyframes logo-fade-up-big { to { opacity: 1; transform: translateY(0) scale(1); } }
+  @keyframes logo-grow-line { to { transform: scaleX(1); } }
 
   .aether-logo__core {
     position: relative;
