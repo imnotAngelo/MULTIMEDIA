@@ -15,29 +15,29 @@
 
 @layer base {
   :root {
-    --background: 215 44% 5%;
+    --background: 216 56% 5%;
     --foreground: 210 40% 98%;
-    --card: 214 40% 7%;
+    --card: 215 46% 8%;
     --card-foreground: 210 40% 98%;
-    --popover: 214 40% 7%;
+    --popover: 215 46% 8%;
     --popover-foreground: 210 40% 98%;
-    --primary: 187 82% 53%;
+    --primary: 184 80% 52%;
     --primary-foreground: 210 40% 98%;
-    --secondary: 214 31% 17%;
+    --secondary: 213 35% 16%;
     --secondary-foreground: 210 40% 98%;
     --muted: 214 31% 17%;
     --muted-foreground: 215 20% 65%;
-    --accent: 43 96% 58%;
+    --accent: 177 78% 54%;
     --accent-foreground: 210 40% 98%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 210 40% 98%;
-    --border: 210 31% 20%;
-    --input: 210 31% 20%;
+    --border: 192 38% 22%;
+    --input: 192 38% 22%;
     --ring: 187 82% 53%;
     --radius: 0.625rem;
     --sidebar-background: 215 44% 5%;
     --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 187 82% 53%;
+    --sidebar-primary: 184 80% 52%;
     --sidebar-primary-foreground: 210 40% 98%;
     --sidebar-accent: 214 31% 17%;
     --sidebar-accent-foreground: 210 40% 98%;
@@ -61,11 +61,26 @@
     overflow-x: hidden;
     background:
       radial-gradient(circle at 8% 0%, rgba(20, 184, 166, 0.14), transparent 24rem),
-      radial-gradient(circle at 92% 18%, rgba(251, 146, 60, 0.1), transparent 22rem),
-      radial-gradient(ellipse at 50% 44%, rgba(24, 62, 70, 0.24), transparent 64%),
-      linear-gradient(145deg, #0b1115 0%, #070b0f 48%, #101519 100%);
+      radial-gradient(circle at 92% 18%, rgba(34, 211, 238, 0.1), transparent 22rem),
+      radial-gradient(ellipse at 50% 44%, rgba(15, 76, 84, 0.28), transparent 64%),
+      linear-gradient(145deg, #07141b 0%, #050b12 48%, #0b1820 100%);
     background-attachment: fixed;
+    font-family: "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  button,
+  a,
+  input,
+  textarea,
+  select {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  :focus-visible {
+    outline: 2px solid rgba(103, 232, 249, 0.85);
+    outline-offset: 3px;
+    box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.12);
   }
 
   body::before,
@@ -81,7 +96,7 @@
     opacity: 0.5;
     background-image:
       radial-gradient(circle at 12% 20%, rgba(103, 232, 249, 0.9) 0 1px, transparent 1.5px),
-      radial-gradient(circle at 74% 18%, rgba(251, 191, 36, 0.75) 0 1px, transparent 1.5px),
+      radial-gradient(circle at 74% 18%, rgba(103, 232, 249, 0.75) 0 1px, transparent 1.5px),
       radial-gradient(circle at 42% 74%, rgba(103, 232, 249, 0.75) 0 1px, transparent 1.5px),
       radial-gradient(circle, rgba(186, 230, 253, 0.5) 0 1px, transparent 1.5px);
     background-position: 0 0, 23px 47px, 71px 11px, 0 0;
@@ -197,9 +212,9 @@
   /* Glassmorphism effect */
   .glass {
     @apply backdrop-blur-xl;
-    background: linear-gradient(135deg, rgba(18, 22, 49, 0.72), rgba(9, 11, 27, 0.58));
-    border: 1px solid rgba(103, 232, 249, 0.2);
-    box-shadow: inset 0 1px rgba(224, 242, 254, 0.14), 0 18px 60px rgba(2, 10, 18, 0.38), 0 0 24px rgba(34, 211, 238, 0.045);
+    background: linear-gradient(135deg, rgba(13, 43, 53, 0.66), rgba(5, 17, 26, 0.78));
+    border: 1px solid rgba(103, 232, 249, 0.22);
+    box-shadow: inset 0 1px rgba(224, 242, 254, 0.14), 0 18px 60px rgba(2, 10, 18, 0.42), 0 0 24px rgba(34, 211, 238, 0.08);
   }
 
   .aether-shell {
@@ -239,8 +254,8 @@
     background-image:
       linear-gradient(135deg, rgba(30, 41, 91, 0.42), rgba(8, 12, 31, 0.28)),
       linear-gradient(115deg, transparent 0 55%, rgba(103, 232, 249, 0.035) 70%, transparent 82%);
-    border-color: rgba(129, 140, 248, 0.2);
-    box-shadow: inset 0 1px rgba(255, 255, 255, 0.055), 0 14px 36px rgba(1, 3, 18, 0.2);
+    border-color: rgba(103, 232, 249, 0.18);
+    box-shadow: inset 0 1px rgba(255, 255, 255, 0.055), 0 14px 36px rgba(1, 8, 15, 0.28), 0 0 20px rgba(34, 211, 238, 0.035);
   }
 
   .aether-shell .bg-slate-900\/60::before,
@@ -289,6 +304,23 @@
   .aether-header input {
     border-color: rgba(45, 212, 191, 0.3);
     box-shadow: 0 0 18px rgba(45, 212, 191, 0.08);
+  }
+
+  .aether-shell input,
+  .aether-shell textarea,
+  .aether-shell select {
+    background-color: rgba(5, 17, 26, 0.68);
+    border-color: rgba(103, 232, 249, 0.18);
+    transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+  }
+
+  .aether-shell input:focus,
+  .aether-shell textarea:focus,
+  .aether-shell select:focus {
+    border-color: rgba(103, 232, 249, 0.65);
+    background-color: rgba(7, 27, 37, 0.82);
+    box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.1), 0 0 22px rgba(34, 211, 238, 0.08);
+    outline: none;
   }
 
   .aether-orbit {
@@ -508,7 +540,7 @@
 
   /* Gradient text */
   .gradient-text {
-    @apply bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-cyan-300 to-teal-300 bg-clip-text text-transparent;
   }
 
   /* Glow effects */
