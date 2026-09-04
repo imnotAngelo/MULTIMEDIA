@@ -755,11 +755,8 @@ export const getLeaderboard = async (req: AuthRequest, res: Response) => {
 
 /**
  * Update instructor's semester/year level and clear all student progress
- * Clears:
- * - Lesson progress (student submissions)
- * - Laboratory submissions
- * - Assessment/Quiz submissions
- * - Dashboard data for students in these courses
+ * Resets lesson progress while preserving laboratory and quiz submissions
+ * linked to the archived content.
  */
 export const updateSemesterAndClearProgress = async (req: AuthRequest, res: Response) => {
   const startTime = Date.now();
@@ -993,25 +990,12 @@ export const updateSemesterAndClearProgress = async (req: AuthRequest, res: Resp
       );
     }
 
-    // Clear progress operations
+    // Clear lesson progress only. Keep lab and quiz submissions linked to
+    // archived content so the previous semester remains reviewable.
     if (lessonIds.length > 0) {
       archiveAndClearPromises.push(
         supabase.from('lesson_progress').delete().in('lesson_id', lessonIds)
           .then(res => ({ type: 'clear_lesson_progress', result: res }))
-      );
-    }
-
-    if (labIds.length > 0) {
-      archiveAndClearPromises.push(
-        supabase.from('laboratory_submissions').delete().in('laboratory_id', labIds)
-          .then(res => ({ type: 'clear_lab_submissions', result: res }))
-      );
-    }
-
-    if (assessmentIds.length > 0) {
-      archiveAndClearPromises.push(
-        supabase.from('assessment_submissions').delete().in('assessment_id', assessmentIds)
-          .then(res => ({ type: 'clear_assessment_submissions', result: res }))
       );
     }
 
@@ -1038,8 +1022,6 @@ export const updateSemesterAndClearProgress = async (req: AuthRequest, res: Resp
         else if (type === 'archive_labs') results.archived.laboratories = finalCount;
         else if (type === 'archive_assessments') results.archived.assessments = finalCount;
         else if (type === 'clear_lesson_progress') results.cleared.lesson_progress = finalCount;
-        else if (type === 'clear_lab_submissions') results.cleared.lab_submissions = finalCount;
-        else if (type === 'clear_assessment_submissions') results.cleared.assessment_submissions = finalCount;
       }
     }
 
@@ -1059,9 +1041,25 @@ export const updateSemesterAndClearProgress = async (req: AuthRequest, res: Resp
       throw new Error(`Archive verification failed: ${remainingActiveModules!.length} module(s) remain active`);
     }
 
+    const { data: remainingActiveAssessments, error: assessmentVerifyError } = assessmentIds.length > 0
+      ? await supabase
+        .from('assessments')
+        .select('id')
+        .in('id', assessmentIds)
+        .neq('status', 'archived')
+      : { data: [], error: null };
+
+    if (assessmentVerifyError) {
+      throw new Error(`Could not verify archived quizzes: ${assessmentVerifyError.message}`);
+    }
+
+    if ((remainingActiveAssessments?.length || 0) > 0) {
+      throw new Error(`Quiz archive verification failed: ${remainingActiveAssessments!.length} quiz(zes) remain active`);
+    }
+
     console.log(`\n✅ SEMESTER UPDATE COMPLETE (${Date.now() - startTime}ms)`);
     console.log(`   📦 Archived: ${results.archived.units} units, ${results.archived.lessons} lessons, ${results.archived.laboratories} labs, ${results.archived.assessments} assessments`);
-    console.log(`   🗑️  Cleared: ${results.cleared.lesson_progress} lesson progress, ${results.cleared.lab_submissions} lab submissions, ${results.cleared.assessment_submissions} quiz submissions`);
+    console.log(`   🗑️  Cleared: ${results.cleared.lesson_progress} lesson progress; lab and quiz submissions preserved`);
 
     return res.json({
       success: true,

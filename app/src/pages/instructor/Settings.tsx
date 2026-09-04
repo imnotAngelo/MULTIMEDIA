@@ -275,7 +275,7 @@ export function InstructorSettings() {
       `Are you sure you want to change to ${semesterLabel}?\n\n` +
       `This will:\n` +
       `✓ Update your teaching semester\n` +
-      `✓ Clear all student progress & submissions\n` +
+      `✓ Reset lesson progress while preserving lab and quiz submissions\n` +
       `✓ Archive your previous semester's content\n\n` +
       `This action cannot be undone.`
     );
@@ -310,7 +310,7 @@ export function InstructorSettings() {
       setUser(updatedUser);
       setNewSemester(newSemester);
       
-      // Show success with details of what was archived and cleared
+      // Show success with details of what was archived and reset
       const archived = data.data?.archived || {};
       const cleared = data.data?.cleared || {};
       
@@ -320,8 +320,6 @@ export function InstructorSettings() {
       const archivedAssessments = archived.assessments || 0;
       
       const progressCount = cleared.lesson_progress || 0;
-      const labCount = cleared.lab_submissions || 0;
-      const quizCount = cleared.assessment_submissions || 0;
       
       const archiveDetails = [
         archivedUnits > 0 ? `${archivedUnits} unit${archivedUnits !== 1 ? 's' : ''}` : null,
@@ -332,12 +330,10 @@ export function InstructorSettings() {
       
       const clearDetails = [
         progressCount > 0 ? `${progressCount} lesson progress` : null,
-        labCount > 0 ? `${labCount} lab submission${labCount !== 1 ? 's' : ''}` : null,
-        quizCount > 0 ? `${quizCount} quiz submission${quizCount !== 1 ? 's' : ''}` : null,
       ].filter(Boolean).join(', ') || 'no student data';
       
       toast.success(
-        `✅ Semester updated to ${semesterLabel}!\n📦 Archived: ${archiveDetails}\n🗑️ Cleared: ${clearDetails}`
+        `✅ Semester updated to ${semesterLabel}!\n📦 Archived: ${archiveDetails}\n🔄 Reset: ${clearDetails}\n✅ Lab and quiz submissions preserved`
       );
       
       console.log(`✅ [SEMESTER UPDATE] Semester update complete. Refreshing data...`);

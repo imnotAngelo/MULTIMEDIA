@@ -13,3 +13,4 @@ export { AnnouncementsManagement } from './AnnouncementsManagement';
 export { InstructorMessages } from './InstructorMessages';
 export { InstructorSettings } from './Settings';
 export { StudentApprovals } from './StudentApprovals';
+export { StudentPerformance } from './StudentPerformance';

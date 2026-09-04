@@ -202,8 +202,8 @@ export function InstructorDashboard() {
           <p className="text-slate-500 text-xs mt-1">Total Units</p>
         </button>
         <button
-          onClick={() => navigate('/instructor/student-approvals')}
-          className="bg-slate-900/60 border border-slate-800/60 rounded-xl p-5 hover:border-emerald-500/30 hover:bg-slate-900/80 transition-all cursor-pointer group"
+          onClick={() => navigate('/instructor/student-performance')}
+          className="bg-slate-900/60 border border-slate-800/60 rounded-xl p-5 hover:border-emerald-500/30 hover:bg-slate-900/80 transition-all cursor-pointer group text-left"
         >
           <div className="flex items-center gap-3 mb-3">
             <div className="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center group-hover:bg-emerald-500/20 transition-colors">
@@ -225,9 +225,8 @@ export function InstructorDashboard() {
           <div className="text-2xl font-bold text-white">{stats.lessonsCreated}</div>
           <p className="text-slate-500 text-xs mt-1">Lessons Created</p>
         </button>
-        <button
-          onClick={() => navigate('/instructor/student-approvals')}
-          className="bg-slate-900/60 border border-slate-800/60 rounded-xl p-5 hover:border-green-500/30 hover:bg-slate-900/80 transition-all cursor-pointer group"
+        <div
+          className="bg-slate-900/60 border border-slate-800/60 rounded-xl p-5 hover:border-green-500/30 hover:bg-slate-900/80 transition-all group"
         >
           <div className="flex items-center gap-3 mb-3">
             <div className="w-9 h-9 rounded-lg bg-green-500/10 flex items-center justify-center group-hover:bg-green-500/20 transition-colors">
@@ -236,7 +235,7 @@ export function InstructorDashboard() {
           </div>
           <div className="text-2xl font-bold text-white">{stats.lessonsCompleted}</div>
           <p className="text-slate-500 text-xs mt-1">Lessons Completed</p>
-        </button>
+        </div>
         <button
           onClick={() => navigate('/instructor/laboratory-submissions')}
           className="bg-slate-900/60 border border-slate-800/60 rounded-xl p-5 hover:border-amber-500/30 hover:bg-slate-900/80 transition-all cursor-pointer group"

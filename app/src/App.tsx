@@ -17,7 +17,7 @@ import { AdminLayout, AdminSettings } from '@/pages/admin';
 import { StudentDashboard, Lessons, StudentQuizTaker, Laboratories, Portfolio, StudentQuizzes, Chatbox, StudentSettings } from '@/pages/student';
 
 // Instructor Pages
-import { InstructorDashboard, UnitsManagement, ViewLesson, InstructorAssessments, CreateAssessment, QuizManagement, QuizMethodPicker, CreateQuiz, AutoGenerateQuiz, LaboratorySubmissions, LaboratoriesManagement, InstructorMessages, InstructorSettings, StudentApprovals } from '@/pages/instructor';
+import { InstructorDashboard, UnitsManagement, ViewLesson, InstructorAssessments, CreateAssessment, QuizManagement, QuizMethodPicker, CreateQuiz, AutoGenerateQuiz, LaboratorySubmissions, LaboratoriesManagement, InstructorMessages, InstructorSettings, StudentApprovals, StudentPerformance } from '@/pages/instructor';
 import { InstructorApprovals } from '@/pages/admin';
 
 
@@ -118,6 +118,7 @@ export function App() {
           <Route path="/instructor/messages" element={<InstructorMessages />} />
           <Route path="/instructor/settings" element={<InstructorSettings />} />
           <Route path="/instructor/student-approvals" element={<StudentApprovals />} />
+          <Route path="/instructor/student-performance" element={<StudentPerformance />} />
           {/* Backward-compatible route */}
           <Route path="/instructor/canva-submissions" element={<LaboratorySubmissions />} />
         </Route>
