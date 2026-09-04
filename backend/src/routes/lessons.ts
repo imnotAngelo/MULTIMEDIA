@@ -358,10 +358,10 @@ export function buildOriginalPdfLessonRecord({
 }) {
   const rawText = summarizePdfText(pdfText);
   const descriptionText = String(description || '').trim();
-  const sourceDescription = descriptionText && !isThinLessonContent(descriptionText, 1)
+  const hasRealDescription = descriptionText && !/^(lesson uploaded from pdf|original pdf uploaded:)/i.test(descriptionText);
+  const content = hasRealDescription
     ? descriptionText
-    : rawText;
-  const content = buildShortLessonDescription(sourceDescription, title);
+    : buildShortLessonDescription(rawText, title);
 
   return {
     id: lessonId || uuidv4(),

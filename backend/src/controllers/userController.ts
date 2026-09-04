@@ -266,17 +266,16 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
 
           console.log(`  📝 Archiving ${oldYearLevel} semester: ${oldLessonIds.length} lessons, ${oldAssessmentIds.length} assessments, ${oldLabIds.length} labs`);
 
-          // Archive old content and clear student progress
+          // Archive old content and reset lesson progress. Keep submissions linked
+          // to the archived assessments and laboratories for historical review.
           await Promise.all([
             oldLessonIds.length > 0 ? supabase.from('lessons').update({ status: 'archived' }).in('id', oldLessonIds) : Promise.resolve(),
             oldAssessmentIds.length > 0 ? supabase.from('assessments').update({ status: 'archived' }).in('id', oldAssessmentIds) : Promise.resolve(),
             oldLabIds.length > 0 ? supabase.from('laboratories').update({ status: 'archived' }).in('id', oldLabIds) : Promise.resolve(),
             oldLessonIds.length > 0 ? supabase.from('lesson_progress').delete().in('lesson_id', oldLessonIds) : Promise.resolve(),
-            oldLabIds.length > 0 ? supabase.from('laboratory_submissions').delete().in('laboratory_id', oldLabIds) : Promise.resolve(),
-            oldAssessmentIds.length > 0 ? supabase.from('assessment_submissions').delete().in('assessment_id', oldAssessmentIds) : Promise.resolve(),
           ]);
 
-          console.log(`  ✅ Student's ${oldYearLevel} semester archived and progress cleared`);
+          console.log(`  ✅ Student's ${oldYearLevel} semester archived; submissions preserved and lesson progress cleared`);
         }
 
         console.log(`📦 ARCHIVING COMPLETE for ${currentUser.role} ${userId}`);

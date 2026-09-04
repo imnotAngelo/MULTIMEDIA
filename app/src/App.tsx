@@ -11,7 +11,7 @@ import { LoginPage, SignupPage, VerifyEmailPage, CheckEmailPage, ForgotPasswordP
 
 // Layouts
 import { StudentLayout, InstructorLayout } from '@/components/layout';
-import { AdminLayout } from '@/pages/admin';
+import { AdminLayout, AdminSettings } from '@/pages/admin';
 
 // Student Pages
 import { StudentDashboard, Lessons, StudentQuizTaker, Laboratories, Portfolio, StudentQuizzes, Chatbox, StudentSettings } from '@/pages/student';
@@ -131,6 +131,7 @@ export function App() {
           }
         >
           <Route path="/admin/instructors" element={<InstructorApprovals />} />
+          <Route path="/admin/settings" element={<AdminSettings />} />
         </Route>
 
         {/* Default Route */}

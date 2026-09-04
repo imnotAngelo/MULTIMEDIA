@@ -97,7 +97,6 @@ function LessonItem({ lesson, isActive, onClick }: {
         </p>
         <div className="flex items-center gap-2 text-xs text-slate-500">
           <Clock className="w-3 h-3" />
-          <span>{lesson.slideCount || 0} slides</span>
         </div>
       </div>
     </button>
@@ -695,8 +694,6 @@ export function CoursesManagement() {
               <div className="p-6 border-b border-slate-800">
                 <h2 className="text-2xl font-bold text-white">{activeLesson.title}</h2>
                 <div className="flex items-center gap-4 mt-3 text-sm text-slate-400"> 
-                  <span>{activeLesson.slideCount || 0} slides</span>
-                  <span>•</span>
                   <span>
                     Created {new Date(activeLesson.createdAt).toLocaleDateString()}
                   </span>
@@ -704,21 +701,6 @@ export function CoursesManagement() {
               </div>
 
               <div className="p-6">
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                  <div className="bg-slate-800/30 rounded-lg p-3">
-                    <p className="text-xs text-slate-500 mb-1">Slide Count</p>
-                    <p className="text-lg font-semibold text-violet-400">
-                      {activeLesson.slideCount || 0}
-                    </p>
-                  </div>
-                  <div className="bg-slate-800/30 rounded-lg p-3">
-                    <p className="text-xs text-slate-500 mb-1">Estimated Duration</p>
-                    <p className="text-lg font-semibold text-blue-400">
-                      {Math.ceil((activeLesson.slideCount || 0) * 3)} min
-                    </p>
-                  </div>
-                </div>
-
                 {/* Current Video Preview */}
                 {activeLesson.video_url && (
                   <div className="mb-6 rounded-lg overflow-hidden border border-slate-700/50 bg-gradient-to-b from-slate-900/50 to-slate-950">

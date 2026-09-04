@@ -233,7 +233,7 @@ export function Header({ title, subtitle }: HeaderProps) {
   };
 
   const handleProfileClick = () => {
-    navigate(user?.role === 'instructor' ? '/instructor/settings' : '/settings');
+    navigate(user?.role === 'instructor' ? '/instructor/settings' : user?.role === 'admin' ? '/admin/settings' : '/settings');
   };
 
   const getNotificationIcon = (type: string) => {

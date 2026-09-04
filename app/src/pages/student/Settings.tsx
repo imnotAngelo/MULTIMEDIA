@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { GraduationCap, Save, User as UserIcon, Flame, Calendar, Image as ImageIcon, Upload, RotateCcw, Archive, ArrowRight } from 'lucide-react';
+import { GraduationCap, Save, User as UserIcon, Image as ImageIcon, Upload, RotateCcw, Archive, ArrowRight } from 'lucide-react';
 import { AetherSpinner } from '@/components/AetherSpinner';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -29,19 +29,6 @@ function getInitials(name: string) {
   if (!name) return '?';
   const parts = name.trim().split(/\s+/);
   return (parts[0]?.[0] ?? '').concat(parts[1]?.[0] ?? '').toUpperCase() || '?';
-}
-
-function formatDate(iso?: string) {
-  if (!iso) return '—';
-  try {
-    return new Date(iso).toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  } catch {
-    return iso;
-  }
 }
 
 export function StudentSettings() {
@@ -476,27 +463,6 @@ export function StudentSettings() {
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 gap-3 mt-5 pt-5 border-t border-white/5">
-          <div className="rounded-xl bg-slate-800/40 border border-white/5 p-3">
-            <div className="flex items-center gap-1.5 text-orange-300 text-xs font-medium mb-1">
-              <Flame className="w-3.5 h-3.5" />
-              Streak
-            </div>
-            <div className="text-white text-lg font-semibold">
-              {user?.streak_days ?? 0} <span className="text-slate-400 text-xs font-normal">days</span>
-            </div>
-          </div>
-          <div className="rounded-xl bg-slate-800/40 border border-white/5 p-3">
-            <div className="flex items-center gap-1.5 text-sky-300 text-xs font-medium mb-1">
-              <Calendar className="w-3.5 h-3.5" />
-              Member since
-            </div>
-            <div className="text-white text-sm font-semibold">
-              {formatDate(user?.created_at)}
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Editable fields */}

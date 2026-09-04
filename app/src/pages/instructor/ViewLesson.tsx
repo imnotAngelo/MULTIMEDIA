@@ -381,7 +381,7 @@ export function ViewLesson() {
             </button>
             <h1 className="text-4xl font-bold text-white">{lesson.title}</h1>
             <p className="text-slate-400 mt-2">
-              {lesson.slideCount || lesson.slides?.length || 0} slides • Created{' '}
+              Created{' '}
               {new Date(lesson.createdAt).toLocaleDateString()}
             </p>
           </div>
@@ -415,7 +415,6 @@ export function ViewLesson() {
         {!hasSlides ? (
           <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-12 text-center">
             <p className="text-slate-400 mb-4">No slides available for this lesson</p>
-            <p className="text-yellow-400 text-xs">Slides: {lesson.slideCount || lesson.slides?.length || 0}</p>
             <p className="text-yellow-400 text-xs mt-2">Try clicking View again or check browser console for details</p>
           </div>
         ) : (

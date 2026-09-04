@@ -250,7 +250,6 @@ export function InstructorModules() {
                                   {lesson.title}
                                 </h4>
                                 <p className="text-sm text-slate-500 mb-2">
-                                  {lesson.slideCount ? `${lesson.slideCount} slides • ` : ''}
                                   Created {new Date(lesson.createdAt).toLocaleDateString()}
                                 </p>
                               </div>

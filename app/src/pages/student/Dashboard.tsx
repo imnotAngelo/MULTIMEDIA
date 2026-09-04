@@ -13,11 +13,8 @@ import {
   Layers,
   GraduationCap,
   Loader2,
-  Archive,
-  RotateCcw,
 } from 'lucide-react';
 import { AetherLoader } from '@/components/AetherLoader';
-import { toast } from 'sonner';
 
 interface Unit {
   id: string;
@@ -43,13 +40,9 @@ export function Dashboard() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
   const [units, setUnits] = useState<Unit[]>([]);
-  const [archivedUnits, setArchivedUnits] = useState<Unit[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
-  const [archivedLessons, setArchivedLessons] = useState<Lesson[]>([]);
   const [completedCount, setCompletedCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [showArchives, setShowArchives] = useState(false);
-  const [restoringId, setRestoringId] = useState<string | null>(null);
 
   useEffect(() => {
     loadUnitsAndLessons();
@@ -66,43 +59,23 @@ export function Dashboard() {
       console.log('✅ Units fetched:', unitsData.data || []);
 
       const activeUnits: Unit[] = unitsData.data || [];
-      const archived: Unit[] = unitsData.archived || [];
-      
       setUnits(activeUnits);
-      setArchivedUnits(archived);
 
       // Fetch lessons from all active units
       const lessonResults = await Promise.all(activeUnits.map(async (unit) => {
         const lessonsResponse = await authFetch(`${API_BASE_URL}/units/${unit.id}/lessons`);
         const lessonsData = await lessonsResponse.json();
         const activeLessons = lessonsData.data || [];
-        const archivedLessons = lessonsData.archived || [];
-        
-        console.log(`✅ Lessons for unit "${unit.title}": ${activeLessons.length} active, ${archivedLessons.length} archived`);
+        console.log(`✅ Lessons for unit "${unit.title}": ${activeLessons.length} active`);
         
         return {
           active: activeLessons.map((lesson: any) => ({ ...lesson, unitId: unit.id })),
-          archived: archivedLessons.map((lesson: any) => ({ ...lesson, unitId: unit.id })),
         };
       }));
       
       const allActiveLessons: Lesson[] = lessonResults.flatMap(r => r.active);
-      const allArchivedLessons: Lesson[] = lessonResults.flatMap(r => r.archived);
-
-      // Also fetch lessons from archived units
-      const archivedLessonResults = await Promise.all(archived.map(async (unit) => {
-        const lessonsResponse = await authFetch(`${API_BASE_URL}/units/${unit.id}/lessons`);
-        const lessonsData = await lessonsResponse.json();
-        const archivedLessons = lessonsData.archived || [];
-        
-        return archivedLessons.map((lesson: any) => ({ ...lesson, unitId: unit.id }));
-      }));
-      
-      const archivedLessonsFromArchivedUnits: Lesson[] = archivedLessonResults.flat();
-
-      console.log('🎓 Total lessons loaded:', allActiveLessons.length + allArchivedLessons.length + archivedLessonsFromArchivedUnits.length);
+      console.log('🎓 Total active lessons loaded:', allActiveLessons.length);
       setLessons(allActiveLessons);
-      setArchivedLessons([...allArchivedLessons, ...archivedLessonsFromArchivedUnits]);
 
       // Fetch this student's completed-lesson count
       try {
@@ -124,66 +97,7 @@ export function Dashboard() {
     }
   };
 
-  const handleUnarchiveUnit = async (unitId: string) => {
-    try {
-      setRestoringId(unitId);
-      console.log('♻️ Restoring unit:', unitId);
-      
-      const response = await authFetch(`${API_BASE_URL}/units/${unitId}/unarchive`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(data.error?.message || 'Failed to restore unit');
-      }
-
-      toast.success('✅ Unit restored successfully');
-      console.log('✅ Unit restored:', unitId);
-      
-      // Refresh the dashboard
-      setTimeout(() => loadUnitsAndLessons(), 500);
-    } catch (error: any) {
-      console.error('❌ Error restoring unit:', error);
-      toast.error(error?.message || 'Failed to restore unit');
-    } finally {
-      setRestoringId(null);
-    }
-  };
-
-  const handleUnarchiveLesson = async (lessonId: string) => {
-    try {
-      setRestoringId(lessonId);
-      console.log('♻️ Restoring lesson:', lessonId);
-      
-      const response = await authFetch(`${API_BASE_URL}/units/lessons/${lessonId}/unarchive`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(data.error?.message || 'Failed to restore lesson');
-      }
-
-      toast.success('✅ Lesson restored successfully');
-      console.log('✅ Lesson restored:', lessonId);
-      
-      // Refresh the dashboard
-      setTimeout(() => loadUnitsAndLessons(), 500);
-    } catch (error: any) {
-      console.error('❌ Error restoring lesson:', error);
-      toast.error(error?.message || 'Failed to restore lesson');
-    } finally {
-      setRestoringId(null);
-    }
-  };
-
   const totalLessons = lessons.length;
-  const totalArchivedLessons = archivedLessons.length;
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
@@ -291,103 +205,6 @@ export function Dashboard() {
               ))}
             </div>
           </div>
-
-          {/* Archives Section */}
-          {(archivedUnits.length > 0 || archivedLessons.length > 0) && (
-            <div>
-              <button
-                onClick={() => setShowArchives(!showArchives)}
-                className="flex items-center gap-2 w-full mb-4 p-4 rounded-lg border border-slate-800/60 hover:border-amber-500/40 bg-slate-900/30 hover:bg-slate-900/50 transition-all"
-              >
-                <Archive className="w-5 h-5 text-amber-400" />
-                <h2 className="text-lg font-semibold text-white">Archives</h2>
-                <span className="ml-auto text-xs text-slate-500 bg-slate-800/60 px-2.5 py-1 rounded-full">
-                  {archivedUnits.length + archivedLessons.length} item{archivedUnits.length + archivedLessons.length !== 1 ? 's' : ''}
-                </span>
-                <ArrowRight className={`w-4 h-4 text-slate-600 transition-transform ${showArchives ? 'rotate-90' : ''}`} />
-              </button>
-
-              {showArchives && (
-                <div className="space-y-4 mb-6 p-4 rounded-lg border border-amber-500/20 bg-amber-500/5">
-                  <p className="text-slate-400 text-sm">
-                    These are your materials from previous semesters. Review them anytime for reference or revision.
-                  </p>
-
-                  {archivedUnits.length > 0 && (
-                    <div>
-                      <h3 className="text-sm font-semibold text-amber-300 mb-3">Archived Units</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {archivedUnits.map((unit) => (
-                          <div
-                            key={unit.id}
-                            className="group bg-slate-900/50 border border-slate-800/60 hover:border-amber-500/30 rounded-xl p-5 opacity-75 hover:opacity-100 transition-all"
-                          >
-                            <div className="flex items-start justify-between mb-3">
-                              <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                                <Archive className="w-5 h-5 text-amber-400" />
-                              </div>
-                              <button
-                                onClick={() => handleUnarchiveUnit(unit.id)}
-                                disabled={restoringId === unit.id}
-                                className="flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 disabled:opacity-50 disabled:cursor-not-allowed bg-emerald-500/10 hover:bg-emerald-500/20 px-2 py-1 rounded transition-all"
-                              >
-                                <RotateCcw className={`w-3 h-3 ${restoringId === unit.id ? 'animate-spin' : ''}`} />
-                                {restoringId === unit.id ? 'Restoring...' : 'Restore'}
-                              </button>
-                            </div>
-                            <h4 className="font-medium text-slate-300 mb-1">
-                              {unit.title}
-                            </h4>
-                            <p className="text-slate-500 text-sm mb-3 line-clamp-2">
-                              {unit.description || 'No description available'}
-                            </p>
-                            <div className="flex items-center gap-4 text-xs text-slate-500">
-                              <span className="flex items-center gap-1.5">
-                                <FileText className="w-3 h-3" />
-                                {unit.lessonCount} lesson{unit.lessonCount !== 1 ? 's' : ''}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {archivedLessons.length > 0 && (
-                    <div>
-                      <h3 className="text-sm font-semibold text-amber-300 mb-3">Archived Lessons</h3>
-                      <div className="space-y-2">
-                        {archivedLessons.slice(0, 5).map((lesson) => (
-                          <div
-                            key={lesson.id}
-                            className="flex items-center justify-between p-3 rounded-lg bg-slate-800/40 border border-slate-700/60 hover:border-amber-500/30 opacity-75 hover:opacity-100 transition-all"
-                          >
-                            <div className="flex items-center gap-3">
-                              <Archive className="w-4 h-4 text-amber-400" />
-                              <span className="text-sm text-slate-300">{lesson.title}</span>
-                            </div>
-                            <button
-                              onClick={() => handleUnarchiveLesson(lesson.id)}
-                              disabled={restoringId === lesson.id}
-                              className="flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 disabled:opacity-50 disabled:cursor-not-allowed bg-emerald-500/10 hover:bg-emerald-500/20 px-2 py-1 rounded transition-all whitespace-nowrap"
-                            >
-                              <RotateCcw className={`w-3 h-3 ${restoringId === lesson.id ? 'animate-spin' : ''}`} />
-                              {restoringId === lesson.id ? 'Restoring...' : 'Restore'}
-                            </button>
-                          </div>
-                        ))}
-                        {archivedLessons.length > 5 && (
-                          <p className="text-xs text-slate-500 text-center pt-2">
-                            +{archivedLessons.length - 5} more archived lessons
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
 
         </>
       )}
