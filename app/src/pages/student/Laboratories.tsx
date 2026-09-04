@@ -29,6 +29,7 @@ interface InstructorLab {
   lessonId: string;
   lessonTitle: string;
   dueDate: string;
+  allowLateSubmissions?: boolean;
   createdAt: string;
 }
 
@@ -179,10 +180,15 @@ export function Laboratories() {
       return;
     }
     if (!submittingLabId) return;
+    const lab = labs.find(l => l.id === submittingLabId);
+    const dueTime = lab?.dueDate ? new Date(lab.dueDate).getTime() : NaN;
+    if (Number.isFinite(dueTime) && dueTime <= Date.now() && !lab?.allowLateSubmissions) {
+      setSubmitError('This laboratory is closed because its due date has passed.');
+      return;
+    }
     setSubmitting(true);
     setSubmitError('');
     try {
-      const lab = labs.find(l => l.id === submittingLabId);
       const form = new FormData();
       form.append('file', selectedFile);
       form.append('labId', submittingLabId);
@@ -457,8 +463,9 @@ export function Laboratories() {
           {labs.map(lab => {
             const dl = daysLabel(lab.dueDate);
             const isOverdue = lab.dueDate
-              ? new Date(lab.dueDate).getTime() < Date.now()
+              ? new Date(lab.dueDate).getTime() <= Date.now()
               : false;
+            const isClosed = isOverdue && !lab.allowLateSubmissions;
 
             return (
               <div
@@ -546,14 +553,17 @@ export function Laboratories() {
                   </a>
                   <button
                     onClick={() => openModal(lab.id)}
+                    disabled={isClosed}
                     className={`flex items-center justify-center gap-2 flex-1 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                      submissions[lab.id]
+                      isClosed
+                        ? 'bg-slate-800 border border-slate-700 text-slate-500 cursor-not-allowed'
+                        : submissions[lab.id]
                         ? 'bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-600/30'
                         : 'bg-emerald-600 hover:bg-emerald-700 text-white'
                     }`}
                   >
                     <Upload className="w-4 h-4" />
-                    {submissions[lab.id] ? 'Resubmit' : 'Submit'}
+                    {isClosed ? 'Closed' : submissions[lab.id] ? 'Resubmit' : 'Submit'}
                   </button>
                 </div>
               </div>

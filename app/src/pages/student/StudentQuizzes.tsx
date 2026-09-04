@@ -27,6 +27,7 @@ interface Quiz {
   type: string;
   status: string;
   due_date: string;
+  allow_late_submissions?: boolean;
   total_points: number;
   time_limit?: number;
   questions_data?: any[];
@@ -123,6 +124,10 @@ export function StudentQuizzes() {
   };
 
   const handleTakeQuiz = (quiz: Quiz) => {
+    const dueTime = quiz.due_date ? new Date(quiz.due_date).getTime() : NaN;
+    if (!isSubmitted(quiz) && Number.isFinite(dueTime) && dueTime <= Date.now() && !quiz.allow_late_submissions) {
+      return;
+    }
     navigate(`/assessment/${quiz.id}`);
   };
 
@@ -167,8 +172,9 @@ export function StudentQuizzes() {
     const daysLabel = getDaysLabel(quiz.due_date);
     const qCount = questionCount(quiz);
     const isOverdue = quiz.due_date
-      ? new Date(quiz.due_date).getTime() < Date.now()
+      ? new Date(quiz.due_date).getTime() <= Date.now()
       : false;
+    const isClosed = isOverdue && !quiz.allow_late_submissions && !isSubmitted(quiz);
 
     return (
       <div
@@ -198,8 +204,8 @@ export function StudentQuizzes() {
           ) : (
             <span className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"><CheckCircle2 className="w-3 h-3" />Open</span>
           )}
-          <Button onClick={() => handleTakeQuiz(quiz)} size="sm" className="bg-violet-600 hover:bg-violet-700 text-white flex items-center gap-1.5">
-            {isSubmitted(quiz) ? 'Review Submission' : 'Take Quiz'}
+          <Button onClick={() => handleTakeQuiz(quiz)} disabled={isClosed} size="sm" className="bg-violet-600 hover:bg-violet-700 text-white flex items-center gap-1.5">
+            {isSubmitted(quiz) ? 'Review Submission' : isClosed ? 'Closed' : 'Take Quiz'}
             <ArrowRight className="w-3.5 h-3.5" />
           </Button>
         </div>

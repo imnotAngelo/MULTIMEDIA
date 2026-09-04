@@ -38,6 +38,8 @@ interface Quiz {
   time_limit?: number;
   shuffle_questions?: boolean;
   show_correct_answers?: boolean;
+  due_date?: string;
+  allow_late_submissions?: boolean;
   dueDate: string;
   createdAt: string;
 }
@@ -188,6 +190,14 @@ export function StudentQuizTaker() {
             setScore(Number(savedSubmission.score) || 0);
             setSubmitted(true);
         }
+
+        const dueDate = quizData.due_date || quizData.dueDate;
+        const dueTime = dueDate ? new Date(dueDate).getTime() : NaN;
+        if (!savedSubmission && Number.isFinite(dueTime) && dueTime <= Date.now() && !quizData.allow_late_submissions) {
+          setQuiz(null);
+          setError('This quiz is closed because its due date has passed.');
+          return;
+        }
         
         // Initialize time remaining
         if (quizData.time_limit) {
@@ -252,6 +262,12 @@ export function StudentQuizTaker() {
 
   const handleSubmit = async () => {
     if (submitted || submitting) return;
+    const dueDate = quiz?.due_date || quiz?.dueDate;
+    const dueTime = dueDate ? new Date(dueDate).getTime() : NaN;
+    if (Number.isFinite(dueTime) && dueTime <= Date.now() && !quiz?.allow_late_submissions) {
+      setError('This quiz is closed because its due date has passed.');
+      return;
+    }
     setSubmitting(true);
     try {
       // Send submission to backend

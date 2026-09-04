@@ -550,12 +550,12 @@ export const updateLessonSlides = async (req: AuthRequest, res: Response) => {
     // Optional auth
     const userId = (req as any).user?.id;
     const { lessonId } = req.params;
-    const { slides, slideCount } = req.body;
+    const { slides } = req.body;
 
-    if (!lessonId || !slides) {
+    if (!lessonId || !Array.isArray(slides)) {
       return res.status(400).json({
         success: false,
-        error: { code: 'MISSING_FIELDS', message: 'Lesson ID and slides are required' },
+        error: { code: 'INVALID_SLIDES', message: 'Lesson ID and a valid slides array are required' },
       });
     }
 
@@ -573,7 +573,7 @@ export const updateLessonSlides = async (req: AuthRequest, res: Response) => {
       .from('lessons')
       .update({
         slides,
-        slide_count: slideCount || slides.length,
+        slide_count: slides.length,
       })
       .eq('id', lessonId)
       .select('id, title, slides, slide_count')
