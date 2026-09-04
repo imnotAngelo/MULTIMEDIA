@@ -6,6 +6,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import mammoth from 'mammoth';
 import pdfParser from 'pdf-parse';
 import PptxGenJS from 'pptxgenjs';
+import JSZip from 'jszip';
 import { v4 as uuidv4 } from 'uuid';
 import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { createCanvas } from '@napi-rs/canvas';
@@ -30,6 +31,15 @@ const upload = multer({
 const supportedExtensions = new Set(['.pdf', '.ppt', '.pptx', '.docx', '.png', '.jpg', '.jpeg', '.webp', '.md', '.markdown', '.txt']);
 const contentWidth = 11.2;
 const contentHeight = 5.55;
+
+async function countPowerPointSlides(buffer: Buffer): Promise<number> {
+  try {
+    const archive = await JSZip.loadAsync(buffer);
+    return Object.keys(archive.files).filter((name) => /^ppt\/slides\/slide\d+\.xml$/i.test(name)).length;
+  } catch {
+    return 0;
+  }
+}
 
 interface TextSlide {
   title: string;
@@ -201,6 +211,7 @@ export function buildConvertedLessonRecord({
   fileUrl,
   pdfUrl,
   originalFormat = 'pptx',
+  slideCount = 0,
 }: {
   id?: string;
   unitId?: string | null;
@@ -210,6 +221,7 @@ export function buildConvertedLessonRecord({
   fileUrl?: string;
   pdfUrl?: string;
   originalFormat?: string;
+  slideCount?: number;
 }) {
   const normalizedUnitId = unitId || moduleId || null;
   const normalizedFileUrl = fileUrl || pdfUrl || '';
@@ -222,7 +234,7 @@ export function buildConvertedLessonRecord({
     title,
     content: content || `Converted presentation generated from ${title}.`,
     createdAt: new Date().toISOString(),
-    slideCount: 0,
+    slideCount: Number.isInteger(slideCount) && slideCount >= 0 ? slideCount : 0,
     slides: [],
     pdfUrl: normalizedFileUrl,
     fileUrl: normalizedFileUrl,
@@ -699,6 +711,7 @@ router.post('/pptx', upload.single('file'), async (req: Request, res: Response) 
     const output = isNativePowerpoint
       ? req.file.buffer
       : await pptx.write({ outputType: 'nodebuffer' }) as Buffer;
+    const slideCount = await countPowerPointSlides(output);
     const safeName = title.replace(/[^a-z0-9-_]+/gi, '-').replace(/^-|-$/g, '') || 'converted-presentation';
     if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
     const fileName = `${safeName}-${Date.now()}${isNativePowerpoint ? extension : '.pptx'}`;
@@ -769,7 +782,7 @@ router.post('/pptx', upload.single('file'), async (req: Request, res: Response) 
       title,
       content,
       slides: [],
-      slide_count: 0,
+      slide_count: slideCount,
       xp_reward: 25,
       order_index: 1,
       status: 'published',
@@ -810,7 +823,7 @@ router.post('/pptx', upload.single('file'), async (req: Request, res: Response) 
         title,
         content: lessonPayload.content,
         slides: [],
-        slideCount: 0,
+        slideCount,
         status: 'published',
         createdAt: new Date().toISOString(),
         pdfUrl: fileUrl,
@@ -834,6 +847,7 @@ router.post('/pptx', upload.single('file'), async (req: Request, res: Response) 
       fileUrl,
       pdfUrl: fileUrl,
       originalFormat,
+      slideCount,
     });
 
     return res.status(201).json({

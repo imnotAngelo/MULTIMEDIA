@@ -43,6 +43,16 @@ interface Lesson {
   app_name?: string;
 }
 
+function getLessonSlideCount(lesson: Lesson): number {
+  if (Array.isArray(lesson.slides) && lesson.slides.length > 0) return lesson.slides.length;
+  const storedCount = Number(lesson.slideCount);
+  return Number.isInteger(storedCount) && storedCount >= 0 ? storedCount : 0;
+}
+
+function getLessonDurationMinutes(lesson: Lesson): number {
+  return Math.max(0, Math.ceil(getLessonSlideCount(lesson) * 3));
+}
+
 // Helper function to get correct MIME type for video
 function getVideoMimeType(url: string): string {
   if (!url) return 'video/mp4';
@@ -66,6 +76,7 @@ function LessonItem({ lesson, isActive, onClick }: {
   isActive?: boolean;
   onClick?: () => void;
 }) {
+  const slideCount = getLessonSlideCount(lesson);
   return (
     <button
       onClick={onClick}
@@ -97,7 +108,7 @@ function LessonItem({ lesson, isActive, onClick }: {
         </p>
         <div className="flex items-center gap-2 text-xs text-slate-500">
           <Clock className="w-3 h-3" />
-          <span>{lesson.slideCount || 0} slides</span>
+          <span>{slideCount} slides · {getLessonDurationMinutes(lesson)} min</span>
         </div>
       </div>
     </button>
@@ -350,7 +361,9 @@ export function Lessons() {
               <div className="p-6 border-b border-slate-800">
                 <h2 className="text-2xl font-bold text-white">{activeLesson.title}</h2>
                 <div className="flex items-center gap-4 mt-3 text-sm text-slate-400">
-                  <span>{activeLesson.slideCount || 0} slides</span>
+                  <span>{getLessonSlideCount(activeLesson)} slides</span>
+                  <span>•</span>
+                  <span>{getLessonDurationMinutes(activeLesson)} min</span>
                   <span>•</span>
                   <span>
                     Created {new Date(activeLesson.createdAt).toLocaleDateString()}
@@ -448,13 +461,13 @@ export function Lessons() {
                   <div className="bg-slate-800/30 rounded-lg p-3">
                     <p className="text-xs text-slate-500 mb-1">Slide Count</p>
                     <p className="text-lg font-semibold text-violet-400">
-                      {activeLesson.slideCount || 0}
+                      {getLessonSlideCount(activeLesson)}
                     </p>
                   </div>
                   <div className="bg-slate-800/30 rounded-lg p-3">
                     <p className="text-xs text-slate-500 mb-1">Estimated Duration</p>
                     <p className="text-lg font-semibold text-blue-400">
-                      {Math.ceil((activeLesson.slideCount || 0) * 3)} min
+                      {getLessonDurationMinutes(activeLesson)} min
                     </p>
                   </div>
                 </div>

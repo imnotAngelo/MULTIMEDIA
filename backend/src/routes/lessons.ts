@@ -343,6 +343,7 @@ export function buildOriginalPdfLessonRecord({
   videoUrl,
   graphicUrl,
   pdfText,
+  slideCount = 0,
 }: {
   lessonId?: string;
   title: string;
@@ -353,6 +354,7 @@ export function buildOriginalPdfLessonRecord({
   videoUrl?: string;
   graphicUrl?: string;
   pdfText?: string;
+  slideCount?: number;
 }) {
   const rawText = summarizePdfText(pdfText);
   const descriptionText = String(description || '').trim();
@@ -367,7 +369,7 @@ export function buildOriginalPdfLessonRecord({
     title,
     content,
     slides: [],
-    slideCount: 0,
+    slideCount: Number.isInteger(slideCount) && slideCount >= 0 ? slideCount : 0,
     status: 'published' as const,
     pdfUrl: fileUrl || `/uploads/${fileName}`,
     originalFormat: 'pdf' as const,
@@ -385,6 +387,7 @@ export function buildConvertedLessonRecord({
   fileUrl,
   pdfUrl,
   originalFormat = 'pptx',
+  slideCount = 0,
 }: {
   id?: string;
   unitId?: string | null;
@@ -394,6 +397,7 @@ export function buildConvertedLessonRecord({
   fileUrl?: string;
   pdfUrl?: string;
   originalFormat?: string;
+  slideCount?: number;
 }) {
   const normalizedUnitId = unitId || moduleId || null;
   const normalizedFileUrl = fileUrl || pdfUrl || '';
@@ -406,7 +410,7 @@ export function buildConvertedLessonRecord({
     title,
     content: content || `Converted presentation generated from ${title}.`,
     createdAt: new Date().toISOString(),
-    slideCount: 0,
+    slideCount: Number.isInteger(slideCount) && slideCount >= 0 ? slideCount : 0,
     slides: [],
     pdfUrl: normalizedFileUrl,
     fileUrl: normalizedFileUrl,
@@ -621,9 +625,11 @@ router.post(
 
       const lessonId = uuidv4();
       let extractedPdfText = '';
+      let pdfPageCount = 0;
       try {
         const parsedPdf = await extractPdf(destinationPath);
         extractedPdfText = parsedPdf.text || parsedPdf.pages.join('\n\n') || '';
+        pdfPageCount = parsedPdf.pages.length;
         console.log('📄 Extracted PDF text length:', extractedPdfText.length);
       } catch (parseError) {
         console.warn('⚠️ PDF extraction failed; falling back to a placeholder lesson description:', parseError);
@@ -639,6 +645,7 @@ router.post(
         videoUrl: normalizedVideoUrl || undefined,
         graphicUrl: persistedGraphicUrl || undefined,
         pdfText: extractedPdfText,
+        slideCount: pdfPageCount,
       });
 
       let savedLesson: any = null;
@@ -661,7 +668,7 @@ router.post(
               title,
               content: lessonData.content,
               slides: [],
-              slideCount: 0,
+              slideCount: lessonData.slideCount,
               status: 'published',
               createdAt: new Date().toISOString(),
               pdfUrl,
@@ -689,7 +696,7 @@ router.post(
               title,
               content: lessonData.content,
               slides: [],
-              slide_count: 0,
+              slide_count: lessonData.slideCount,
               xp_reward: 25,
               order_index: 1,
               target_sections: cleanedTargetSections,
@@ -730,7 +737,7 @@ router.post(
                 title,
                 content: lessonData.content,
                 slides: [],
-                slideCount: 0,
+                slideCount: lessonData.slideCount,
                 status: 'published',
                 createdAt: new Date().toISOString(),
                 pdfUrl,
@@ -742,7 +749,7 @@ router.post(
                 id: localLesson.id,
                 title: localLesson.title,
                 slides: localLesson.slides || [],
-                slide_count: localLesson.slideCount || 0,
+                slide_count: lessonData.slideCount,
                 video_url: normalizedVideoUrl || null,
                 graphic_url: persistedGraphicUrl || null,
                 pdf_url: localLesson.pdfUrl || pdfUrl,
@@ -758,7 +765,7 @@ router.post(
             title,
             content: lessonData.content,
             slides: [],
-            slideCount: 0,
+            slideCount: lessonData.slideCount,
             status: 'published',
             createdAt: new Date().toISOString(),
             pdfUrl,
