@@ -17,7 +17,7 @@ import { AdminLayout, AdminSettings } from '@/pages/admin';
 import { StudentDashboard, Lessons, StudentQuizTaker, Laboratories, Portfolio, StudentQuizzes, Chatbox, StudentSettings } from '@/pages/student';
 
 // Instructor Pages
-import { InstructorDashboard, UnitsManagement, ViewLesson, InstructorAssessments, CreateAssessment, QuizManagement, QuizMethodPicker, CreateQuiz, AutoGenerateQuiz, LaboratorySubmissions, LaboratoriesManagement, InstructorMessages, InstructorSettings, StudentApprovals, StudentPerformance } from '@/pages/instructor';
+import { InstructorDashboard, UnitsManagement, ViewLesson, InstructorAssessments, CreateAssessment, QuizManagement, QuizMethodPicker, CreateQuiz, AutoGenerateQuiz, ExamDocument, LaboratorySubmissions, LaboratoriesManagement, InstructorMessages, InstructorSettings, StudentApprovals, StudentPerformance } from '@/pages/instructor';
 import { InstructorApprovals } from '@/pages/admin';
 
 
@@ -111,6 +111,7 @@ export function App() {
           <Route path="/instructor/assessments" element={<InstructorAssessments />} />
           <Route path="/instructor/assessments/create" element={<CreateAssessment />} />
           <Route path="/instructor/quizzes" element={<QuizManagement />} />
+          <Route path="/instructor/exam/:id" element={<ExamDocument />} />
           <Route path="/instructor/laboratory-submissions" element={<LaboratorySubmissions />} />
           <Route path="/instructor/laboratories" element={<LaboratoriesManagement />} />
           <Route path="/instructor/laboratories/create" element={<LaboratoriesManagement />} />

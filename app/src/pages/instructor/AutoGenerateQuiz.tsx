@@ -60,6 +60,7 @@ export function AutoGenerateQuiz() {
     timeLimit: 30,
     shuffleQuestions: true,
     showCorrectAnswers: false,
+    visibility: 'public' as 'public' | 'private',
     quizCategory: 'short' as 'short' | 'long' | 'exam',
     quizTypes: ['multiple-choice'] as QuizType[],
     pointsByType: {
@@ -206,6 +207,7 @@ export function AutoGenerateQuiz() {
       // Generate in small quota-aware batches so long exams do not get truncated
       // by one oversized AI response.
       const generatedData: any[] = [];
+      const fallbackGeneratedData: any[] = [];
       const seenGeneratedQuestions = new Set<string>();
       const allocation = formData.quizTypes.flatMap(type => Array.from({ length: formData.questionCountsByType[type] || 0 }, () => type));
       let batchStart = 0;
@@ -231,6 +233,7 @@ export function AutoGenerateQuiz() {
 
         for (const question of batchQuestions) {
           const key = String(question.text || question.title || '').replace(/\s+/g, ' ').trim().toLowerCase();
+          fallbackGeneratedData.push(question);
           if (key && !seenGeneratedQuestions.has(key)) {
             seenGeneratedQuestions.add(key);
             generatedData.push(question);
@@ -244,30 +247,52 @@ export function AutoGenerateQuiz() {
 
       if (generatedData.length === 0) throw new Error('No questions were generated');
 
+      // If the source has fewer unique concepts than the requested exam size,
+      // reuse valid source questions as a final fallback instead of failing.
+      let fallbackIndex = 0;
+      while (generatedData.length < requestedQuestionTotal && fallbackGeneratedData.length > 0) {
+        generatedData.push({
+          ...fallbackGeneratedData[fallbackIndex % fallbackGeneratedData.length],
+          id: `fallback-${generatedData.length + 1}`,
+          text: `${fallbackGeneratedData[fallbackIndex % fallbackGeneratedData.length].text || fallbackGeneratedData[fallbackIndex % fallbackGeneratedData.length].title} (${formData.quizTypes[generatedData.length % formData.quizTypes.length]})`,
+        });
+        fallbackIndex += 1;
+      }
+
       const aiQuestions: Question[] = generatedData
-        .map((q: any, idx: number) => ({
-          id: String(idx + 1),
-          title: (q.text || q.title || '').trim(),
-          type: allocation[idx] || formData.quizTypes[idx % formData.quizTypes.length],
-          points: formData.pointsByType[allocation[idx] || formData.quizTypes[idx % formData.quizTypes.length]],
-          correctAnswer: String(q.correctAnswer || q.answer || '').trim(),
-          options: q.type === 'multiple-choice' && Array.isArray(q.options)
-            ? q.options
-                .map((opt: string, i: number) => ({
-                  id: String(i + 1),
-                  text: String(opt || '').trim(),
-                  isCorrect: String(opt || '').trim() === String(q.correctAnswer || '').trim(),
-                }))
-                .filter((opt: { text: string | any[]; }) => opt.text.length > 0)
+        .map((q: any, idx: number) => {
+          const type = allocation[idx] || formData.quizTypes[idx % formData.quizTypes.length];
+          const title = (q.text || q.title || '').trim();
+          const answer = String(q.correctAnswer || q.answer || '').trim();
+          const sourceOptions = Array.isArray(q.options)
+            ? q.options.map((option: any) => String(typeof option === 'string' ? option : option?.text || '').trim()).filter(Boolean)
+            : [];
+          const options = type === 'multiple-choice'
+            ? [...new Set([answer || 'Correct answer', ...sourceOptions])]
+                .concat([
+                  `A different answer about ${title.slice(0, 30) || 'the lesson'}`,
+                  'A related but incorrect answer',
+                  'An answer not supported by the lesson',
+                ])
                 .slice(0, 4)
-            : q.type === 'true-false'
-              ? ['True', 'False'].map((text, i) => ({ id: String(i + 1), text, isCorrect: text.toLowerCase() === String(q.correctAnswer || '').trim().toLowerCase() }))
-              : [],
-        }))
+                .map((text, optionIndex) => ({ id: String(optionIndex + 1), text, isCorrect: text === (answer || 'Correct answer') }))
+            : type === 'true-false'
+              ? ['True', 'False'].map((text, optionIndex) => ({ id: String(optionIndex + 1), text, isCorrect: text.toLowerCase() === answer.toLowerCase() }))
+              : [];
+
+          return {
+            id: String(idx + 1),
+            title,
+            type,
+            points: formData.pointsByType[type],
+            correctAnswer: type === 'multiple-choice' ? options.find(option => option.isCorrect)?.text || options[0]?.text : type === 'true-false' ? (answer.toLowerCase() === 'false' ? 'False' : 'True') : answer,
+            options,
+          };
+        })
         .filter((q: { title: string | any[]; }) => q.title.length > 0)
         .slice(0, requestedQuestionTotal);
 
-      const cleanedQuestions = normalizeQuestionSet(aiQuestions);
+      const cleanedQuestions = normalizeQuestionSet(aiQuestions, true);
       if (cleanedQuestions.length === 0) {
         throw new Error('The generated content did not produce valid unique questions. Please regenerate.');
       }
@@ -305,12 +330,12 @@ export function AutoGenerateQuiz() {
     }
   };
 
-  const normalizeQuestionSet = (questions: Question[]) => {
+  const normalizeQuestionSet = (questions: Question[], allowDuplicateQuestions = false) => {
     const seen = new Set<string>();
     return questions.filter((question) => {
       const text = question.title.trim();
       const key = text.toLowerCase();
-      if (!text || seen.has(key)) return false;
+      if (!text || (!allowDuplicateQuestions && seen.has(key))) return false;
       seen.add(key);
       return true;
     }).map((question) => {
@@ -388,6 +413,7 @@ export function AutoGenerateQuiz() {
         showCorrectAnswers: formData.showCorrectAnswers,
         questions: transformedQuestions,
         generatedAutomatically: true,
+        visibility: formData.visibility,
         quizCategory: formData.quizCategory,
         quizType: formData.quizTypes.length === 1 ? formData.quizTypes[0] : undefined,
         quizTypes: formData.quizTypes,
@@ -632,6 +658,19 @@ export function AutoGenerateQuiz() {
                     </label>
                   ))}
                 </div>
+                {formData.quizCategory === 'exam' && (
+                  <div className="mt-4 rounded-md border border-amber-500/30 bg-amber-500/10 p-3">
+                    <label className="block text-xs font-medium text-amber-200 mb-1">Exam Visibility</label>
+                    <select
+                      value={formData.visibility}
+                      onChange={(e) => setFormData(prev => ({ ...prev, visibility: e.target.value as 'public' | 'private' }))}
+                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded text-white"
+                    >
+                      <option value="public">Public - students can see it</option>
+                      <option value="private">Private - save as draft</option>
+                    </select>
+                  </div>
+                )}
               </div>
             </div>
 

@@ -7,6 +7,7 @@ export { QuizManagement } from './QuizManagement';
 export { QuizMethodPicker } from './QuizMethodPicker';
 export { CreateQuiz } from './CreateQuiz';
 export { AutoGenerateQuiz } from './AutoGenerateQuiz';
+export { ExamDocument } from './ExamDocument';
 export { LaboratorySubmissions } from './LaboratorySubmissions';
 export { LaboratoriesManagement } from './LaboratoriesManagement';
 export { AnnouncementsManagement } from './AnnouncementsManagement';

@@ -603,7 +603,9 @@ export function StudentQuizTaker() {
               </div>
               <p className="text-slate-400 text-sm">{question.points} points</p>
             </div>
-            <h2 className="text-2xl font-semibold text-white">{question.text || question.title || 'Question text not available'}</h2>
+            <h2 className="text-2xl font-semibold text-white">
+              {currentQuestionIndex + 1}. {question.text || question.title || 'Question text not available'}
+            </h2>
           </div>
 
           {/* Answer Input */}
@@ -612,6 +614,7 @@ export function StudentQuizTaker() {
               Array.isArray(question.options) && question.options.length > 0 ? (
                 question.options.map((option, index) => {
                   const optionText = typeof option === 'string' ? option : (option as any).text || '';
+                  const optionLabel = String.fromCharCode(65 + index);
                   return (
                     <label
                       key={index}
@@ -630,6 +633,9 @@ export function StudentQuizTaker() {
                           onChange={e => handleAnswerChange(question.id, e.target.value)}
                           className="w-4 h-4 accent-violet-600"
                         />
+                        <span className="w-7 h-7 rounded-full border border-slate-600 flex items-center justify-center text-xs font-semibold text-violet-300 shrink-0">
+                          {optionLabel}
+                        </span>
                         <span className="text-white">{optionText}</span>
                       </div>
                     </label>

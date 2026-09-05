@@ -235,6 +235,7 @@ export const createAssessment = async (req: AuthRequest, res: Response) => {
       quizTypes,
       questionCountsByType,
       lessonIds,
+      visibility = 'public',
     } = req.body;
 
     console.log('📝 Fields - title:', title, 'type:', type, 'questions:', Array.isArray(questions) ? questions.length + ' items' : typeof questions);
@@ -308,7 +309,7 @@ export const createAssessment = async (req: AuthRequest, res: Response) => {
       : [];
 
     const creatorYearLevel = (req as any).user?.year_level || 1;
-    const insertPayload = {
+    const insertPayload: Record<string, any> = {
       id: assessmentId,
       created_by: instructorId,
       title,
@@ -318,7 +319,7 @@ export const createAssessment = async (req: AuthRequest, res: Response) => {
       allow_late_submissions: allowLateSubmissions === true,
       total_points: totalPoints || 100,
       module_id: moduleId,
-      status: 'published',
+      status: visibility === 'private' ? 'draft' : 'published',
       questions_data: questionsData,
       time_limit: timeLimit || null,
       shuffle_questions: shuffleQuestions || false,

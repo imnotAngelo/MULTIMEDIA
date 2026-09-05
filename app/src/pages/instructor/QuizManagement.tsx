@@ -16,6 +16,8 @@ import {
   Loader2,
   CheckCircle2,
   Clock,
+  Download,
+  KeyRound,
 } from 'lucide-react';
 import { AetherLoader } from '@/components/AetherLoader';
 
@@ -31,6 +33,7 @@ interface Quiz {
   graded: number;
   createdAt: string;
   updatedAt: string;
+  quiz_category?: string;
 }
 
 interface QuizSubmission {
@@ -448,6 +451,24 @@ export function QuizManagement() {
                       <Edit2 className="w-4 h-4 mr-2" />
                       Edit
                     </Button>
+                    {quiz.quiz_category === 'exam' && (
+                      <>
+                        <Button
+                          onClick={() => navigate(`/instructor/exam/${quiz.id}`)}
+                          className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                        >
+                          <Download className="w-4 h-4 mr-2" />
+                          Exam
+                        </Button>
+                        <Button
+                          onClick={() => navigate(`/instructor/exam/${quiz.id}?mode=answer-key`)}
+                          className="flex-1 bg-amber-600 hover:bg-amber-700 text-white"
+                        >
+                          <KeyRound className="w-4 h-4 mr-2" />
+                          Answer Key
+                        </Button>
+                      </>
+                    )}
                     <Button
                       onClick={() => handleDeleteQuiz(quiz.id)}
                       className="flex-1 bg-red-600 hover:bg-red-700 text-white"

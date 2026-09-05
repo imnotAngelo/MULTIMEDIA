@@ -484,6 +484,57 @@ export function normalizeGeneratedQuestions(rawQuestions: any[], targetCount = 5
   return normalized;
 }
 
+function buildFallbackQuizQuestions(sourceText: string, targetCount: number, requestedTypes: string[], pointsByType: Record<string, number>, questionCountsByType: Record<string, number>) {
+  const sourceParts = sourceText
+    .split(/(?<=[.!?])\s+|\n+/)
+    .map(part => part.replace(/\s+/g, ' ').trim())
+    .filter(part => part.length >= 12);
+  if (sourceParts.length === 0) return [];
+
+  const allocation = requestedTypes.flatMap(type => Array.from({ length: Math.max(0, Number(questionCountsByType[type]) || 0) }, () => type));
+  const questions: any[] = [];
+  for (let index = 0; index < targetCount; index += 1) {
+    const answer = sourceParts[index % sourceParts.length];
+    const type = allocation[index] || requestedTypes[index % requestedTypes.length] || 'multiple-choice';
+    const topicMatch = answer.match(/^(.{8,90}?)(?:\s+(?:is|are|was|were|refers to|means|describes|explains|uses|helps|allows|includes|involves)\s+)/i);
+    const topic = (topicMatch?.[1] || answer.split(/[,;:.]/)[0] || answer).trim().replace(/^(the|a|an)\s+/i, '');
+    const isFalseStatement = type === 'true-false' && index % 2 === 1;
+    const questionText = type === 'multiple-choice'
+      ? `Which statement best explains ${topic}?`
+      : type === 'true-false'
+        ? `${isFalseStatement ? 'True or False: The lesson states the opposite of ' : 'True or False: '} ${answer}`
+        : type === 'identification'
+          ? `What concept is represented by this description: ${answer}`
+          : type === 'enumeration'
+            ? `What key idea or detail does the lesson identify about ${topic}?`
+            : `Explain the lesson's main idea about ${topic}.`;
+    const options = type === 'multiple-choice'
+      ? [answer, 1, 2, 3].map((offset, optionIndex) => ({
+          id: String(optionIndex + 1),
+          text: typeof offset === 'number'
+            ? sourceParts[(index + offset) % sourceParts.length] || `Lesson detail ${optionIndex + 1}`
+            : offset,
+        }))
+      : type === 'true-false'
+        ? ['True', 'False'].map((text, optionIndex) => ({ id: String(optionIndex + 1), text }))
+        : [];
+
+    questions.push({
+      id: `fallback-${index + 1}`,
+      text: questionText,
+      type,
+      points: Number(pointsByType[type]) > 0 ? Number(pointsByType[type]) : 2,
+      options: options.map(option => option.text).map((option, optionIndex, allOptions) => {
+        if (allOptions.indexOf(option) === optionIndex) return option;
+        return `Lesson detail ${optionIndex + 1}`;
+      }),
+      correctAnswer: type === 'multiple-choice' ? answer : type === 'true-false' ? (isFalseStatement ? 'False' : 'True') : answer,
+    });
+  }
+
+  return questions;
+}
+
 // Helper: Generate slides from PDF text
 async function generateSlides(pdfText: string, title: string, pages?: string[]): Promise<any[]> {
   // Keep the complete extracted text in the deck. AI-generated slides are
@@ -1295,6 +1346,11 @@ router.post(
   '/:lessonId/generate-questions',
   optionalAuthMiddleware,
   async (req: Request, res: Response) => {
+    let fallbackFullContent = '';
+    let fallbackNumQuestions = 5;
+    let fallbackTypes: string[] = ['multiple-choice'];
+    let fallbackPoints: Record<string, number> = {};
+    let fallbackCounts: Record<string, number> = {};
     try {
       const { lessonId } = req.params;
       const { numberOfQuestions = 5, startPage = 1, endPage, quizType = 'multiple-choice', quizTypes = [], quizCategory = 'short', pointsByType = {}, questionCountsByType = {}, generationAttempt = 0 } = req.body;
@@ -1382,6 +1438,15 @@ router.post(
       }
 
       fullContent = clipQuizSource(fullContent);
+      if (quizCategory === 'exam' && isThinLessonContent(fullContent, 1)) {
+        const lessonTitle = String(lesson.title || 'Lesson topic').trim();
+        const lessonDescription = String(lesson.description || lesson.summary || '').trim();
+        fullContent = [lessonTitle, lessonDescription].filter(Boolean).join('. ');
+        if (isThinLessonContent(fullContent, 1)) {
+          fullContent = `The lesson topic is ${lessonTitle}.`;
+        }
+      }
+      fallbackFullContent = fullContent;
 
       if (isThinLessonContent(fullContent, 1)) {
         return res.status(400).json({
@@ -1413,6 +1478,10 @@ router.post(
       const requestedTypes = (Array.isArray(quizTypes) ? quizTypes : [quizType])
         .filter((type: unknown, index: number, types: unknown[]) => allowedTypes.includes(String(type)) && types.indexOf(type) === index);
       const normalizedTypes = requestedTypes.length > 0 ? requestedTypes : ['multiple-choice'];
+      fallbackTypes = normalizedTypes;
+      fallbackPoints = pointsByType;
+      fallbackCounts = questionCountsByType;
+      fallbackNumQuestions = numQuestions;
       const configuredModel = process.env.GEMINI_MODEL?.trim();
       const model = configuredModel || 'gemini-3.6-flash';
       const fallbackModel = 'gemini-3.6-flash';
@@ -1488,15 +1557,41 @@ Return ONLY a JSON object in this exact format:
 
       const parsed = JSON.parse(jsonMatch[0]);
       const questions = normalizeGeneratedQuestions(parsed.questions || [], numQuestions, normalizedTypes, quizCategory, pointsByType, questionCountsByType);
+      const completedQuestions = questions.length >= numQuestions
+        ? questions
+        : normalizeGeneratedQuestions(
+            [...questions, ...buildFallbackQuizQuestions(fullContent, numQuestions - questions.length, normalizedTypes, pointsByType, questionCountsByType)],
+            numQuestions,
+            normalizedTypes,
+            quizCategory,
+            pointsByType,
+            questionCountsByType
+          );
 
-      console.log('🧠 Generated', questions.length, 'questions from lesson content');
+      console.log('🧠 Generated', completedQuestions.length, 'questions from lesson content');
 
       res.json({
         success: true,
-        data: questions,
+        data: completedQuestions,
       });
     } catch (error: any) {
       console.error('Generate questions error:', error);
+
+      const fallbackQuestions = normalizeGeneratedQuestions(
+        buildFallbackQuizQuestions(fallbackFullContent, fallbackNumQuestions, fallbackTypes, fallbackPoints, fallbackCounts),
+        fallbackNumQuestions,
+        fallbackTypes,
+        'short',
+        fallbackPoints,
+        fallbackCounts
+      );
+      if (fallbackQuestions.length > 0) {
+        return res.json({
+          success: true,
+          data: fallbackQuestions,
+          fallback: true,
+        });
+      }
 
       if (error.message?.includes('GEMINI_API_KEY')) {
         return res.status(500).json({
