@@ -168,6 +168,19 @@ export function StudentQuizzes() {
   const [showMissed, setShowMissed] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
 
+  const getRawScoreDisplay = (quiz: Quiz) => {
+    const totalPoints = Number(quiz.total_points || (Array.isArray(quiz.questions_data)
+      ? quiz.questions_data.reduce((sum, question) => sum + (Number(question.points) || 0), 0)
+      : 0));
+    const earnedPoints = Number.isFinite(Number(quiz.submission?.earned_points))
+      ? Number(quiz.submission?.earned_points)
+      : Number.isFinite(Number(quiz.submission?.score)) && totalPoints > 0 && Number(quiz.submission?.score) <= 100
+        ? (Number(quiz.submission?.score) / 100) * totalPoints
+        : 0;
+
+    return { earnedPoints, totalPoints };
+  };
+
   const renderQuiz = (quiz: Quiz) => {
     const daysLabel = getDaysLabel(quiz.due_date);
     const qCount = questionCount(quiz);
@@ -175,6 +188,7 @@ export function StudentQuizzes() {
       ? new Date(quiz.due_date).getTime() <= Date.now()
       : false;
     const isClosed = isOverdue && !quiz.allow_late_submissions && !isSubmitted(quiz);
+    const rawScore = getRawScoreDisplay(quiz);
 
     return (
       <div
@@ -198,7 +212,7 @@ export function StudentQuizzes() {
 
         <div className="flex flex-col items-end gap-2 shrink-0">
           {isSubmitted(quiz) ? (
-            <span className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"><CheckCircle2 className="w-3 h-3" />Completed{quiz.submission?.score !== null && quiz.submission?.score !== undefined ? ` · ${quiz.submission.score}%` : ''}</span>
+            <span className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"><CheckCircle2 className="w-3 h-3" />Completed{quiz.submission?.score !== null && quiz.submission?.score !== undefined ? ` · ${rawScore.earnedPoints}/${rawScore.totalPoints || 0}` : ''}</span>
           ) : isOverdue ? (
             <span className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-400"><AlertCircle className="w-3 h-3" />Missed</span>
           ) : (

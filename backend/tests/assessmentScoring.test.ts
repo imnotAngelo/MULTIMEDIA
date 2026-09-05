@@ -14,7 +14,7 @@ test('scores multiple-choice and short-answer responses using the real backend l
     { questionId: 'q2', answer: 'photosynthesis' },
   ]);
 
-  assert.equal(result.score, 100);
+  assert.equal(result.score, 25);
   assert.equal(result.earnedPoints, 25);
   assert.equal(result.possiblePoints, 25);
   assert.deepEqual(result.results, [
@@ -41,4 +41,18 @@ test('marks incorrect answers as wrong and lowers the score', () => {
     { questionId: 'q1', isCorrect: false, earnedPoints: 0 },
     { questionId: 'q2', isCorrect: false, earnedPoints: 0 },
   ]);
+});
+
+test('accepts close short-answer responses when they are relevant enough', () => {
+  const questions = [
+    { id: 'q1', type: 'short-answer', points: 5, correctAnswer: 'The process plants use to make food using sunlight' },
+  ];
+
+  const result = scoreAssessmentSubmission(questions, [
+    { questionId: 'q1', answer: 'Plants use sunlight to make food' },
+  ]);
+
+  assert.equal(result.score, 5);
+  assert.equal(result.earnedPoints, 5);
+  assert.equal(result.results[0].isCorrect, true);
 });

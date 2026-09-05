@@ -16,7 +16,7 @@ import { useAuthStore } from '@/stores/authStore';
 interface Question {
   id: string;
   text: string;
-  type: 'multiple-choice' | 'short-answer' | 'essay';
+  type: 'multiple-choice' | 'short-answer' | 'essay' | 'true-false' | 'enumeration' | 'identification';
   options?: string[];
   correctAnswer?: string | string[];
   points: number;
@@ -60,6 +60,8 @@ export function CreateQuiz() {
     description: '',
     unitId: '',
     lessonId: '',
+    quizCategory: 'short' as 'short' | 'long' | 'exam',
+    quizType: 'multiple-choice' as Question['type'],
     allowLateSubmissions: false,
     timeLimit: 60,
     passingScore: 70,
@@ -113,13 +115,33 @@ export function CreateQuiz() {
     }
   };
 
+  const getQuestionTypeDefaults = (type: Question['type']) => {
+    if (type === 'true-false') {
+      return { options: ['True', 'False'], correctAnswer: 'True' };
+    }
+    if (type === 'multiple-choice') {
+      return { options: ['', '', '', ''], correctAnswer: '' };
+    }
+    return { options: undefined, correctAnswer: '' };
+  };
+
+  const getQuizCategoryRange = (category: 'short' | 'long' | 'exam') => {
+    const ranges = {
+      short: { min: 5, max: 10, label: 'Short Quiz (5-10 questions)' },
+      long: { min: 20, max: 30, label: 'Long Quiz (20-30 questions)' },
+      exam: { min: 70, max: 100, label: 'Exam (70-100 questions)' },
+    };
+    return ranges[category];
+  };
+
   const handleAddQuestion = () => {
+    const defaults = getQuestionTypeDefaults(formData.quizType);
     const newQuestion: Question = {
       id: Date.now().toString(),
       text: '',
-      type: 'multiple-choice',
-      options: ['', '', '', ''],
-      correctAnswer: '',
+      type: formData.quizType,
+      ...(defaults.options ? { options: defaults.options } : {}),
+      correctAnswer: defaults.correctAnswer,
       points: 1,
     };
     setQuestions([...questions, newQuestion]);
@@ -145,6 +167,22 @@ export function CreateQuiz() {
       });
       return;
     }
+    if (value === 'true-false') {
+      handleUpdateQuestion(question.id, {
+        type: value,
+        options: ['True', 'False'],
+        correctAnswer: 'True',
+      });
+      return;
+    }
+    if (value === 'essay' || value === 'short-answer' || value === 'enumeration' || value === 'identification') {
+      handleUpdateQuestion(question.id, {
+        type: value,
+        options: undefined,
+        correctAnswer: typeof question.correctAnswer === 'string' ? question.correctAnswer : '',
+      });
+      return;
+    }
     handleUpdateQuestion(question.id, { type: value });
   };
 
@@ -154,6 +192,13 @@ export function CreateQuiz() {
       alert('Please fill in all required fields');
       return;
     }
+
+    const categoryRange = getQuizCategoryRange(formData.quizCategory);
+    if (questions.length < categoryRange.min || questions.length > categoryRange.max) {
+      alert(`${categoryRange.label} requires ${categoryRange.min}-${categoryRange.max} questions. You currently have ${questions.length}.`);
+      return;
+    }
+
     try {
       setSubmitting(true);
       const response = await authFetch(`${API_BASE_URL}/assessments`, {
@@ -166,6 +211,8 @@ export function CreateQuiz() {
           lessonId: formData.lessonId,
           allowLateSubmissions: formData.allowLateSubmissions,
           type: 'quiz',
+          quizCategory: formData.quizCategory,
+          quizType: formData.quizType,
           totalPoints: questions.reduce((total, question) => total + question.points, 0),
           timeLimit: formData.timeLimit,
           questions: questions,
@@ -219,6 +266,36 @@ export function CreateQuiz() {
                     placeholder="Enter quiz description"
                     className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 mt-1"
                   />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-slate-300">Quiz Category</Label>
+                    <Select value={formData.quizCategory} onValueChange={(value) => setFormData({ ...formData, quizCategory: value as 'short' | 'long' | 'exam' })}>
+                      <SelectTrigger className="bg-slate-800 border-slate-700 text-white mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-800 border-slate-700">
+                        <SelectItem value="short" className="text-white">Short Quiz</SelectItem>
+                        <SelectItem value="long" className="text-white">Long Quiz</SelectItem>
+                        <SelectItem value="exam" className="text-white">Exam</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-slate-300">Quiz Type</Label>
+                    <Select value={formData.quizType} onValueChange={(value) => setFormData({ ...formData, quizType: value as Question['type'] })}>
+                      <SelectTrigger className="bg-slate-800 border-slate-700 text-white mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-800 border-slate-700">
+                        <SelectItem value="multiple-choice" className="text-white">Test 1 - Multiple Choice</SelectItem>
+                        <SelectItem value="enumeration" className="text-white">Test 2 - Enumeration</SelectItem>
+                        <SelectItem value="true-false" className="text-white">Test 3 - True or False</SelectItem>
+                        <SelectItem value="identification" className="text-white">Test 4 - Identification</SelectItem>
+                        <SelectItem value="essay" className="text-white">Test 5 - Essay</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -366,6 +443,9 @@ export function CreateQuiz() {
                               </SelectTrigger>
                               <SelectContent className="bg-slate-800 border-slate-700">
                                 <SelectItem value="multiple-choice" className="text-white">Multiple Choice</SelectItem>
+                                <SelectItem value="enumeration" className="text-white">Enumeration</SelectItem>
+                                <SelectItem value="true-false" className="text-white">True or False</SelectItem>
+                                <SelectItem value="identification" className="text-white">Identification</SelectItem>
                                 <SelectItem value="short-answer" className="text-white">Short Answer</SelectItem>
                                 <SelectItem value="essay" className="text-white">Essay</SelectItem>
                               </SelectContent>
@@ -407,15 +487,34 @@ export function CreateQuiz() {
                             <p className="text-xs text-slate-500">The first choice is automatically marked as correct. Edit the choices as needed.</p>
                           </div>
                         )}
-                        {question.type === 'short-answer' && (
+                        {(question.type === 'short-answer' || question.type === 'enumeration' || question.type === 'identification' || question.type === 'essay') && (
                           <div>
                             <Label className="text-slate-300">Correct Answer</Label>
                             <Input
                               value={typeof question.correctAnswer === 'string' ? question.correctAnswer : ''}
                               onChange={(e) => handleUpdateQuestion(question.id, { correctAnswer: e.target.value })}
-                              placeholder="Enter the expected answer"
+                              placeholder={question.type === 'essay' ? 'Enter a model answer' : 'Enter the expected answer'}
                               className="mt-1 bg-slate-800 border-slate-700 text-white placeholder:text-slate-500"
                             />
+                          </div>
+                        )}
+                        {question.type === 'true-false' && (
+                          <div className="space-y-3">
+                            <Label className="text-slate-300">Correct Answer</Label>
+                            <div className="flex gap-3">
+                              {['True', 'False'].map((option) => (
+                                <label key={option} className="flex items-center gap-2 text-slate-300">
+                                  <input
+                                    type="radio"
+                                    name={`true-false-${question.id}`}
+                                    checked={String(question.correctAnswer || '') === option}
+                                    onChange={() => handleUpdateQuestion(question.id, { correctAnswer: option })}
+                                    className="h-4 w-4 accent-violet-500"
+                                  />
+                                  {option}
+                                </label>
+                              ))}
+                            </div>
                           </div>
                         )}
                         <div className="flex justify-end gap-2">

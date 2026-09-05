@@ -24,7 +24,7 @@ interface Question {
   id: string;
   text?: string;  // From backend
   title?: string;  // From form generation
-  type: 'multiple-choice' | 'short-answer' | 'essay';
+  type: 'multiple-choice' | 'short-answer' | 'essay' | 'true-false' | 'enumeration' | 'identification';
   options?: QuestionOption[] | string[];
   correctAnswer?: string;
   points: number;
@@ -64,6 +64,67 @@ export function StudentQuizTaker() {
   const [gradingResults, setGradingResults] = useState<Record<string, boolean>>({});
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [quizStartTime] = useState<Date>(new Date());
+
+  const normalizeShortAnswer = (value: string) => value
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const getShortAnswerSimilarity = (studentAnswer: string, expectedAnswer: string) => {
+    const normalizedStudent = normalizeShortAnswer(studentAnswer);
+    const normalizedExpected = normalizeShortAnswer(expectedAnswer);
+
+    if (!normalizedStudent || !normalizedExpected) return 0;
+    if (normalizedStudent === normalizedExpected) return 1;
+
+    const studentTokens = normalizedStudent.split(' ').filter(Boolean);
+    const expectedTokens = normalizedExpected.split(' ').filter(Boolean);
+    const overlap = studentTokens.filter(token => expectedTokens.includes(token)).length;
+    const keywordSimilarity = overlap / Math.max(studentTokens.length, expectedTokens.length);
+
+    const minLength = Math.min(studentTokens.length, expectedTokens.length);
+    const matchingOrder = studentTokens.slice(0, minLength).filter((token, index) => token === expectedTokens[index]).length;
+    const sequenceSimilarity = minLength > 0 ? matchingOrder / minLength : 0;
+
+    return Math.max(keywordSimilarity, sequenceSimilarity);
+  };
+
+  const isShortAnswerCorrect = (studentAnswer: string, correctAnswer: string) => {
+    const normalizedStudent = normalizeShortAnswer(studentAnswer);
+    const normalizedExpected = normalizeShortAnswer(correctAnswer);
+    if (!normalizedStudent || !normalizedExpected) return false;
+    const similarity = getShortAnswerSimilarity(studentAnswer, correctAnswer);
+    return similarity >= 0.5 || normalizedStudent === normalizedExpected;
+  };
+
+  const getRawScoreBreakdown = (questions: Question[], answers: StudentAnswer[]) => {
+    let earnedPoints = 0;
+    let possiblePoints = 0;
+
+    questions.forEach((question) => {
+      const points = Number(question.points) || 0;
+      possiblePoints += points;
+      const studentAnswer = answers.find(a => a.questionId === question.id);
+
+      if (!studentAnswer) return;
+
+      const isCorrect = question.type === 'short-answer'
+        ? isShortAnswerCorrect(studentAnswer.answer, question.correctAnswer || '')
+        : studentAnswer.answer === question.correctAnswer;
+
+      if (isCorrect) {
+        earnedPoints += points;
+      }
+    });
+
+    return { earnedPoints, possiblePoints };
+  };
+
+  const formatRawScore = (earnedPoints: number, possiblePoints: number) => {
+    if (possiblePoints > 0) return `${earnedPoints}/${possiblePoints}`;
+    return String(earnedPoints);
+  };
 
   useEffect(() => {
     loadQuiz();
@@ -182,12 +243,25 @@ export function StudentQuizTaker() {
             setGradingResults(Object.fromEntries(finalQuiz.questions_data.map((question) => {
               const answer = savedAnswerMap.get(String(question.id)) ?? '';
               const expected = String(question.correctAnswer ?? '').trim();
-              const isCorrect = Boolean(answer) && (question.type === 'short-answer'
-                ? answer.toLowerCase() === expected.toLowerCase()
-                : answer === expected);
+              const isCorrect = Boolean(answer) && (
+                question.type === 'short-answer' || question.type === 'enumeration' || question.type === 'identification' || question.type === 'essay'
+                  ? isShortAnswerCorrect(answer, expected)
+                  : question.type === 'true-false'
+                    ? normalizeShortAnswer(answer) === normalizeShortAnswer(expected)
+                    : answer === expected
+              );
               return [String(question.id), isCorrect];
             })));
-            setScore(Number(savedSubmission.score) || 0);
+
+            const possiblePoints = finalQuiz.questions_data.reduce((sum, question) => sum + (Number(question.points) || 0), 0);
+            const legacyPercentScore = Number(savedSubmission.score);
+            const earnedPoints = Number.isFinite(Number(savedSubmission.earned_points))
+              ? Number(savedSubmission.earned_points)
+              : Number.isFinite(legacyPercentScore) && possiblePoints > 0
+                ? (legacyPercentScore / 100) * possiblePoints
+                : getRawScoreBreakdown(finalQuiz.questions_data, savedAnswers as StudentAnswer[]).earnedPoints;
+
+            setScore(earnedPoints || 0);
             setSubmitted(true);
         }
 
@@ -244,20 +318,7 @@ export function StudentQuizTaker() {
 
   const calculateScore = () => {
     if (!quiz) return 0;
-
-    let totalPoints = 0;
-    let earnedPoints = 0;
-
-    quiz.questions_data.forEach(question => {
-      totalPoints += question.points;
-      const studentAnswer = studentAnswers.find(a => a.questionId === question.id);
-
-      if (studentAnswer && studentAnswer.answer === question.correctAnswer) {
-        earnedPoints += question.points;
-      }
-    });
-
-    return totalPoints > 0 ? (earnedPoints / totalPoints) * 100 : 0;
+    return getRawScoreBreakdown(quiz.questions_data, studentAnswers).earnedPoints;
   };
 
   const handleSubmit = async () => {
@@ -291,10 +352,19 @@ export function StudentQuizTaker() {
         throw new Error(result?.error?.message || `Submission failed (${response.status})`);
       }
 
-      setScore(Number(result.score ?? result.data?.score ?? calculateScore()));
+      const rawBreakdown = getRawScoreBreakdown(quiz.questions_data, studentAnswers);
+      const earnedPoints = Number(result.data?.earned_points ?? result.earned_points ?? result.data?.score ?? result.score ?? calculateScore());
+      const possiblePoints = Number(result.data?.possible_points ?? result.possible_points ?? rawBreakdown.possiblePoints);
+      const normalizedEarnedPoints = Number.isFinite(earnedPoints) && possiblePoints > 0 && earnedPoints <= possiblePoints
+        ? earnedPoints
+        : rawBreakdown.earnedPoints;
+
+      setScore(normalizedEarnedPoints || 0);
       if (user?.id && id) {
         localStorage.setItem(`quiz-submission:${user.id}:${id}`, JSON.stringify({
           score: Number(result.score ?? result.data?.score ?? 0),
+          earned_points: normalizedEarnedPoints,
+          possible_points: possiblePoints || rawBreakdown.possiblePoints,
           status: result.data?.status || 'submitted',
           submitted_at: result.data?.submitted_at || new Date().toISOString(),
         }));
@@ -365,7 +435,7 @@ export function StudentQuizTaker() {
 
         {/* Score Display */}
         <div className="bg-gradient-to-br from-emerald-600/20 to-emerald-800/20 border border-emerald-500/30 rounded-xl p-8 text-center">
-          <div className="text-6xl font-bold text-emerald-400 mb-2">{score.toFixed(1)}%</div>
+          <div className="text-6xl font-bold text-emerald-400 mb-2">{formatRawScore(score, quiz.questions_data.reduce((sum, question) => sum + (Number(question.points) || 0), 0))}</div>
           <p className="text-slate-300 text-lg">Quiz Score</p>
         </div>
 
@@ -522,7 +592,13 @@ export function StudentQuizTaker() {
                     ? 'Multiple Choice'
                     : question.type === 'short-answer'
                       ? 'Short Answer'
-                      : 'Essay'}
+                      : question.type === 'enumeration'
+                        ? 'Enumeration'
+                        : question.type === 'true-false'
+                          ? 'True or False'
+                          : question.type === 'identification'
+                            ? 'Identification'
+                            : 'Essay'}
                 </p>
               </div>
               <p className="text-slate-400 text-sm">{question.points} points</p>
@@ -535,7 +611,6 @@ export function StudentQuizTaker() {
             {question.type === 'multiple-choice' && question.options ? (
               Array.isArray(question.options) && question.options.length > 0 ? (
                 question.options.map((option, index) => {
-                  // Handle both string arrays and object arrays with text property
                   const optionText = typeof option === 'string' ? option : (option as any).text || '';
                   return (
                     <label
@@ -563,10 +638,33 @@ export function StudentQuizTaker() {
               ) : (
                 <div className="text-slate-400">No options available for this question</div>
               )
-            ) : question.type === 'short-answer' ? (
+            ) : question.type === 'true-false' ? (
+              ['True', 'False'].map((option) => (
+                <label
+                  key={option}
+                  className={`p-4 rounded-lg border cursor-pointer transition-all ${
+                    studentAnswer?.answer === option
+                      ? 'bg-violet-600/20 border-violet-500/50'
+                      : 'bg-slate-800/50 border-slate-700 hover:border-slate-600'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="radio"
+                      name={`question-${question.id}`}
+                      value={option}
+                      checked={studentAnswer?.answer === option}
+                      onChange={e => handleAnswerChange(question.id, e.target.value)}
+                      className="w-4 h-4 accent-violet-600"
+                    />
+                    <span className="text-white">{option}</span>
+                  </div>
+                </label>
+              ))
+            ) : question.type === 'short-answer' || question.type === 'enumeration' || question.type === 'identification' ? (
               <input
                 type="text"
-                placeholder="Enter your short answer here..."
+                placeholder={question.type === 'enumeration' ? 'Enter your enumerated answer...' : question.type === 'identification' ? 'Enter the identification...' : 'Enter your short answer here...'}
                 value={studentAnswer?.answer || ''}
                 onChange={e => handleAnswerChange(question.id, e.target.value)}
                 className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-violet-500"
