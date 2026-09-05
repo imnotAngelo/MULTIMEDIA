@@ -433,6 +433,12 @@ export function normalizeGeneratedQuestions(rawQuestions: any[], targetCount = 5
     const rawText = String(item.text ?? item.title ?? '').trim();
     if (!rawText) continue;
 
+    if (/according to the lesson[\s,;:]*what is described in statement\s*\d+/i.test(rawText)
+      || /what is described in statement\s*\d+/i.test(rawText)
+      || /^statement\s*\d+\s*[:.-]/i.test(rawText)) {
+      continue;
+    }
+
     const normalizedText = rawText.replace(/\s+/g, ' ').trim();
     const dedupeKey = normalizedText.toLowerCase();
     if (!dedupeKey || seen.has(dedupeKey)) continue;
@@ -484,10 +490,12 @@ export function normalizeGeneratedQuestions(rawQuestions: any[], targetCount = 5
   return normalized;
 }
 
-function buildFallbackQuizQuestions(sourceText: string, targetCount: number, requestedTypes: string[], pointsByType: Record<string, number>, questionCountsByType: Record<string, number>) {
+function buildFallbackQuizQuestions(sourceText: string, targetCount: number, requestedTypes: string[], pointsByType: Record<string, number>, questionCountsByType: Record<string, number>, excludedTitle = '') {
   const sourceParts = sourceText
     .split(/(?<=[.!?])\s+|\n+/)
     .map(part => part.replace(/\s+/g, ' ').trim())
+    .filter(part => part.length >= 12)
+    .map(part => excludedTitle ? part.replace(new RegExp(excludedTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig'), '').replace(/\s+/g, ' ').trim() : part)
     .filter(part => part.length >= 12);
   if (sourceParts.length === 0) return [];
 
@@ -497,7 +505,10 @@ function buildFallbackQuizQuestions(sourceText: string, targetCount: number, req
     const answer = sourceParts[index % sourceParts.length];
     const type = allocation[index] || requestedTypes[index % requestedTypes.length] || 'multiple-choice';
     const topicMatch = answer.match(/^(.{8,90}?)(?:\s+(?:is|are|was|were|refers to|means|describes|explains|uses|helps|allows|includes|involves)\s+)/i);
-    const topic = (topicMatch?.[1] || answer.split(/[,;:.]/)[0] || answer).trim().replace(/^(the|a|an)\s+/i, '');
+    const topic = (topicMatch?.[1] || answer.split(/[,;:.]/)[0] || answer)
+      .trim()
+      .replace(/^(the|a|an)\s+/i, '')
+      .replace(/^(according to the lesson|statement\s*\d+)\s*/i, '');
     const isFalseStatement = type === 'true-false' && index % 2 === 1;
     const questionText = type === 'multiple-choice'
       ? `Which statement best explains ${topic}?`
@@ -1351,6 +1362,7 @@ router.post(
     let fallbackTypes: string[] = ['multiple-choice'];
     let fallbackPoints: Record<string, number> = {};
     let fallbackCounts: Record<string, number> = {};
+    let fallbackLessonTitle = '';
     try {
       const { lessonId } = req.params;
       const { numberOfQuestions = 5, startPage = 1, endPage, quizType = 'multiple-choice', quizTypes = [], quizCategory = 'short', pointsByType = {}, questionCountsByType = {}, generationAttempt = 0 } = req.body;
@@ -1447,6 +1459,7 @@ router.post(
         }
       }
       fallbackFullContent = fullContent;
+      fallbackLessonTitle = String(lesson.title || '');
 
       if (isThinLessonContent(fullContent, 1)) {
         return res.status(400).json({
@@ -1506,6 +1519,9 @@ RULES:
 - Do not repeat the same question, idea, or wording across questions.
 - Avoid vague, generic, or repetitive phrasing.
 - Do not mention the lesson title, slide titles, or any metadata in the question text.
+- Never use placeholders such as "statement 1", "statement 2", "according to the lesson", or "what is described".
+- Every question must name or test a concrete concept, process, definition, relationship, example, or application found in the document.
+- Prefer professional teacher wording such as "Which best explains...", "What is the primary purpose of...", "How does...", or "Why is... important?".
 - Focus on understanding, interpretation, and key concepts rather than memorization.
 
 Return ONLY a JSON object in this exact format:
@@ -1560,7 +1576,7 @@ Return ONLY a JSON object in this exact format:
       const completedQuestions = questions.length >= numQuestions
         ? questions
         : normalizeGeneratedQuestions(
-            [...questions, ...buildFallbackQuizQuestions(fullContent, numQuestions - questions.length, normalizedTypes, pointsByType, questionCountsByType)],
+            [...questions, ...buildFallbackQuizQuestions(fullContent, numQuestions - questions.length, normalizedTypes, pointsByType, questionCountsByType, String(lesson.title || ''))],
             numQuestions,
             normalizedTypes,
             quizCategory,
@@ -1578,7 +1594,7 @@ Return ONLY a JSON object in this exact format:
       console.error('Generate questions error:', error);
 
       const fallbackQuestions = normalizeGeneratedQuestions(
-        buildFallbackQuizQuestions(fallbackFullContent, fallbackNumQuestions, fallbackTypes, fallbackPoints, fallbackCounts),
+        buildFallbackQuizQuestions(fallbackFullContent, fallbackNumQuestions, fallbackTypes, fallbackPoints, fallbackCounts, fallbackLessonTitle),
         fallbackNumQuestions,
         fallbackTypes,
         'short',
