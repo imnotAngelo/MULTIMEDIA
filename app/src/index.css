@@ -185,6 +185,92 @@
 }
 
 @layer utilities {
+  .auth-aether-page {
+    isolation: isolate;
+    background:
+      radial-gradient(circle at 12% 12%, rgba(56, 189, 248, 0.2), transparent 25rem),
+      radial-gradient(circle at 88% 78%, rgba(217, 70, 239, 0.16), transparent 28rem),
+      linear-gradient(145deg, #182b58 0%, #101b3b 48%, #0a122a 100%);
+  }
+
+  .auth-aether-page::before,
+  .auth-aether-page::after {
+    content: "";
+    position: absolute;
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  .auth-aether-page::before {
+    inset: 0;
+    opacity: 0.42;
+    background-image:
+      linear-gradient(rgba(103, 232, 249, 0.1) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(103, 232, 249, 0.08) 1px, transparent 1px);
+    background-size: 72px 72px;
+    mask-image: linear-gradient(to bottom, black, transparent 86%);
+  }
+
+  .auth-aether-page::after {
+    width: 34rem;
+    height: 34rem;
+    right: -12rem;
+    top: 8rem;
+    border: 1px solid rgba(103, 232, 249, 0.18);
+    border-radius: 999px;
+    box-shadow: 0 0 80px rgba(34, 211, 238, 0.08);
+  }
+
+  .auth-form-surface {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(148, 163, 184, 0.3) !important;
+    border-radius: 1.75rem !important;
+    background:
+      linear-gradient(145deg, rgba(31, 49, 91, 0.72), rgba(9, 18, 43, 0.6)),
+      rgba(12, 24, 52, 0.55) !important;
+    backdrop-filter: blur(24px);
+    box-shadow:
+      inset 0 1px rgba(255, 255, 255, 0.14),
+      0 28px 70px rgba(2, 8, 24, 0.42),
+      0 0 34px rgba(34, 211, 238, 0.08);
+    color: #e2e8f0;
+    transition: transform 240ms ease, box-shadow 240ms ease, border-color 240ms ease;
+  }
+
+  .auth-form-surface::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(125deg, rgba(103, 232, 249, 0.12), transparent 32%, transparent 68%, rgba(232, 121, 249, 0.08));
+  }
+
+  .auth-form-surface:hover {
+    transform: translateY(-4px);
+    border-color: rgba(103, 232, 249, 0.45) !important;
+    box-shadow:
+      inset 0 1px rgba(255, 255, 255, 0.18),
+      0 34px 80px rgba(2, 8, 24, 0.5),
+      0 0 42px rgba(34, 211, 238, 0.13);
+  }
+
+  .auth-form-surface input,
+  .auth-form-surface select {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    border-color: rgba(148, 163, 184, 0.5) !important;
+    color: #f8fafc !important;
+  }
+
+  .auth-form-surface input::placeholder {
+    color: rgba(148, 163, 184, 0.78) !important;
+  }
+
+  .auth-form-surface select option {
+    background-color: #101b3b;
+    color: #f8fafc;
+  }
+
   /* Custom scrollbar */
   .scrollbar-thin {
     scrollbar-width: thin;
@@ -220,7 +306,11 @@
   .aether-shell {
     position: relative;
     isolation: isolate;
-    background-color: transparent !important;
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at 12% 12%, rgba(56, 189, 248, 0.14), transparent 25rem),
+      radial-gradient(circle at 88% 78%, rgba(217, 70, 239, 0.12), transparent 28rem),
+      linear-gradient(145deg, #182b58 0%, #101b3b 48%, #0a122a 100%) !important;
   }
 
   .aether-shell::before {
@@ -251,8 +341,9 @@
     position: relative;
     overflow: hidden;
     backdrop-filter: blur(18px);
+    border-radius: 1.25rem;
     background-image:
-      linear-gradient(135deg, rgba(30, 41, 91, 0.42), rgba(8, 12, 31, 0.28)),
+      linear-gradient(145deg, rgba(31, 49, 91, 0.62), rgba(9, 18, 43, 0.56)),
       linear-gradient(115deg, transparent 0 55%, rgba(103, 232, 249, 0.035) 70%, transparent 82%);
     border-color: rgba(103, 232, 249, 0.18);
     box-shadow: inset 0 1px rgba(255, 255, 255, 0.055), 0 14px 36px rgba(1, 8, 15, 0.28), 0 0 20px rgba(34, 211, 238, 0.035);
@@ -293,17 +384,80 @@
   }
 
   .aether-sidebar {
-    background: linear-gradient(180deg, rgba(11, 20, 22, 0.96), rgba(8, 13, 16, 0.94));
+    background: linear-gradient(180deg, rgba(16, 29, 61, 0.96), rgba(8, 18, 43, 0.94));
+    border-color: rgba(103, 232, 249, 0.18) !important;
+  }
+
+  .aether-sidebar .sidebar-nav-link {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+    transition-duration: 320ms !important;
+    transition-timing-function: cubic-bezier(.22, 1, .36, 1) !important;
+  }
+
+  .aether-sidebar .sidebar-nav-link::before {
+    display: none;
+  }
+
+  .aether-sidebar .sidebar-nav-link--active {
+    box-shadow: none;
+  }
+
+  .aether-sidebar .sidebar-nav-link--active::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 20%;
+    bottom: 20%;
+    width: 2px;
+    border-radius: 999px;
+    background: #67e8f9;
+    box-shadow: none;
+  }
+
+  .aether-sidebar a:focus:not(:focus-visible),
+  .aether-sidebar button:focus:not(:focus-visible) {
+    outline: none;
+    box-shadow: none;
+  }
+
+  .aether-sidebar nav > div > div > .aether-orbit {
+    opacity: 0;
+    animation: sidebar-item-in 520ms cubic-bezier(.22, 1, .36, 1) forwards;
+  }
+
+  .aether-sidebar nav > div > div > .aether-orbit:nth-child(1) { animation-delay: 80ms; }
+  .aether-sidebar nav > div > div > .aether-orbit:nth-child(2) { animation-delay: 130ms; }
+  .aether-sidebar nav > div > div > .aether-orbit:nth-child(3) { animation-delay: 180ms; }
+  .aether-sidebar nav > div > div > .aether-orbit:nth-child(4) { animation-delay: 230ms; }
+  .aether-sidebar nav > div > div > .aether-orbit:nth-child(5) { animation-delay: 280ms; }
+  .aether-sidebar nav > div > div > .aether-orbit:nth-child(6) { animation-delay: 330ms; }
+
+  .aether-sidebar .sidebar-subnav-link {
+    animation: sidebar-subitem-in 360ms ease-out both;
+  }
+
+  .aether-sidebar .sidebar-profile {
+    animation: sidebar-profile-in 650ms cubic-bezier(.22, 1, .36, 1) 360ms both;
+  }
+
+  .sidebar-mobile-drawer {
+    animation: sidebar-drawer-in 320ms cubic-bezier(.22, 1, .36, 1) both;
+  }
+
+  .sidebar-mobile-backdrop {
+    animation: sidebar-backdrop-in 240ms ease-out both;
   }
 
   .aether-header {
-    background-image: linear-gradient(90deg, rgba(14, 32, 32, 0.74), rgba(10, 15, 19, 0.72));
-    box-shadow: 0 1px 0 rgba(45, 212, 191, 0.16), 0 12px 35px rgba(2, 8, 10, 0.36);
+    background-image: linear-gradient(90deg, rgba(24, 43, 88, 0.82), rgba(10, 18, 43, 0.74));
+    box-shadow: 0 1px 0 rgba(103, 232, 249, 0.16), 0 12px 35px rgba(2, 8, 24, 0.36);
   }
 
   .aether-header input {
-    border-color: rgba(45, 212, 191, 0.3);
-    box-shadow: 0 0 18px rgba(45, 212, 191, 0.08);
+    border-color: rgba(103, 232, 249, 0.3);
+    box-shadow: 0 0 18px rgba(103, 232, 249, 0.08);
   }
 
   .aether-shell input,
@@ -340,7 +494,7 @@
   .aether-orbit:last-child::after { display: none; }
 
   .aether-icon {
-    box-shadow: 0 0 0 1px rgba(103, 232, 249, 0.08), 0 0 18px rgba(103, 232, 249, 0.14);
+    box-shadow: none;
   }
 
   .aether-loading-screen { position: relative; overflow: hidden; }
@@ -448,6 +602,12 @@
     filter: drop-shadow(0 0 18px rgba(103, 232, 249, 0.2));
   }
 
+  .login-aether-logo .aether-logo {
+    width: min(44vw, 520px);
+    filter: drop-shadow(0 0 24px rgba(103, 232, 249, 0.24));
+    animation: login-logo-float 6s ease-in-out 3.4s infinite;
+  }
+
   .aether-logo--compact {
     width: 38px;
     height: 38px;
@@ -530,6 +690,30 @@
   @keyframes logo-fade-up { to { opacity: 1; transform: translateY(0); } }
   @keyframes logo-fade-up-big { to { opacity: 1; transform: translateY(0) scale(1); } }
   @keyframes logo-grow-line { to { transform: scaleX(1); } }
+  @keyframes sidebar-item-in {
+    from { opacity: 0; transform: translateX(-14px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes sidebar-subitem-in {
+    from { opacity: 0; transform: translateX(-8px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes sidebar-profile-in {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes sidebar-drawer-in {
+    from { opacity: 0; transform: translateX(-100%); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes sidebar-backdrop-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes login-logo-float {
+    0%, 100% { transform: translateY(0) scale(1); filter: drop-shadow(0 0 24px rgba(103, 232, 249, 0.24)); }
+    50% { transform: translateY(-10px) scale(1.018); filter: drop-shadow(0 0 38px rgba(103, 232, 249, 0.38)); }
+  }
 
   .aether-logo__core {
     position: relative;

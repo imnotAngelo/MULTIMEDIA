@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { isPdfLessonRecord } from './lessonFormat.js';
+import { isPdfLessonRecord } from './lessonFormat.ts';
 
 test('detects PDF lessons from pdfUrl metadata', () => {
   assert.equal(

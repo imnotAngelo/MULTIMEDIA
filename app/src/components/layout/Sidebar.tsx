@@ -142,9 +142,9 @@ export function Sidebar({
                     onClick={() => setIsMobileMenuOpen(false)}
                     className={({ isActive: linkActive }) =>
                       cn(
-                        'flex-1 flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',
+                        'sidebar-nav-link flex-1 flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',
                         linkActive || isActive
-                          ? 'bg-violet-500/10 text-violet-400 border border-violet-500/20'
+                          ? 'sidebar-nav-link--active bg-violet-500/10 text-violet-400 border border-violet-500/20'
                           : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/50'
                       )
                     }
@@ -187,7 +187,7 @@ export function Sidebar({
                         onClick={() => setIsMobileMenuOpen(false)}
                         className={({ isActive: subActive }) =>
                           cn(
-                            'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 pl-4',
+                            'sidebar-subnav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 pl-4',
                             subActive
                               ? 'bg-violet-500/10 text-violet-400 border-l-2 border-violet-500'
                               : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/50 border-l-2 border-transparent'
@@ -229,7 +229,7 @@ export function Sidebar({
       </nav>
 
       {/* User Profile */}
-      <div className="border-t border-slate-800 p-4">
+      <div className="sidebar-profile border-t border-slate-800 p-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center overflow-hidden">
             {userAvatar ? (
@@ -280,11 +280,10 @@ export function Sidebar({
       {/* Mobile Sidebar */}
       {isMobileMenuOpen && (
         <div className="lg:hidden fixed inset-0 z-40">
-          <div 
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+          <div className="sidebar-mobile-backdrop absolute inset-0 bg-black/50 backdrop-blur-sm"
             onClick={() => setIsMobileMenuOpen(false)}
           />
-          <aside className="absolute left-0 top-0 h-full w-64 bg-slate-950/90 border-r border-teal-400/20 aether-panel">
+          <aside className="sidebar-mobile-drawer absolute left-0 top-0 h-full w-64 bg-slate-950/90 border-r border-teal-400/20 aether-panel">
             <SidebarContent />
           </aside>
         </div>

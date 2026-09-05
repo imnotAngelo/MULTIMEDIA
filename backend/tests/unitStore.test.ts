@@ -71,6 +71,11 @@ test('returns the locally stored lessons for a unit even when the database clien
 
   const req = {
     params: { unitId: 'unit-2' },
+    user: {
+      id: 'test-admin',
+      email: 'test@example.com',
+      role: 'admin',
+    },
   } as any;
 
   const res = {

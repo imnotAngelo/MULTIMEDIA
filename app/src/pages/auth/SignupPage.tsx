@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Eye, EyeOff, Mail, Lock, User, GraduationCap, Presentation, X } from 'lucide-react';
 import { AetherSpinner } from '@/components/AetherSpinner';
+import { AetherLogo } from '@/components/AetherLogo';
 
 const ACADEMIC_YEAR_OPTIONS: Array<{ value: 1 | 2 | 3; label: string }> = [
   { value: 1, label: '1st Sem' },
@@ -101,24 +102,42 @@ export function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Background decoration */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-1/2 -left-1/4 w-[800px] h-[800px] rounded-full bg-fuchsia-500/5 blur-3xl" />
-        <div className="absolute -bottom-1/2 -right-1/4 w-[600px] h-[600px] rounded-full bg-violet-500/5 blur-3xl" />
-      </div>
-
-      <div className="w-full max-w-md relative z-10 animate-fade-in">
-        {/* Logo / Brand */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 mb-4 shadow-lg shadow-violet-500/20">
-            <span className="text-white font-bold text-2xl">M</span>
+    <div className="auth-aether-page min-h-screen flex relative overflow-hidden">
+      <section className="relative hidden md:flex md:w-[46%] lg:w-1/2 min-h-screen overflow-hidden bg-[#101d3d] px-8 py-10 lg:px-14 lg:py-12">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_22%_20%,rgba(73,210,239,0.22),transparent_25%),radial-gradient(circle_at_82%_78%,rgba(243,118,166,0.2),transparent_28%),linear-gradient(145deg,#182b58_0%,#101b3b_48%,#0a122a_100%)]" />
+        <div className="absolute -right-24 top-16 h-72 w-72 rounded-full border border-cyan-300/20 animate-pulse" />
+        <div className="absolute -bottom-32 -left-20 h-80 w-80 rounded-full border border-fuchsia-300/15" />
+        <div className="absolute inset-x-10 bottom-10 h-px bg-gradient-to-r from-transparent via-cyan-200/40 to-transparent" />
+        <div className="relative z-10 flex w-full flex-col justify-between">
+          <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.3em] text-cyan-100/70">
+            <span className="h-2 w-2 rounded-full bg-cyan-300 shadow-[0_0_16px_rgba(103,232,249,0.9)]" />
+            Interactive learning
           </div>
-          <h1 className="text-2xl font-bold text-white">Join the Community</h1>
-          <p className="text-slate-400 text-sm mt-1">Create your learning account</p>
+          <div className="flex flex-1 items-center justify-center py-10">
+            <div className="login-aether-logo w-full max-w-[620px] animate-fade-in">
+              <AetherLogo />
+            </div>
+          </div>
+          <div className="max-w-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-cyan-200/60">Create. Explore. Master.</p>
+            <h2 className="mt-3 text-3xl font-semibold leading-tight text-white lg:text-4xl">Build your creative practice with us.</h2>
+          </div>
         </div>
+      </section>
 
-        <Card className="border-slate-800 bg-slate-900/80 backdrop-blur-xl shadow-2xl shadow-black/20">
+      <main className="relative z-10 flex min-h-screen w-full items-center justify-center overflow-y-auto px-5 py-10 sm:px-10 md:w-[54%] lg:w-1/2 lg:px-16">
+        <div className="w-full max-w-[520px] animate-fade-in">
+          <div className="mb-8 md:hidden">
+            <div className="mx-auto mb-5 w-48"><AetherLogo compact /></div>
+            <p className="text-center text-xs font-semibold uppercase tracking-[0.28em] text-slate-400">Interactive learning</p>
+          </div>
+          <div className="mb-8">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Join the community</p>
+            <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white">Create your account</h1>
+            <p className="mt-2 text-sm leading-6 text-slate-300">Set up your learning space and start exploring multimedia.</p>
+          </div>
+
+        <Card className="auth-form-surface border-0 bg-transparent backdrop-blur-xl shadow-2xl shadow-black/20">
           <CardHeader className="space-y-1 pb-4">
             <CardTitle className="text-xl text-white">Create Account</CardTitle>
             <CardDescription className="text-slate-400">
@@ -401,7 +420,8 @@ export function SignupPage() {
             </form>
           </CardContent>
         </Card>
-      </div>
+        </div>
+      </main>
     </div>
   );
 }
