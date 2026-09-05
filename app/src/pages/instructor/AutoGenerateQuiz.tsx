@@ -17,6 +17,9 @@ interface Lesson {
   title: string;
 }
 
+type QuizType = 'multiple-choice' | 'enumeration' | 'true-false' | 'identification' | 'essay';
+type PointsByType = Record<QuizType, number>;
+
 interface QuestionOption {
   id: string;
   text: string;
@@ -26,9 +29,10 @@ interface QuestionOption {
 interface Question {
   id: string;
   title: string;
-  type: 'multiple-choice' | 'short-answer';
+  type: 'multiple-choice' | 'short-answer' | 'essay' | 'true-false' | 'enumeration' | 'identification';
   points: number;
   options: QuestionOption[];
+  correctAnswer?: string;
 }
 
 export function AutoGenerateQuiz() {
@@ -40,7 +44,8 @@ export function AutoGenerateQuiz() {
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [loadingUnits, setLoadingUnits] = useState(true);
   const [selectedUnit, setSelectedUnit] = useState('');
-  const [selectedLesson, setSelectedLesson] = useState('');
+  const [selectedLessons, setSelectedLessons] = useState<string[]>([]);
+  const [lessonScope, setLessonScope] = useState<'all' | 'selected'>('selected');
   const [generatedQuestions, setGeneratedQuestions] = useState<Question[]>([]);
   const [questionsGenerated, setQuestionsGenerated] = useState(false);
   const [targetSections, setTargetSections] = useState<string[]>([]);
@@ -55,10 +60,73 @@ export function AutoGenerateQuiz() {
     timeLimit: 30,
     shuffleQuestions: true,
     showCorrectAnswers: false,
+    quizCategory: 'short' as 'short' | 'long' | 'exam',
+    quizTypes: ['multiple-choice'] as QuizType[],
+    pointsByType: {
+      'multiple-choice': 1,
+      enumeration: 2,
+      'true-false': 2,
+      identification: 2,
+      essay: 5,
+    } as PointsByType,
+    questionCountsByType: {
+      'multiple-choice': 10,
+      'true-false': 10,
+    } as Partial<Record<QuizType, number>>,
     numberOfQuestions: 5,
-    startPage: 1,
-    endPage: 1,
   });
+
+  const getQuizCategoryRange = (category: 'short' | 'long' | 'exam') => ({
+    short: { min: 5, max: 10 },
+    long: { min: 20, max: 30 },
+    exam: { min: 70, max: 100 },
+  }[category]);
+
+  const updateCategory = (quizCategory: 'short' | 'long' | 'exam') => {
+    const range = getQuizCategoryRange(quizCategory);
+    const quizTypes: QuizType[] = quizCategory === 'short'
+      ? [formData.quizTypes[0] || 'multiple-choice']
+      : quizCategory === 'long'
+        ? ['multiple-choice', formData.quizTypes.find(type => type !== 'multiple-choice') || 'true-false']
+        : ['multiple-choice', 'enumeration', 'true-false', 'identification', 'essay'] as QuizType[];
+    const questionCountsByType: Partial<Record<QuizType, number>> = quizCategory === 'short'
+      ? { [quizTypes[0]]: 5 }
+      : quizCategory === 'long'
+        ? { 'multiple-choice': 10, [quizTypes[1]]: 10 }
+        : Object.fromEntries(quizTypes.map(type => [type, 20]));
+    setFormData(prev => ({
+      ...prev,
+      quizCategory,
+      quizTypes,
+      questionCountsByType,
+      numberOfQuestions: Math.min(Math.max(prev.numberOfQuestions, range.min), range.max),
+    }));
+    if (quizCategory === 'exam') {
+      setLessonScope('all');
+      setSelectedLessons(lessons.map(lesson => lesson.id));
+    }
+  };
+
+  const toggleQuizType = (type: QuizType) => {
+    if (formData.quizCategory === 'long' && type === 'multiple-choice') return;
+    const maxTypes = formData.quizCategory === 'short' ? 1 : formData.quizCategory === 'long' ? 2 : 5;
+    const selected = formData.quizCategory === 'long'
+      ? formData.quizTypes.includes(type)
+        ? ['multiple-choice'] as QuizType[]
+        : ['multiple-choice', type] as QuizType[]
+      : formData.quizTypes.includes(type)
+      ? formData.quizTypes.filter(item => item !== type)
+      : [...formData.quizTypes, type].slice(0, maxTypes);
+    if (selected.length > 0) setFormData(prev => ({
+      ...prev,
+      quizTypes: selected,
+      questionCountsByType: selected.reduce((counts, selectedType) => ({ ...counts, [selectedType]: prev.questionCountsByType[selectedType] || 10 }), {}),
+    }));
+  };
+
+  const configuredQuestionTotal = () => formData.quizCategory === 'short'
+    ? formData.numberOfQuestions
+    : Object.values(formData.questionCountsByType).reduce((sum, count) => sum + (count || 0), 0);
 
   useEffect(() => {
     fetchUnits();
@@ -69,7 +137,7 @@ export function AutoGenerateQuiz() {
       fetchLessons(selectedUnit);
     } else {
       setLessons([]);
-      setSelectedLesson('');
+      setSelectedLessons([]);
     }
   }, [selectedUnit]);
 
@@ -98,6 +166,9 @@ export function AutoGenerateQuiz() {
         const data = await response.json();
         if (data.success && Array.isArray(data.data)) {
           setLessons(data.data);
+          if (lessonScope === 'all' && formData.quizCategory === 'exam') {
+            setSelectedLessons(data.data.map((lesson: Lesson) => lesson.id));
+          }
         }
       }
     } catch {
@@ -107,7 +178,7 @@ export function AutoGenerateQuiz() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    const isNumericField = ['timeLimit', 'numberOfQuestions', 'startPage', 'endPage'].includes(name);
+    const isNumericField = ['timeLimit', 'numberOfQuestions'].includes(name);
     const numericValue = value === '' ? 1 : Number.parseInt(value, 10);
     setFormData(prev => ({
       ...prev,
@@ -116,12 +187,15 @@ export function AutoGenerateQuiz() {
   };
 
   const generateQuestions = async () => {
-    if (!selectedUnit || !selectedLesson || !formData.title) {
+    const requiredTypeCount = formData.quizCategory === 'short' ? 1 : formData.quizCategory === 'long' ? 2 : 5;
+    if (!selectedUnit || selectedLessons.length === 0 || !formData.title || formData.quizTypes.length !== requiredTypeCount) {
       alert('Please fill in all required fields');
       return;
     }
-    if (formData.startPage < 1 || formData.endPage < formData.startPage) {
-      alert('End page must be greater than or equal to start page');
+    const categoryRange = getQuizCategoryRange(formData.quizCategory);
+    const requestedQuestionTotal = configuredQuestionTotal();
+    if (requestedQuestionTotal < categoryRange.min || requestedQuestionTotal > categoryRange.max) {
+      alert(`This category requires ${categoryRange.min}-${categoryRange.max} questions.`);
       return;
     }
 
@@ -129,37 +203,54 @@ export function AutoGenerateQuiz() {
       setGenerating(true);
       setGenerationError('');
 
-      // Call the AI-powered question generation endpoint
-      const response = await authFetch(`http://localhost:3001/api/lessons/${selectedLesson}/generate-questions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          numberOfQuestions: formData.numberOfQuestions,
-          startPage: formData.startPage,
-          endPage: formData.endPage,
-        }),
-      });
+      // Generate in small quota-aware batches so long exams do not get truncated
+      // by one oversized AI response.
+      const generatedData: any[] = [];
+      const seenGeneratedQuestions = new Set<string>();
+      const allocation = formData.quizTypes.flatMap(type => Array.from({ length: formData.questionCountsByType[type] || 0 }, () => type));
+      let batchStart = 0;
+      let attempts = 0;
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        const errorMsg = errorData?.error?.message || `HTTP ${response.status}`;
-        throw new Error(errorMsg);
+      while (batchStart < requestedQuestionTotal && attempts < 12) {
+        const batchTypes = allocation.slice(batchStart, Math.min(batchStart + 10, requestedQuestionTotal));
+        const batchCounts = batchTypes.reduce((counts, type) => ({ ...counts, [type]: (counts[type] || 0) + 1 }), {} as Record<string, number>);
+        const responses = await Promise.all(selectedLessons.map(lessonId => authFetch(`http://localhost:3001/api/lessons/${lessonId}/generate-questions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            numberOfQuestions: batchTypes.length,
+            quizTypes: formData.quizTypes,
+            pointsByType: formData.pointsByType,
+            questionCountsByType: batchCounts,
+            quizCategory: formData.quizCategory,
+            generationAttempt: attempts,
+          }),
+        })));
+        const responseData = await Promise.all(responses.map(async item => item.ok ? item.json() : null));
+        const batchQuestions = responseData.flatMap(data => data?.success && Array.isArray(data.data) ? data.data : []);
+
+        for (const question of batchQuestions) {
+          const key = String(question.text || question.title || '').replace(/\s+/g, ' ').trim().toLowerCase();
+          if (key && !seenGeneratedQuestions.has(key)) {
+            seenGeneratedQuestions.add(key);
+            generatedData.push(question);
+          }
+        }
+
+        batchStart = generatedData.length;
+        attempts += 1;
+        if (batchQuestions.length === 0) break;
       }
 
-      const data = await response.json();
+      if (generatedData.length === 0) throw new Error('No questions were generated');
 
-      if (!data.success || !Array.isArray(data.data) || data.data.length === 0) {
-        throw new Error('No questions were generated');
-      }
-
-      const aiQuestions: Question[] = data.data
+      const aiQuestions: Question[] = generatedData
         .map((q: any, idx: number) => ({
           id: String(idx + 1),
           title: (q.text || q.title || '').trim(),
-          type: q.type === 'short-answer' ? 'short-answer' : 'multiple-choice',
-          points: Number(q.points) > 0 ? Number(q.points) : 2,
+          type: allocation[idx] || formData.quizTypes[idx % formData.quizTypes.length],
+          points: formData.pointsByType[allocation[idx] || formData.quizTypes[idx % formData.quizTypes.length]],
+          correctAnswer: String(q.correctAnswer || q.answer || '').trim(),
           options: q.type === 'multiple-choice' && Array.isArray(q.options)
             ? q.options
                 .map((opt: string, i: number) => ({
@@ -169,13 +260,19 @@ export function AutoGenerateQuiz() {
                 }))
                 .filter((opt: { text: string | any[]; }) => opt.text.length > 0)
                 .slice(0, 4)
-            : [],
+            : q.type === 'true-false'
+              ? ['True', 'False'].map((text, i) => ({ id: String(i + 1), text, isCorrect: text.toLowerCase() === String(q.correctAnswer || '').trim().toLowerCase() }))
+              : [],
         }))
-        .filter((q: { title: string | any[]; }) => q.title.length > 0);
+        .filter((q: { title: string | any[]; }) => q.title.length > 0)
+        .slice(0, requestedQuestionTotal);
 
       const cleanedQuestions = normalizeQuestionSet(aiQuestions);
       if (cleanedQuestions.length === 0) {
         throw new Error('The generated content did not produce valid unique questions. Please regenerate.');
+      }
+      if (cleanedQuestions.length < requestedQuestionTotal) {
+        throw new Error(`Only ${cleanedQuestions.length} of ${requestedQuestionTotal} questions were generated. Please try again or select more lessons.`);
       }
 
       setGeneratedQuestions(cleanedQuestions);
@@ -236,7 +333,7 @@ export function AutoGenerateQuiz() {
           isCorrect: hasCorrectAnswer ? option.isCorrect : idx === 0,
         }));
 
-        return { ...normalizedQuestion, options: correctedOptions };
+        return { ...normalizedQuestion, options: correctedOptions, correctAnswer: correctedOptions.find((option) => option.isCorrect)?.text || '' };
       }
 
       return normalizedQuestion;
@@ -274,7 +371,7 @@ export function AutoGenerateQuiz() {
         options: q.type === 'multiple-choice' ? q.options.map(o => o.text) : [],
         correctAnswer: q.type === 'multiple-choice'
           ? q.options.find(o => o.isCorrect)?.text
-          : undefined,
+          : q.correctAnswer || undefined,
       }));
 
       const payload = {
@@ -282,7 +379,7 @@ export function AutoGenerateQuiz() {
         description: formData.description,
         type: 'quiz',
         unitId: selectedUnit,
-        lessonName: selectedLesson,
+        lessonIds: selectedLessons,
         dueDate: formData.dueDate,
         allowLateSubmissions: formData.allowLateSubmissions,
         totalPoints: transformedQuestions.reduce((sum, q) => sum + q.points, 0),
@@ -291,6 +388,11 @@ export function AutoGenerateQuiz() {
         showCorrectAnswers: formData.showCorrectAnswers,
         questions: transformedQuestions,
         generatedAutomatically: true,
+        quizCategory: formData.quizCategory,
+        quizType: formData.quizTypes.length === 1 ? formData.quizTypes[0] : undefined,
+        quizTypes: formData.quizTypes,
+        questionCountsByType: formData.questionCountsByType,
+        pointsByType: formData.pointsByType,
         targetSections,
       };
 
@@ -390,30 +492,6 @@ export function AutoGenerateQuiz() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Start Page</label>
-                <input
-                  type="number"
-                  name="startPage"
-                  value={formData.startPage}
-                  onChange={handleInputChange}
-                  min="1"
-                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:border-violet-500 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">End Page</label>
-                <input
-                  type="number"
-                  name="endPage"
-                  value={formData.endPage}
-                  onChange={handleInputChange}
-                  min={formData.startPage}
-                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:border-violet-500 focus:outline-none"
-                />
-              </div>
-
-              <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">Select Unit *</label>
                 {loadingUnits ? (
                   <div className="flex items-center gap-2 text-slate-400 py-2">
@@ -438,19 +516,44 @@ export function AutoGenerateQuiz() {
               </div>
             </div>
 
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">Description *</label>
+              <textarea
+                name="description"
+                value={formData.description}
+                onChange={handleInputChange}
+                placeholder="Describe the quiz purpose and content..."
+                rows={2}
+                className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder:text-slate-600 focus:border-violet-500 focus:outline-none"
+              />
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Select Lesson *</label>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Select Lessons *</label>
+                {formData.quizCategory === 'exam' && (
+                  <div className="mb-2 flex gap-4 text-sm text-slate-300">
+                    <label className="flex items-center gap-2">
+                      <input type="radio" checked={lessonScope === 'all'} onChange={() => { setLessonScope('all'); setSelectedLessons(lessons.map(lesson => lesson.id)); }} />
+                      All lessons in this unit
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input type="radio" checked={lessonScope === 'selected'} onChange={() => setLessonScope('selected')} />
+                      Choose lessons
+                    </label>
+                  </div>
+                )}
                 <select
-                  value={selectedLesson}
+                  value={selectedLessons}
                   onChange={(e) => {
-                    setSelectedLesson(e.target.value);
+                    setSelectedLessons(Array.from(e.target.selectedOptions, option => option.value));
                     setQuestionsGenerated(false);
                   }}
                   className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:border-violet-500 focus:outline-none"
-                  disabled={!selectedUnit}
+                  disabled={!selectedUnit || (formData.quizCategory === 'exam' && lessonScope === 'all')}
+                  multiple
+                  size={Math.min(Math.max(lessons.length, 3), 6)}
                 >
-                  <option value="">-- Select Lesson --</option>
                   {lessons.map(lesson => (
                     <option key={lesson.id} value={lesson.id}>{lesson.title}</option>
                   ))}
@@ -462,25 +565,74 @@ export function AutoGenerateQuiz() {
                 <input
                   type="number"
                   name="numberOfQuestions"
-                  value={formData.numberOfQuestions}
+                  value={formData.quizCategory === 'short' ? formData.numberOfQuestions : configuredQuestionTotal()}
                   onChange={handleInputChange}
-                  min="1"
-                  max="20"
+                  min={getQuizCategoryRange(formData.quizCategory).min}
+                  max={getQuizCategoryRange(formData.quizCategory).max}
+                  disabled={formData.quizCategory !== 'short'}
                   className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:border-violet-500 focus:outline-none"
                 />
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Description *</label>
-              <textarea
-                name="description"
-                value={formData.description}
-                onChange={handleInputChange}
-                placeholder="Describe the quiz purpose and content..."
-                rows={2}
-                className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder:text-slate-600 focus:border-violet-500 focus:outline-none"
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Quiz Category</label>
+                <select
+                  value={formData.quizCategory}
+                  onChange={(e) => updateCategory(e.target.value as 'short' | 'long' | 'exam')}
+                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:border-violet-500 focus:outline-none"
+                >
+                  <option value="short">Short Quiz (5-10 questions)</option>
+                  <option value="long">Long Quiz (20-30 questions)</option>
+                  <option value="exam">Exam (70-100 questions)</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Question Types</label>
+                <div className="grid grid-cols-2 gap-2 rounded-md border border-slate-700 bg-slate-800 p-3">
+                  {(['multiple-choice', 'enumeration', 'true-false', 'identification', 'essay'] as QuizType[]).map((type) => (
+                    <label key={type} className="flex items-center gap-2 text-xs text-slate-300">
+                      <input type="checkbox" checked={formData.quizTypes.includes(type)} disabled={formData.quizCategory === 'long' && type === 'multiple-choice'} onChange={() => toggleQuizType(type)} />
+                      {type === 'multiple-choice' ? 'Multiple Choice' : type === 'true-false' ? 'True or False' : type.charAt(0).toUpperCase() + type.slice(1)}
+                    </label>
+                  ))}
+                </div>
+                {formData.quizCategory !== 'short' && (
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    {formData.quizTypes.map((type) => (
+                      <label key={`${type}-count`} className="text-xs text-slate-400">
+                        {type === 'multiple-choice' ? 'Multiple Choice' : type === 'true-false' ? 'True or False' : type.charAt(0).toUpperCase() + type.slice(1)} questions
+                        <input
+                          type="number"
+                          min="1"
+                          value={formData.questionCountsByType[type] || 0}
+                          onChange={(e) => setFormData(prev => ({ ...prev, questionCountsByType: { ...prev.questionCountsByType, [type]: Math.max(1, parseInt(e.target.value) || 1) } }))}
+                          className="mt-1 w-full px-2 py-1 bg-slate-800 border border-slate-700 rounded text-white"
+                        />
+                      </label>
+                    ))}
+                  </div>
+                )}
+                {formData.quizCategory !== 'short' && (
+                  <p className="mt-2 text-xs text-slate-500">Total configured questions: {configuredQuestionTotal()}</p>
+                )}
+                <p className="text-xs text-slate-500 mt-1">{formData.quizCategory === 'short' ? 'Choose 1 type.' : formData.quizCategory === 'long' ? 'Choose 2 types.' : 'All 5 types are required.'}</p>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  {formData.quizTypes.map((type) => (
+                    <label key={`${type}-points`} className="text-xs text-slate-400">
+                      {type === 'multiple-choice' ? 'Multiple Choice' : type === 'true-false' ? 'True or False' : type.charAt(0).toUpperCase() + type.slice(1)} points
+                      <input
+                        type="number"
+                        min="1"
+                        value={formData.pointsByType[type]}
+                        onChange={(e) => setFormData(prev => ({ ...prev, pointsByType: { ...prev.pointsByType, [type]: Math.max(1, parseInt(e.target.value) || 1) } }))}
+                        className="mt-1 w-full px-2 py-1 bg-slate-800 border border-slate-700 rounded text-white"
+                      />
+                    </label>
+                  ))}
+                </div>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -552,7 +704,7 @@ export function AutoGenerateQuiz() {
                 <Button
                   type="button"
                   onClick={generateQuestions}
-                  disabled={generating || !selectedUnit || !selectedLesson || !formData.title}
+                  disabled={generating || !selectedUnit || selectedLessons.length === 0 || !formData.title}
                   className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white h-12 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-medium"
                 >
                   {generating ? (
@@ -642,6 +794,16 @@ export function AutoGenerateQuiz() {
                         >
                           Multiple Choice
                         </button>
+                        {formData.quizTypes.filter((type) => type !== 'multiple-choice').map((type) => (
+                          <button
+                            key={type}
+                            type="button"
+                            onClick={() => handleQuestionChange(qIndex, 'type', type)}
+                            className={`flex-1 px-3 py-2 rounded text-sm font-medium transition-all ${question.type === type ? 'bg-emerald-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}
+                          >
+                            {type === 'true-false' ? 'True or False' : type.charAt(0).toUpperCase() + type.slice(1)}
+                          </button>
+                        ))}
                         <button
                           type="button"
                           onClick={() => handleQuestionChange(qIndex, 'type', 'short-answer')}
@@ -683,6 +845,18 @@ export function AutoGenerateQuiz() {
                             />
                           </div>
                         ))}
+                      </div>
+                    )}
+                    {question.type !== 'multiple-choice' && (
+                      <div>
+                        <label className="block text-xs font-medium text-slate-400 mb-1">Model Answer</label>
+                        <input
+                          type="text"
+                          value={question.correctAnswer || ''}
+                          onChange={(e) => handleQuestionChange(qIndex, 'correctAnswer', e.target.value)}
+                          placeholder={question.type === 'essay' ? 'Enter a model answer for AI-assisted grading' : 'Enter the expected answer'}
+                          className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white text-sm placeholder:text-slate-600 focus:border-violet-500 focus:outline-none"
+                        />
                       </div>
                     )}
                   </div>

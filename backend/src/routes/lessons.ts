@@ -423,7 +423,7 @@ export function buildConvertedLessonRecord({
   };
 }
 
-export function normalizeGeneratedQuestions(rawQuestions: any[], targetCount = 5) {
+export function normalizeGeneratedQuestions(rawQuestions: any[], targetCount = 5, requestedTypes: string[] = [], quizCategory = 'short', pointsByType: Record<string, number> = {}, questionCountsByType: Record<string, number> = {}) {
   const normalized: any[] = [];
   const seen = new Set<string>();
 
@@ -438,8 +438,13 @@ export function normalizeGeneratedQuestions(rawQuestions: any[], targetCount = 5
     if (!dedupeKey || seen.has(dedupeKey)) continue;
     seen.add(dedupeKey);
 
-    const type = item.type === 'short-answer' ? 'short-answer' : 'multiple-choice';
-    const points = Number(item.points) > 0 ? Number(item.points) : 2;
+    const supportedTypes = ['multiple-choice', 'enumeration', 'true-false', 'identification', 'essay'];
+    const allocation = requestedTypes.flatMap(requestedType => Array.from({ length: Math.max(0, Number(questionCountsByType[requestedType]) || 0) }, () => requestedType));
+    const requestedType = allocation[normalized.length] || requestedTypes[normalized.length % requestedTypes.length];
+    const type = requestedTypes.length > 0 && supportedTypes.includes(requestedType)
+      ? requestedType
+      : supportedTypes.includes(item.type) ? item.type : 'multiple-choice';
+    const points = Number(pointsByType[type]) > 0 ? Number(pointsByType[type]) : Number(item.points) > 0 ? Number(item.points) : 2;
 
     if (type === 'multiple-choice') {
       const rawOptions = Array.isArray(item.options) ? item.options : [];
@@ -466,10 +471,10 @@ export function normalizeGeneratedQuestions(rawQuestions: any[], targetCount = 5
       normalized.push({
         id: item.id ?? String(normalized.length + 1),
         text: normalizedText,
-        type: 'short-answer',
+        type,
         points,
-        options: [],
-        correctAnswer: '',
+        options: type === 'true-false' ? ['True', 'False'] : [],
+        correctAnswer: String(item.correctAnswer ?? item.answer ?? '').trim(),
       });
     }
 
@@ -1292,7 +1297,7 @@ router.post(
   async (req: Request, res: Response) => {
     try {
       const { lessonId } = req.params;
-      const { numberOfQuestions = 5, startPage = 1, endPage } = req.body;
+      const { numberOfQuestions = 5, startPage = 1, endPage, quizType = 'multiple-choice', quizTypes = [], quizCategory = 'short', pointsByType = {}, questionCountsByType = {}, generationAttempt = 0 } = req.body;
 
       console.log('🧠 Generating quiz questions for lesson:', lessonId);
 
@@ -1395,7 +1400,19 @@ router.post(
         throw new Error('GEMINI_API_KEY environment variable is not set');
       }
 
-      const numQuestions = Math.min(Math.max(numberOfQuestions, 2), 10);
+      const categoryRanges: Record<string, { min: number; max: number }> = {
+        short: { min: 5, max: 10 },
+        long: { min: 20, max: 30 },
+        exam: { min: 70, max: 100 },
+      };
+      const range = categoryRanges[quizCategory] || categoryRanges.short;
+      const configuredTotal = Object.values(questionCountsByType as Record<string, unknown>).reduce((sum: number, count) => sum + (Number(count) > 0 ? Number(count) : 0), 0);
+      const requestedTotal = configuredTotal > 0 ? configuredTotal : Number(numberOfQuestions) || range.min;
+      const numQuestions = Math.min(Math.max(requestedTotal, range.min), range.max);
+      const allowedTypes = ['multiple-choice', 'enumeration', 'true-false', 'identification', 'essay'];
+      const requestedTypes = (Array.isArray(quizTypes) ? quizTypes : [quizType])
+        .filter((type: unknown, index: number, types: unknown[]) => allowedTypes.includes(String(type)) && types.indexOf(type) === index);
+      const normalizedTypes = requestedTypes.length > 0 ? requestedTypes : ['multiple-choice'];
       const configuredModel = process.env.GEMINI_MODEL?.trim();
       const model = configuredModel || 'gemini-3.6-flash';
       const fallbackModel = 'gemini-3.6-flash';
@@ -1409,8 +1426,13 @@ RULES:
 - Generate exactly ${numQuestions} questions, no more and no fewer.
 - Every question must be answerable from the lesson content above.
 - Make the questions precise, high-quality, and academically appropriate.
-- Include a balanced mix of multiple-choice and short-answer questions.
+- Use only these question types: ${normalizedTypes.join(', ')}.
+- Follow this exact number of questions per type: ${JSON.stringify(questionCountsByType)}.
 - For multiple-choice: provide exactly 4 unique options and exactly 1 correct answer.
+- For true-false: options must be ["True","False"] and correctAnswer must be exactly "True" or "False".
+- For enumeration, identification, and essay: provide a concise model answer in correctAnswer and use an empty options array.
+- Use these points per type: ${JSON.stringify(pointsByType)}.
+- This is generation batch ${Number(generationAttempt) || 0}; use different concepts and wording from any earlier batch.
 - Incorrect options must be plausible but clearly incorrect based on the lesson content.
 - Do not repeat the same question, idea, or wording across questions.
 - Avoid vague, generic, or repetitive phrasing.
@@ -1418,7 +1440,7 @@ RULES:
 - Focus on understanding, interpretation, and key concepts rather than memorization.
 
 Return ONLY a JSON object in this exact format:
-{"questions":[{"id":"1","text":"Question text?","type":"multiple-choice","points":2,"options":["Option A","Option B","Option C","Option D"],"correctAnswer":"Option A"}]}`;
+{"questions":[{"id":"1","text":"Question text?","type":"${normalizedTypes[0]}","points":2,"options":["Option A","Option B","Option C","Option D"],"correctAnswer":"Option A"}]}`;
 
       let response: globalThis.Response | null = null;
       let responseBody: any = null;
@@ -1431,7 +1453,7 @@ Return ONLY a JSON object in this exact format:
             contents: [{ parts: [{ text: prompt }] }],
             generationConfig: {
               temperature: 0.2,
-              maxOutputTokens: 4096,
+              maxOutputTokens: 32768,
               responseMimeType: 'application/json',
             },
           }),
@@ -1465,7 +1487,7 @@ Return ONLY a JSON object in this exact format:
       }
 
       const parsed = JSON.parse(jsonMatch[0]);
-      const questions = normalizeGeneratedQuestions(parsed.questions || [], numQuestions);
+      const questions = normalizeGeneratedQuestions(parsed.questions || [], numQuestions, normalizedTypes, quizCategory, pointsByType, questionCountsByType);
 
       console.log('🧠 Generated', questions.length, 'questions from lesson content');
 

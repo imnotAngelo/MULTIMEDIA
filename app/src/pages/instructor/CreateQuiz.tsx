@@ -32,6 +32,9 @@ interface Lesson {
   title: string;
 }
 
+type QuizType = 'multiple-choice' | 'enumeration' | 'true-false' | 'identification' | 'essay';
+type PointsByType = Record<QuizType, number>;
+
 const initialQuestion: Question = {
   id: '1',
   text: '',
@@ -59,9 +62,21 @@ export function CreateQuiz() {
     title: '',
     description: '',
     unitId: '',
-    lessonId: '',
+    lessonIds: [] as string[],
+    lessonScope: 'selected' as 'all' | 'selected',
     quizCategory: 'short' as 'short' | 'long' | 'exam',
-    quizType: 'multiple-choice' as Question['type'],
+    quizTypes: ['multiple-choice'] as QuizType[],
+    pointsByType: {
+      'multiple-choice': 1,
+      enumeration: 2,
+      'true-false': 2,
+      identification: 2,
+      essay: 5,
+    } as PointsByType,
+    questionCountsByType: {
+      'multiple-choice': 10,
+      'true-false': 10,
+    } as Partial<Record<QuizType, number>>,
     allowLateSubmissions: false,
     timeLimit: 60,
     passingScore: 70,
@@ -91,7 +106,11 @@ export function CreateQuiz() {
         setLoadingLessons(true);
         const response = await authFetch(`${API_BASE_URL}/units/${formData.unitId}/lessons`);
         const data = await response.json();
-        setLessons(response.ok && Array.isArray(data.data) ? data.data : []);
+        const loadedLessons = response.ok && Array.isArray(data.data) ? data.data : [];
+        setLessons(loadedLessons);
+        if (formData.lessonScope === 'all' && formData.quizCategory === 'exam') {
+          setFormData(prev => ({ ...prev, lessonIds: loadedLessons.map((lesson: Lesson) => lesson.id) }));
+        }
       } catch {
         setLessons([]);
       } finally {
@@ -135,17 +154,73 @@ export function CreateQuiz() {
   };
 
   const handleAddQuestion = () => {
-    const defaults = getQuestionTypeDefaults(formData.quizType);
+    const questionType = getQuestionTypeForIndex(questions.length, formData.quizTypes, formData.quizCategory);
+    const defaults = getQuestionTypeDefaults(questionType);
     const newQuestion: Question = {
       id: Date.now().toString(),
       text: '',
-      type: formData.quizType,
+      type: questionType,
       ...(defaults.options ? { options: defaults.options } : {}),
       correctAnswer: defaults.correctAnswer,
-      points: 1,
+      points: formData.pointsByType[questionType],
     };
     setQuestions([...questions, newQuestion]);
     setExpandedQuestion(newQuestion.id);
+  };
+
+  const getQuestionAllocation = (counts: Partial<Record<QuizType, number>>, types: QuizType[]) =>
+    types.flatMap(type => Array.from({ length: Math.max(0, counts[type] || 0) }, () => type));
+
+  const getQuestionTypeForIndex = (index: number, types: QuizType[], category: 'short' | 'long' | 'exam') => {
+    const allocation = getQuestionAllocation(formData.questionCountsByType, types);
+    return allocation[index] || types[index % types.length];
+  };
+
+  const updateQuizCategory = (quizCategory: 'short' | 'long' | 'exam') => {
+    const quizTypes: QuizType[] = quizCategory === 'short'
+      ? [formData.quizTypes[0] || 'multiple-choice']
+      : quizCategory === 'long'
+        ? ['multiple-choice', formData.quizTypes.find(type => type !== 'multiple-choice') || 'true-false']
+        : ['multiple-choice', 'enumeration', 'true-false', 'identification', 'essay'];
+    const questionCountsByType: Partial<Record<QuizType, number>> = quizCategory === 'short'
+      ? { [formData.quizTypes[0] || 'multiple-choice']: 5 }
+      : quizCategory === 'long'
+        ? { 'multiple-choice': 10, [formData.quizTypes.find(type => type !== 'multiple-choice') || 'true-false']: 10 }
+        : Object.fromEntries(['multiple-choice', 'enumeration', 'true-false', 'identification', 'essay'].map(type => [type, 20]));
+    setFormData(prev => ({
+      ...prev,
+      quizCategory,
+      quizTypes,
+      questionCountsByType,
+      lessonScope: quizCategory === 'exam' ? 'all' : prev.lessonScope,
+      lessonIds: quizCategory === 'exam' ? lessons.map(lesson => lesson.id) : prev.lessonIds,
+    }));
+    setQuestions(prev => prev.map((question, index) => {
+      const type = getQuestionAllocation(questionCountsByType, quizTypes)[index] || quizTypes[index % quizTypes.length];
+      const defaults = getQuestionTypeDefaults(type);
+      return { ...question, type, points: formData.pointsByType[type], ...(defaults.options ? { options: defaults.options } : { options: undefined }), correctAnswer: defaults.correctAnswer };
+    }));
+  };
+
+  const toggleQuizType = (type: QuizType) => {
+    if (formData.quizCategory === 'long' && type === 'multiple-choice') return;
+    const maxTypes = formData.quizCategory === 'short' ? 1 : formData.quizCategory === 'long' ? 2 : 5;
+    const selected = formData.quizCategory === 'long'
+      ? formData.quizTypes.includes(type)
+        ? ['multiple-choice'] as QuizType[]
+        : ['multiple-choice', type] as QuizType[]
+      : formData.quizTypes.includes(type)
+      ? formData.quizTypes.filter(item => item !== type)
+      : [...formData.quizTypes, type].slice(0, maxTypes);
+    if (selected.length > 0) {
+      setFormData(prev => ({ ...prev, quizTypes: selected }));
+      setQuestions(prev => prev.map((question, index) => {
+        if (selected.includes(question.type as QuizType)) return question;
+        const nextType = getQuestionAllocation(formData.questionCountsByType, selected)[index] || selected[index % selected.length];
+        const defaults = getQuestionTypeDefaults(nextType);
+        return { ...question, type: nextType, points: formData.pointsByType[nextType], ...(defaults.options ? { options: defaults.options } : { options: undefined }), correctAnswer: defaults.correctAnswer };
+      }));
+    }
   };
 
   const handleRemoveQuestion = (id: string) => {
@@ -188,14 +263,15 @@ export function CreateQuiz() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title.trim() || !formData.unitId || !formData.lessonId || questions.length === 0) {
-      alert('Please fill in all required fields');
-      return;
-    }
-
+    const requiredTypeCount = formData.quizCategory === 'short' ? 1 : formData.quizCategory === 'long' ? 2 : 5;
+    const configuredTotal = Object.values(formData.questionCountsByType).reduce((sum, count) => sum + (count || 0), 0);
     const categoryRange = getQuizCategoryRange(formData.quizCategory);
-    if (questions.length < categoryRange.min || questions.length > categoryRange.max) {
-      alert(`${categoryRange.label} requires ${categoryRange.min}-${categoryRange.max} questions. You currently have ${questions.length}.`);
+    const actualCounts = questions.reduce((counts, question) => ({ ...counts, [question.type]: (counts[question.type as QuizType] || 0) + 1 }), {} as Record<string, number>);
+    const allocationMatches = formData.quizCategory === 'short'
+      ? questions.length >= categoryRange.min && questions.length <= categoryRange.max
+      : configuredTotal >= categoryRange.min && configuredTotal <= categoryRange.max && formData.quizTypes.every(type => (actualCounts[type] || 0) === (formData.questionCountsByType[type] || 0));
+    if (!formData.title.trim() || !formData.unitId || formData.lessonIds.length === 0 || questions.length === 0 || formData.quizTypes.length !== requiredTypeCount || !allocationMatches) {
+      alert('Please fill in all required fields');
       return;
     }
 
@@ -208,11 +284,13 @@ export function CreateQuiz() {
           title: formData.title,
           description: formData.description,
           unitId: formData.unitId,
-          lessonId: formData.lessonId,
+          lessonIds: formData.lessonIds,
           allowLateSubmissions: formData.allowLateSubmissions,
           type: 'quiz',
           quizCategory: formData.quizCategory,
-          quizType: formData.quizType,
+          quizType: formData.quizTypes.length === 1 ? formData.quizTypes[0] : undefined,
+          quizTypes: formData.quizTypes,
+          questionCountsByType: formData.questionCountsByType,
           totalPoints: questions.reduce((total, question) => total + question.points, 0),
           timeLimit: formData.timeLimit,
           questions: questions,
@@ -270,7 +348,7 @@ export function CreateQuiz() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-slate-300">Quiz Category</Label>
-                    <Select value={formData.quizCategory} onValueChange={(value) => setFormData({ ...formData, quizCategory: value as 'short' | 'long' | 'exam' })}>
+                    <Select value={formData.quizCategory} onValueChange={(value) => updateQuizCategory(value as 'short' | 'long' | 'exam')}>
                       <SelectTrigger className="bg-slate-800 border-slate-700 text-white mt-1">
                         <SelectValue />
                       </SelectTrigger>
@@ -282,25 +360,55 @@ export function CreateQuiz() {
                     </Select>
                   </div>
                   <div>
-                    <Label className="text-slate-300">Quiz Type</Label>
-                    <Select value={formData.quizType} onValueChange={(value) => setFormData({ ...formData, quizType: value as Question['type'] })}>
-                      <SelectTrigger className="bg-slate-800 border-slate-700 text-white mt-1">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-slate-800 border-slate-700">
-                        <SelectItem value="multiple-choice" className="text-white">Test 1 - Multiple Choice</SelectItem>
-                        <SelectItem value="enumeration" className="text-white">Test 2 - Enumeration</SelectItem>
-                        <SelectItem value="true-false" className="text-white">Test 3 - True or False</SelectItem>
-                        <SelectItem value="identification" className="text-white">Test 4 - Identification</SelectItem>
-                        <SelectItem value="essay" className="text-white">Test 5 - Essay</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Label className="text-slate-300">Question Types</Label>
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      {(['multiple-choice', 'enumeration', 'true-false', 'identification', 'essay'] as QuizType[]).map((type) => (
+                        <label key={type} className="flex items-center gap-2 text-xs text-slate-300">
+                          <input type="checkbox" checked={formData.quizTypes.includes(type)} disabled={formData.quizCategory === 'long' && type === 'multiple-choice'} onChange={() => toggleQuizType(type)} />
+                          {type === 'multiple-choice' ? 'Multiple Choice' : type === 'true-false' ? 'True or False' : type.charAt(0).toUpperCase() + type.slice(1)}
+                        </label>
+                      ))}
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1">{formData.quizCategory === 'short' ? 'Choose 1 type.' : formData.quizCategory === 'long' ? 'Choose 2 types.' : 'All 5 types are required.'}</p>
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      {formData.quizTypes.map((type) => (
+                        <label key={`${type}-points`} className="text-xs text-slate-400">
+                          {type === 'multiple-choice' ? 'Multiple Choice' : type === 'true-false' ? 'True or False' : type.charAt(0).toUpperCase() + type.slice(1)} points
+                          <Input
+                            type="number"
+                            min="1"
+                            value={formData.pointsByType[type]}
+                            onChange={(e) => setFormData(prev => ({ ...prev, pointsByType: { ...prev.pointsByType, [type]: Math.max(1, parseInt(e.target.value) || 1) } }))}
+                            className="mt-1 h-8 bg-slate-800 border-slate-700 text-white"
+                          />
+                        </label>
+                      ))}
+                    </div>
+                    {formData.quizCategory !== 'short' && (
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        {formData.quizTypes.map((type) => (
+                          <label key={`${type}-count`} className="text-xs text-slate-400">
+                            {type === 'multiple-choice' ? 'Multiple Choice' : type === 'true-false' ? 'True or False' : type.charAt(0).toUpperCase() + type.slice(1)} questions
+                            <Input
+                              type="number"
+                              min="1"
+                              value={formData.questionCountsByType[type] || 0}
+                              onChange={(e) => setFormData(prev => ({ ...prev, questionCountsByType: { ...prev.questionCountsByType, [type]: Math.max(1, parseInt(e.target.value) || 1) } }))}
+                              className="mt-1 h-8 bg-slate-800 border-slate-700 text-white"
+                            />
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                    {formData.quizCategory !== 'short' && (
+                      <p className="mt-2 text-xs text-slate-500">Total configured questions: {Object.values(formData.questionCountsByType).reduce((sum, count) => sum + (count || 0), 0)}</p>
+                    )}
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-slate-300">Unit</Label>
-                    <Select value={formData.unitId} onValueChange={(value) => setFormData({ ...formData, unitId: value, lessonId: '' })}>
+                    <Select value={formData.unitId} onValueChange={(value) => setFormData({ ...formData, unitId: value, lessonIds: [] })}>
                       <SelectTrigger className="bg-slate-800 border-slate-700 text-white mt-1">
                         <SelectValue placeholder="Select a unit" />
                       </SelectTrigger>
@@ -325,23 +433,42 @@ export function CreateQuiz() {
                   </div>
                 </div>
                 <div>
-                  <Label className="text-slate-300">Lesson</Label>
-                  <Select
-                    value={formData.lessonId}
-                    onValueChange={(value) => setFormData({ ...formData, lessonId: value })}
-                    disabled={!formData.unitId || loadingLessons || lessons.length === 0}
-                  >
-                    <SelectTrigger className="bg-slate-800 border-slate-700 text-white mt-1">
-                      <SelectValue placeholder={loadingLessons ? 'Loading lessons...' : formData.unitId ? 'Select a lesson' : 'Select a unit first'} />
-                    </SelectTrigger>
-                    <SelectContent className="bg-slate-800 border-slate-700">
-                      {lessons.map(lesson => (
-                        <SelectItem key={lesson.id} value={lesson.id} className="text-white">
-                          {lesson.title}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label className="text-slate-300">Lessons in this unit</Label>
+                  {formData.quizCategory === 'exam' && (
+                    <div className="mt-2 flex gap-4 text-sm text-slate-300">
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          checked={formData.lessonScope === 'all'}
+                          onChange={() => setFormData(prev => ({ ...prev, lessonScope: 'all', lessonIds: lessons.map(lesson => lesson.id) }))}
+                        />
+                        All lessons in this unit
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          checked={formData.lessonScope === 'selected'}
+                          onChange={() => setFormData(prev => ({ ...prev, lessonScope: 'selected' }))}
+                        />
+                        Choose lessons
+                      </label>
+                    </div>
+                  )}
+                  <div className="mt-2 space-y-2 rounded-md border border-slate-700 bg-slate-800 p-3">
+                    {loadingLessons && <p className="text-xs text-slate-400">Loading lessons...</p>}
+                    {!loadingLessons && lessons.map(lesson => (
+                      <label key={lesson.id} className="flex items-center gap-2 text-sm text-slate-300">
+                        <input
+                          type="checkbox"
+                          checked={formData.lessonIds.includes(lesson.id)}
+                          disabled={formData.quizCategory === 'exam' && formData.lessonScope === 'all'}
+                          onChange={() => setFormData(prev => ({ ...prev, lessonIds: prev.lessonIds.includes(lesson.id) ? prev.lessonIds.filter(id => id !== lesson.id) : [...prev.lessonIds, lesson.id] }))}
+                        />
+                        {lesson.title}
+                      </label>
+                    ))}
+                    {!loadingLessons && formData.unitId && lessons.length === 0 && <p className="text-xs text-amber-300">No lessons are available in this unit.</p>}
+                  </div>
                   {formData.unitId && !loadingLessons && lessons.length === 0 && (
                     <p className="mt-1 text-xs text-amber-300">No lessons are available in this unit.</p>
                   )}
@@ -442,12 +569,11 @@ export function CreateQuiz() {
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent className="bg-slate-800 border-slate-700">
-                                <SelectItem value="multiple-choice" className="text-white">Multiple Choice</SelectItem>
-                                <SelectItem value="enumeration" className="text-white">Enumeration</SelectItem>
-                                <SelectItem value="true-false" className="text-white">True or False</SelectItem>
-                                <SelectItem value="identification" className="text-white">Identification</SelectItem>
-                                <SelectItem value="short-answer" className="text-white">Short Answer</SelectItem>
-                                <SelectItem value="essay" className="text-white">Essay</SelectItem>
+                                {formData.quizTypes.map((type) => (
+                                  <SelectItem key={type} value={type} className="text-white">
+                                    {type === 'multiple-choice' ? 'Multiple Choice' : type === 'true-false' ? 'True or False' : type.charAt(0).toUpperCase() + type.slice(1)}
+                                  </SelectItem>
+                                ))}
                               </SelectContent>
                             </Select>
                           </div>

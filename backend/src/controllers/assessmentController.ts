@@ -230,6 +230,11 @@ export const createAssessment = async (req: AuthRequest, res: Response) => {
       allowDuplicate = false,
       targetSections,
       targetYearLevels,
+      quizCategory,
+      quizType,
+      quizTypes,
+      questionCountsByType,
+      lessonIds,
     } = req.body;
 
     console.log('📝 Fields - title:', title, 'type:', type, 'questions:', Array.isArray(questions) ? questions.length + ' items' : typeof questions);
@@ -320,6 +325,11 @@ export const createAssessment = async (req: AuthRequest, res: Response) => {
       show_correct_answers: showCorrectAnswers || false,
       target_sections: cleanedTargetSections,
       target_year_levels: cleanedTargetYearLevels,
+      quiz_category: ['short', 'long', 'exam'].includes(quizCategory) ? quizCategory : null,
+      quiz_type: ['multiple-choice', 'enumeration', 'true-false', 'identification', 'essay'].includes(quizType) ? quizType : null,
+      quiz_types: Array.isArray(quizTypes) ? quizTypes : (quizType ? [quizType] : []),
+      question_counts_by_type: questionCountsByType && typeof questionCountsByType === 'object' ? questionCountsByType : {},
+      lesson_ids: Array.isArray(lessonIds) ? lessonIds : [],
       year_level: creatorYearLevel,
     };
 

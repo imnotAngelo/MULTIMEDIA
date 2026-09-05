@@ -36,6 +36,7 @@ interface Quiz {
   completed?: boolean;
   submission?: {
     score: number | null;
+    earned_points?: number | null;
     status?: string;
     submitted_at?: string;
   } | null;

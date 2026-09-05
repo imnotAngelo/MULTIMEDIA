@@ -322,7 +322,7 @@ export function StudentQuizTaker() {
   };
 
   const handleSubmit = async () => {
-    if (submitted || submitting) return;
+    if (submitted || submitting || !quiz) return;
     const dueDate = quiz?.due_date || quiz?.dueDate;
     const dueTime = dueDate ? new Date(dueDate).getTime() : NaN;
     if (Number.isFinite(dueTime) && dueTime <= Date.now() && !quiz?.allow_late_submissions) {
