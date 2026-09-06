@@ -36,6 +36,22 @@ const labUpload = multer({
 const router = Router();
 const backendRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
+function getStudentSection(user: any): string {
+  const directSection = typeof user?.section === 'string'
+    ? user.section.trim()
+    : Array.isArray(user?.section)
+      ? String(user.section.find((section: unknown) => typeof section === 'string' && section.trim()) || '').trim()
+      : typeof user?.section_name === 'string'
+        ? user.section_name.trim()
+        : '';
+  if (directSection) return directSection;
+
+  const legacySections = Array.isArray(user?.teaching_sections)
+    ? user.teaching_sections.filter((section: unknown) => typeof section === 'string' && section.trim())
+    : [];
+  return legacySections[0]?.trim() || 'Unassigned';
+}
+
 router.get("/file/:submissionId", authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
@@ -89,8 +105,22 @@ router.get(
 
       if (error) throw error;
 
+      // Submissions are retained when an instructor changes semester, but
+      // archived laboratories must not appear as active student work.
+      const labIds = [...new Set((data ?? []).map((row: any) => row.lab_id).filter(Boolean))];
+      const { data: laboratories, error: laboratoriesError } = labIds.length
+        ? await supabase.from("laboratories").select("id, status").in("id", labIds)
+        : { data: [], error: null };
+      if (laboratoriesError) throw laboratoriesError;
+      const activeLabIds = new Set(
+        (laboratories ?? [])
+          .filter((laboratory: any) => laboratory.status !== "archived")
+          .map((laboratory: any) => laboratory.id)
+      );
+
       const map: Record<string, object> = {};
       for (const row of data ?? []) {
+        if (!activeLabIds.has(row.lab_id)) continue;
         map[row.lab_id] = {
           id: row.id,
           labId: row.lab_id,
@@ -339,7 +369,7 @@ router.get(
 
       const studentIds = [...new Set((data ?? []).map((r: any) => r.student_id))];
       const { data: users } = studentIds.length
-        ? await supabase.from("users").select("id, email, full_name").in("id", studentIds)
+        ? await supabase.from("users").select("id, email, full_name, section, teaching_sections").in("id", studentIds)
         : { data: [] };
 
       const userMap: Record<string, any> = {};
@@ -357,6 +387,8 @@ router.get(
           studentId: row.student_id,
           studentEmail: userMap[row.student_id]?.email ?? row.student_id,
           studentName: userMap[row.student_id]?.full_name ?? userMap[row.student_id]?.email ?? row.student_id,
+          studentSection: getStudentSection(userMap[row.student_id]),
+          section: getStudentSection(userMap[row.student_id]),
           fileName: row.file_name,
           fileType: row.file_type,
           fileUrl: `/api/laboratory-submissions/file/${row.id}`,

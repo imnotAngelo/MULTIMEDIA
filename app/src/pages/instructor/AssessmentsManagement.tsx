@@ -8,7 +8,6 @@ import {
   FileText,
   ClipboardList,
   Beaker,
-  Edit2,
   Trash2,
   ChevronDown,
   Calendar,
@@ -16,8 +15,6 @@ import {
   RefreshCw,
   Loader2,
   Layers,
-  CheckCircle2,
-  Clock,
 } from 'lucide-react';
 import { AetherLoader } from '@/components/AetherLoader';
 
@@ -42,8 +39,6 @@ interface AssessmentStats {
   totalQuizzes: number;
   totalLaboratories: number;
   totalSubmissions: number;
-  gradedSubmissions: number;
-  pendingGrading: number;
 }
 
 export function InstructorAssessments() {
@@ -56,8 +51,6 @@ export function InstructorAssessments() {
     totalQuizzes: 0,
     totalLaboratories: 0,
     totalSubmissions: 0,
-    gradedSubmissions: 0,
-    pendingGrading: 0,
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -123,8 +116,6 @@ export function InstructorAssessments() {
       totalQuizzes: assessmentList.filter(a => a.type === 'quiz').length,
       totalLaboratories: assessmentList.filter(a => a.type === 'laboratory').length,
       totalSubmissions: assessmentList.reduce((sum, a) => sum + a.submissions, 0),
-      gradedSubmissions: assessmentList.reduce((sum, a) => sum + a.graded, 0),
-      pendingGrading: assessmentList.reduce((sum, a) => sum + (a.submissions - a.graded), 0),
     };
 
     setStats(stats);
@@ -133,10 +124,6 @@ export function InstructorAssessments() {
   const handleCreateAssessment = () => {
     // Navigate to create assessment form (route to be implemented)
     navigate('/instructor/assessments/create');
-  };
-
-  const handleEditAssessment = (id: string) => {
-    navigate(`/instructor/assessments/${id}/edit`);
   };
 
   const handleDeleteAssessment = async (id: string) => {
@@ -285,24 +272,6 @@ export function InstructorAssessments() {
           </div>
           <div className="text-2xl font-bold text-white">{stats.totalSubmissions}</div>
           <p className="text-slate-500 text-xs mt-1">Total Submissions</p>
-        </div>
-        <div className="group bg-slate-900/60 border border-slate-800/60 rounded-xl p-5 hover:border-blue-500/30 transition-all">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center">
-              <CheckCircle2 className="w-4.5 h-4.5 text-blue-400" />
-            </div>
-          </div>
-          <div className="text-2xl font-bold text-white">{stats.gradedSubmissions}</div>
-          <p className="text-slate-500 text-xs mt-1">Graded</p>
-        </div>
-        <div className="group bg-slate-900/60 border border-slate-800/60 rounded-xl p-5 hover:border-amber-500/30 transition-all">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center">
-              <Clock className="w-4.5 h-4.5 text-amber-400" />
-            </div>
-          </div>
-          <div className="text-2xl font-bold text-white">{stats.pendingGrading}</div>
-          <p className="text-slate-500 text-xs mt-1">Pending Grading</p>
         </div>
       </div>
 
@@ -454,16 +423,6 @@ export function InstructorAssessments() {
                         <p className="text-xs text-slate-500 mb-1">Submissions</p>
                         <p className="text-lg font-bold text-blue-400">{assessment.submissions}</p>
                       </div>
-                      <div className="bg-slate-800/30 rounded-lg p-3">
-                        <p className="text-xs text-slate-500 mb-1">Graded</p>
-                        <p className="text-lg font-bold text-emerald-400">{assessment.graded}</p>
-                      </div>
-                      <div className="bg-slate-800/30 rounded-lg p-3">
-                        <p className="text-xs text-slate-500 mb-1">Pending</p>
-                        <p className="text-lg font-bold text-orange-400">
-                          {assessment.submissions - assessment.graded}
-                        </p>
-                      </div>
                     </div>
 
                     {/* Action Buttons */}
@@ -474,14 +433,6 @@ export function InstructorAssessments() {
                       >
                         <Users className="w-4 h-4" />
                         View Submissions
-                      </Button>
-                      <Button
-                        onClick={() => handleEditAssessment(assessment.id)}
-                        variant="outline"
-                        className="flex items-center gap-2 border-slate-700 text-slate-300 hover:bg-slate-800/50"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                        Edit
                       </Button>
                       <Button
                         onClick={() => handleDeleteAssessment(assessment.id)}

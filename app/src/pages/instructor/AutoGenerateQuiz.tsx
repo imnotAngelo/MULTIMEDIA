@@ -819,42 +819,11 @@ export function AutoGenerateQuiz() {
                       />
                     </div>
 
-                    <div className="rounded-lg p-3 space-y-2">
-                      <label className="block text-xs font-medium text-slate-400">Question Type</label>
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleQuestionChange(qIndex, 'type', 'multiple-choice')}
-                          className={`flex-1 px-3 py-2 rounded text-sm font-medium transition-all ${
-                            question.type === 'multiple-choice'
-                              ? 'bg-violet-600 text-white'
-                              : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                          }`}
-                        >
-                          Multiple Choice
-                        </button>
-                        {formData.quizTypes.filter((type) => type !== 'multiple-choice').map((type) => (
-                          <button
-                            key={type}
-                            type="button"
-                            onClick={() => handleQuestionChange(qIndex, 'type', type)}
-                            className={`flex-1 px-3 py-2 rounded text-sm font-medium transition-all ${question.type === type ? 'bg-emerald-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}
-                          >
-                            {type === 'true-false' ? 'True or False' : type.charAt(0).toUpperCase() + type.slice(1)}
-                          </button>
-                        ))}
-                        <button
-                          type="button"
-                          onClick={() => handleQuestionChange(qIndex, 'type', 'short-answer')}
-                          className={`flex-1 px-3 py-2 rounded text-sm font-medium transition-all ${
-                            question.type === 'short-answer'
-                              ? 'bg-emerald-600 text-white'
-                              : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                          }`}
-                        >
-                          Short Answer
-                        </button>
-                      </div>
+                    <div className="flex items-center gap-2 text-xs text-slate-400">
+                      <span>Question Type:</span>
+                      <span className="font-medium text-emerald-300">
+                        {question.type === 'multiple-choice' ? 'Multiple Choice' : question.type === 'true-false' ? 'True or False' : question.type.charAt(0).toUpperCase() + question.type.slice(1)}
+                      </span>
                     </div>
 
                     {question.type === 'multiple-choice' && (

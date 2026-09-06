@@ -170,7 +170,6 @@ export function InstructorDashboard() {
           <h1 className="text-2xl font-semibold text-white">
             Welcome back, <span className="gradient-text">{user?.full_name}</span>
           </h1>
-          <p className="text-slate-400 mt-1 text-sm">Manage your courses, lessons, and assessments</p>
         </div>
         <Button
           onClick={loadUnitsAndLessons}

@@ -996,20 +996,38 @@ export const getAssessmentSubmissions = async (req: AuthRequest, res: Response) 
 
     const { data: submissions, error } = await supabase
       .from('assessment_submissions')
-      .select(
-        `
-        *,
-        student:user_id(id, full_name, email)
-      `
-      )
+      .select('*')
       .eq('assessment_id', assessmentId)
       .order('submitted_at', { ascending: false });
 
     if (error) throw error;
 
+    const studentIds = [...new Set((submissions || []).map((submission: any) => submission.user_id).filter(Boolean))];
+    const { data: students, error: studentsError } = studentIds.length
+      ? await supabase
+        .from('users')
+        .select('id, full_name, email, section, teaching_sections')
+        .in('id', studentIds)
+      : { data: [], error: null };
+    if (studentsError) throw studentsError;
+
+    const studentById = Object.fromEntries((students || []).map((student: any) => [student.id, student]));
+    const enrichedSubmissions = (submissions || []).map((submission: any) => {
+      const student = studentById[submission.user_id];
+      const section = typeof student?.section === 'string' && student.section.trim()
+        ? student.section.trim()
+        : Array.isArray(student?.teaching_sections)
+          ? String(student.teaching_sections.find((value: unknown) => typeof value === 'string' && value.trim()) || '').trim()
+          : '';
+      return {
+        ...submission,
+        student: student ? { ...student, section: section || null } : null,
+      };
+    });
+
     return res.json({
       success: true,
-      data: submissions,
+      data: enrichedSubmissions,
     });
   } catch (error: any) {
     console.error('Get submissions error:', error);

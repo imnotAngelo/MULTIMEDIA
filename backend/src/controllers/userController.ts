@@ -236,12 +236,8 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
             if (lessonIds.length > 0) {
               await supabase.from('lesson_progress').delete().in('lesson_id', lessonIds);
             }
-            if (labIds.length > 0) {
-              await Promise.all([
-                supabase.from('laboratory_submissions').delete().in('laboratory_id', labIds),
-                supabase.from('lab_file_submissions').delete().in('lab_id', labIds),
-              ]);
-            }
+            // Keep submissions linked to archived laboratories so they remain
+            // available as historical records instead of being deleted.
             if (assessmentIds.length > 0) {
               await supabase.from('assessment_submissions').delete().in('assessment_id', assessmentIds);
             }
@@ -758,9 +754,9 @@ export const getLeaderboard = async (req: AuthRequest, res: Response) => {
 };
 
 /**
- * Update instructor's semester/year level and clear all student progress
- * Archives instructor content and resets student progress and submissions
- * for the previous semester.
+ * Update instructor's semester/year level and clear active progress.
+ * Archives instructor content while retaining previous-semester submissions
+ * as historical records.
  */
 export const updateSemesterAndClearProgress = async (req: AuthRequest, res: Response) => {
   const startTime = Date.now();
@@ -1045,12 +1041,7 @@ export const updateSemesterAndClearProgress = async (req: AuthRequest, res: Resp
       );
     }
 
-    if (labIds.length > 0) {
-      archiveAndClearPromises.push(
-        supabase.from('lab_file_submissions').delete().in('lab_id', labIds)
-          .then(res => ({ type: 'clear_lab_submissions', result: res }))
-      );
-    }
+    // Keep laboratory submissions linked to archived laboratories for history.
 
     // Assessment submissions are intentionally preserved as each student's
     // archived quiz results. Archived quizzes remain tied to their owners.
@@ -1133,7 +1124,7 @@ export const updateSemesterAndClearProgress = async (req: AuthRequest, res: Resp
 
     console.log(`\n✅ SEMESTER UPDATE COMPLETE (${Date.now() - startTime}ms)`);
     console.log(`   📦 Archived: ${results.archived.units} units, ${results.archived.lessons} lessons, ${results.archived.laboratories} labs, ${results.archived.assessments} assessments`);
-    console.log(`   �️  Cleared: ${results.cleared.lesson_progress} lesson progress, ${results.cleared.lab_submissions} lab submissions, ${results.cleared.assessment_submissions} quiz submissions`);
+    console.log(`   �️  Cleared: ${results.cleared.lesson_progress} lesson progress, ${results.cleared.assessment_submissions} quiz submissions; laboratory submissions retained in archives`);
 
     return res.json({
       success: true,

@@ -13,6 +13,7 @@ interface FileSubmission {
   studentId: string;
   studentEmail: string;
   studentName: string;
+  studentSection: string;
   fileName: string;
   fileType: string;
   fileUrl: string;
@@ -35,6 +36,7 @@ export function LaboratorySubmissions() {
   const [gradeForm, setGradeForm] = useState({ grade: 0, feedback: '', status: 'reviewed' });
   const [savingGrade, setSavingGrade] = useState(false);
   const [expandedLabs, setExpandedLabs] = useState<Record<string, boolean>>({});
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -64,14 +66,17 @@ export function LaboratorySubmissions() {
   }, [fileSubs]);
 
   const groupedFileSubs = useMemo(() => {
-    const groups = new Map<string, { title: string; submissions: FileSubmission[] }>();
+    const groups = new Map<string, Map<string, { title: string; submissions: FileSubmission[] }>>();
     for (const submission of fileSubs) {
-      const existing = groups.get(submission.labId);
+      const section = submission.studentSection || 'Unassigned';
+      const sectionGroups = groups.get(section) ?? new Map();
+      const existing = sectionGroups.get(submission.labId);
       if (existing) {
         existing.submissions.push(submission);
       } else {
-        groups.set(submission.labId, { title: submission.labTitle, submissions: [submission] });
+        sectionGroups.set(submission.labId, { title: submission.labTitle, submissions: [submission] });
       }
+      groups.set(section, sectionGroups);
     }
     return [...groups.entries()];
   }, [fileSubs]);
@@ -88,6 +93,7 @@ export function LaboratorySubmissions() {
       })
       .then((rows: FileSubmission[]) => setFileSubs(rows.map((row) => ({
         ...row,
+        studentSection: row.studentSection || (row as FileSubmission & { section?: string }).section || 'Unassigned',
         grade: row.grade === null || row.grade === undefined || (row.grade as any) === ''
           ? null
           : Number(row.grade),
@@ -288,10 +294,19 @@ export function LaboratorySubmissions() {
           )}
 
           <div className="space-y-4">
-            {groupedFileSubs.map(([labId, group]) => {
-              const expanded = expandedLabs[labId] ?? true;
-              return <div key={labId} className="border border-slate-800 rounded-xl overflow-hidden">
-                <button type="button" onClick={() => setExpandedLabs((current) => ({ ...current, [labId]: !expanded }))} className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-slate-950/70 hover:bg-slate-800/60 text-left">
+            {groupedFileSubs.map(([section, labGroups]) => {
+              const sectionExpanded = expandedSections[section] ?? true;
+              const sectionSubmissionCount = [...labGroups.values()].reduce((total, group) => total + group.submissions.length, 0);
+              return <div key={section} className="border border-slate-700/80 rounded-xl overflow-hidden">
+                <button type="button" onClick={() => setExpandedSections((current) => ({ ...current, [section]: !sectionExpanded }))} className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-slate-800/70 hover:bg-slate-800 text-left">
+                  <div className="flex items-center gap-2 min-w-0"><User className="w-4 h-4 text-cyan-400 shrink-0" /><span className="font-semibold text-slate-100">Section {section}</span><span className="text-xs text-slate-500">{sectionSubmissionCount} submission{sectionSubmissionCount !== 1 ? 's' : ''}</span></div>
+                  {sectionExpanded ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
+                </button>
+                {sectionExpanded && <div className="space-y-3 p-3 bg-slate-950/30">
+                {[...labGroups.entries()].map(([labId, group]) => {
+                  const expanded = expandedLabs[`${section}:${labId}`] ?? true;
+                  return <div key={labId} className="border border-slate-800 rounded-xl overflow-hidden">
+                <button type="button" onClick={() => setExpandedLabs((current) => ({ ...current, [`${section}:${labId}`]: !expanded }))} className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-slate-950/70 hover:bg-slate-800/60 text-left">
                   <div className="flex items-center gap-2 min-w-0"><Beaker className="w-4 h-4 text-emerald-400 shrink-0" /><span className="font-semibold text-slate-100 truncate">{group.title || labId}</span><span className="text-xs text-slate-500">{group.submissions.length} student submission{group.submissions.length !== 1 ? 's' : ''}</span></div>
                   {expanded ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
                 </button>
@@ -371,7 +386,10 @@ export function LaboratorySubmissions() {
                   </div>
                 ))}
                 </div>}
-              </div>;
+                </div>;
+                  })}
+                  </div>}
+                </div>;
             })}
           </div>
       </Card>

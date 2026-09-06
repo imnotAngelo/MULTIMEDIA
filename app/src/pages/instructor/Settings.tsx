@@ -394,9 +394,9 @@ export function InstructorSettings() {
       `Are you sure you want to change to ${semesterLabel}?\n\n` +
       `This will:\n` +
       `✓ Update your teaching semester\n` +
-      `✓ Reset lesson progress, lab submissions, and quiz submissions\n` +
+      `✓ Reset lesson progress and quiz submissions\n` +
       `✓ Archive your previous semester's content for review\n\n` +
-      `Archived content can be restored from Archives. Old student progress and submissions will be permanently cleared.`
+      `Archived content can be restored from Archives. Previous laboratory submissions will remain available as archived records.`
     );
     
     if (!confirmUpdate) return;
@@ -456,7 +456,7 @@ export function InstructorSettings() {
       ].filter(Boolean).join(', ') || 'no student data';
       
       toast.success(
-        `✅ Semester updated to ${semesterLabel}!\n Archived: ${archiveDetails}\n🔄 Reset: ${clearDetails}\n🗑️ Old lab and quiz submissions cleared`
+        `✅ Semester updated to ${semesterLabel}!\n Archived: ${archiveDetails}\n🔄 Reset: ${clearDetails}\n📦 Previous laboratory submissions were retained in the archive.`
       );
       
       console.log(`✅ [SEMESTER UPDATE] Semester update complete. Refreshing data...`);

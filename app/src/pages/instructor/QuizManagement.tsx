@@ -1,11 +1,10 @@
-import { useState, useEffect } from 'react';
+import { Fragment, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { authFetch } from '@/lib/authFetch';
 import { Button } from '@/components/ui/button';
 import {
   Plus,
-  Edit2,
   Trash2,
   ChevronDown,
   Calendar,
@@ -14,8 +13,6 @@ import {
   TrendingUp,
   ClipboardList,
   Loader2,
-  CheckCircle2,
-  Clock,
   Download,
   KeyRound,
 } from 'lucide-react';
@@ -44,14 +41,14 @@ interface QuizSubmission {
   student?: {
     full_name?: string;
     email?: string;
+    section?: string | null;
+    teaching_sections?: string[] | null;
   } | null;
 }
 
 interface QuizStats {
   totalQuizzes: number;
   totalSubmissions: number;
-  gradedSubmissions: number;
-  pendingGrading: number;
   averageScore: number;
 }
 
@@ -62,8 +59,6 @@ export function QuizManagement() {
   const [stats, setStats] = useState<QuizStats>({
     totalQuizzes: 0,
     totalSubmissions: 0,
-    gradedSubmissions: 0,
-    pendingGrading: 0,
     averageScore: 0,
   });
   const [loading, setLoading] = useState(true);
@@ -131,14 +126,10 @@ export function QuizManagement() {
 
   const calculateStats = (quizList: Quiz[]) => {
     const totalSubmissions = quizList.reduce((sum, q) => sum + q.submissions, 0);
-    const gradedSubmissions = quizList.reduce((sum, q) => sum + q.graded, 0);
-    
     const stats: QuizStats = {
       totalQuizzes: quizList.length,
       totalSubmissions: totalSubmissions,
-      gradedSubmissions: gradedSubmissions,
-      pendingGrading: totalSubmissions - gradedSubmissions,
-      averageScore: totalSubmissions > 0 ? Math.round((gradedSubmissions / totalSubmissions) * 100) : 0,
+      averageScore: 0,
     };
 
     setStats(stats);
@@ -146,10 +137,6 @@ export function QuizManagement() {
 
   const handleCreateQuiz = () => {
     navigate('/instructor/quiz/create');
-  };
-
-  const handleEditQuiz = (quizId: string) => {
-    navigate(`/instructor/quiz/edit/${quizId}`);
   };
 
   const handleDeleteQuiz = async (quizId: string) => {
@@ -212,6 +199,25 @@ export function QuizManagement() {
     }
   };
 
+  const getSubmissionSection = (submission: QuizSubmission) => {
+    const student = submission.student;
+    const directSection = student?.section?.trim();
+    if (directSection) return directSection;
+    const legacySection = student?.teaching_sections?.find((section) => section?.trim())?.trim();
+    return legacySection || 'Unassigned';
+  };
+
+  const groupSubmissionsBySection = (quizId: string) => {
+    const groups = new Map<string, QuizSubmission[]>();
+    for (const submission of submissions[quizId] || []) {
+      const section = getSubmissionSection(submission);
+      const sectionSubmissions = groups.get(section) || [];
+      sectionSubmissions.push(submission);
+      groups.set(section, sectionSubmissions);
+    }
+    return [...groups.entries()];
+  };
+
   return (
     <div className="space-y-6">
       {/* Header Section */}
@@ -268,7 +274,7 @@ export function QuizManagement() {
       )}
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         <div className="group bg-slate-900/60 border border-slate-800/60 rounded-xl p-5 hover:border-violet-500/30 transition-all">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-9 h-9 rounded-lg bg-violet-500/10 flex items-center justify-center">
@@ -287,26 +293,7 @@ export function QuizManagement() {
           <div className="text-2xl font-bold text-white">{stats.totalSubmissions}</div>
           <p className="text-slate-500 text-xs mt-1">Total Submissions</p>
         </div>
-        <div className="group bg-slate-900/60 border border-slate-800/60 rounded-xl p-5 hover:border-emerald-500/30 transition-all">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-              <CheckCircle2 className="w-4.5 h-4.5 text-emerald-400" />
-            </div>
-          </div>
-          <div className="text-2xl font-bold text-white">{stats.gradedSubmissions}</div>
-          <p className="text-slate-500 text-xs mt-1">Graded</p>
-        </div>
-        <div className="group bg-slate-900/60 border border-slate-800/60 rounded-xl p-5 hover:border-amber-500/30 transition-all">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center">
-              <Clock className="w-4.5 h-4.5 text-amber-400" />
-            </div>
-          </div>
-          <div className="text-2xl font-bold text-white">{stats.pendingGrading}</div>
-          <p className="text-slate-500 text-xs mt-1">Pending</p>
-        </div>
       </div>
-
       {loading && (
         <AetherLoader label="Calibrating your quiz library" />
       )}
@@ -369,16 +356,6 @@ export function QuizManagement() {
                 <div className="border-t border-slate-800 p-6 bg-slate-800/20 space-y-4">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div>
-                      <p className="text-xs text-slate-500 uppercase">Graded</p>
-                      <p className="text-lg font-semibold text-emerald-400">{quiz.graded}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500 uppercase">Pending</p>
-                      <p className="text-lg font-semibold text-orange-400">
-                        {quiz.submissions - quiz.graded}
-                      </p>
-                    </div>
-                    <div>
                       <p className="text-xs text-slate-500 uppercase">Unit</p>
                       <p className="text-sm text-slate-300">{quiz.unitName}</p>
                     </div>
@@ -422,20 +399,27 @@ export function QuizManagement() {
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-800">
-                            {submissions[quiz.id].map((submission) => (
-                              <tr key={submission.id} className="text-slate-300">
+                            {groupSubmissionsBySection(quiz.id).map(([section, sectionSubmissions]) => (
+                              <Fragment key={section}>
+                                <tr key={`section-${section}`} className="bg-slate-800/60">
+                                  <td colSpan={4} className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-cyan-300">
+                                    Section {section} · {sectionSubmissions.length} submission{sectionSubmissions.length !== 1 ? 's' : ''}
+                                  </td>
+                                </tr>
+                                {sectionSubmissions.map((submission) => <tr key={submission.id} className="text-slate-300">
                                 <td className="px-3 py-3">
                                   <div className="font-medium text-white">{submission.student?.full_name || 'Unknown student'}</div>
                                   <div className="text-xs text-slate-500">{submission.student?.email || 'No email'}</div>
                                 </td>
                                 <td className="px-3 py-3 font-semibold text-emerald-400">
-                                  {submission.score === null || submission.score === undefined ? 'Not graded' : `${submission.score}%`}
+                                  {submission.score === null || submission.score === undefined ? 'Not graded' : submission.score}
                                 </td>
                                 <td className="px-3 py-3 capitalize">{submission.status || 'submitted'}</td>
                                 <td className="px-3 py-3 text-xs text-slate-400">
                                   {submission.submitted_at ? new Date(submission.submitted_at).toLocaleString() : 'Unknown'}
                                 </td>
-                              </tr>
+                              </tr>)}
+                              </Fragment>
                             ))}
                           </tbody>
                         </table>
@@ -444,13 +428,6 @@ export function QuizManagement() {
                   </div>
 
                   <div className="flex gap-2 pt-4 border-t border-slate-700">
-                    <Button
-                      onClick={() => handleEditQuiz(quiz.id)}
-                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
-                    >
-                      <Edit2 className="w-4 h-4 mr-2" />
-                      Edit
-                    </Button>
                     {quiz.quiz_category === 'exam' && (
                       <>
                         <Button

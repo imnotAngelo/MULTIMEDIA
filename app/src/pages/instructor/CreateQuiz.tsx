@@ -55,6 +55,23 @@ function createAutomaticChoices(question: Question): string[] {
   return [answer, ...distractors];
 }
 
+function adaptQuestionTextForType(text: string, type: Question['type']): string {
+  const multipleChoiceStem = text.match(/^Which statement best explains\s+(.+?)\??$/i);
+  if (!multipleChoiceStem) return text;
+
+  const topic = multipleChoiceStem[1].trim();
+  if (type === 'true-false') {
+    return `True or False: The lesson states that ${topic}.`;
+  }
+  if (type === 'short-answer' || type === 'identification' || type === 'enumeration') {
+    return `What is the key idea about ${topic}?`;
+  }
+  if (type === 'essay') {
+    return `Explain the importance of ${topic}.`;
+  }
+  return text;
+}
+
 export function CreateQuiz() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
@@ -234,9 +251,11 @@ export function CreateQuiz() {
   };
 
   const handleQuestionTypeChange = (question: Question, value: Question['type']) => {
+    const text = adaptQuestionTextForType(question.text, value);
     if (value === 'multiple-choice' && question.type !== 'multiple-choice') {
       handleUpdateQuestion(question.id, {
         type: value,
+        text,
         options: createAutomaticChoices(question),
         correctAnswer: String(question.correctAnswer || '').trim() || 'Correct answer',
       });
@@ -245,6 +264,7 @@ export function CreateQuiz() {
     if (value === 'true-false') {
       handleUpdateQuestion(question.id, {
         type: value,
+        text,
         options: ['True', 'False'],
         correctAnswer: 'True',
       });
@@ -253,6 +273,7 @@ export function CreateQuiz() {
     if (value === 'essay' || value === 'short-answer' || value === 'enumeration' || value === 'identification') {
       handleUpdateQuestion(question.id, {
         type: value,
+        text,
         options: undefined,
         correctAnswer: typeof question.correctAnswer === 'string' ? question.correctAnswer : '',
       });

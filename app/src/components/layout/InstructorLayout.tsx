@@ -20,9 +20,6 @@ export function InstructorLayout() {
       <div className="lg:ml-64 min-h-screen flex flex-col">
         <Header
           title="Instructor Dashboard"
-          subtitle={user.year_level && user.section
-            ? `Managing Year ${user.year_level}, Section ${user.section}`
-            : 'Manage your courses and content'}
         />
         <main className="flex-1 p-6">
           <Outlet />

@@ -423,6 +423,14 @@ export function buildConvertedLessonRecord({
   };
 }
 
+function topicFromQuestion(text: string): string {
+  return text
+    .replace(/[?]+$/, '')
+    .replace(/^which\s+(statement|option)\s+best\s+explains\s+/i, '')
+    .replace(/^what\s+(is|are)\s+/i, '')
+    .trim() || 'the lesson topic';
+}
+
 export function normalizeGeneratedQuestions(rawQuestions: any[], targetCount = 5, requestedTypes: string[] = [], quizCategory = 'short', pointsByType: Record<string, number> = {}, questionCountsByType: Record<string, number> = {}) {
   const normalized: any[] = [];
   const seen = new Set<string>();
@@ -452,6 +460,23 @@ export function normalizeGeneratedQuestions(rawQuestions: any[], targetCount = 5
       : supportedTypes.includes(item.type) ? item.type : 'multiple-choice';
     const points = Number(pointsByType[type]) > 0 ? Number(pointsByType[type]) : Number(item.points) > 0 ? Number(item.points) : 2;
 
+    const typeSpecificText = type === 'true-false'
+      ? (/^which\s+(statement|option)|^what\s+/i.test(normalizedText)
+          ? `True or False: ${normalizedText.replace(/[?]+$/, '')}.`
+          : normalizedText)
+      : type === 'enumeration'
+        ? (/^(which|what|true\s+or\s+false|explain|how|why)\b/i.test(normalizedText)
+            ? `List the key items, steps, characteristics, or examples related to ${topicFromQuestion(normalizedText)}.`
+            : normalizedText)
+        : type === 'identification'
+          ? (/^(which|true\s+or\s+false|explain|how|why)\b/i.test(normalizedText)
+              ? `Identify the specific concept, term, or process described by: ${normalizedText.replace(/[?]+$/, '')}.`
+              : normalizedText)
+          : type === 'essay'
+            && !/^(explain|how|why|discuss|evaluate|analyze)\b/i.test(normalizedText)
+            ? `Explain the significance of ${normalizedText.replace(/[?]+$/, '')}.`
+            : normalizedText;
+
     if (type === 'multiple-choice') {
       const rawOptions = Array.isArray(item.options) ? item.options : [];
       const validOptions = rawOptions
@@ -467,7 +492,7 @@ export function normalizeGeneratedQuestions(rawQuestions: any[], targetCount = 5
 
       normalized.push({
         id: item.id ?? String(normalized.length + 1),
-        text: normalizedText,
+        text: typeSpecificText,
         type,
         points,
         options: uniqueOptions,
@@ -476,7 +501,7 @@ export function normalizeGeneratedQuestions(rawQuestions: any[], targetCount = 5
     } else {
       normalized.push({
         id: item.id ?? String(normalized.length + 1),
-        text: normalizedText,
+        text: typeSpecificText,
         type,
         points,
         options: type === 'true-false' ? ['True', 'False'] : [],
@@ -1511,8 +1536,11 @@ RULES:
 - Use only these question types: ${normalizedTypes.join(', ')}.
 - Follow this exact number of questions per type: ${JSON.stringify(questionCountsByType)}.
 - For multiple-choice: provide exactly 4 unique options and exactly 1 correct answer.
-- For true-false: options must be ["True","False"] and correctAnswer must be exactly "True" or "False".
-- For enumeration, identification, and essay: provide a concise model answer in correctAnswer and use an empty options array.
+- For multiple-choice: the question must ask which option is best; provide exactly 4 unique options and exactly 1 correct answer.
+- For true-false: write a complete declarative claim that can be judged true or false. Do not begin with "Which", "What", or "Which statement". options must be ["True","False"] and correctAnswer must be exactly "True" or "False".
+- For enumeration: ask the learner to list two or more named items, steps, characteristics, or examples, using wording such as "List..." or "Name...". Provide a concise list model answer in correctAnswer and use an empty options array.
+- For identification: ask "What is..." or "Identify..." for exactly one concrete concept, term, person, process, or object. Provide one concise model answer in correctAnswer and use an empty options array.
+- For essay: ask an open-ended "Explain", "How", "Why", "Discuss", or "Evaluate" question requiring a reasoned response. Provide a concise model answer in correctAnswer and use an empty options array.
 - Use these points per type: ${JSON.stringify(pointsByType)}.
 - This is generation batch ${Number(generationAttempt) || 0}; use different concepts and wording from any earlier batch.
 - Incorrect options must be plausible but clearly incorrect based on the lesson content.
@@ -1521,6 +1549,7 @@ RULES:
 - Do not mention the lesson title, slide titles, or any metadata in the question text.
 - Never use placeholders such as "statement 1", "statement 2", "according to the lesson", or "what is described".
 - Every question must name or test a concrete concept, process, definition, relationship, example, or application found in the document.
+- Match the wording to the type: never use a multiple-choice stem such as "Which statement best explains..." for true-false, enumeration, identification, or essay.
 - Prefer professional teacher wording such as "Which best explains...", "What is the primary purpose of...", "How does...", or "Why is... important?".
 - Focus on understanding, interpretation, and key concepts rather than memorization.
 

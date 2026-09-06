@@ -95,10 +95,23 @@ export function Portfolio() {
     const loadLabSubs = async () => {
       try {
         setLabsLoading(true);
-        const res = await authFetch('/laboratory-submissions/my-files', { cache: 'no-store' });
-        if (!res.ok) return;
-        const map: Record<string, any> = await res.json();
-        const normalized = Object.values(map).map((row: any) => ({
+        const [submissionsRes, laboratoriesRes] = await Promise.all([
+          authFetch('/laboratory-submissions/my-files', { cache: 'no-store' }),
+          authFetch('/laboratories', { cache: 'no-store' }),
+        ]);
+        if (!submissionsRes.ok) return;
+        const map: Record<string, any> = await submissionsRes.json();
+        const laboratoriesData = laboratoriesRes.ok ? await laboratoriesRes.json() : null;
+        const activeLaboratoryIds = laboratoriesData
+          ? new Set(
+              (laboratoriesData.data ?? [])
+                .filter((laboratory: any) => laboratory.status !== 'archived')
+                .map((laboratory: any) => laboratory.id)
+            )
+          : null;
+        const normalized = Object.values(map)
+          .filter((row: any) => !activeLaboratoryIds || activeLaboratoryIds.has(row.labId))
+          .map((row: any) => ({
           ...row,
           grade: row.grade !== undefined && row.grade !== null && row.grade !== ''
             ? Number(row.grade)
@@ -109,7 +122,7 @@ export function Portfolio() {
             : null,
           feedback: row.feedback ?? '',
           status: row.status ?? 'submitted',
-        })) as LabSubmission[];
+          })) as LabSubmission[];
         setLabSubmissions(normalized);
       } catch {
         // offline — show nothing

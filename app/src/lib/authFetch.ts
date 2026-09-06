@@ -1,6 +1,6 @@
 import { API_BASE_URL as API_BASE } from './apiConfig';
 
-const FALLBACK_API_BASE = 'http://127.0.0.1:3001/api';
+const FALLBACK_API_BASE = 'https://multimedia-2-x7ol.onrender.com/api';
 const LOCAL_3001_API = /^https?:\/\/(localhost|127\.0\.0\.1):3001\/api(?:\/|$)/;
 
 const normalizeUrl = (url: string) => {
