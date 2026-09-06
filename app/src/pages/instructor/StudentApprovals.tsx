@@ -88,7 +88,7 @@ export function StudentApprovals() {
         <div>
           <p className="text-sm font-medium text-violet-400">Access control</p>
           <h1 className="mt-1 text-3xl font-bold text-white">Student approvals</h1>
-          <p className="mt-2 text-slate-400">Review students who registered for your section before they can sign in.</p>
+          <p className="mt-2 text-slate-400">Review students registered for your assigned sections before they can sign in.</p>
         </div>
         <Button variant="outline" onClick={loadRequests} disabled={loading} className="border-slate-700 text-slate-200">
           <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />

@@ -26,6 +26,15 @@ async function getInstructorScope(instructorId: string) {
   };
 }
 
+function normalizeSection(value: unknown) {
+  return String(value ?? '').trim().toLowerCase();
+}
+
+function belongsToInstructorSection(section: unknown, teachingSections: string[]) {
+  const normalizedStudentSection = normalizeSection(section);
+  return teachingSections.some((teachingSection) => normalizeSection(teachingSection) === normalizedStudentSection);
+}
+
 // List students waiting for assignment in the instructor's handled sections.
 router.get('/students', async (req: AuthRequest, res: Response) => {
   try {
@@ -44,11 +53,10 @@ router.get('/students', async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const { data, error } = await supabase
+    const { data: students, error } = await supabase
       .from('users')
       .select('id, email, full_name, avatar_url, created_at, year_level, section, student_approved, approved_by_instructor_id')
       .eq('role', 'student')
-      .in('section', teachingSections)
       .in('year_level', teachingYearLevels)
       .is('approved_by_instructor_id', null)
       .eq('student_approved', false)
@@ -56,7 +64,8 @@ router.get('/students', async (req: AuthRequest, res: Response) => {
       .order('full_name', { ascending: true });
 
     if (error) throw error;
-    return res.json({ success: true, data: data || [] });
+    const data = (students || []).filter((student) => belongsToInstructorSection(student.section, teachingSections));
+    return res.json({ success: true, data });
   } catch (error: any) {
     console.error('Get all students error:', error);
     return res.status(500).json({
@@ -88,7 +97,6 @@ router.get('/student-requests', async (req: AuthRequest, res: Response) => {
       .from('users')
       .select('id, email, full_name, avatar_url, created_at, year_level, section, student_approved, approved_by_instructor_id')
       .eq('role', 'student')
-      .in('section', teachingSections)
       .order('created_at', { ascending: true });
 
     if (req.query.includeAll !== 'true') {
@@ -99,10 +107,11 @@ router.get('/student-requests', async (req: AuthRequest, res: Response) => {
     }
     query = query.in('year_level', teachingYearLevels);
 
-    const { data, error } = await query;
+    const { data: students, error } = await query;
 
     if (error) throw error;
-    return res.json({ success: true, data: data || [] });
+    const data = (students || []).filter((student) => belongsToInstructorSection(student.section, teachingSections));
+    return res.json({ success: true, data });
   } catch (error: any) {
     console.error('Get student requests error:', error);
     return res.status(500).json({
@@ -134,22 +143,29 @@ router.patch('/student-requests/:id/approve', async (req: AuthRequest, res: Resp
       });
     }
 
-    const { data, error } = await supabase
+    const { data: student, error: studentError } = await supabase
       .from('users')
-      .update({ student_approved: true, approved_by_instructor_id: req.user!.id, updated_at: new Date().toISOString() })
+      .select('id, email, full_name, avatar_url, created_at, year_level, section, student_approved, approved_by_instructor_id')
       .eq('id', id)
       .eq('role', 'student')
-      .in('section', teachingSections)
       .in('year_level', teachingYearLevels)
-      .select('id, email, full_name, avatar_url, created_at, year_level, section, student_approved, approved_by_instructor_id')
-      .single();
+      .maybeSingle();
 
-    if (error || !data) {
+    if (studentError || !student || !belongsToInstructorSection(student.section, teachingSections)) {
       return res.status(404).json({
         success: false,
         error: { code: 'STUDENT_NOT_FOUND', message: 'Student request not found for your section' },
       });
     }
+
+    const { data, error } = await supabase
+      .from('users')
+      .update({ student_approved: true, approved_by_instructor_id: req.user!.id, updated_at: new Date().toISOString() })
+      .eq('id', student.id)
+      .select('id, email, full_name, avatar_url, created_at, year_level, section, student_approved, approved_by_instructor_id')
+      .single();
+
+    if (error || !data) throw error || new Error('Student approval update returned no data');
 
     return res.json({ success: true, data });
   } catch (error: any) {
