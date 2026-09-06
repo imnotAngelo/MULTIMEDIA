@@ -460,7 +460,6 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
       .from('users')
       .select('id, email, full_name, avatar_url, last_active, created_at, year_level, section, student_approved, approved_by_instructor_id')
       .eq('role', 'student')
-      .in('section', teachingSections)
       .in('year_level', teachingYearLevels)
       .order('last_active', { ascending: false, nullsFirst: false });
 
@@ -468,7 +467,10 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
 
     const now = Date.now();
     const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
-    const list = students ?? [];
+    const normalizedTeachingSections = teachingSections.map((section) => String(section).trim().toLowerCase());
+    const list = (students ?? []).filter((student) =>
+      normalizedTeachingSections.includes(String(student.section ?? '').trim().toLowerCase())
+    );
     const activeList = list.filter((s) => {
       if (!s.last_active) return false;
       const t = new Date(s.last_active).getTime();
