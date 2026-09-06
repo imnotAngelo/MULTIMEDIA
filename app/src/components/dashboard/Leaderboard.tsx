@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import { Trophy, Medal, Award, Flame } from 'lucide-react';
+import { Trophy, Medal, Award } from 'lucide-react';
 import type { LeaderboardEntry } from '@/types';
 
 interface LeaderboardProps {
@@ -23,11 +23,7 @@ export function Leaderboard({ entries, currentUserId, className }: LeaderboardPr
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-lg font-semibold text-slate-200">Leaderboard</h3>
-            <p className="text-sm text-slate-500">Top performers this week</p>
-          </div>
-          <div className="flex items-center gap-2 text-amber-400">
-            <Flame className="w-5 h-5" />
-            <span className="text-sm font-medium">Weekly</span>
+            <p className="text-sm text-slate-500">Learners with the most achievements</p>
           </div>
         </div>
       </div>
@@ -90,22 +86,9 @@ export function Leaderboard({ entries, currentUserId, className }: LeaderboardPr
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-3 text-xs text-slate-500">
-                  <span>{entry.achievement_count} achievements</span>
-                  <span>•</span>
-                  <span className="flex items-center gap-1">
-                    <Flame className="w-3 h-3 text-amber-400" />
-                    {entry.streak_days} day streak
-                  </span>
+                <div className="text-xs text-slate-500">
+                  {entry.achievement_count} achievements
                 </div>
-              </div>
-
-              {/* XP */}
-              <div className="text-right">
-                <span className="text-lg font-bold text-violet-400">
-                  {entry.xp_total.toLocaleString()}
-                </span>
-                <span className="text-xs text-slate-500 block">XP</span>
               </div>
             </div>
           );

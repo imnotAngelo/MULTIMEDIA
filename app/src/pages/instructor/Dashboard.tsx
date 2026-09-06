@@ -30,8 +30,6 @@ interface ActiveStudent {
   email: string;
   full_name: string;
   avatar_url?: string | null;
-  xp_total?: number;
-  streak_days?: number;
   last_active?: string | null;
   created_at?: string;
 }

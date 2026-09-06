@@ -7,8 +7,6 @@ export interface User {
   role: 'student' | 'instructor' | 'admin';
   instructor_approved?: boolean;
   student_approved?: boolean;
-  xp_total: number;
-  streak_days: number;
   year_level?: 1 | 2 | 3 | null;
   teaching_year_levels?: (1 | 2 | 3)[];
   section?: string | null;
@@ -138,7 +136,7 @@ export interface Achievement {
 }
 
 export interface AchievementCriteria {
-  type: 'lessons_completed' | 'quizzes_passed' | 'streak_days' | 'xp_reached';
+  type: 'lessons_completed' | 'quizzes_passed';
   threshold: number;
 }
 
@@ -196,10 +194,6 @@ export interface DashboardStats {
     passed: number;
     total: number;
   };
-  streak: {
-    current: number;
-    longest: number;
-  };
 }
 
 export interface WeeklyActivity {
@@ -235,9 +229,7 @@ export interface LeaderboardEntry {
   user_id: string;
   full_name: string;
   avatar_url?: string;
-  xp_total: number;
   achievement_count: number;
-  streak_days: number;
 }
 
 // Notification Types

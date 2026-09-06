@@ -6,8 +6,6 @@
     "full_name": "Copilot Verify",
     "role": "student",
     "avatar_url": "https://api.dicebear.com/7.x/avataaars/svg?seed=copilot-verify-e01d8958b86b48d18c492fdcd02c02e5@example.com",
-    "xp_total": 0,
-    "streak_days": 0,
     "created_at": "2026-07-22T02:05:36.752Z"
   },
   "lib@gmail.com": {
@@ -17,8 +15,6 @@
     "full_name": "sdds",
     "role": "student",
     "avatar_url": "https://api.dicebear.com/7.x/avataaars/svg?seed=lib@gmail.com",
-    "xp_total": 0,
-    "streak_days": 0,
     "created_at": "2026-07-22T03:54:30.771Z"
   },
   "test@gmail.com": {
@@ -28,8 +24,6 @@
     "full_name": "test",
     "role": "instructor",
     "avatar_url": "https://api.dicebear.com/7.x/avataaars/svg?seed=test@gmail.com",
-    "xp_total": 0,
-    "streak_days": 0,
     "created_at": "2026-07-22T04:37:31.520Z"
   },
   "nana@gmail.com": {
@@ -39,8 +33,6 @@
     "full_name": "nanana",
     "role": "student",
     "avatar_url": "https://api.dicebear.com/7.x/avataaars/svg?seed=nana@gmail.com",
-    "xp_total": 0,
-    "streak_days": 0,
     "created_at": "2026-08-04T04:26:39.920Z"
   },
   "kill@gmail.com": {
@@ -54,8 +46,6 @@
     "teaching_year_levels": [],
     "section": "G",
     "avatar_url": "https://api.dicebear.com/7.x/avataaars/svg?seed=kill@gmail.com",
-    "xp_total": 0,
-    "streak_days": 0,
     "created_at": "2026-08-25T02:46:22.165Z"
   },
   "admin@quicklearn.local": {
@@ -65,8 +55,6 @@
     "full_name": "System Admin",
     "role": "admin",
     "avatar_url": "https://api.dicebear.com/7.x/avataaars/svg?seed=admin@quicklearn.local",
-    "xp_total": 0,
-    "streak_days": 0,
     "created_at": "2026-08-25T08:28:01.171Z"
   }
 }

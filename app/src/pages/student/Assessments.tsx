@@ -442,7 +442,7 @@ export function Assessments() {
             <div className="bg-gradient-to-r from-violet-600/20 to-emerald-600/20 border border-violet-500/30 rounded-xl p-6 text-center">
               <h3 className="text-lg font-semibold text-white mb-2">Stay on Track</h3>
               <p className="text-slate-400 mb-4">
-                Complete your assessments on time to earn bonus XP and maintain your streak.
+                Complete your assessments on time to keep your learning progress moving.
               </p>
               <Button className="bg-violet-600 hover:bg-violet-700 text-white">
                 Go to Dashboard

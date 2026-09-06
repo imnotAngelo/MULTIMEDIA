@@ -30,7 +30,6 @@ interface AuthState {
   login: (user: User) => void;
   logout: () => void;
   updateUser: (updates: Partial<User>) => void;
-  addXP: (amount: number) => void;
   verifySession: () => Promise<boolean>;
 }
 
@@ -142,12 +141,6 @@ export const useAuthStore = create<AuthState>()(
         user: state.user ? { ...state.user, ...updates } : null
       })),
       
-      addXP: (amount) => set((state) => ({
-        user: state.user 
-          ? { ...state.user, xp_total: (state.user.xp_total || 0) + amount }
-          : null
-      })),
-
       verifySession: async () => {
         const accessToken = localStorage.getItem('access_token');
         const refreshToken = localStorage.getItem('refresh_token');

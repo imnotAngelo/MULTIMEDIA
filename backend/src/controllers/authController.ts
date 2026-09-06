@@ -194,8 +194,6 @@ export const register = async (req: AuthRequest, res: Response) => {
           section: parsedSection,
           teaching_sections: role === 'instructor' ? parsedTeachingSections : [],
           avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
-          xp_total: 0,
-          streak_days: 0,
           email_verified: false,
           email_verification_token: verificationToken,
           email_verification_code: verificationCode,
@@ -290,7 +288,7 @@ export const login = async (req: AuthRequest, res: Response) => {
 
       const { data: dbUser, error } = await supabase
         .from('users')
-        .select('id, email, password_hash, full_name, role, email_verified, instructor_approved, student_approved, year_level, teaching_year_levels, section, teaching_sections, avatar_url, xp_total, streak_days')
+        .select('id, email, password_hash, full_name, role, email_verified, instructor_approved, student_approved, year_level, teaching_year_levels, section, teaching_sections, avatar_url')
         .eq('email', email)
         .single();
 
@@ -393,8 +391,6 @@ export const login = async (req: AuthRequest, res: Response) => {
           section: user.section,
           teaching_sections: user.teaching_sections,
           avatar_url: user.avatar_url,
-          xp_total: user.xp_total,
-          streak_days: user.streak_days,
         },
       },
     });

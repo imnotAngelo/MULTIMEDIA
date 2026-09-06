@@ -42,8 +42,6 @@ async function resolveSender(user: NonNullable<AuthRequest['user']>) {
       email: localUser.email,
       full_name: localUser.full_name,
       role: localUser.role,
-      xp_total: localUser.xp_total || 0,
-      streak_days: localUser.streak_days || 0,
     })
     .select('id, email, full_name, role, section, year_level, teaching_year_levels, teaching_sections')
     .single();

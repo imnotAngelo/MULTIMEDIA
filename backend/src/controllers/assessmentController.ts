@@ -35,8 +35,6 @@ async function resolveAssessmentUser(user: { id: string; email: string }) {
       email: localUser.email,
       full_name: localUser.full_name,
       role: localUser.role,
-      xp_total: localUser.xp_total || 0,
-      streak_days: localUser.streak_days || 0,
     })
     .select('id, email, role')
     .single();
@@ -92,8 +90,6 @@ async function getOrCreateDefaultInstructor(): Promise<string> {
       email: 'instructor@quicklearn.local',
       full_name: 'Quick Learn Instructor',
       role: 'instructor',
-      xp_total: 0,
-      streak_days: 0,
     });
 
   if (insertError && insertError.code !== '23505') {

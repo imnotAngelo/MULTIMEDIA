@@ -92,8 +92,6 @@ async function getOrCreateDefaultInstructor() {
           email: 'instructor@quicklearn.local',
           full_name: 'Quick Learn Instructor',
           role: 'instructor',
-          xp_total: 0,
-          streak_days: 0,
         })
         .select('id')
         .single();

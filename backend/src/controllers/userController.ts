@@ -35,7 +35,7 @@ export const getProfile = async (req: AuthRequest, res: Response) => {
 
     const { data: user, error } = await supabase
       .from('users')
-      .select('id, email, full_name, avatar_url, role, xp_total, streak_days, year_level, teaching_year_levels, section, teaching_sections, created_at, last_active')
+      .select('id, email, full_name, avatar_url, role, year_level, teaching_year_levels, section, teaching_sections, created_at, last_active')
       .eq('id', userId)
       .single();
 
@@ -291,7 +291,7 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
       .from('users')
       .update(updates)
       .eq('id', userId)
-      .select('id, email, full_name, avatar_url, role, xp_total, streak_days, year_level, teaching_year_levels, section, teaching_sections, created_at, last_active');
+      .select('id, email, full_name, avatar_url, role, year_level, teaching_year_levels, section, teaching_sections, created_at, last_active');
 
     if (error) {
       console.error(`❌ Database update error:`, error);
@@ -458,7 +458,7 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
 
     const { data: students, error } = await supabase
       .from('users')
-      .select('id, email, full_name, avatar_url, xp_total, streak_days, last_active, created_at, year_level, section, student_approved, approved_by_instructor_id')
+      .select('id, email, full_name, avatar_url, last_active, created_at, year_level, section, student_approved, approved_by_instructor_id')
       .eq('role', 'student')
       .in('section', teachingSections)
       .in('year_level', teachingYearLevels)
@@ -717,8 +717,8 @@ export const getLeaderboard = async (req: AuthRequest, res: Response) => {
 
     const { data: leaderboard, error } = await supabase
       .from('users')
-      .select('id, full_name, avatar_url, xp_total, streak_days')
-      .order('xp_total', { ascending: false })
+      .select('id, full_name, avatar_url, last_active')
+      .order('last_active', { ascending: false, nullsFirst: false })
       .limit(parsedLimit);
 
     if (error) throw error;
@@ -734,9 +734,7 @@ export const getLeaderboard = async (req: AuthRequest, res: Response) => {
           user_id: u.id,
           full_name: u.full_name,
           avatar_url: u.avatar_url,
-          xp_total: u.xp_total,
           achievement_count: 0,
-          streak_days: u.streak_days,
         })) || [],
         user_rank: userRank > -1 ? userRank + 1 : -1,
       },

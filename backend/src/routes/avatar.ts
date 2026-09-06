@@ -100,7 +100,7 @@ router.post(
         .update({ avatar_url: publicUrl, updated_at: new Date().toISOString() })
         .eq('id', userId)
         .select(
-          'id, email, full_name, avatar_url, role, xp_total, streak_days, year_level, teaching_year_levels, created_at, last_active'
+          'id, email, full_name, avatar_url, role, year_level, teaching_year_levels, created_at, last_active'
         )
         .single();
 

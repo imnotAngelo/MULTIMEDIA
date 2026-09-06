@@ -15,8 +15,6 @@ This document defines the complete database schema for the Interactive Learning 
 │ full_name       │     │ title           │     │ title           │   │
 │ avatar_url      │     │ description     │     │ description     │   │
 │ role            │     │ thumbnail_url   │     │ order_index     │   │
-│ xp_total        │     │ status          │     │ status          │   │
-│ streak_days     │     │ created_at      │     │ created_at      │   │
 │ last_active     │     └─────────────────┘     └─────────────────┘   │
 │ created_at      │                                                   │
 └─────────────────┘                                                   │
@@ -88,7 +86,7 @@ This document defines the complete database schema for the Interactive Learning 
 
 ### 1. Users Table
 
-Stores user account information and gamification data.
+Stores user account information.
 
 ```sql
 CREATE TABLE users (
@@ -97,8 +95,6 @@ CREATE TABLE users (
     full_name VARCHAR(255) NOT NULL,
     avatar_url TEXT,
     role VARCHAR(50) NOT NULL DEFAULT 'student' CHECK (role IN ('student', 'instructor', 'admin')),
-    xp_total INTEGER DEFAULT 0,
-    streak_days INTEGER DEFAULT 0,
     last_active TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -107,8 +103,6 @@ CREATE TABLE users (
 -- Indexes
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_role ON users(role);
-CREATE INDEX idx_users_xp ON users(xp_total DESC);
-
 -- RLS Policies
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 
@@ -125,93 +119,6 @@ CREATE POLICY "Instructors can view student profiles"
     USING (
         EXISTS (
             SELECT 1 FROM users WHERE id = auth.uid() AND role IN ('instructor', 'admin')
-        )
-    );
-```
-
-### 2. Courses Table
-
-Stores course information and metadata.
-
-```sql
-CREATE TABLE courses (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    instructor_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    title VARCHAR(255) NOT NULL,
-    description TEXT,
-    thumbnail_url TEXT,
-    status VARCHAR(50) DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'archived')),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Indexes
-CREATE INDEX idx_courses_instructor ON courses(instructor_id);
-CREATE INDEX idx_courses_status ON courses(status);
-
--- RLS Policies
-ALTER TABLE courses ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Anyone can view published courses" 
-    ON courses FOR SELECT 
-    USING (status = 'published');
-
-CREATE POLICY "Instructors can manage their own courses" 
-    ON courses FOR ALL 
-    USING (instructor_id = auth.uid());
-
-CREATE POLICY "Admins can manage all courses" 
-    ON courses FOR ALL 
-    USING (
-        EXISTS (
-            SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin'
-        )
-    );
-```
-
-### 3. Modules Table
-
-Stores course modules (units) with ordering.
-
-```sql
-CREATE TABLE modules (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
-    title VARCHAR(255) NOT NULL,
-    description TEXT,
-    order_index INTEGER NOT NULL DEFAULT 0,
-    status VARCHAR(50) DEFAULT 'active' CHECK (status IN ('active', 'locked', 'archived')),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Indexes
-CREATE INDEX idx_modules_course ON modules(course_id);
-CREATE INDEX idx_modules_order ON modules(course_id, order_index);
-
--- RLS Policies
-ALTER TABLE modules ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Students can view modules in published courses" 
-    ON modules FOR SELECT 
-    USING (
-        EXISTS (
-            SELECT 1 FROM courses 
-            WHERE courses.id = modules.course_id 
-            AND courses.status = 'published'
-        )
-    );
-
-CREATE POLICY "Instructors can manage modules in their courses" 
-    ON modules FOR ALL 
-    USING (
-        EXISTS (
-            SELECT 1 FROM courses 
-            WHERE courses.id = modules.course_id 
-            AND courses.instructor_id = auth.uid()
-        )
-    );
-```
 
 ### 4. Lessons Table
 
@@ -666,92 +573,6 @@ CREATE POLICY "Users can delete their own notifications"
 
 ## Database Functions and Triggers
 
-### Update User XP Total
-
-```sql
-CREATE OR REPLACE FUNCTION update_user_xp()
-RETURNS TRIGGER AS $$
-BEGIN
-    UPDATE users 
-    SET xp_total = xp_total + NEW.amount,
-        updated_at = NOW()
-    WHERE id = NEW.user_id;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trigger_update_user_xp
-AFTER INSERT ON xp_history
-FOR EACH ROW
-EXECUTE FUNCTION update_user_xp();
-```
-
-### Update Lesson Progress Stats
-
-```sql
-CREATE OR REPLACE FUNCTION update_lesson_stats()
-RETURNS TRIGGER AS $$
-BEGIN
-    IF NEW.completed = TRUE AND OLD.completed = FALSE THEN
-        -- Award XP for lesson completion
-        INSERT INTO xp_history (user_id, amount, reason, source_type, source_id)
-        VALUES (
-            NEW.user_id, 
-            (SELECT xp_reward FROM lessons WHERE id = NEW.lesson_id),
-            'Lesson completed',
-            'lesson',
-            NEW.lesson_id
-        );
-    END IF;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trigger_update_lesson_stats
-AFTER UPDATE ON lesson_progress
-FOR EACH ROW
-EXECUTE FUNCTION update_lesson_stats();
-```
-
-### Update User Streak
-
-```sql
-CREATE OR REPLACE FUNCTION update_user_streak()
-RETURNS TRIGGER AS $$
-DECLARE
-    last_activity DATE;
-    current_streak INTEGER;
-BEGIN
-    SELECT last_active::DATE, streak_days 
-    INTO last_activity, current_streak
-    FROM users 
-    WHERE id = NEW.user_id;
-    
-    IF last_activity = CURRENT_DATE - 1 THEN
-        -- Continue streak
-        UPDATE users 
-        SET streak_days = streak_days + 1,
-            last_active = NOW()
-        WHERE id = NEW.user_id;
-    ELSIF last_activity < CURRENT_DATE - 1 THEN
-        -- Reset streak
-        UPDATE users 
-        SET streak_days = 1,
-            last_active = NOW()
-        WHERE id = NEW.user_id;
-    END IF;
-    
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trigger_update_streak
-AFTER INSERT ON lesson_progress
-FOR EACH ROW
-WHEN (NEW.completed = TRUE)
-EXECUTE FUNCTION update_user_streak();
-```
-
 ## Views
 
 ### Student Progress View
@@ -789,14 +610,12 @@ SELECT
     u.id,
     u.full_name,
     u.avatar_url,
-    u.xp_total,
-    u.streak_days,
     COUNT(DISTINCT ua.achievement_id) AS achievement_count,
-    RANK() OVER (ORDER BY u.xp_total DESC) AS rank
+    RANK() OVER (ORDER BY COUNT(DISTINCT ua.achievement_id) DESC) AS rank
 FROM users u
 LEFT JOIN user_achievements ua ON ua.user_id = u.id
 WHERE u.role = 'student'
-GROUP BY u.id, u.full_name, u.avatar_url, u.xp_total, u.streak_days;
+GROUP BY u.id, u.full_name, u.avatar_url;
 ```
 
 ## Summary

@@ -19,8 +19,6 @@ export const mockUser: User = {
   full_name: 'Alex Johnson',
   avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alex',
   role: 'student',
-  xp_total: 1840,
-  streak_days: 5,
   last_active: new Date().toISOString(),
   created_at: '2024-01-01T00:00:00Z',
 };
@@ -193,26 +191,6 @@ export const mockAchievements: Achievement[] = [
     category: 'intermediate',
     earned_at: '2024-01-10T16:00:00Z',
   },
-  {
-    id: 'ach-3',
-    title: 'On Fire',
-    description: 'Maintain a 7-day learning streak',
-    icon_url: 'Flame',
-    xp_reward: 150,
-    criteria: { type: 'streak_days', threshold: 7 },
-    category: 'intermediate',
-    earned_at: '2024-01-12T10:00:00Z',
-  },
-  {
-    id: 'ach-4',
-    title: 'XP Hunter',
-    description: 'Earn 1000 XP',
-    icon_url: 'Trophy',
-    xp_reward: 200,
-    criteria: { type: 'xp_reached', threshold: 1000 },
-    category: 'advanced',
-    earned_at: '2024-01-15T09:00:00Z',
-  },
 ];
 
 // Mock Dashboard Stats
@@ -231,10 +209,6 @@ export const mockDashboardStats: DashboardStats = {
     average: 76,
     passed: 5,
     total: 7,
-  },
-  streak: {
-    current: 5,
-    longest: 12,
   },
 };
 
@@ -278,45 +252,35 @@ export const mockLeaderboard: LeaderboardEntry[] = [
     user_id: 'user-2',
     full_name: 'Sarah Chen',
     avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah',
-    xp_total: 3240,
     achievement_count: 12,
-    streak_days: 15,
   },
   {
     rank: 2,
     user_id: 'user-3',
     full_name: 'Mike Rodriguez',
     avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Mike',
-    xp_total: 2890,
     achievement_count: 10,
-    streak_days: 8,
   },
   {
     rank: 3,
     user_id: 'user-4',
     full_name: 'Emma Watson',
     avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Emma',
-    xp_total: 2650,
     achievement_count: 9,
-    streak_days: 12,
   },
   {
     rank: 4,
     user_id: 'user-5',
     full_name: 'James Park',
     avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=James',
-    xp_total: 2100,
     achievement_count: 7,
-    streak_days: 5,
   },
   {
     rank: 5,
     user_id: 'user-1',
     full_name: 'Alex Johnson',
     avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alex',
-    xp_total: 1840,
     achievement_count: 6,
-    streak_days: 5,
   },
 ];
 

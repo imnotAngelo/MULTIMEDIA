@@ -13,8 +13,6 @@ export interface AuthUserRecord {
   teaching_year_levels?: number[];
   section?: string | null;
   avatar_url?: string | null;
-  xp_total: number;
-  streak_days: number;
   created_at: string;
 }
 

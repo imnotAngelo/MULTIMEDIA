@@ -17,8 +17,6 @@ test('stores users in the fallback auth store and reads them by email', () => {
     full_name: 'Student One',
     role: 'student',
     avatar_url: 'https://example.com/avatar.png',
-    xp_total: 0,
-    streak_days: 0,
   });
 
   const foundUser = findUserByEmail('Student@Example.com');
