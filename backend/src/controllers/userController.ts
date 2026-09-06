@@ -237,7 +237,10 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
               await supabase.from('lesson_progress').delete().in('lesson_id', lessonIds);
             }
             if (labIds.length > 0) {
-              await supabase.from('laboratory_submissions').delete().in('laboratory_id', labIds);
+              await Promise.all([
+                supabase.from('laboratory_submissions').delete().in('laboratory_id', labIds),
+                supabase.from('lab_file_submissions').delete().in('lab_id', labIds),
+              ]);
             }
             if (assessmentIds.length > 0) {
               await supabase.from('assessment_submissions').delete().in('assessment_id', assessmentIds);
@@ -515,7 +518,8 @@ export const getSubmissionStats = async (req: AuthRequest, res: Response) => {
     const { data: ownedLabs, error: labsError } = await supabase
       .from('laboratories')
       .select('id')
-      .eq('instructor_id', req.user.id);
+      .eq('instructor_id', req.user.id)
+      .neq('status', 'archived');
     if (labsError) throw labsError;
     const ownedLabIds = (ownedLabs ?? []).map((lab) => lab.id);
 
@@ -755,8 +759,8 @@ export const getLeaderboard = async (req: AuthRequest, res: Response) => {
 
 /**
  * Update instructor's semester/year level and clear all student progress
- * Resets lesson progress while preserving laboratory and quiz submissions
- * linked to the archived content.
+ * Archives instructor content and resets student progress and submissions
+ * for the previous semester.
  */
 export const updateSemesterAndClearProgress = async (req: AuthRequest, res: Response) => {
   const startTime = Date.now();
@@ -780,7 +784,7 @@ export const updateSemesterAndClearProgress = async (req: AuthRequest, res: Resp
     // Verify user is an instructor
     const { data: user, error: userError } = await supabase
       .from('users')
-      .select('role')
+      .select('role, year_level, section, teaching_sections')
       .eq('id', instructorId)
       .single();
 
@@ -848,6 +852,35 @@ export const updateSemesterAndClearProgress = async (req: AuthRequest, res: Resp
     console.log(`   ✅ Instructor profile updated`);
     results.steps.push({ name: 'Update instructor profile', status: 'success' });
 
+    // Move only the students handled by this instructor into the new semester.
+    // Quiz results remain attached to those students and archived assessments.
+    const previousSections = Array.isArray(user.teaching_sections) && user.teaching_sections.length
+      ? user.teaching_sections
+      : (user.section ? [user.section] : []);
+    if (Number.isInteger(selectedSemester) && previousSections.length > 0 && user.year_level !== selectedSemester) {
+      const { data: handledStudents, error: handledStudentsError } = await supabase
+        .from('users')
+        .select('id, section')
+        .eq('role', 'student')
+        .eq('year_level', user.year_level);
+
+      if (handledStudentsError) throw new Error(`Failed to synchronize handled students: ${handledStudentsError.message}`);
+
+      const normalizedSections = previousSections.map((section: string) => section.trim().toLowerCase());
+      const studentIds = (handledStudents ?? [])
+        .filter((student: any) => normalizedSections.includes(String(student.section ?? '').trim().toLowerCase()))
+        .map((student: any) => student.id);
+
+      if (studentIds.length > 0) {
+        const { error: studentUpdateError } = await supabase
+          .from('users')
+          .update({ year_level: selectedSemester, updated_at: new Date().toISOString() })
+          .in('id', studentIds);
+        if (studentUpdateError) throw new Error(`Failed to synchronize handled students: ${studentUpdateError.message}`);
+      }
+      results.steps.push({ name: 'Synchronize handled students', count: studentIds.length, status: 'success' });
+    }
+
     // Step 2: Get all modules created by this instructor
     console.log(`\n📝 Step 2: Fetching instructor's modules...`);
     checkTimeout();
@@ -912,7 +945,17 @@ export const updateSemesterAndClearProgress = async (req: AuthRequest, res: Resp
       throw new Error(`Failed to fetch instructor assessments: ${ownedAssessmentsError.message}`);
     }
 
-    if (archiveModuleIds.length === 0 && !ownedAssessments?.length) {
+    const { data: ownedLaboratories, error: ownedLaboratoriesError } = await supabase
+      .from('laboratories')
+      .select('id')
+      .eq('instructor_id', instructorId)
+      .neq('status', 'archived');
+
+    if (ownedLaboratoriesError) {
+      throw new Error(`Failed to fetch instructor laboratories: ${ownedLaboratoriesError.message}`);
+    }
+
+    if (archiveModuleIds.length === 0 && !ownedAssessments?.length && !ownedLaboratories?.length) {
       return res.json({
         success: true,
         message: 'Semester updated successfully (no content to archive)',
@@ -932,15 +975,18 @@ export const updateSemesterAndClearProgress = async (req: AuthRequest, res: Resp
         ? supabase.from('lessons').select('id').in('module_id', archiveModuleIds)
         : Promise.resolve({ data: [], error: null }),
       archiveModuleIds.length > 0
-        ? supabase.from('laboratories').select('id').in('unit_id', archiveModuleIds)
-        : Promise.resolve({ data: [], error: null }),
+        ? supabase.from('laboratories').select('id').eq('instructor_id', instructorId).neq('status', 'archived')
+        : supabase.from('laboratories').select('id').eq('instructor_id', instructorId).neq('status', 'archived'),
       archiveModuleIds.length > 0
         ? supabase.from('assessments').select('id').in('module_id', archiveModuleIds)
         : Promise.resolve({ data: [], error: null }),
     ]);
 
     const lessonIds = lessons?.map(l => l.id) || [];
-    const labIds = labs?.map(l => l.id) || [];
+    const labIds = [...new Set([
+      ...(labs?.map(l => l.id) || []),
+      ...(ownedLaboratories?.map(l => l.id) || []),
+    ])];
     const assessmentIds = [...new Set([
       ...(assessments?.map(a => a.id) || []),
       ...(ownedAssessments?.map(a => a.id) || []),
@@ -964,7 +1010,7 @@ export const updateSemesterAndClearProgress = async (req: AuthRequest, res: Resp
     // Archive operations
     if (archiveModuleIds.length > 0) {
       archiveAndClearPromises.push(
-        supabase.from('modules').update({ status: 'archived' }).in('id', archiveModuleIds)
+        supabase.from('modules').update({ status: 'archived', archived_year_level: user.year_level }).in('id', archiveModuleIds)
           .then(res => ({ type: 'archive_units', result: res }))
       );
     }
@@ -978,26 +1024,36 @@ export const updateSemesterAndClearProgress = async (req: AuthRequest, res: Resp
 
     if (labIds.length > 0) {
       archiveAndClearPromises.push(
-        supabase.from('laboratories').update({ status: 'archived' }).in('id', labIds)
+        supabase.from('laboratories').update({ status: 'archived', archived_year_level: user.year_level }).in('id', labIds)
           .then(res => ({ type: 'archive_labs', result: res }))
       );
     }
 
     if (assessmentIds.length > 0) {
       archiveAndClearPromises.push(
-        supabase.from('assessments').update({ status: 'archived' }).in('id', assessmentIds)
+        supabase.from('assessments').update({ status: 'archived', archived_year_level: user.year_level }).in('id', assessmentIds)
           .then(res => ({ type: 'archive_assessments', result: res }))
       );
     }
 
-    // Clear lesson progress only. Keep lab and quiz submissions linked to
-    // archived content so the previous semester remains reviewable.
+    // Reset all student activity for the new semester. Archived content remains
+    // available from Archives, but old submissions must not appear as active work.
     if (lessonIds.length > 0) {
       archiveAndClearPromises.push(
         supabase.from('lesson_progress').delete().in('lesson_id', lessonIds)
           .then(res => ({ type: 'clear_lesson_progress', result: res }))
       );
     }
+
+    if (labIds.length > 0) {
+      archiveAndClearPromises.push(
+        supabase.from('lab_file_submissions').delete().in('lab_id', labIds)
+          .then(res => ({ type: 'clear_lab_submissions', result: res }))
+      );
+    }
+
+    // Assessment submissions are intentionally preserved as each student's
+    // archived quiz results. Archived quizzes remain tied to their owners.
 
     // Execute all operations in parallel
     const allResults = await Promise.all(archiveAndClearPromises);
@@ -1022,6 +1078,8 @@ export const updateSemesterAndClearProgress = async (req: AuthRequest, res: Resp
         else if (type === 'archive_labs') results.archived.laboratories = finalCount;
         else if (type === 'archive_assessments') results.archived.assessments = finalCount;
         else if (type === 'clear_lesson_progress') results.cleared.lesson_progress = finalCount;
+        else if (type === 'clear_lab_submissions') results.cleared.lab_submissions = finalCount;
+        else if (type === 'clear_assessment_submissions') results.cleared.assessment_submissions = finalCount;
       }
     }
 
@@ -1057,9 +1115,25 @@ export const updateSemesterAndClearProgress = async (req: AuthRequest, res: Resp
       throw new Error(`Quiz archive verification failed: ${remainingActiveAssessments!.length} quiz(zes) remain active`);
     }
 
+    const { data: remainingActiveLabs, error: labVerifyError } = labIds.length > 0
+      ? await supabase
+        .from('laboratories')
+        .select('id')
+        .in('id', labIds)
+        .neq('status', 'archived')
+      : { data: [], error: null };
+
+    if (labVerifyError) {
+      throw new Error(`Could not verify archived laboratories: ${labVerifyError.message}`);
+    }
+
+    if ((remainingActiveLabs?.length || 0) > 0) {
+      throw new Error(`Laboratory archive verification failed: ${remainingActiveLabs!.length} laboratory record(s) remain active`);
+    }
+
     console.log(`\n✅ SEMESTER UPDATE COMPLETE (${Date.now() - startTime}ms)`);
     console.log(`   📦 Archived: ${results.archived.units} units, ${results.archived.lessons} lessons, ${results.archived.laboratories} labs, ${results.archived.assessments} assessments`);
-    console.log(`   🗑️  Cleared: ${results.cleared.lesson_progress} lesson progress; lab and quiz submissions preserved`);
+    console.log(`   �️  Cleared: ${results.cleared.lesson_progress} lesson progress, ${results.cleared.lab_submissions} lab submissions, ${results.cleared.assessment_submissions} quiz submissions`);
 
     return res.json({
       success: true,

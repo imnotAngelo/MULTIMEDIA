@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/stores/authStore';
 import { api } from '@/services/api';
 import { authFetch } from '@/lib/authFetch';
+import { getUserDesigns } from '@/components/laboratories/CanvaDesignStudio';
 
 const ACADEMIC_YEAR_OPTIONS = [
   { value: 1, label: '1st Sem' },
@@ -50,6 +51,8 @@ export function StudentSettings() {
   const [showArchives, setShowArchives] = useState(false);
   const [restoringId, setRestoringId] = useState<string | null>(null);
   const [loadingArchives, setLoadingArchives] = useState(false);
+  const [archivedQuizResults, setArchivedQuizResults] = useState<any[]>([]);
+  const [portfolioCount, setPortfolioCount] = useState(0);
 
   const handleAvatarFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -192,10 +195,16 @@ export function StudentSettings() {
   const loadArchives = async () => {
     setLoadingArchives(true);
     try {
-      const response = await authFetch('http://localhost:3001/api/units', {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-      });
+      const [response, quizResponse] = await Promise.all([
+        authFetch('/units', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        }),
+        authFetch('/assessments/archived-results'),
+      ]);
+      const quizData = await quizResponse.json();
+      setArchivedQuizResults(quizData?.success ? quizData.data || [] : []);
+      setPortfolioCount(getUserDesigns().length);
       const data = await response.json();
       console.log('📦 [ARCHIVES] API Response:', data);
       if (data?.success) {
@@ -349,7 +358,7 @@ export function StudentSettings() {
             <div>
               <h2 className="text-lg font-semibold text-white">Archives</h2>
               <p className="text-xs text-amber-400">
-                {archivedUnits.length + archivedLessons.length} item{archivedUnits.length + archivedLessons.length !== 1 ? 's' : ''}
+                {portfolioCount + archivedQuizResults.length} item{portfolioCount + archivedQuizResults.length !== 1 ? 's' : ''}
               </p>
             </div>
           </div>
@@ -364,57 +373,34 @@ export function StudentSettings() {
               </div>
             )}
             
-            {!loadingArchives && archivedUnits.length === 0 && archivedLessons.length === 0 && (
+            {!loadingArchives && portfolioCount === 0 && archivedQuizResults.length === 0 && (
               <div className="text-center py-8">
-                <p className="text-slate-400">No archived content yet</p>
+                <p className="text-slate-400">No portfolio designs or archived quiz results yet</p>
               </div>
             )}
 
-            {!loadingArchives && archivedUnits.length > 0 && (
+            {!loadingArchives && portfolioCount > 0 && (
               <div className="mb-4">
-                <h3 className="text-sm font-semibold text-amber-300 mb-3">Archived Units</h3>
+                <h3 className="text-sm font-semibold text-amber-300 mb-3">Portfolio</h3>
                 <div className="space-y-2">
-                  {archivedUnits.map((unit) => (
-                    <div key={unit.id} className="flex items-center justify-between p-3 bg-slate-800/40 rounded-lg">
-                      <div>
-                        <p className="text-white text-sm font-medium">{unit.title}</p>
-                      </div>
-                      <button
-                        onClick={() => handleUnarchiveUnit(unit.id)}
-                        disabled={restoringId === unit.id}
-                        className="flex items-center gap-1 text-xs text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded"
-                      >
-                        <RotateCcw className={`w-3 h-3 ${restoringId === unit.id ? 'animate-spin' : ''}`} />
-                        {restoringId === unit.id ? 'Restoring...' : 'Restore'}
-                      </button>
-                    </div>
-                  ))}
+                  <div className="flex items-center justify-between p-3 bg-slate-800/40 rounded-lg">
+                    <p className="text-white text-sm font-medium">{portfolioCount} saved design{portfolioCount !== 1 ? 's' : ''}</p>
+                    <button onClick={() => navigate('/portfolio')} className="text-xs text-emerald-400">View portfolio</button>
+                  </div>
                 </div>
               </div>
             )}
 
-            {!loadingArchives && archivedLessons.length > 0 && (
+            {!loadingArchives && archivedQuizResults.length > 0 && (
               <div>
-                <h3 className="text-sm font-semibold text-amber-300 mb-3">Archived Lessons</h3>
+                <h3 className="text-sm font-semibold text-amber-300 mb-3">Archived Quiz Results</h3>
                 <div className="space-y-2">
-                  {archivedLessons.slice(0, 5).map((lesson) => (
-                    <div key={lesson.id} className="flex items-center justify-between p-3 bg-slate-800/40 rounded-lg">
-                      <p className="text-white text-sm">{lesson.title}</p>
-                      <button
-                        onClick={() => handleUnarchiveLesson(lesson.id)}
-                        disabled={restoringId === lesson.id}
-                        className="flex items-center gap-1 text-xs text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded"
-                      >
-                        <RotateCcw className={`w-3 h-3 ${restoringId === lesson.id ? 'animate-spin' : ''}`} />
-                        {restoringId === lesson.id ? 'Restoring...' : 'Restore'}
-                      </button>
+                  {archivedQuizResults.map((result) => (
+                    <div key={result.id} className="flex items-center justify-between p-3 bg-slate-800/40 rounded-lg">
+                      <p className="text-white text-sm">{result.assessment?.title || 'Archived quiz'}</p>
+                      <span className="text-xs text-slate-300">Score: {result.score ?? 'Not graded'}</span>
                     </div>
                   ))}
-                  {archivedLessons.length > 5 && (
-                    <p className="text-xs text-slate-500 text-center mt-2">
-                      +{archivedLessons.length - 5} more archived lessons
-                    </p>
-                  )}
                 </div>
               </div>
             )}

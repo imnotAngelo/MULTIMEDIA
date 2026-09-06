@@ -18,11 +18,28 @@ interface Unit {
   id: string;
   title: string;
   description: string;
+  yearLevel?: number | null;
 }
 
 interface Lesson {
   id: string;
   title: string;
+  archivedYearLevel?: number | null;
+}
+
+interface Laboratory {
+  id: string;
+  title: string;
+  status?: string;
+  archivedYearLevel?: number | null;
+}
+
+interface ArchivedQuiz {
+  id: string;
+  title: string;
+  status?: string;
+  archived_year_level?: number | null;
+  year_level?: number | null;
 }
 
 function getInitials(name: string) {
@@ -44,6 +61,41 @@ function formatDate(iso?: string) {
   }
 }
 
+function ArchiveList<T extends { id: string }>({
+  title,
+  items,
+  getTitle,
+  onRestore,
+  restoringId,
+}: {
+  title: string;
+  items: T[];
+  getTitle: (item: T) => string;
+  onRestore: (item: T) => void;
+  restoringId: string | null;
+}) {
+  return (
+    <div>
+      <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-amber-300/80">Archived {title}</h4>
+      <div className="space-y-2">
+        {items.map((item) => (
+          <div key={item.id} className="flex items-center justify-between rounded-lg bg-slate-800/40 p-3">
+            <p className="text-sm text-white">{getTitle(item)}</p>
+            <button
+              onClick={() => onRestore(item)}
+              disabled={restoringId === item.id}
+              className="flex items-center gap-1 rounded bg-emerald-500/10 px-2 py-1 text-xs text-emerald-400"
+            >
+              <RotateCcw className={`h-3 w-3 ${restoringId === item.id ? 'animate-spin' : ''}`} />
+              {restoringId === item.id ? 'Restoring...' : 'Restore'}
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function InstructorSettings() {
   const { user, setUser } = useAuthStore();
   const navigate = useNavigate();
@@ -60,6 +112,8 @@ export function InstructorSettings() {
   const [addingSectionId, setAddingSectionId] = useState<string | null>(null);
   const [archivedUnits, setArchivedUnits] = useState<Unit[]>([]);
   const [archivedLessons, setArchivedLessons] = useState<Lesson[]>([]);
+  const [archivedLaboratories, setArchivedLaboratories] = useState<Laboratory[]>([]);
+  const [archivedQuizzes, setArchivedQuizzes] = useState<ArchivedQuiz[]>([]);
   const [showArchives, setShowArchives] = useState(false);
   const [restoringId, setRestoringId] = useState<string | null>(null);
   const [loadingArchives, setLoadingArchives] = useState(false);
@@ -145,16 +199,35 @@ export function InstructorSettings() {
   const loadArchives = async () => {
     setLoadingArchives(true);
     try {
-      const response = await authFetch('http://localhost:3001/api/units', {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-      });
+      const [response, laboratoriesResponse] = await Promise.all([
+        authFetch('http://localhost:3001/api/units', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        }),
+        authFetch('http://localhost:3001/api/laboratories/metadata?includeArchived=true', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      ]);
       const data = await response.json();
+      const laboratoriesData = await laboratoriesResponse.json();
+      const quizzesResponse = await authFetch('http://localhost:3001/api/assessments/instructor/all?filter=quiz&limit=100&includeArchived=true');
+      const quizzesData = await quizzesResponse.json();
       console.log('📦 [ARCHIVES] API Response:', data);
       if (data?.success) {
         const archived = data.archived || [];
         console.log('📦 [ARCHIVES] Archived units count:', archived.length);
         setArchivedUnits(archived);
+        setArchivedLaboratories(
+          laboratoriesData?.success
+            ? (laboratoriesData.data || []).filter((laboratory: Laboratory) => laboratory.status === 'archived')
+            : []
+        );
+        setArchivedQuizzes(
+          quizzesData?.success
+            ? (quizzesData.data || []).filter((quiz: ArchivedQuiz) => quiz.status === 'archived')
+            : []
+        );
         
         // Fetch archived lessons from archived units
         const allArchivedLessons: Lesson[] = [];
@@ -166,7 +239,10 @@ export function InstructorSettings() {
           const lessonData = await lessonRes.json();
           console.log(`📖 [ARCHIVES] Lessons for unit ${unit.id}:`, lessonData);
           if (lessonData?.data?.archived) {
-            allArchivedLessons.push(...lessonData.data.archived);
+            allArchivedLessons.push(...lessonData.data.archived.map((lesson: Lesson) => ({
+              ...lesson,
+              archivedYearLevel: unit.yearLevel ?? null,
+            })));
           }
         }
         console.log('📖 [ARCHIVES] Total archived lessons:', allArchivedLessons.length);
@@ -223,6 +299,49 @@ export function InstructorSettings() {
     }
   };
 
+  const handleRestoreLaboratory = async (laboratoryId: string) => {
+    setRestoringId(laboratoryId);
+    try {
+      const response = await authFetch(`/laboratories/metadata/${laboratoryId}/restore`, { method: 'PATCH' });
+      const data = await response.json();
+      if (!response.ok || !data?.success) throw new Error(data?.error?.message || 'Failed to restore laboratory');
+      toast.success('Laboratory restored.');
+      await loadArchives();
+    } catch (error: any) {
+      toast.error(error?.message || 'Failed to restore laboratory.');
+    } finally {
+      setRestoringId(null);
+    }
+  };
+
+  const handleRestoreQuiz = async (quizId: string) => {
+    setRestoringId(quizId);
+    try {
+      const response = await authFetch(`/assessments/${quizId}/restore`, { method: 'PATCH' });
+      const data = await response.json();
+      if (!response.ok || !data?.success) throw new Error(data?.error?.message || 'Failed to restore quiz');
+      toast.success('Quiz restored.');
+      await loadArchives();
+    } catch (error: any) {
+      toast.error(error?.message || 'Failed to restore quiz.');
+    } finally {
+      setRestoringId(null);
+    }
+  };
+
+  const archiveYear = (item: { yearLevel?: number | null; archivedYearLevel?: number | null; archived_year_level?: number | null; targetYearLevels?: number[] }) =>
+    item.archivedYearLevel ?? item.archived_year_level ?? item.yearLevel ?? item.targetYearLevels?.[0] ?? null;
+
+  const archiveGroups = [1, 2, 3, null].map((yearLevel) => ({
+    yearLevel,
+    units: archivedUnits.filter((item) => archiveYear(item) === yearLevel),
+    lessons: archivedLessons.filter((item) => archiveYear(item) === yearLevel),
+    laboratories: archivedLaboratories.filter((item) => archiveYear(item) === yearLevel),
+    quizzes: archivedQuizzes.filter((item) => archiveYear(item) === yearLevel),
+  })).filter((group) => group.units.length || group.lessons.length || group.laboratories.length || group.quizzes.length);
+
+  const archiveYearLabel = (yearLevel: number | null) => yearLevel === 1 ? '1st Sem' : yearLevel === 2 ? '2nd Sem' : yearLevel === 3 ? 'Summer' : 'Other / Older records';
+
   useEffect(() => {
     setFullName(user?.full_name ?? '');
     setAvatarUrl(user?.avatar_url ?? '');
@@ -275,9 +394,9 @@ export function InstructorSettings() {
       `Are you sure you want to change to ${semesterLabel}?\n\n` +
       `This will:\n` +
       `✓ Update your teaching semester\n` +
-      `✓ Reset lesson progress while preserving lab and quiz submissions\n` +
-      `✓ Archive your previous semester's content\n\n` +
-      `This action cannot be undone.`
+      `✓ Reset lesson progress, lab submissions, and quiz submissions\n` +
+      `✓ Archive your previous semester's content for review\n\n` +
+      `Archived content can be restored from Archives. Old student progress and submissions will be permanently cleared.`
     );
     
     if (!confirmUpdate) return;
@@ -320,6 +439,8 @@ export function InstructorSettings() {
       const archivedAssessments = archived.assessments || 0;
       
       const progressCount = cleared.lesson_progress || 0;
+      const labSubmissionCount = cleared.lab_submissions || 0;
+      const assessmentSubmissionCount = cleared.assessment_submissions || 0;
       
       const archiveDetails = [
         archivedUnits > 0 ? `${archivedUnits} unit${archivedUnits !== 1 ? 's' : ''}` : null,
@@ -330,10 +451,12 @@ export function InstructorSettings() {
       
       const clearDetails = [
         progressCount > 0 ? `${progressCount} lesson progress` : null,
+        labSubmissionCount > 0 ? `${labSubmissionCount} lab submission${labSubmissionCount !== 1 ? 's' : ''}` : null,
+        assessmentSubmissionCount > 0 ? `${assessmentSubmissionCount} quiz submission${assessmentSubmissionCount !== 1 ? 's' : ''}` : null,
       ].filter(Boolean).join(', ') || 'no student data';
       
       toast.success(
-        `✅ Semester updated to ${semesterLabel}!\n📦 Archived: ${archiveDetails}\n🔄 Reset: ${clearDetails}\n✅ Lab and quiz submissions preserved`
+        `✅ Semester updated to ${semesterLabel}!\n Archived: ${archiveDetails}\n🔄 Reset: ${clearDetails}\n🗑️ Old lab and quiz submissions cleared`
       );
       
       console.log(`✅ [SEMESTER UPDATE] Semester update complete. Refreshing data...`);
@@ -504,7 +627,7 @@ export function InstructorSettings() {
             <div>
               <h2 className="text-lg font-semibold text-white">Archives</h2>
               <p className="text-xs text-amber-400">
-                {archivedUnits.length + archivedLessons.length} item{archivedUnits.length + archivedLessons.length !== 1 ? 's' : ''}
+                {archivedUnits.length + archivedLessons.length + archivedLaboratories.length + archivedQuizzes.length} item{archivedUnits.length + archivedLessons.length + archivedLaboratories.length + archivedQuizzes.length !== 1 ? 's' : ''}
               </p>
             </div>
           </div>
@@ -519,55 +642,23 @@ export function InstructorSettings() {
               </div>
             )}
             
-            {!loadingArchives && archivedUnits.length === 0 && archivedLessons.length === 0 && (
+            {!loadingArchives && archivedUnits.length === 0 && archivedLessons.length === 0 && archivedLaboratories.length === 0 && archivedQuizzes.length === 0 && (
               <div className="text-center py-8">
                 <p className="text-slate-400">No archived content yet</p>
               </div>
             )}
 
-            {!loadingArchives && archivedUnits.length > 0 && (
-              <div className="mb-4">
-                <h3 className="text-sm font-semibold text-amber-300 mb-3">Archived Units</h3>
-                <div className="space-y-2">
-                  {archivedUnits.map((unit) => (
-                    <div key={unit.id} className="flex items-center justify-between p-3 bg-slate-800/40 rounded-lg">
-                      <div>
-                        <p className="text-white text-sm font-medium">{unit.title}</p>
-                      </div>
-                      <button
-                        onClick={() => handleUnarchiveUnit(unit.id)}
-                        disabled={restoringId === unit.id}
-                        className="flex items-center gap-1 text-xs text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded"
-                      >
-                        <RotateCcw className={`w-3 h-3 ${restoringId === unit.id ? 'animate-spin' : ''}`} />
-                        {restoringId === unit.id ? 'Restoring...' : 'Restore'}
-                      </button>
-                    </div>
-                  ))}
+            {!loadingArchives && archiveGroups.map((group) => (
+              <div key={String(group.yearLevel)} className="mb-6 rounded-xl border border-amber-500/15 bg-amber-500/[0.03] p-4">
+                <h3 className="mb-4 text-base font-semibold text-amber-200">{archiveYearLabel(group.yearLevel)}</h3>
+                <div className="space-y-4">
+                  {group.units.length > 0 && <ArchiveList title="Units" items={group.units} getTitle={(item) => item.title} onRestore={(item) => handleUnarchiveUnit(item.id)} restoringId={restoringId} />}
+                  {group.lessons.length > 0 && <ArchiveList title="Lessons" items={group.lessons} getTitle={(item) => item.title} onRestore={(item) => handleUnarchiveLesson(item.id)} restoringId={restoringId} />}
+                  {group.laboratories.length > 0 && <ArchiveList title="Laboratories" items={group.laboratories} getTitle={(item) => item.title} onRestore={(item) => handleRestoreLaboratory(item.id)} restoringId={restoringId} />}
+                  {group.quizzes.length > 0 && <ArchiveList title="Quizzes" items={group.quizzes} getTitle={(item) => item.title} onRestore={(item) => handleRestoreQuiz(item.id)} restoringId={restoringId} />}
                 </div>
               </div>
-            )}
-
-            {!loadingArchives && archivedLessons.length > 0 && (
-              <div>
-                <h3 className="text-sm font-semibold text-amber-300 mb-3">Archived Lessons</h3>
-                <div className="space-y-2">
-                  {archivedLessons.slice(0, 5).map((lesson) => (
-                    <div key={lesson.id} className="flex items-center justify-between p-3 bg-slate-800/40 rounded-lg">
-                      <p className="text-white text-sm">{lesson.title}</p>
-                      <button
-                        onClick={() => handleUnarchiveLesson(lesson.id)}
-                        disabled={restoringId === lesson.id}
-                        className="flex items-center gap-1 text-xs text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded"
-                      >
-                        <RotateCcw className={`w-3 h-3 ${restoringId === lesson.id ? 'animate-spin' : ''}`} />
-                        {restoringId === lesson.id ? 'Restoring...' : 'Restore'}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            ))}
           </div>
         )}
       </div>

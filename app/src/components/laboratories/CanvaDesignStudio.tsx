@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { useAuthStore } from '@/stores/authStore';
 
 // Canva App Configuration
 const CANVA_APP_ID = 'AAHAAELrVU0';
@@ -22,6 +23,7 @@ interface CanvaDesignStudioProps {
  * Integrates with Canva for rich design capabilities using app ID: AAHAAELrVU0
  */
 export function CanvaDesignStudio({ designPrompt, onDesignComplete }: CanvaDesignStudioProps) {
+  const { user } = useAuthStore();
   const [designTitle, setDesignTitle] = useState('');
   const [designNotes, setDesignNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -69,7 +71,7 @@ export function CanvaDesignStudio({ designPrompt, onDesignComplete }: CanvaDesig
       };
 
       // Store design locally or send to backend
-      saveDesign(design);
+      saveDesign({ ...design, yearLevel: user?.year_level ?? null }, user?.year_level);
 
       setIsCompleted(true);
       toast.success('Design saved to your portfolio');
@@ -271,8 +273,8 @@ export function CanvaDesignStudio({ designPrompt, onDesignComplete }: CanvaDesig
 /**
  * Save design to portfolio
  */
-function saveDesign(design: any) {
-  const designs = JSON.parse(localStorage.getItem('userDesigns') || '[]');
+function saveDesign(design: any, yearLevel?: number | null) {
+  const designs = getUserDesigns(yearLevel);
   designs.push(design);
   localStorage.setItem('userDesigns', JSON.stringify(designs));
 }
@@ -280,6 +282,23 @@ function saveDesign(design: any) {
 /**
  * Get all user designs
  */
-export function getUserDesigns() {
-  return JSON.parse(localStorage.getItem('userDesigns') || '[]');
+export function getUserDesigns(currentYearLevel?: number | null) {
+  const designs = JSON.parse(localStorage.getItem('userDesigns') || '[]');
+  const storedSemester = localStorage.getItem('portfolioSemester');
+  const currentSemester = currentYearLevel == null ? null : String(currentYearLevel);
+
+  if (currentSemester && storedSemester && storedSemester !== currentSemester) {
+    const archived = JSON.parse(localStorage.getItem('archivedUserDesigns') || '[]');
+    localStorage.setItem('archivedUserDesigns', JSON.stringify([...archived, ...designs]));
+    localStorage.setItem('userDesigns', '[]');
+    localStorage.setItem('portfolioSemester', currentSemester);
+    return [];
+  }
+
+  if (currentSemester) {
+    localStorage.setItem('portfolioSemester', currentSemester);
+    return designs.filter((design: any) => !design.yearLevel || String(design.yearLevel) === currentSemester);
+  }
+
+  return designs;
 }

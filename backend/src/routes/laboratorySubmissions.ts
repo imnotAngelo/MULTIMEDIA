@@ -319,14 +319,22 @@ router.get(
         `)
         .order("submitted_at", { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        if (/lab_file_submissions|schema cache|does not exist/i.test(error.message || '')) {
+          return res.status(503).json({
+            error: 'Laboratory submission storage is not configured. Run backend/create-lab-file-submissions-table.mjs with a valid access token, then reload the schema.',
+            code: 'LAB_SUBMISSIONS_NOT_CONFIGURED',
+          });
+        }
+        throw error;
+      }
 
       const labIds = [...new Set((data ?? []).map((r: any) => r.lab_id).filter(Boolean))];
       const { data: labs } = labIds.length
-        ? await supabase.from("laboratories").select("id, instructor_id").in("id", labIds)
+        ? await supabase.from("laboratories").select("id, instructor_id, status").in("id", labIds)
         : { data: [] };
-      const labInstructorById: Record<string, string | null> = Object.fromEntries(
-        (labs ?? []).map((lab: any) => [lab.id, lab.instructor_id ?? null])
+      const labById: Record<string, { instructorId: string | null; status?: string }> = Object.fromEntries(
+        (labs ?? []).map((lab: any) => [lab.id, { instructorId: lab.instructor_id ?? null, status: lab.status }])
       );
 
       const studentIds = [...new Set((data ?? []).map((r: any) => r.student_id))];
@@ -339,8 +347,8 @@ router.get(
 
       const rows = (data ?? [])
         .filter((row: any) => {
-          const labInstructorId = labInstructorById[row.lab_id] ?? null;
-          return labInstructorId === userId;
+          const lab = labById[row.lab_id];
+          return lab?.instructorId === userId && lab.status !== 'archived';
         })
         .map((row: any) => ({
           id: row.id,

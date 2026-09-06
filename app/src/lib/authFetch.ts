@@ -51,7 +51,19 @@ export async function authFetch(
     headers: headers,
   };
 
-  let response = await fetch(fullUrl, requestOptions);
+  let response: Response;
+  try {
+    response = await fetch(fullUrl, requestOptions);
+  } catch (error) {
+    // A dev backend restart can briefly interrupt the first request.
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    try {
+      response = await fetch(fullUrl, requestOptions);
+    } catch {
+      const reason = error instanceof Error ? error.message : 'Network connection failed';
+      throw new Error(`Could not reach the API at ${fullUrl}: ${reason}`);
+    }
+  }
 
   // If 401, attempt to refresh the token and retry once
   if (response.status === 401) {

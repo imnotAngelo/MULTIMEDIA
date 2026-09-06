@@ -5,14 +5,16 @@
  * browser requests do not depend on the Vite proxy. If a deployment-specific override
  * is provided via VITE_API_URL, that value still wins.
  */
-const localDevApiUrl = 'http://127.0.0.1:3001/api';
+// Use Vite's same-origin proxy in development so browser requests do not depend
+// on direct cross-origin connectivity to the local backend.
+const localDevApiUrl = '/api';
 const configuredApiUrl = import.meta.env.VITE_API_URL?.trim();
 const useOnlineApi = import.meta.env.MODE === 'online' || import.meta.env.PROD;
 
 // Normal development must use the local backend. The online mode and production
 // builds intentionally use the deployed API configured in the environment.
 export const API_BASE_URL = useOnlineApi
-  ? configuredApiUrl || localDevApiUrl
+  ? configuredApiUrl || 'http://127.0.0.1:3001/api'
   : localDevApiUrl;
 
 /**

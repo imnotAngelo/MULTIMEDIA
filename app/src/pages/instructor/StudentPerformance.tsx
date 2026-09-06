@@ -8,6 +8,7 @@ interface Student {
   id: string;
   full_name: string;
   email: string;
+  avatar_url?: string | null;
   year_level?: number;
   section?: string;
 }
@@ -50,7 +51,9 @@ export function StudentPerformance() {
       const labsPayload = await labsResponse.json();
       if (!studentsResponse.ok || !studentsPayload.success) throw new Error(studentsPayload.error?.message || 'Could not load students');
       if (!quizzesResponse.ok || !quizzesPayload.success) throw new Error(quizzesPayload.error?.message || 'Could not load quizzes');
-      if (!labsResponse.ok || !Array.isArray(labsPayload)) throw new Error(labsPayload.error || 'Could not load laboratory submissions');
+      if (!labsResponse.ok || !Array.isArray(labsPayload)) {
+        throw new Error(labsPayload.error || 'Could not load laboratory submissions');
+      }
 
       const studentMap = new Map<string, StudentPerformance>(
         (studentsPayload.data || []).map((student: Student) => [student.id, { ...student, quizzes: [], laboratories: [] }])
@@ -107,6 +110,12 @@ export function StudentPerformance() {
     loadPerformance();
   }, []);
 
+  const studentsBySection = students.reduce<Record<string, StudentPerformance[]>>((groups, student) => {
+    const section = student.section?.trim() || 'Unassigned section';
+    (groups[section] ??= []).push(student);
+    return groups;
+  }, {});
+
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex items-start justify-between gap-4">
@@ -128,28 +137,49 @@ export function StudentPerformance() {
           <p className="mt-3 text-slate-400">No students found in your assigned sections.</p>
         </div>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
-          {students.map((student) => (
-            <section key={student.id} className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
-              <div className="flex items-start gap-3 border-b border-slate-800 pb-4">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-violet-500/15 text-violet-300">
-                  {(student.full_name || student.email).charAt(0).toUpperCase()}
-                </div>
-                <div className="min-w-0">
-                  <h2 className="font-semibold text-white">{student.full_name}</h2>
-                  <p className="truncate text-sm text-slate-400">{student.email}</p>
-                  <p className="mt-1 text-xs text-slate-500">Year {student.year_level ?? '-'} · Section {student.section || '-'}</p>
-                </div>
+        <div className="space-y-8">
+          {Object.entries(studentsBySection).sort(([first], [second]) => first.localeCompare(second)).map(([section, sectionStudents]) => (
+            <section key={section} className="space-y-4">
+              <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
+                <div className="h-2 w-2 rounded-full bg-lime-400 shadow-[0_0_12px_rgba(163,230,53,0.7)]" />
+                <h2 className="text-lg font-semibold text-white">Section {section}</h2>
+                <span className="rounded-full bg-violet-500/15 px-2.5 py-1 text-xs text-violet-300">
+                  {sectionStudents.length} student{sectionStudents.length !== 1 ? 's' : ''}
+                </span>
               </div>
-              <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                <div>
-                  <h3 className="mb-2 flex items-center gap-2 text-sm font-medium text-cyan-300"><BarChart3 className="h-4 w-4" /> Quizzes</h3>
-                  {student.quizzes.length === 0 ? <p className="text-xs text-slate-500">No quiz submissions</p> : student.quizzes.map((score, index) => <div key={`${score.title}-${index}`} className="flex justify-between gap-2 py-1 text-xs"><span className="truncate text-slate-400">{score.title}</span><span className="shrink-0 text-white">{scoreLabel(score, true)}</span></div>)}
-                </div>
-                <div>
-                  <h3 className="mb-2 flex items-center gap-2 text-sm font-medium text-emerald-300"><BarChart3 className="h-4 w-4" /> Laboratories</h3>
-                  {student.laboratories.length === 0 ? <p className="text-xs text-slate-500">No laboratory submissions</p> : student.laboratories.map((score, index) => <div key={`${score.title}-${index}`} className="flex justify-between gap-2 py-1 text-xs"><span className="truncate text-slate-400">{score.title}</span><span className="shrink-0 text-white">{scoreLabel(score, false)}</span></div>)}
-                </div>
+              <div className="grid gap-4 lg:grid-cols-2">
+                {sectionStudents.map((student) => (
+                  <article key={student.id} className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
+                    <div className="flex items-start gap-3 border-b border-slate-800 pb-4">
+                      {student.avatar_url ? (
+                        <img
+                          src={student.avatar_url}
+                          alt={`${student.full_name} profile`}
+                          className="h-10 w-10 shrink-0 rounded-full border border-violet-400/30 bg-slate-800 object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-violet-500/15 text-violet-300">
+                          {(student.full_name || student.email).charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <h3 className="font-semibold text-white">{student.full_name}</h3>
+                        <p className="truncate text-sm text-slate-400">{student.email}</p>
+                        <p className="mt-1 text-xs text-slate-500">Year {student.year_level ?? '-'}</p>
+                      </div>
+                    </div>
+                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                      <div>
+                        <h4 className="mb-2 flex items-center gap-2 text-sm font-medium text-cyan-300"><BarChart3 className="h-4 w-4" /> Quizzes</h4>
+                        {student.quizzes.length === 0 ? <p className="text-xs text-slate-500">No quiz submissions</p> : student.quizzes.map((score, index) => <div key={`${score.title}-${index}`} className="flex justify-between gap-2 py-1 text-xs"><span className="truncate text-slate-400">{score.title}</span><span className="shrink-0 text-white">{scoreLabel(score, true)}</span></div>)}
+                      </div>
+                      <div>
+                        <h4 className="mb-2 flex items-center gap-2 text-sm font-medium text-emerald-300"><BarChart3 className="h-4 w-4" /> Laboratories</h4>
+                        {student.laboratories.length === 0 ? <p className="text-xs text-slate-500">No laboratory submissions</p> : student.laboratories.map((score, index) => <div key={`${score.title}-${index}`} className="flex justify-between gap-2 py-1 text-xs"><span className="truncate text-slate-400">{score.title}</span><span className="shrink-0 text-white">{scoreLabel(score, false)}</span></div>)}
+                      </div>
+                    </div>
+                  </article>
+                ))}
               </div>
             </section>
           ))}

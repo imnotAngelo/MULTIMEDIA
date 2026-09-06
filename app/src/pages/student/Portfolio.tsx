@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { getUserDesigns } from '@/components/laboratories/CanvaDesignStudio';
+import { useAuthStore } from '@/stores/authStore';
 import { authFetch } from '@/lib/authFetch';
 import { resolveBackendAssetUrl } from '@/lib/apiConfig';
 
@@ -39,6 +40,7 @@ interface LabSubmission {
  * Allows sharing and showcasing of learning outcomes
  */
 export function Portfolio() {
+  const { user } = useAuthStore();
   const [designs, setDesigns] = useState<PortfolioDesign[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedDesign, setSelectedDesign] = useState<PortfolioDesign | null>(null);
@@ -80,7 +82,7 @@ export function Portfolio() {
     const loadDesigns = async () => {
       try {
         setIsLoading(true);
-        const designData = getUserDesigns();
+        const designData = getUserDesigns(user?.year_level);
         setDesigns(designData);
       } catch (error) {
         console.error('Error loading portfolio:', error);
@@ -122,7 +124,7 @@ export function Portfolio() {
     const refreshOnReturn = () => loadLabSubs();
     window.addEventListener('focus', refreshOnReturn);
     return () => window.removeEventListener('focus', refreshOnReturn);
-  }, []);
+  }, [user?.year_level]);
 
   const handleDelete = (designId: string) => {
     if (confirm('Are you sure you want to delete this design?')) {

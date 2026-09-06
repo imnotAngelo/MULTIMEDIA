@@ -546,8 +546,13 @@ export const getInstructorAssessments = async (req: AuthRequest, res: Response) 
         `,
           { count: 'exact' }
         )
-        .eq('created_by', instructorId)
-        .eq('status', 'published');
+        .eq('created_by', instructorId);
+
+      if (req.query.includeArchived === 'true') {
+        query = query.in('status', ['published', 'archived']);
+      } else {
+        query = query.eq('status', 'published');
+      }
 
       if (filter && filter !== 'all') {
         query = query.eq('type', filter);
@@ -739,7 +744,8 @@ export const updateAssessment = async (req: AuthRequest, res: Response) => {
     }
 
     const { id } = req.params;
-    const updates = req.body;
+    const updates = { ...req.body };
+    if (updates.status === 'published') updates.archived_year_level = null;
 
     // Check authorization
     const { data: assessment } = await supabase

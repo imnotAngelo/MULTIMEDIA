@@ -17,7 +17,7 @@ const router: Router = express.Router();
 // Require authentication for all laboratory progress endpoints
 router.use(authMiddleware);
 
-const laboratoryColumns = 'id, instructor_id, title, description, platform, platform_url, unit_id, unit_name, lesson_id, lesson_title, due_date, allow_late_submissions, points, created_at, target_sections, target_year_levels';
+const laboratoryColumns = 'id, instructor_id, title, description, platform, platform_url, unit_id, unit_name, lesson_id, lesson_title, due_date, allow_late_submissions, points, created_at, status, archived_year_level, target_sections, target_year_levels';
 const laboratoryColumnsWithoutTargeting = 'id, instructor_id, title, description, platform, platform_url, unit_id, unit_name, lesson_id, lesson_title, due_date, allow_late_submissions, points, created_at';
 
 const isMissingTargetingColumns = (error: any) =>
@@ -38,6 +38,8 @@ const toLaboratory = (row: any) => ({
   points: row.points ?? 100,
   targetSections: row.target_sections ?? [],
   targetYearLevels: row.target_year_levels ?? [],
+  status: row.status ?? 'published',
+  archivedYearLevel: row.archived_year_level ?? null,
   createdAt: row.created_at,
 });
 
@@ -56,7 +58,9 @@ router.get(['/', '/metadata'], authMiddleware, async (req: any, res) => {
     }
     if (error) throw error;
     const rows = data ?? [];
-    let visibleRows = rows.filter((row: any) => row.instructor_id === req.user?.id);
+    const includeArchived = req.query.includeArchived === 'true';
+    let visibleRows = rows.filter((row: any) => row.instructor_id === req.user?.id
+      && (includeArchived || row.status !== 'archived'));
     if (req.user?.role === 'student') {
       const ownerIds = [...new Set(rows.map((row: any) => row.instructor_id).filter(Boolean))];
       const { data: owners, error: ownersError } = ownerIds.length
@@ -68,7 +72,8 @@ router.get(['/', '/metadata'], authMiddleware, async (req: any, res) => {
         const owner = ownerById[row.instructor_id];
         const ownerSections = owner?.teaching_sections?.length ? owner.teaching_sections : (owner?.section ? [owner.section] : []);
         const ownerYears = Array.isArray(owner?.teaching_year_levels) ? owner.teaching_year_levels : [];
-        return !!owner
+        return row.status !== 'archived'
+          && !!owner
           && matchesContentTarget(row.target_sections, row.target_year_levels, req.user.section, req.user.year_level)
           && matchesContentTarget(ownerSections, ownerYears, req.user.section, req.user.year_level);
       });
@@ -198,6 +203,27 @@ router.delete('/:id', authMiddleware, instructorMiddleware, async (req: any, res
   } catch (error: any) {
     console.error('❌ Delete laboratory error:', error);
     return res.status(500).json({ success: false, error: { code: 'DELETE_FAILED', message: error.message } });
+  }
+});
+
+router.patch('/metadata/:id/restore', authMiddleware, instructorMiddleware, async (req: any, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('laboratories')
+      .update({ status: 'published', archived_year_level: null })
+      .eq('id', req.params.id)
+      .eq('instructor_id', req.user?.id)
+      .select(laboratoryColumns)
+      .single();
+
+    if (error || !data) {
+      return res.status(404).json({ success: false, error: { code: 'LABORATORY_NOT_FOUND', message: 'Archived laboratory not found' } });
+    }
+
+    return res.json({ success: true, data: toLaboratory(data) });
+  } catch (error: any) {
+    console.error('Restore laboratory error:', error);
+    return res.status(500).json({ success: false, error: { code: 'RESTORE_FAILED', message: error.message } });
   }
 });
 

@@ -105,7 +105,9 @@ router.get('/student-requests', async (req: AuthRequest, res: Response) => {
     } else {
       query = query.or(`approved_by_instructor_id.eq.${req.user!.id},and(approved_by_instructor_id.is.null,student_approved.eq.false)`);
     }
-    query = query.in('year_level', teachingYearLevels);
+    if (req.query.includeAll !== 'true') {
+      query = query.in('year_level', teachingYearLevels);
+    }
 
     const { data: students, error } = await query;
 

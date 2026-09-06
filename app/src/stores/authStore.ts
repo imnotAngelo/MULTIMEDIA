@@ -148,7 +148,16 @@ export const useAuthStore = create<AuthState>()(
         const state = get();
 
         if (state.isAuthenticated && state.user && accessToken) {
-          set({ isHydrated: true });
+          try {
+            const profileResponse: any = await api.getProfile();
+            if (profileResponse?.success && profileResponse.data) {
+              set({ user: { ...state.user, ...profileResponse.data }, isHydrated: true });
+            } else {
+              set({ isHydrated: true });
+            }
+          } catch {
+            set({ isHydrated: true });
+          }
           return true;
         }
 

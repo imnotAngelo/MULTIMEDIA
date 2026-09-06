@@ -298,7 +298,7 @@ export const getUnits = async (req: AuthRequest, res: Response) => {
       // Get all modules for those courses (both active and archived so we can separate them)
       const { data: units, error } = await supabase
         .from('modules')
-        .select('id, course_id, title, description, created_at, status, target_sections, target_year_levels')
+        .select('id, course_id, title, description, created_at, status, archived_year_level, target_sections, target_year_levels')
         .in('course_id', courseIds)
         .order('created_at', { ascending: false });
 
@@ -346,7 +346,7 @@ export const getUnits = async (req: AuthRequest, res: Response) => {
           lessonCount: 0, // Will be updated when fetching lessons
           createdAt: u.created_at,
           status: u.status,
-          yearLevel: null,
+          yearLevel: u.archived_year_level ?? null,
           section: null,
           targetSections: u.target_sections ?? [],
           targetYearLevels: u.target_year_levels ?? [],
@@ -358,7 +358,7 @@ export const getUnits = async (req: AuthRequest, res: Response) => {
           lessonCount: 0,
           createdAt: u.created_at,
           status: u.status,
-          yearLevel: null,
+          yearLevel: u.archived_year_level ?? null,
           section: null,
           targetSections: u.target_sections ?? [],
           targetYearLevels: u.target_year_levels ?? [],
@@ -679,7 +679,7 @@ export const unarchiveUnit = async (req: AuthRequest, res: Response) => {
     // Step 1: Restore the unit
     const { data: unit, error: unitError } = await supabase
       .from('modules')
-      .update({ status: 'active' })
+      .update({ status: 'active', archived_year_level: null })
       .eq('id', unitId)
       .select()
       .single();
