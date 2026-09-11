@@ -486,7 +486,8 @@ export function normalizeGeneratedQuestions(rawQuestions: any[], targetCount = 5
       const validOptions = rawOptions
         .map((option: any) => String(typeof option === 'string' ? option : option?.text ?? '').trim())
         .filter((option) => option && option.length > 0)
-        .filter((option, index, arr) => arr.findIndex((candidate) => candidate.toLowerCase() === option.toLowerCase()) === index);
+        .filter((option, index, arr) => arr.findIndex((candidate) => candidate.toLowerCase() === option.toLowerCase()) === index)
+        .filter((option) => !/^(true|false)$/i.test(option));
 
       if (validOptions.length < 4) continue;
 

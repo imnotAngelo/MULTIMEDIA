@@ -73,6 +73,19 @@ test('buildFallbackQuizQuestions avoids awkward obvious stems and repeats the an
   assert.ok(questions.every((question) => question.options.length === 4));
 });
 
+test('ignores malformed multiple-choice questions that use true or false as option labels', () => {
+  const questions = [
+    { id: '1', text: 'Which statement best explains the lesson?', type: 'multiple-choice', points: 2, options: ['True', 'False', 'Option C', 'Option D'], correctAnswer: 'True' },
+    { id: '2', text: 'What is the main idea?', type: 'multiple-choice', points: 2, options: ['A', 'B', 'C', 'D'], correctAnswer: 'B' },
+  ];
+
+  const normalized = normalizeGeneratedQuestions(questions, 2, ['multiple-choice'], 'short', { 'multiple-choice': 2 }, { 'multiple-choice': 2 });
+
+  assert.equal(normalized.length, 1);
+  assert.equal(normalized[0].text, 'What is the main idea?');
+  assert.ok(normalized[0].options.every((option) => !/^(true|false)$/i.test(String(option).trim())));
+});
+
 test('normalizes true-false questions into professional declarative statements', () => {
   const normalized = normalizeGeneratedQuestions(
     [{ id: '1', text: 'Which statement best explains Applications?', type: 'true-false', points: 2, options: ['True', 'False'], correctAnswer: 'True' }],
