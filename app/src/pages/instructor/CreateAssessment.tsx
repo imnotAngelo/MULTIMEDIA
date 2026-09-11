@@ -40,7 +40,7 @@ export function CreateAssessment() {
   const loadUnits = async () => {
     try {
       setLoading(true);
-      const response = await authFetch('http://localhost:3001/api/units');
+      const response = await authFetch('/units');
       const data = await response.json();
       setUnits(data.data || []);
     } catch (err) {
@@ -58,7 +58,7 @@ export function CreateAssessment() {
     }
     try {
       setSubmitting(true);
-      const response = await authFetch('http://localhost:3001/api/assessments', {
+      const response = await authFetch('/assessments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

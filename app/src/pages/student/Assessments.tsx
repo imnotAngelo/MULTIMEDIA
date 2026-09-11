@@ -74,7 +74,7 @@ export function Assessments() {
 
   const loadAssessments = async () => {
     try {
-      const response = await authFetch('http://localhost:3001/api/assessments');
+      const response = await authFetch('/assessments');
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);

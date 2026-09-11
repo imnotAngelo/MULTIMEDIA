@@ -215,7 +215,7 @@ export function StudentSettings() {
         // Fetch archived lessons from archived units
         const allArchivedLessons: Lesson[] = [];
         for (const unit of archived) {
-          const lessonRes = await authFetch(`http://localhost:3001/api/units/${unit.id}/lessons`, {
+          const lessonRes = await authFetch(`/units/${unit.id}/lessons`, {
             method: 'GET',
             headers: { 'Content-Type': 'application/json' },
           });
@@ -238,7 +238,7 @@ export function StudentSettings() {
   const handleUnarchiveUnit = async (unitId: string) => {
     setRestoringId(unitId);
     try {
-      const response = await authFetch(`http://localhost:3001/api/units/${unitId}/unarchive`, {
+      const response = await authFetch(`/units/${unitId}/unarchive`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
@@ -262,7 +262,7 @@ export function StudentSettings() {
   const handleUnarchiveLesson = async (lessonId: string) => {
     setRestoringId(lessonId);
     try {
-      const response = await authFetch(`http://localhost:3001/api/units/lessons/${lessonId}/unarchive`, {
+      const response = await authFetch(`/units/lessons/${lessonId}/unarchive`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });

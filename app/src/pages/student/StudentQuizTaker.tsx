@@ -151,7 +151,7 @@ export function StudentQuizTaker() {
       setLoading(true);
       setError('');
 
-      const response = await authFetch(`http://localhost:3001/api/assessments/${id}`);
+      const response = await authFetch(`/assessments/${id}`);
 
       if (!response.ok) {
         throw new Error(`Failed to load quiz: ${response.status}`);
@@ -212,7 +212,7 @@ export function StudentQuizTaker() {
 
         let savedSubmission: any = null;
         try {
-          const submissionResponse = await authFetch(`http://localhost:3001/api/assessments/${id}/my-submission`);
+          const submissionResponse = await authFetch(`/assessments/${id}/my-submission`);
           if (submissionResponse.ok) {
             const submissionData = await submissionResponse.json();
             savedSubmission = submissionData?.data || null;
@@ -351,7 +351,7 @@ export function StudentQuizTaker() {
         (new Date().getTime() - quizStartTime.getTime()) / 1000
       );
 
-      const response = await authFetch(`http://localhost:3001/api/assessments/${id}/submit`, {
+      const response = await authFetch(`/assessments/${id}/submit`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

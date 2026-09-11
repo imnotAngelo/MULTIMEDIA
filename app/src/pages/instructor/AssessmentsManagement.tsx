@@ -79,7 +79,7 @@ export function InstructorAssessments() {
     try {
       setLoading(true);
 
-      const response = await authFetch('http://localhost:3001/api/assessments/instructor/all');
+      const response = await authFetch('/assessments/instructor/all');
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -129,7 +129,7 @@ export function InstructorAssessments() {
   const handleDeleteAssessment = async (id: string) => {
     if (confirm('Are you sure you want to delete this assessment?')) {
       try {
-        const response = await authFetch(`http://localhost:3001/api/assessments/${id}`, {
+        const response = await authFetch(`/assessments/${id}`, {
           method: 'DELETE',
           headers: {
             'Content-Type': 'application/json',

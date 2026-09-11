@@ -1,22 +1,19 @@
 /**
  * Base path/URL for API calls.
  *
- * In local development, prefer the running Express backend directly on port 3001 so
- * browser requests do not depend on the Vite proxy. If a deployment-specific override
- * is provided via VITE_API_URL, that value still wins.
+ * Local development should always target the running Express backend on port 3001.
+ * Keep the deployed API only for explicit online / production builds.
  */
-// Use Vite's same-origin proxy in development so browser requests do not depend
-// on direct cross-origin connectivity to the local backend.
 const configuredApiUrl = import.meta.env.VITE_API_URL?.trim();
-const useOnlineApi = import.meta.env.MODE === 'online' || import.meta.env.PROD;
+const isLocalDevelopment = import.meta.env.MODE !== 'online' && !import.meta.env.PROD;
 const deployedApiUrl = 'https://multimedia-2-x7ol.onrender.com/api';
-const localDevApiUrl = configuredApiUrl || 'http://127.0.0.1:3001/api';
+const localDevApiUrl = 'http://127.0.0.1:3001/api';
 
-// Normal development must use the local backend. The online mode and production
-// builds intentionally use the deployed API configured in the environment.
-export const API_BASE_URL = useOnlineApi
-  ? configuredApiUrl || deployedApiUrl
-  : localDevApiUrl;
+// Local development must always use the local backend so stale environment values
+// do not accidentally route requests to the old deployed API.
+export const API_BASE_URL = isLocalDevelopment
+  ? localDevApiUrl
+  : (configuredApiUrl || deployedApiUrl);
 
 /**
  * Resolve a backend-relative path (e.g. "/uploads/announcements/x.pdf") to a

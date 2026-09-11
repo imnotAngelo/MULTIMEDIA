@@ -62,7 +62,7 @@ export function InstructorDashboard() {
       console.log('📚 Fetching units from API...');
       
       // Fetch units from API
-      const unitsResponse = await authFetch('http://localhost:3001/api/units', { cache: 'no-store' });
+      const unitsResponse = await authFetch('/units', { cache: 'no-store' });
       const unitsData = await unitsResponse.json();
       console.log('✅ Units fetched:', unitsData.data || []);
       
@@ -73,7 +73,7 @@ export function InstructorDashboard() {
       console.log(`📚 Loading lessons for ${activeUnits.length} units in parallel...`);
       const lessonResponses = await Promise.all(
         activeUnits.map(unit => 
-          authFetch(`http://localhost:3001/api/units/${unit.id}/lessons`)
+          authFetch(`/units/${unit.id}/lessons`)
             .then(res => res.json())
             .catch(err => {
               console.error(`❌ Failed to load lessons for unit ${unit.id}:`, err);
@@ -104,7 +104,7 @@ export function InstructorDashboard() {
       let activeCount = 0;
       let handledStudentTotal = 0;
       try {
-        const studentsResponse = await authFetch('http://localhost:3001/api/users/students');
+        const studentsResponse = await authFetch('/users/students');
         const studentsData = await studentsResponse.json();
         if (studentsData?.success) {
           studentList = (studentsData.data?.students ?? []) as ActiveStudent[];
@@ -120,7 +120,7 @@ export function InstructorDashboard() {
       // Fetch total submissions (canva/link + file uploads)
       let submissionsTotal = 0;
       try {
-        const subsResp = await authFetch('http://localhost:3001/api/users/submissions/stats');
+        const subsResp = await authFetch('/users/submissions/stats');
         const subsData = await subsResp.json();
         if (subsData?.success) {
           submissionsTotal = Number(subsData.data?.total ?? 0);
@@ -133,7 +133,7 @@ export function InstructorDashboard() {
       // Fetch lesson completion stats from backend (real student-side completions)
       let lessonsCompletedTotal: number | null = null;
       try {
-        const lpResp = await authFetch('http://localhost:3001/api/users/lesson-progress/stats');
+        const lpResp = await authFetch('/users/lesson-progress/stats');
         const lpData = await lpResp.json();
         if (lpData?.success) {
           lessonsCompletedTotal = Number(lpData.data?.totalCompletions ?? 0);

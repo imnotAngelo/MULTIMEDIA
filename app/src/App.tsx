@@ -3,7 +3,6 @@ import { useEffect } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import { useThemeStore } from '@/stores/themeStore';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
-import { CursorTrail } from '@/components/CursorTrail';
 import { AetherLoader } from '@/components/AetherLoader';
 import { Toaster } from '@/components/ui/sonner';
 
@@ -42,7 +41,6 @@ export function App() {
 
   return (
     <BrowserRouter>
-      <CursorTrail />
       <Toaster richColors position="top-right" closeButton />
       <Routes>
         {/* Public Routes */}

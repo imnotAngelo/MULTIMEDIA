@@ -8,6 +8,8 @@ import {
   getUnits,
   getUnitLessons,
   updateLessonSlides,
+  updateUnit,
+  deleteLesson,
   deleteUnit,
   unarchiveUnit,
   unarchiveLesson,
@@ -313,6 +315,12 @@ router.put('/lessons/:lessonId/slides', authMiddleware, instructorMiddleware, up
 
 // Update lesson metadata (video URL, app link, app name)
 router.put('/lessons/:lessonId/metadata', authMiddleware, instructorMiddleware, updateLessonMetadata);
+
+// Update a unit
+router.put('/:unitId', authMiddleware, instructorMiddleware, updateUnit);
+
+// Delete a lesson (archive it)
+router.delete('/lessons/:lessonId', authMiddleware, instructorMiddleware, deleteLesson);
 
 // Delete a unit (optional auth)
 router.delete('/:unitId', authMiddleware, instructorMiddleware, deleteUnit);

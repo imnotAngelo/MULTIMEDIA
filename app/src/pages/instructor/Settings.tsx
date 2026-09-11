@@ -200,18 +200,18 @@ export function InstructorSettings() {
     setLoadingArchives(true);
     try {
       const [response, laboratoriesResponse] = await Promise.all([
-        authFetch('http://localhost:3001/api/units', {
+        authFetch('/units', {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
         }),
-        authFetch('http://localhost:3001/api/laboratories/metadata?includeArchived=true', {
+        authFetch('/laboratories/metadata?includeArchived=true', {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
         }),
       ]);
       const data = await response.json();
       const laboratoriesData = await laboratoriesResponse.json();
-      const quizzesResponse = await authFetch('http://localhost:3001/api/assessments/instructor/all?filter=quiz&limit=100&includeArchived=true');
+      const quizzesResponse = await authFetch('/assessments/instructor/all?filter=quiz&limit=100&includeArchived=true');
       const quizzesData = await quizzesResponse.json();
       console.log('📦 [ARCHIVES] API Response:', data);
       if (data?.success) {
@@ -232,7 +232,7 @@ export function InstructorSettings() {
         // Fetch archived lessons from archived units
         const allArchivedLessons: Lesson[] = [];
         for (const unit of archived) {
-          const lessonRes = await authFetch(`http://localhost:3001/api/units/${unit.id}/lessons`, {
+          const lessonRes = await authFetch(`/units/${unit.id}/lessons`, {
             method: 'GET',
             headers: { 'Content-Type': 'application/json' },
           });
@@ -258,7 +258,7 @@ export function InstructorSettings() {
   const handleUnarchiveUnit = async (unitId: string) => {
     setRestoringId(unitId);
     try {
-      const response = await authFetch(`http://localhost:3001/api/units/${unitId}/unarchive`, {
+      const response = await authFetch(`/units/${unitId}/unarchive`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
@@ -282,7 +282,7 @@ export function InstructorSettings() {
   const handleUnarchiveLesson = async (lessonId: string) => {
     setRestoringId(lessonId);
     try {
-      const response = await authFetch(`http://localhost:3001/api/units/lessons/${lessonId}/unarchive`, {
+      const response = await authFetch(`/units/lessons/${lessonId}/unarchive`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });

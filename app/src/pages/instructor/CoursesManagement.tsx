@@ -14,6 +14,7 @@ import {
   Link as LinkIcon,
   Edit2,
   Check,
+  Trash2,
   X
 } from 'lucide-react';
 import { AetherSpinner } from '@/components/AetherSpinner';
@@ -30,7 +31,6 @@ import {
   DialogTrigger
 } from '@/components/ui/dialog';
 import { authFetch } from '@/lib/authFetch';
-import { API_BASE_URL } from '@/lib/apiConfig';
 import { notificationService } from '@/services/notificationService';
 import { cn } from '@/lib/utils';
 import { AetherLoader } from '@/components/AetherLoader';
@@ -61,45 +61,79 @@ interface Lesson {
   originalFormat?: string;
 }
 
-function LessonItem({ lesson, isActive, onClick }: {
+function LessonItem({ lesson, isActive, onClick, onEditLesson, onDeleteLesson }: {
   lesson: Lesson;
   isActive?: boolean;
   onClick?: () => void;
+  onEditLesson?: (lesson: Lesson) => void;
+  onDeleteLesson?: (lessonId: string) => void;
 }) {
   return (
-    <button
-      onClick={onClick}
+    <div
       className={cn(
-        'w-full flex items-center gap-3 p-3 rounded-lg transition-all duration-200 text-left',
+        'w-full flex items-center gap-3 p-3 rounded-lg transition-all duration-200 border',
         isActive
-          ? 'bg-violet-500/10 border border-violet-500/30'
-          : 'hover:bg-slate-800/50 border border-transparent'
+          ? 'bg-violet-500/10 border-violet-500/30'
+          : 'hover:bg-slate-800/50 border-transparent'
       )}
     >
-      <div
-        className={cn(
-          'w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0',
-          isActive
-            ? 'bg-violet-500/20 text-violet-400'
-            : 'bg-slate-800 text-slate-500'
-        )}
+      <button
+        type="button"
+        onClick={onClick}
+        className="flex flex-1 items-center gap-3 text-left min-w-0"
       >
-        <FileText className="w-4 h-4" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p
+        <div
           className={cn(
-            'text-sm font-medium truncate',
-            isActive ? 'text-violet-400' : 'text-slate-300'
+            'w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0',
+            isActive
+              ? 'bg-violet-500/20 text-violet-400'
+              : 'bg-slate-800 text-slate-500'
           )}
         >
-          {lesson.title}
-        </p>
-        <div className="flex items-center gap-2 text-xs text-slate-500">
-          <Clock className="w-3 h-3" />
+          <FileText className="w-4 h-4" />
         </div>
+        <div className="flex-1 min-w-0">
+          <p
+            className={cn(
+              'text-sm font-medium truncate',
+              isActive ? 'text-violet-400' : 'text-slate-300'
+            )}
+          >
+            {lesson.title}
+          </p>
+          <div className="flex items-center gap-2 text-xs text-slate-500">
+            <Clock className="w-3 h-3" />
+          </div>
+        </div>
+      </button>
+
+      <div className="flex items-center gap-1 flex-shrink-0">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onEditLesson?.(lesson);
+          }}
+          className="p-1.5 rounded-md text-slate-400 hover:bg-slate-700 hover:text-violet-300 transition-colors"
+          title="Edit lesson"
+          aria-label={`Edit lesson ${lesson.title}`}
+        >
+          <Edit2 className="w-3.5 h-3.5" />
+        </button>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDeleteLesson?.(lesson.id);
+          }}
+          className="p-1.5 rounded-md text-slate-400 hover:bg-red-500/20 hover:text-red-300 transition-colors"
+          title="Delete lesson"
+          aria-label={`Delete lesson ${lesson.title}`}
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -142,6 +176,10 @@ function UnitSection({
   onToggle,
   onLessonClick,
   onUploadClick,
+  onEditUnit,
+  onDeleteUnit,
+  onEditLesson,
+  onDeleteLesson,
 }: {
   unit: Unit;
   lessons: Lesson[];
@@ -150,42 +188,78 @@ function UnitSection({
   onToggle: () => void;
   onLessonClick: (lessonId: string) => void;
   onUploadClick: (unitId: string) => void;
+  onEditUnit?: (unit: Unit) => void;
+  onDeleteUnit?: (unit: Unit) => void;
+  onEditLesson?: (lesson: Lesson) => void;
+  onDeleteLesson?: (lessonId: string) => void;
 }) {
   const unitLessons = lessons.filter(l => l.unitId === unit.id);
 
   return (
     <div className="border border-slate-800 rounded-xl overflow-hidden">
-      <button
-        onClick={onToggle}
+      <div
         className={cn(
           'w-full flex items-center gap-4 p-4 transition-colors',
           'bg-slate-900/60 hover:bg-slate-800/50'
         )}
       >
-        <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-violet-500/10 text-violet-400">
-          <BookOpen className="w-5 h-5" />
-        </div>
-
-        <div className="flex-1 text-left">
-          <h3 className="font-semibold text-slate-200">{unit.title}</h3>
-          <p className="text-sm text-slate-500">{unit.description}</p>
-        </div>
-
-        <div className="flex items-center gap-4">
-          <div className="text-right">
-            <span className="text-sm font-medium text-slate-400">
-              {unitLessons.length}
-            </span>
-            <p className="text-xs text-slate-500">lessons</p>
+        <button
+          type="button"
+          onClick={onToggle}
+          className="flex flex-1 items-center gap-4 text-left min-w-0"
+        >
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-violet-500/10 text-violet-400">
+            <BookOpen className="w-5 h-5" />
           </div>
-          <ChevronDown
-            className={cn(
-              'w-5 h-5 text-slate-500 transition-transform',
-              isExpanded && 'rotate-180'
-            )}
-          />
+
+          <div className="flex-1 text-left min-w-0">
+            <h3 className="font-semibold text-slate-200 truncate">{unit.title}</h3>
+            <p className="text-sm text-slate-500 truncate">{unit.description}</p>
+          </div>
+
+          <div className="flex items-center gap-4 flex-shrink-0">
+            <div className="text-right">
+              <span className="text-sm font-medium text-slate-400">
+                {unitLessons.length}
+              </span>
+              <p className="text-xs text-slate-500">lessons</p>
+            </div>
+            <ChevronDown
+              className={cn(
+                'w-5 h-5 text-slate-500 transition-transform',
+                isExpanded && 'rotate-180'
+              )}
+            />
+          </div>
+        </button>
+
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEditUnit?.(unit);
+            }}
+            className="p-2 rounded-md text-slate-400 hover:bg-slate-700 hover:text-violet-300 transition-colors"
+            title="Edit unit"
+            aria-label={`Edit unit ${unit.title}`}
+          >
+            <Edit2 className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDeleteUnit?.(unit);
+            }}
+            className="p-2 rounded-md text-slate-400 hover:bg-red-500/20 hover:text-red-300 transition-colors"
+            title="Delete unit"
+            aria-label={`Delete unit ${unit.title}`}
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
         </div>
-      </button>
+      </div>
 
       {isExpanded && (
         <div className="border-t border-slate-800">
@@ -201,6 +275,8 @@ function UnitSection({
                   lesson={lesson}
                   isActive={lesson.id === activeLessonId}
                   onClick={() => onLessonClick(lesson.id)}
+                  onEditLesson={onEditLesson}
+                  onDeleteLesson={onDeleteLesson}
                 />
               ))}
             </div>
@@ -258,6 +334,11 @@ export function CoursesManagement() {
   const [editVideoFile, setEditVideoFile] = useState<File | null>(null);
   const [editAppLink, setEditAppLink] = useState('');
   const [editAppName, setEditAppName] = useState('');
+
+  const [editingUnitId, setEditingUnitId] = useState<string | null>(null);
+  const [editUnitTitle, setEditUnitTitle] = useState('');
+  const [editUnitDescription, setEditUnitDescription] = useState('');
+  const [savingUnit, setSavingUnit] = useState(false);
   const [savingMetadata, setSavingMetadata] = useState(false);
   const [uploadingVideo, setUploadingVideo] = useState(false);
 
@@ -350,7 +431,7 @@ export function CoursesManagement() {
         ? `${newUnitTitle.trim()} - ${newUnitDescription.trim()}`
         : newUnitDescription.trim();
 
-      const response = await authFetch(`${API_BASE_URL}/units`, {
+      const response = await authFetch('/units', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -399,7 +480,7 @@ export function CoursesManagement() {
         formData.append('video', editVideoFile);
 
         const uploadResponse = await authFetch(
-          `${API_BASE_URL}/units/lessons/${editingLessonId}/upload-video`,
+          `/units/lessons/${editingLessonId}/upload-video`,
           {
             method: 'POST',
             body: formData,
@@ -418,7 +499,7 @@ export function CoursesManagement() {
       }
 
       // Now update metadata with video URL and app info
-      const response = await authFetch(`${API_BASE_URL}/units/lessons/${editingLessonId}/metadata`, {
+      const response = await authFetch(`/units/lessons/${editingLessonId}/metadata`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -475,6 +556,97 @@ export function CoursesManagement() {
     setEditAppName(lesson.app_name || '');
   };
 
+  const handleDeleteUnit = async (unit: Unit) => {
+    if (!window.confirm(`Are you sure you want to delete "${unit.title}"? This will archive the unit and all its lessons.`)) {
+      return;
+    }
+
+    try {
+      const response = await authFetch(`/units/${unit.id}`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error?.message || 'Failed to delete unit');
+      }
+
+      toast.success('Unit deleted successfully');
+      await loadData();
+      setActiveLessonId(null);
+    } catch (error) {
+      console.error('❌ Failed to delete unit:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to delete unit');
+    }
+  };
+
+  const handleEditUnit = (unit: Unit) => {
+    setEditingUnitId(unit.id);
+    setEditUnitTitle(unit.title);
+    setEditUnitDescription(unit.description || '');
+  };
+
+  const handleUpdateUnit = async () => {
+    if (!editingUnitId) {
+      return;
+    }
+
+    try {
+      setSavingUnit(true);
+      const response = await authFetch(`/units/${editingUnitId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: editUnitTitle.trim(),
+          description: editUnitDescription.trim(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error?.message || 'Failed to update unit');
+      }
+
+      toast.success('Unit updated successfully');
+      setEditingUnitId(null);
+      setEditUnitTitle('');
+      setEditUnitDescription('');
+      await loadData();
+    } catch (error) {
+      console.error('❌ Failed to update unit:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to update unit');
+    } finally {
+      setSavingUnit(false);
+    }
+  };
+
+  const handleDeleteLesson = async (lessonId: string) => {
+    if (!window.confirm('Are you sure you want to delete this lesson?')) {
+      return;
+    }
+
+    try {
+      const response = await authFetch(`/units/lessons/${lessonId}`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error?.message || 'Failed to delete lesson');
+      }
+
+      toast.success('Lesson deleted successfully');
+      await loadData();
+      if (activeLessonId === lessonId) {
+        setActiveLessonId(null);
+      }
+    } catch (error) {
+      console.error('❌ Failed to delete lesson:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to delete lesson');
+    }
+  };
+
   const handleCancelEdit = () => {
     setEditingLessonId(null);
     setEditVideoUrl('');
@@ -508,7 +680,7 @@ export function CoursesManagement() {
       formData.append('moduleId', selectedUnitForUpload);
       formData.append('targetSections', JSON.stringify(lessonTargetSections));
 
-      const response = await authFetch(`${API_BASE_URL}/lessons/upload-pdf`, {
+      const response = await authFetch('/lessons/upload-pdf', {
         method: 'POST',
         body: formData,
       });
@@ -537,7 +709,7 @@ export function CoursesManagement() {
         await new Promise(resolve => setTimeout(resolve, 1000));
 
         console.log('[UPLOAD_VERIFY] Verifying lesson...');
-        const verifyResponse = await authFetch(`${API_BASE_URL}/units/${selectedUnitForUpload}/lessons`);
+        const verifyResponse = await authFetch(`/units/${selectedUnitForUpload}/lessons`);
         const verifyData = await verifyResponse.json();
         console.log('[UPLOAD_VERIFY_RESPONSE]', verifyData);
 
@@ -682,6 +854,10 @@ export function CoursesManagement() {
                     setSelectedUnitForUpload(unitId);
                     setShowUploadDialog(true);
                   }}
+                  onEditUnit={handleEditUnit}
+                  onDeleteUnit={handleDeleteUnit}
+                  onEditLesson={handleEditLesson}
+                  onDeleteLesson={handleDeleteLesson}
                 />
               ))}
             </div>
@@ -1030,6 +1206,58 @@ export function CoursesManagement() {
           )}
         </div>
       </div>
+
+      <Dialog open={!!editingUnitId} onOpenChange={(open) => {
+        if (!open) {
+          setEditingUnitId(null);
+          setEditUnitTitle('');
+          setEditUnitDescription('');
+        }
+      }}>
+        <DialogContent className="bg-slate-900 border-slate-800 text-slate-100">
+          <DialogHeader>
+            <DialogTitle>Edit Unit</DialogTitle>
+            <DialogDescription>Update your unit details.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="editUnitTitle" className="text-slate-300">Unit Title</Label>
+              <Input
+                id="editUnitTitle"
+                value={editUnitTitle}
+                onChange={(e) => setEditUnitTitle(e.target.value)}
+                className="bg-slate-800 border-slate-700 text-slate-100"
+              />
+            </div>
+            <div>
+              <Label htmlFor="editUnitDescription" className="text-slate-300">Description</Label>
+              <Input
+                id="editUnitDescription"
+                value={editUnitDescription}
+                onChange={(e) => setEditUnitDescription(e.target.value)}
+                className="bg-slate-800 border-slate-700 text-slate-100"
+              />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setEditingUnitId(null);
+                  setEditUnitTitle('');
+                  setEditUnitDescription('');
+                }}
+                className="border-slate-700 text-slate-300 hover:bg-slate-800/50"
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleUpdateUnit} disabled={savingUnit} className="bg-violet-600 hover:bg-violet-700">
+                {savingUnit ? <AetherSpinner className="w-4 h-4 mr-2" /> : <Check className="w-4 h-4 mr-2" />}
+                Save Changes
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
         <DialogContent className="bg-slate-900 border-slate-800 text-slate-100">

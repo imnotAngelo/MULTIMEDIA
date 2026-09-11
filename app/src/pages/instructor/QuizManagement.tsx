@@ -84,7 +84,7 @@ export function QuizManagement() {
     try {
       setLoading(true);
 
-      const response = await authFetch('http://localhost:3001/api/assessments/instructor/all');
+      const response = await authFetch('/assessments/instructor/all');
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -149,7 +149,7 @@ export function QuizManagement() {
     if (!confirm('Are you sure you want to delete this quiz?')) return;
 
     try {
-      const response = await authFetch(`http://localhost:3001/api/assessments/${quizId}`, {
+      const response = await authFetch(`/assessments/${quizId}`, {
         method: 'DELETE',
       });
 
@@ -184,7 +184,7 @@ export function QuizManagement() {
   const loadSubmissions = async (quizId: string) => {
     setSubmissionsLoading(quizId);
     try {
-      const response = await authFetch(`http://localhost:3001/api/assessments/${quizId}/submissions`);
+      const response = await authFetch(`/assessments/${quizId}/submissions`);
       const data = await response.json();
       if (!response.ok || !data.success) {
         throw new Error(data.error?.message || 'Could not load submissions');

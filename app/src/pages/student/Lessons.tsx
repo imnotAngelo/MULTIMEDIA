@@ -196,7 +196,7 @@ export function Lessons() {
       console.log('📚 Fetching units from API...');
       
       // Fetch units from API
-      const unitsResponse = await authFetch('http://localhost:3001/api/units');
+      const unitsResponse = await authFetch('/units');
 
       const unitsData = await unitsResponse.json();
       console.log('✅ Units fetched:', unitsData.data || []);
@@ -209,7 +209,7 @@ export function Lessons() {
       setUnits(unitList);
 
       const lessonResults = await Promise.all(unitList.map(async (unit) => {
-        const lessonsResponse = await authFetch(`http://localhost:3001/api/units/${unit.id}/lessons`);
+        const lessonsResponse = await authFetch(`/units/${unit.id}/lessons`);
         const lessonsData = await lessonsResponse.json();
         const unitLessons = lessonsData.success ? lessonsData.data || [] : [];
         console.log(`✅ Lessons for unit "${unit.title}": ${unitLessons.length}`);

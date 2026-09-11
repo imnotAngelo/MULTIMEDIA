@@ -59,7 +59,7 @@ export function SlideViewer({ lessonId, lessonTitle, lesson: initialLesson }: Sl
     // Authoritative from backend
     (async () => {
       try {
-        const r = await authFetch('http://localhost:3001/api/users/lesson-progress/me');
+        const r = await authFetch('/users/lesson-progress/me');
         const j = await r.json();
         if (j?.success) {
           const ids: string[] = j.data?.lessonIds ?? [];
@@ -83,7 +83,7 @@ export function SlideViewer({ lessonId, lessonTitle, lesson: initialLesson }: Sl
     localStorage.setItem(`${completionKey}:at`, new Date().toISOString());
     setCompleted(true);
     try {
-      const r = await authFetch('http://localhost:3001/api/users/lesson-progress', {
+      const r = await authFetch('/users/lesson-progress', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ lessonId, completed: true }),
@@ -190,7 +190,7 @@ export function SlideViewer({ lessonId, lessonTitle, lesson: initialLesson }: Sl
 
   const loadSlidesFromAPI = async () => {
     try {
-      const response = await authFetch(`http://localhost:3001/api/lessons/${lessonId}/slides`);
+      const response = await authFetch(`/lessons/${lessonId}/slides`);
 
       if (!response.ok) throw new Error('Failed to load slides');
 

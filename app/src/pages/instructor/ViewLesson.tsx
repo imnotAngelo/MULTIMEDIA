@@ -153,7 +153,7 @@ export function ViewLesson() {
         originalLessonData: lessonData,
       });
 
-      const response = await authFetch(`http://localhost:3001/api/lessons/${normalizedId}/slides`);
+      const response = await authFetch(`/lessons/${normalizedId}/slides`);
 
       console.log('📊 Slides response status:', response.status);
       

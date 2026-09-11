@@ -597,6 +597,129 @@ export const updateLessonSlides = async (req: AuthRequest, res: Response) => {
   }
 };
 
+// Update a unit
+export const updateUnit = async (req: AuthRequest, res: Response) => {
+  try {
+    const { unitId } = req.params;
+    const { title, description } = req.body;
+
+    if (!unitId) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'MISSING_ID', message: 'Unit ID is required' },
+      });
+    }
+
+    const userId = (req as any).user?.id;
+    if (!userId || !(await requireOwnedUnit(unitId, userId))) {
+      return res.status(404).json({ success: false, error: { code: 'UNIT_NOT_FOUND', message: 'Unit not found' } });
+    }
+
+    const updateData: any = {};
+    if (title !== undefined) {
+      const trimmedTitle = String(title).trim();
+      if (!trimmedTitle) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'INVALID_TITLE', message: 'Unit title is required' },
+        });
+      }
+      updateData.title = trimmedTitle;
+    }
+
+    if (description !== undefined) {
+      updateData.description = description ?? '';
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'NO_CHANGES', message: 'No valid changes were provided' },
+      });
+    }
+
+    const { data: unit, error } = await supabase
+      .from('modules')
+      .update(updateData)
+      .eq('id', unitId)
+      .select('id, title, description, created_at, status')
+      .single();
+
+    if (error) throw error;
+
+    console.log('✅ Unit updated:', unitId);
+
+    return res.json({
+      success: true,
+      message: 'Unit updated successfully',
+      data: unit,
+    });
+  } catch (error: any) {
+    console.error('❌ Update unit error:', error);
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: 'UPDATE_FAILED',
+        message: error.message,
+      },
+    });
+  }
+};
+
+// Delete a lesson (archive it) from a unit
+export const deleteLesson = async (req: AuthRequest, res: Response) => {
+  try {
+    const { lessonId } = req.params;
+
+    if (!lessonId) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'MISSING_ID', message: 'Lesson ID is required' },
+      });
+    }
+
+    const userId = (req as any).user?.id;
+
+    const { data: lesson, error: lessonError } = await supabase
+      .from('lessons')
+      .select('id, module_id')
+      .eq('id', lessonId)
+      .maybeSingle();
+
+    if (lessonError) throw lessonError;
+    if (!lesson) {
+      return res.status(404).json({ success: false, error: { code: 'LESSON_NOT_FOUND', message: 'Lesson not found' } });
+    }
+
+    if (!userId || !(await requireOwnedUnit(lesson.module_id, userId))) {
+      return res.status(404).json({ success: false, error: { code: 'LESSON_NOT_FOUND', message: 'Lesson not found' } });
+    }
+
+    const { error } = await supabase
+      .from('lessons')
+      .update({ status: 'archived' })
+      .eq('id', lessonId);
+
+    if (error) throw error;
+
+    console.log('✅ Lesson archived successfully:', lessonId);
+
+    return res.json({
+      success: true,
+      message: 'Lesson archived successfully',
+    });
+  } catch (error: any) {
+    console.error('❌ Archive lesson error:', error);
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: 'ARCHIVE_FAILED',
+        message: error.message,
+      },
+    });
+  }
+};
+
 // Delete a unit
 export const deleteUnit = async (req: AuthRequest, res: Response) => {
   try {

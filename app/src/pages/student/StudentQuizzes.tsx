@@ -58,7 +58,7 @@ export function StudentQuizzes() {
     try {
       setLoading(true);
       setError('');
-      const response = await authFetch('http://localhost:3001/api/assessments?filter=quiz&limit=100');
+      const response = await authFetch('/assessments?filter=quiz&limit=100');
 
       if (!response.ok) {
         if (response.status === 401) {
@@ -103,7 +103,7 @@ export function StudentQuizzes() {
         const quizzesWithSubmissions = await Promise.all(quizList.map(async (quiz: Quiz) => {
           if (quiz.completed) return quiz;
           try {
-            const submissionResponse = await authFetch(`http://localhost:3001/api/assessments/${quiz.id}/my-submission`);
+            const submissionResponse = await authFetch(`/assessments/${quiz.id}/my-submission`);
             if (!submissionResponse.ok) return quiz;
             const submissionData = await submissionResponse.json();
             const submission = submissionData?.data || null;

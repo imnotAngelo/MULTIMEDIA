@@ -49,7 +49,7 @@ export function ExamDocument() {
   useEffect(() => {
     const loadExam = async () => {
       try {
-        const response = await authFetch(`http://localhost:3001/api/assessments/${id}`);
+        const response = await authFetch(`/assessments/${id}`);
         const data = await response.json();
         if (!response.ok || !data.success) throw new Error(data.error?.message || 'Unable to load exam');
         setExam(data.data);

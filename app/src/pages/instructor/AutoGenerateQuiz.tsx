@@ -145,7 +145,7 @@ export function AutoGenerateQuiz() {
   const fetchUnits = async () => {
     try {
       setLoadingUnits(true);
-      const response = await authFetch('http://localhost:3001/api/units');
+      const response = await authFetch('/units');
 
       if (response.ok) {
         const data = await response.json();
@@ -161,7 +161,7 @@ export function AutoGenerateQuiz() {
 
   const fetchLessons = async (unitId: string) => {
     try {
-      const response = await authFetch(`http://localhost:3001/api/units/${unitId}/lessons`);
+      const response = await authFetch(`/units/${unitId}/lessons`);
 
       if (response.ok) {
         const data = await response.json();
@@ -216,7 +216,7 @@ export function AutoGenerateQuiz() {
       while (batchStart < requestedQuestionTotal && attempts < 12) {
         const batchTypes = allocation.slice(batchStart, Math.min(batchStart + 10, requestedQuestionTotal));
         const batchCounts = batchTypes.reduce((counts, type) => ({ ...counts, [type]: (counts[type] || 0) + 1 }), {} as Record<string, number>);
-        const responses = await Promise.all(selectedLessons.map(lessonId => authFetch(`http://localhost:3001/api/lessons/${lessonId}/generate-questions`, {
+        const responses = await Promise.all(selectedLessons.map(lessonId => authFetch(`/lessons/${lessonId}/generate-questions`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -422,7 +422,7 @@ export function AutoGenerateQuiz() {
         targetSections,
       };
 
-      const createQuiz = (allowDuplicate = false) => authFetch('http://localhost:3001/api/assessments', {
+      const createQuiz = (allowDuplicate = false) => authFetch('/assessments', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

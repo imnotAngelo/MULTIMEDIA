@@ -278,42 +278,6 @@
     mix-blend-mode: screen;
   }
 
-  .cursor-trail {
-    display: none;
-  }
-
-  .cursor-trail__particle,
-  .cursor-trail__aura {
-    position: fixed;
-    left: 0;
-    top: 0;
-    width: 9px;
-    height: 9px;
-    border-radius: 999px;
-    pointer-events: none;
-    z-index: 100;
-    will-change: transform, opacity;
-  }
-
-  .cursor-trail__particle {
-    margin: -4px 0 0 -4px;
-    background: linear-gradient(135deg, #67e8f9, #e879f9);
-    box-shadow: 0 0 10px rgba(103, 232, 249, 0.8), 0 0 22px rgba(232, 121, 249, 0.42);
-  }
-
-  .cursor-trail__aura {
-    width: 82px;
-    height: 82px;
-    margin: -41px 0 0 -41px;
-    border: 1px solid rgba(103, 232, 249, 0.22);
-    background: radial-gradient(circle, rgba(103, 232, 249, 0.12), rgba(217, 70, 239, 0.045) 42%, transparent 70%);
-    filter: blur(1px);
-    transform: translate3d(-100px, -100px, 0);
-  }
-
-  @media (pointer: fine) and (prefers-reduced-motion: no-preference) {
-    .cursor-trail { display: block; }
-  }
 }
 
 @layer utilities {
