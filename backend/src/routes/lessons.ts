@@ -462,7 +462,11 @@ export function normalizeGeneratedQuestions(rawQuestions: any[], targetCount = 5
 
     const typeSpecificText = type === 'true-false'
       ? (/^which\s+(statement|option)|^what\s+/i.test(normalizedText)
-          ? `True or False: ${normalizedText.replace(/[?]+$/, '')}.`
+          ? `True or False: ${normalizedText
+              .replace(/^which\s+(statement|option)\s+best\s+explains\s+/i, '')
+              .replace(/^what\s+(is|are)\s+/i, '')
+              .replace(/[?]+$/, '')
+              .trim()}.`
           : normalizedText)
       : type === 'enumeration'
         ? (/^(which|what|true\s+or\s+false|explain|how|why)\b/i.test(normalizedText)
@@ -489,13 +493,20 @@ export function normalizeGeneratedQuestions(rawQuestions: any[], targetCount = 5
       const uniqueOptions = validOptions.slice(0, 4);
       const answerValue = String(item.correctAnswer ?? item.answer ?? '').trim();
       const correctAnswer = uniqueOptions.find((option) => option.toLowerCase() === answerValue.toLowerCase()) || uniqueOptions[0];
+      const shuffledOptions = [...uniqueOptions];
+      const answerIndex = shuffledOptions.findIndex((option) => option.toLowerCase() === correctAnswer.toLowerCase());
+
+      if (answerIndex > -1 && answerIndex !== shuffledOptions.length - 1) {
+        const [answerOption] = shuffledOptions.splice(answerIndex, 1);
+        shuffledOptions.push(answerOption);
+      }
 
       normalized.push({
         id: item.id ?? String(normalized.length + 1),
         text: typeSpecificText,
         type,
         points,
-        options: uniqueOptions,
+        options: shuffledOptions,
         correctAnswer,
       });
     } else {
@@ -591,24 +602,36 @@ export function buildFallbackQuizQuestions(sourceText: string, targetCount: numb
     const questionText = type === 'multiple-choice'
       ? buildProfessionalMultipleChoiceStem(topic, answer, index)
       : type === 'true-false'
-        ? `${isFalseStatement ? 'True or False: The lesson states the opposite of ' : 'True or False: '} ${answer}`
+        ? `${isFalseStatement ? 'True or False: The lesson states the opposite of ' : 'True or False: '} ${answer.replace(/[?]+$/, '')}.`
         : type === 'identification'
-          ? `What concept is represented by this description: ${answer}`
+          ? `Identify the specific concept, term, or process described by: ${answer.replace(/[?]+$/, '')}.`
           : type === 'enumeration'
-            ? `What key idea or detail does the lesson identify about ${topic}?`
-            : `Explain the lesson's main idea about ${topic}.`;
+            ? `List the key items, steps, characteristics, or examples related to ${topic}.`
+            : `Explain the significance of ${topic}.`;
     const options = type === 'multiple-choice'
-      ? buildUniqueOptions(answer, topic, index).map((text, optionIndex) => ({ id: String(optionIndex + 1), text }))
+      ? buildUniqueOptions(answer, topic, index)
       : type === 'true-false'
-        ? ['True', 'False'].map((text, optionIndex) => ({ id: String(optionIndex + 1), text }))
+        ? ['True', 'False']
         : [];
+
+    const multipleChoiceOptions = type === 'multiple-choice'
+      ? (() => {
+          const optionList = [...options];
+          const answerIndex = optionList.findIndex((option) => option.toLowerCase() === answer.trim().toLowerCase());
+          if (answerIndex > -1 && answerIndex !== optionList.length - 1) {
+            const [answerOption] = optionList.splice(answerIndex, 1);
+            optionList.push(answerOption);
+          }
+          return optionList;
+        })()
+      : options;
 
     questions.push({
       id: `fallback-${index + 1}`,
       text: questionText,
       type,
       points: Number(pointsByType[type]) > 0 ? Number(pointsByType[type]) : 2,
-      options: options.map(option => option.text),
+      options: multipleChoiceOptions,
       correctAnswer: type === 'multiple-choice' ? answer : type === 'true-false' ? (isFalseStatement ? 'False' : 'True') : answer,
     });
   }
@@ -1443,47 +1466,69 @@ router.post(
       let lesson: any = null;
       let lessonError: any = null;
       let dbUnavailable = false;
+      const lessonIdsInput = Array.isArray(req.body.lessonIds) ? (req.body.lessonIds as unknown[]) : [];
+      const requestedLessonIds: string[] = [...new Set(
+        lessonIdsInput
+          .filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
+          .map((id) => id.trim())
+      )];
 
-      if (supabase) {
-        try {
-          const result = await Promise.race([
-            supabase
-              .from('lessons')
-              .select('id, title, content, slides, pdf_url, original_format')
-              .eq('id', lessonId)
-              .single(),
-            new Promise<never>((_, reject) =>
-              setTimeout(() => reject(new Error('Supabase request timed out')), 5000)
-            ),
-          ]);
-          lesson = result.data;
-          lessonError = result.error;
-        } catch (error: any) {
-          lessonError = error;
+      const finalLessonIds = requestedLessonIds.length > 0 ? requestedLessonIds : [lessonId];
+
+      const lessonsForGeneration: any[] = [];
+
+      for (const requestedLessonId of finalLessonIds) {
+        let currentLesson: any = null;
+        let currentLessonError: any = null;
+
+        if (supabase) {
+          try {
+            const result = await Promise.race([
+              supabase
+                .from('lessons')
+                .select('id, title, content, slides, pdf_url, original_format, description, summary, text, file_url, pdfUrl, fileUrl')
+                .eq('id', requestedLessonId)
+                .single(),
+              new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error('Supabase request timed out')), 5000)
+              ),
+            ]);
+            currentLesson = result.data;
+            currentLessonError = result.error;
+          } catch (error: any) {
+            currentLessonError = error;
+            dbUnavailable = true;
+            console.error('❌ Supabase unreachable while fetching lesson for quiz generation:', error?.message || error);
+          }
+        } else {
           dbUnavailable = true;
-          console.error('❌ Supabase unreachable while fetching lesson for quiz generation:', error?.message || error);
         }
-      } else {
-        dbUnavailable = true;
+
+        // Uploads can use the local lesson store when the database schema or
+        // insert is unavailable. Use that same source for quiz generation.
+        if (!currentLesson) {
+          const localLesson = getLocalLessonById(requestedLessonId);
+          if (localLesson) {
+            currentLesson = localLesson;
+            currentLessonError = null;
+            dbUnavailable = false;
+          }
+        }
+
+        if (currentLesson) {
+          lessonsForGeneration.push(currentLesson);
+        }
       }
 
-      // Uploads can use the local lesson store when the database schema or
-      // insert is unavailable. Use that same source for quiz generation.
-      if (!lesson) {
-        const localLesson = getLocalLessonById(lessonId);
-        if (localLesson) {
-          lesson = localLesson;
-          lessonError = null;
-          dbUnavailable = false;
-        }
-      }
-
-      if (dbUnavailable) {
+      if (dbUnavailable && lessonsForGeneration.length === 0) {
         return res.status(503).json({
           success: false,
           error: { code: 'DB_UNAVAILABLE', message: 'Database is unavailable. Please check Supabase configuration and try again.' },
         });
       }
+
+      lesson = lessonsForGeneration[0] || null;
+      lessonError = lessonsForGeneration.length > 0 ? null : new Error('Lesson not found');
 
       if (lessonError || !lesson) {
         return res.status(404).json({
@@ -1492,34 +1537,51 @@ router.post(
         });
       }
 
-      let originalDocumentText = '';
-      if (lesson.pdf_url || lesson.pdfUrl || lesson.file_url || lesson.fileUrl) {
-        try {
-          originalDocumentText = await extractLessonDocumentText(lesson);
-        } catch (documentError: any) {
-          console.warn('⚠️ Could not extract lesson document text:', documentError.message);
+      const lessonContents: string[] = [];
+      for (const lessonEntry of lessonsForGeneration) {
+        let originalDocumentText = '';
+        if (lessonEntry.pdf_url || lessonEntry.pdfUrl || lessonEntry.file_url || lessonEntry.fileUrl) {
+          try {
+            originalDocumentText = await extractLessonDocumentText(lessonEntry);
+          } catch (documentError: any) {
+            console.warn('⚠️ Could not extract lesson document text:', documentError.message);
+          }
+        }
+
+        let lessonFullContent = originalDocumentText.trim();
+        const lessonText = lessonEntry.content || lessonEntry.description || lessonEntry.summary || lessonEntry.text || '';
+        if (!lessonFullContent && lessonText && !isThinLessonContent(String(lessonText), 1)) {
+          lessonFullContent = String(lessonText).trim();
+        }
+
+        const start = Math.max(1, Number(startPage) || 1);
+        const requestedEnd = Number(endPage);
+        const end = Number.isInteger(requestedEnd) && requestedEnd >= start ? requestedEnd : Number.MAX_SAFE_INTEGER;
+        const sourcePages = Array.isArray(lessonEntry.slides) && lessonEntry.slides.length > 0
+          ? lessonEntry.slides.map((slide: any) => String(slide.content || slide.summary || '').trim()).filter(Boolean)
+          : lessonFullContent.split(/\f+/).map((page: string) => page.trim()).filter(Boolean);
+        if (sourcePages.length > 1) {
+          lessonFullContent = sourcePages.slice(start - 1, end).join('\n\n').trim();
+        } else if (start > 1) {
+          lessonFullContent = '';
+        }
+
+        lessonFullContent = clipQuizSource(lessonFullContent);
+        if (quizCategory === 'exam' && isThinLessonContent(lessonFullContent, 1)) {
+          const lessonTitle = String(lessonEntry.title || 'Lesson topic').trim();
+          const lessonDescription = String(lessonEntry.description || lessonEntry.summary || '').trim();
+          lessonFullContent = [lessonTitle, lessonDescription].filter(Boolean).join('. ');
+          if (isThinLessonContent(lessonFullContent, 1)) {
+            lessonFullContent = `The lesson topic is ${lessonTitle}.`;
+          }
+        }
+
+        if (lessonFullContent && !isThinLessonContent(lessonFullContent, 1)) {
+          lessonContents.push(lessonFullContent);
         }
       }
 
-      let fullContent = originalDocumentText.trim();
-      const lessonText = lesson.content || lesson.description || lesson.summary || lesson.text || '';
-      if (!fullContent && lessonText && !isThinLessonContent(String(lessonText), 1)) {
-        fullContent = String(lessonText).trim();
-      }
-
-      const start = Math.max(1, Number(startPage) || 1);
-      const requestedEnd = Number(endPage);
-      const end = Number.isInteger(requestedEnd) && requestedEnd >= start ? requestedEnd : Number.MAX_SAFE_INTEGER;
-      const sourcePages = Array.isArray(lesson.slides) && lesson.slides.length > 0
-        ? lesson.slides.map((slide: any) => String(slide.content || slide.summary || '').trim()).filter(Boolean)
-        : fullContent.split(/\f+/).map((page: string) => page.trim()).filter(Boolean);
-      if (sourcePages.length > 1) {
-        fullContent = sourcePages.slice(start - 1, end).join('\n\n').trim();
-      } else if (start > 1) {
-        fullContent = '';
-      }
-
-      fullContent = clipQuizSource(fullContent);
+      let fullContent = lessonContents.join('\n\n').trim();
       if (quizCategory === 'exam' && isThinLessonContent(fullContent, 1)) {
         const lessonTitle = String(lesson.title || 'Lesson topic').trim();
         const lessonDescription = String(lesson.description || lesson.summary || '').trim();
@@ -1569,39 +1631,84 @@ router.post(
       const model = configuredModel || 'gemini-3.6-flash';
       const fallbackModel = 'gemini-3.6-flash';
       const modelsToTry = [...new Set([model, fallbackModel])];
-      const prompt = `You are a professional quiz generator. Based ONLY on the lesson content below, generate exactly ${numQuestions} unique quiz questions.
+      const prompt = `You are a senior instructional designer and professional assessment specialist with extensive experience creating high-stakes examinations for universities and professional certifications.
+
+Based strictly and only on the lesson content below, generate exactly the requested number of questions with the required distribution across the supported question types.
+
+TARGET QUESTION TYPE DISTRIBUTION:
+${JSON.stringify(questionCountsByType, null, 2)}
+
+SUPPORTED QUESTION TYPES:
+- multiple-choice
+- true-false
+- identification
+- enumeration
+- essay
 
 LESSON CONTENT:
 ${fullContent}
 
-RULES:
-- Generate exactly ${numQuestions} questions, no more and no fewer.
-- Every question must be answerable from the lesson content above.
-- Make the questions precise, high-quality, and academically appropriate.
-- Use only these question types: ${normalizedTypes.join(', ')}.
-- Follow this exact number of questions per type: ${JSON.stringify(questionCountsByType)}.
-- For multiple-choice: write a professional, interpretive question that requires understanding of the lesson, not a direct restatement of the topic. Use a stem such as "Which statement most accurately reflects...", "Which interpretation is best supported...", or "Which option best captures...".
-- For multiple-choice: provide exactly 4 unique options and exactly 1 correct answer.
-- For multiple-choice: the distractors must be plausible but clearly incorrect based on the lesson content; do not use obvious repetition, unsupported claims, or generic placeholder answers.
-- Avoid awkward or repetitive stems such as "Which statement best explains [topic]?" when the lesson already says the topic plainly.
-- For true-false: write a complete declarative claim that can be judged true or false. Do not begin with "Which", "What", or "Which statement". options must be ["True","False"] and correctAnswer must be exactly "True" or "False".
-- For enumeration: ask the learner to list two or more named items, steps, characteristics, or examples, using wording such as "List..." or "Name...". Provide a concise list model answer in correctAnswer and use an empty options array.
-- For identification: ask "What is..." or "Identify..." for exactly one concrete concept, term, person, process, or object. Provide one concise model answer in correctAnswer and use an empty options array.
-- For essay: ask an open-ended "Explain", "How", "Why", "Discuss", or "Evaluate" question requiring a reasoned response. Provide a concise model answer in correctAnswer and use an empty options array.
-- Use these points per type: ${JSON.stringify(pointsByType)}.
-- This is generation batch ${Number(generationAttempt) || 0}; use different concepts and wording from any earlier batch.
-- Incorrect options must be plausible but clearly incorrect based on the lesson content.
-- Do not repeat the same question, idea, or wording across questions.
-- Avoid vague, generic, or repetitive phrasing.
-- Do not mention the lesson title, slide titles, or any metadata in the question text.
-- Never use placeholders such as "statement 1", "statement 2", "according to the lesson", or "what is described".
-- Every question must name or test a concrete concept, process, definition, relationship, example, or application found in the document.
-- Match the wording to the type: never use a multiple-choice stem such as "Which statement best explains..." for true-false, enumeration, identification, or essay.
-- Prefer professional teacher wording such as "Which best explains...", "What is the primary purpose of...", "How does...", or "Why is... important?".
-- Focus on understanding, interpretation, and key concepts rather than memorization.
+STRICT GENERATION REQUIREMENTS:
+1. Language
+- Use clear, precise, formal, and professional language.
+- Avoid vague, conversational, ambiguous, or casual wording.
 
-Return ONLY a JSON object in this exact format:
-{"questions":[{"id":"1","text":"Question text?","type":"${normalizedTypes[0]}","points":2,"options":["Option A","Option B","Option C","Option D"],"correctAnswer":"Option A"}]}`;
+2. Content Focus
+- Focus only on important concepts, relationships, processes, principles, and applications found in the lesson.
+- Do not create questions about trivial, minor, or peripheral details.
+
+3. Cognitive Level
+- Prefer higher-order thinking such as understand, apply, and analyze.
+- Avoid overly simple recall questions unless they are clearly necessary.
+
+4. Rules by Question Type
+- multiple-choice:
+  - Exactly 4 options.
+  - Only one correct answer.
+  - Three plausible distractors based on common misconceptions or closely related concepts.
+  - Options must be parallel in structure and length.
+  - Do not use "All of the above" or "None of the above".
+  - The correct answer must not be the first option.
+- true-false:
+  - The statement must be clearly true or clearly false based on the lesson.
+  - Avoid partially true or ambiguous statements.
+- identification:
+  - Ask for a specific term, concept, name, process, or principle.
+  - The correct answer must be short and precise.
+- enumeration:
+  - Ask the learner to list a specific number of items that are explicitly present in the lesson.
+  - The expected answer must be a concise list of the required items.
+- essay:
+  - Require explanation, analysis, comparison, or application.
+  - The question should have clear scope and be answerable from the lesson content.
+  - Provide a concise model answer for grading guidance.
+
+5. Strict Avoidances
+- Ambiguous or double-barreled questions.
+- Trick questions.
+- Negative stems such as "Which of the following is NOT...".
+- Questions that can be answered without reading the lesson content.
+- Any information not found in the provided lessons.
+- Repetitive question stems or duplicated concepts.
+
+6. Output Requirements
+- Return ONLY valid JSON, with no markdown fences, no commentary, and no extra text.
+- Return a JSON array of question objects.
+- Each item must follow this exact structure:
+  {
+    "text": "Clear and professional question stem here?",
+    "type": "multiple-choice | true-false | identification | enumeration | essay",
+    "correctAnswer": "The correct answer or model answer",
+    "options": ["Option A", "Option B", "Option C", "Option D"]
+  }
+- For all non-multiple-choice questions, do not include an options array.
+- For multiple-choice, include exactly four options and the correctAnswer must match one option exactly.
+- Ensure the total number of generated questions matches the requested distribution exactly.
+- The response must contain only the JSON array and nothing else.
+
+This is generation batch ${Number(generationAttempt) || 0}; use different concepts and wording from earlier batches when possible.
+
+LESSON CONTENT END.`;
 
       let response: globalThis.Response | null = null;
       let responseBody: any = null;
@@ -1642,13 +1749,18 @@ Return ONLY a JSON object in this exact format:
       }
 
       // Parse JSON from AI response
-      const jsonMatch = aiContent.match(/\{[\s\S]*\}/);
+      const jsonMatch = aiContent.match(/\[[\s\S]*\]|\{[\s\S]*\}/);
       if (!jsonMatch) {
         throw new Error('AI response did not contain valid JSON');
       }
 
       const parsed = JSON.parse(jsonMatch[0]);
-      const questions = normalizeGeneratedQuestions(parsed.questions || [], numQuestions, normalizedTypes, quizCategory, pointsByType, questionCountsByType);
+      const rawQuestions = Array.isArray(parsed)
+        ? parsed
+        : Array.isArray(parsed.questions)
+          ? parsed.questions
+          : [];
+      const questions = normalizeGeneratedQuestions(rawQuestions, numQuestions, normalizedTypes, quizCategory, pointsByType, questionCountsByType);
       const completedQuestions = questions.length >= numQuestions
         ? questions
         : normalizeGeneratedQuestions(

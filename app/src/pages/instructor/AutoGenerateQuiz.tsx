@@ -112,16 +112,20 @@ export function AutoGenerateQuiz() {
 
   const updateCategory = (quizCategory: 'short' | 'long' | 'exam') => {
     const range = getQuizCategoryRange(quizCategory);
+    const allTypes: QuizType[] = ['multiple-choice', 'enumeration', 'true-false', 'identification', 'essay'];
+
     const quizTypes: QuizType[] = quizCategory === 'short'
       ? [formData.quizTypes[0] || 'multiple-choice']
       : quizCategory === 'long'
-        ? ['multiple-choice', formData.quizTypes.find(type => type !== 'multiple-choice') || 'true-false']
-        : ['multiple-choice', 'enumeration', 'true-false', 'identification', 'essay'] as QuizType[];
+        ? (formData.quizTypes.length > 0 ? formData.quizTypes.slice(0, 2) : ['multiple-choice', 'true-false'])
+        : allTypes;
+
     const questionCountsByType: Partial<Record<QuizType, number>> = quizCategory === 'short'
       ? { [quizTypes[0]]: 5 }
       : quizCategory === 'long'
-        ? { 'multiple-choice': 10, [quizTypes[1]]: 10 }
+        ? Object.fromEntries(quizTypes.map(type => [type, 10]))
         : Object.fromEntries(quizTypes.map(type => [type, 20]));
+
     setFormData(prev => ({
       ...prev,
       quizCategory,
@@ -136,19 +140,24 @@ export function AutoGenerateQuiz() {
   };
 
   const toggleQuizType = (type: QuizType) => {
-    if (formData.quizCategory === 'long' && type === 'multiple-choice') return;
     const maxTypes = formData.quizCategory === 'short' ? 1 : formData.quizCategory === 'long' ? 2 : 5;
-    const selected = formData.quizCategory === 'long'
-      ? formData.quizTypes.includes(type)
-        ? ['multiple-choice'] as QuizType[]
-        : ['multiple-choice', type] as QuizType[]
-      : formData.quizTypes.includes(type)
+    const selectedTypes = formData.quizTypes.includes(type)
       ? formData.quizTypes.filter(item => item !== type)
-      : [...formData.quizTypes, type].slice(0, maxTypes);
-    if (selected.length > 0) setFormData(prev => ({
+      : [...formData.quizTypes, type];
+
+    const nextTypes = selectedTypes.length > maxTypes
+      ? selectedTypes.slice(selectedTypes.length - maxTypes)
+      : selectedTypes;
+
+    if (nextTypes.length === 0) return;
+
+    setFormData(prev => ({
       ...prev,
-      quizTypes: selected,
-      questionCountsByType: selected.reduce((counts, selectedType) => ({ ...counts, [selectedType]: prev.questionCountsByType[selectedType] || 10 }), {}),
+      quizTypes: nextTypes,
+      questionCountsByType: nextTypes.reduce((counts, selectedType) => ({
+        ...counts,
+        [selectedType]: prev.questionCountsByType[selectedType] || (formData.quizCategory === 'exam' ? 20 : 10),
+      }), {}),
     }));
   };
 
@@ -214,9 +223,64 @@ export function AutoGenerateQuiz() {
     }));
   };
 
+  const buildProfessionalMultipleChoiceOptions = (answer: string, sourceOptions: string[]) => {
+    const cleanAnswer = answer
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    const uniqueSourceOptions = Array.from(new Set(
+      sourceOptions
+        .map(option => option.replace(/\s+/g, ' ').trim())
+        .filter(option => option.length > 0 && option.toLowerCase() !== cleanAnswer.toLowerCase())
+    ));
+
+    const preferredOptions = cleanAnswer
+      ? [cleanAnswer, ...uniqueSourceOptions]
+      : uniqueSourceOptions;
+
+    const fallbackDistractors = [
+      'A broader statement that includes the idea but is not the lesson\'s most precise explanation.',
+      'A narrower statement that overlooks an important part of the concept.',
+      'A related idea that appears in the lesson but does not match the correct answer.'
+    ];
+
+    const combinedOptions = [...preferredOptions, ...fallbackDistractors];
+    const uniqueOptions: string[] = [];
+    const seen = new Set<string>();
+
+    for (const option of combinedOptions) {
+      const normalized = option.replace(/\s+/g, ' ').trim();
+      if (!normalized) continue;
+
+      const key = normalized.toLowerCase();
+      if (seen.has(key)) continue;
+
+      seen.add(key);
+      uniqueOptions.push(normalized);
+      if (uniqueOptions.length === 4) break;
+    }
+
+    if (uniqueOptions.length < 4) {
+      uniqueOptions.push(
+        'A statement that is not supported by the lesson content.',
+        'A related concept that is mentioned but not fully explained in the same way.',
+        'A misleading interpretation of the lesson topic.'
+      );
+    }
+
+    const finalOptions = uniqueOptions.slice(0, 4);
+    const answerIndex = finalOptions.findIndex((option) => option.toLowerCase() === cleanAnswer.toLowerCase());
+
+    if (answerIndex > -1 && answerIndex !== finalOptions.length - 1) {
+      const [answerOption] = finalOptions.splice(answerIndex, 1);
+      finalOptions.push(answerOption);
+    }
+
+    return finalOptions;
+  };
+
   const generateQuestions = async () => {
-    const requiredTypeCount = formData.quizCategory === 'short' ? 1 : formData.quizCategory === 'long' ? 2 : 5;
-    if (!selectedUnit || selectedLessons.length === 0 || !formData.title || formData.quizTypes.length !== requiredTypeCount) {
+    if (!selectedUnit || selectedLessons.length === 0 || !formData.title || formData.quizTypes.length === 0) {
       alert('Please fill in all required fields');
       return;
     }
@@ -243,10 +307,11 @@ export function AutoGenerateQuiz() {
       while (batchStart < requestedQuestionTotal && attempts < 12) {
         const batchTypes = allocation.slice(batchStart, Math.min(batchStart + 10, requestedQuestionTotal));
         const batchCounts = batchTypes.reduce((counts, type) => ({ ...counts, [type]: (counts[type] || 0) + 1 }), {} as Record<string, number>);
-        const responses = await Promise.all(selectedLessons.map(lessonId => authFetch(`/lessons/${lessonId}/generate-questions`, {
+        const response = await authFetch(`/lessons/${selectedLessons[0]}/generate-questions`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            lessonIds: selectedLessons,
             numberOfQuestions: batchTypes.length,
             quizTypes: formData.quizTypes,
             pointsByType: formData.pointsByType,
@@ -254,9 +319,9 @@ export function AutoGenerateQuiz() {
             quizCategory: formData.quizCategory,
             generationAttempt: attempts,
           }),
-        })));
-        const responseData = await Promise.all(responses.map(async item => item.ok ? item.json() : null));
-        const batchQuestions = responseData.flatMap(data => data?.success && Array.isArray(data.data) ? data.data : []);
+        });
+        const responseData = response.ok ? await response.json() : null;
+        const batchQuestions = responseData?.success && Array.isArray(responseData.data) ? responseData.data : [];
 
         for (const question of batchQuestions) {
           const key = String(question.text || question.title || '').replace(/\s+/g, ' ').trim().toLowerCase();
@@ -295,14 +360,12 @@ export function AutoGenerateQuiz() {
             ? q.options.map((option: any) => String(typeof option === 'string' ? option : option?.text || '').trim()).filter(Boolean)
             : [];
           const options = type === 'multiple-choice'
-            ? [...new Set([answer || 'Correct answer', ...sourceOptions])]
-                .concat([
-                  `A different answer about ${title.slice(0, 30) || 'the lesson'}`,
-                  'A related but incorrect answer',
-                  'An answer not supported by the lesson',
-                ])
-                .slice(0, 4)
-                .map((text, optionIndex) => ({ id: String(optionIndex + 1), text, isCorrect: text === (answer || 'Correct answer') }))
+            ? buildProfessionalMultipleChoiceOptions(answer || sourceOptions[0] || 'Correct answer', sourceOptions)
+                .map((text) => ({
+                  id: String(Math.random().toString(36).slice(2, 9)),
+                  text,
+                  isCorrect: text.toLowerCase() === (answer || sourceOptions[0] || 'Correct answer').toLowerCase(),
+                }))
             : type === 'true-false'
               ? ['True', 'False'].map((text, optionIndex) => ({ id: String(optionIndex + 1), text, isCorrect: text.toLowerCase() === answer.toLowerCase() }))
               : [];
@@ -596,21 +659,43 @@ export function AutoGenerateQuiz() {
                     </label>
                   </div>
                 )}
-                <select
-                  value={selectedLessons}
-                  onChange={(e) => {
-                    setSelectedLessons(Array.from(e.target.selectedOptions, option => option.value));
-                    setQuestionsGenerated(false);
-                  }}
-                  className={fieldClass}
-                  disabled={!selectedUnit || (formData.quizCategory === 'exam' && lessonScope === 'all')}
-                  multiple
-                  size={Math.min(Math.max(lessons.length, 3), 6)}
-                >
-                  {lessons.map(lesson => (
-                    <option key={lesson.id} value={lesson.id}>{lesson.title}</option>
-                  ))}
-                </select>
+                <div className={`rounded-lg border p-3 ${isLightMode ? 'border-slate-200 bg-slate-50' : 'border-slate-700 bg-slate-800'} max-h-52 overflow-y-auto`}>
+                  {!selectedUnit ? (
+                    <p className={`text-sm ${mutedTextClass}`}>Select a unit first to load lessons.</p>
+                  ) : lessons.length === 0 ? (
+                    <p className={`text-sm ${mutedTextClass}`}>No lessons available for this unit.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {lessons.map((lesson) => {
+                        const isChecked = selectedLessons.includes(lesson.id);
+                        const isDisabled = formData.quizCategory === 'exam' && lessonScope === 'all';
+
+                        return (
+                          <label
+                            key={lesson.id}
+                            className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-sm ${isLightMode ? 'text-slate-700 hover:bg-slate-100' : 'text-slate-200 hover:bg-slate-700/50'} ${isDisabled ? 'opacity-75' : ''}`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              disabled={isDisabled}
+                              onChange={() => {
+                                setSelectedLessons((prev) => {
+                                  const next = prev.includes(lesson.id)
+                                    ? prev.filter((id) => id !== lesson.id)
+                                    : [...prev, lesson.id];
+                                  setQuestionsGenerated(false);
+                                  return next;
+                                });
+                              }}
+                            />
+                            <span>{lesson.title}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div>
@@ -646,7 +731,7 @@ export function AutoGenerateQuiz() {
                 <div className={`grid grid-cols-2 gap-2 rounded-md border p-3 ${isLightMode ? 'border-slate-200 bg-slate-50' : 'border-slate-700 bg-slate-800'}`}>
                   {(['multiple-choice', 'enumeration', 'true-false', 'identification', 'essay'] as QuizType[]).map((type) => (
                     <label key={type} className={`flex items-center gap-2 text-xs ${labelTextClass}`}>
-                      <input type="checkbox" checked={formData.quizTypes.includes(type)} disabled={formData.quizCategory === 'long' && type === 'multiple-choice'} onChange={() => toggleQuizType(type)} />
+                      <input type="checkbox" checked={formData.quizTypes.includes(type)} onChange={() => toggleQuizType(type)} />
                       {type === 'multiple-choice' ? 'Multiple Choice' : type === 'true-false' ? 'True or False' : type.charAt(0).toUpperCase() + type.slice(1)}
                     </label>
                   ))}
@@ -670,7 +755,7 @@ export function AutoGenerateQuiz() {
                 {formData.quizCategory !== 'short' && (
                   <p className={`mt-2 text-xs ${mutedTextClass}`}>Total configured questions: {configuredQuestionTotal()}</p>
                 )}
-                <p className={`text-xs mt-1 ${mutedTextClass}`}>{formData.quizCategory === 'short' ? 'Choose 1 type.' : formData.quizCategory === 'long' ? 'Choose 2 types.' : 'All 5 types are required.'}</p>
+                <p className={`text-xs mt-1 ${mutedTextClass}`}>{formData.quizCategory === 'short' ? 'Choose 1 type.' : formData.quizCategory === 'long' ? 'Choose up to 2 types.' : 'Choose up to 5 types.'}</p>
                 <div className="mt-3 grid grid-cols-2 gap-2">
                   {formData.quizTypes.map((type) => (
                     <label key={`${type}-points`} className={`text-xs ${mutedTextClass}`}>

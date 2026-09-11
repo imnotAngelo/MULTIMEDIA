@@ -72,3 +72,29 @@ test('buildFallbackQuizQuestions avoids awkward obvious stems and repeats the an
   assert.ok(questions.every((question) => !question.options.some((option) => option.toLowerCase() === question.correctAnswer.toLowerCase())) === false);
   assert.ok(questions.every((question) => question.options.length === 4));
 });
+
+test('normalizes true-false questions into professional declarative statements', () => {
+  const normalized = normalizeGeneratedQuestions(
+    [{ id: '1', text: 'Which statement best explains Applications?', type: 'true-false', points: 2, options: ['True', 'False'], correctAnswer: 'True' }],
+    1,
+    ['true-false'],
+    'short',
+    { 'true-false': 2 },
+    { 'true-false': 1 }
+  );
+
+  assert.equal(normalized.length, 1);
+  assert.match(normalized[0].text, /Applications/i);
+  assert.doesNotMatch(normalized[0].text, /which statement best explains/i);
+  assert.doesNotMatch(normalized[0].text, /\?$/);
+  assert.deepEqual(normalized[0].options, ['True', 'False']);
+});
+
+test('buildFallbackQuizQuestions does not make the correct answer the most obvious first option', () => {
+  const sourceText = 'Applications support communication, collaboration, and lesson delivery across digital platforms. They help students access material and instructors manage course workflows.';
+  const questions = buildFallbackQuizQuestions(sourceText, 1, ['multiple-choice'], { 'multiple-choice': 2 }, { 'multiple-choice': 1 }, 'Applications');
+
+  assert.ok(questions.length >= 1);
+  assert.notEqual(questions[0].options[0].toLowerCase(), questions[0].correctAnswer.toLowerCase());
+  assert.doesNotMatch(questions[0].text, /which statement best explains/i);
+});
