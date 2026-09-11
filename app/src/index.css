@@ -152,6 +152,18 @@
     color: #334155;
   }
 
+  html.light input,
+  html.light textarea,
+  html.light select {
+    color: #0f172a !important;
+  }
+
+  html.light input::placeholder,
+  html.light textarea::placeholder,
+  html.light select::placeholder {
+    color: #64748b !important;
+  }
+
   html.light .text-violet-400,
   html.light .text-blue-400,
   html.light .text-cyan-400 {
@@ -345,6 +357,26 @@
     background: rgba(255, 255, 255, 0.08);
     border-color: rgba(103, 232, 249, 0.5);
     box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.1);
+  }
+
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 1000px rgba(30, 41, 59, 0.9) inset !important;
+    -webkit-text-fill-color: #f8fafc !important;
+    color: #f8fafc !important;
+    transition: background-color 9999s ease-in-out 0s;
+  }
+
+  html.light input:-webkit-autofill,
+  html.light input:-webkit-autofill:hover,
+  html.light input:-webkit-autofill:focus,
+  html.light input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 1000px rgba(255, 255, 255, 0.96) inset !important;
+    -webkit-text-fill-color: #0f172a !important;
+    color: #0f172a !important;
+    transition: background-color 9999s ease-in-out 0s;
   }
 
   html.light .glass-input {
