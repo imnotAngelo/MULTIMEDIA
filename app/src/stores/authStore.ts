@@ -16,16 +16,17 @@ interface AuthState {
   setLoading: (value: boolean) => void;
   setError: (error: string | null) => void;
   setHydrated: (value: boolean) => void;
-  loginAsync: (email: string, password: string) => Promise<boolean>;
+  loginAsync: (email: string, password: string, adminSecret?: string) => Promise<boolean>;
   registerAsync: (
     email: string,
     password: string,
     fullName: string,
-    role: 'student' | 'instructor',
+    role: 'student' | 'instructor' | 'admin',
     yearLevel: 1 | 2 | 3 | 4,
     section: string,
     teachingYearLevels?: number[],
-    teachingSections?: string[]
+    teachingSections?: string[],
+    adminSecret?: string
   ) => Promise<boolean>;
   login: (user: User) => void;
   logout: () => void;
@@ -48,12 +49,12 @@ export const useAuthStore = create<AuthState>()(
       setError: (error) => set({ error }),
       setHydrated: (value) => set({ isHydrated: value }),
 
-      loginAsync: async (email: string, password: string) => {
+      loginAsync: async (email: string, password: string, adminSecret?: string) => {
         set({ isLoading: true, error: null });
 
         try {
 
-          const response = await api.login(email, password);
+          const response = await api.login(email, password, adminSecret);
           
           // Debug: Log raw response
 
@@ -100,15 +101,16 @@ export const useAuthStore = create<AuthState>()(
         email: string,
         password: string,
         fullName: string,
-        role: 'student' | 'instructor' = 'student',
+        role: 'student' | 'instructor' | 'admin' = 'student',
         yearLevel: 1 | 2 | 3 | 4 = 1,
         section = '',
         teachingYearLevels?: number[],
-        teachingSections?: string[]
+        teachingSections?: string[],
+        adminSecret?: string
       ) => {
         set({ isLoading: true, error: null });
         try {
-          const response = await api.register(email, password, fullName, role, yearLevel, section, teachingYearLevels, teachingSections);
+          const response = await api.register(email, password, fullName, role, yearLevel, section, teachingYearLevels, teachingSections, adminSecret);
           
           if (response.success) {
             set({ isLoading: false, error: null });

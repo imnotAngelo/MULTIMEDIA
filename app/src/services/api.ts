@@ -109,11 +109,12 @@ class ApiService {
     email: string,
     password: string,
     fullName: string,
-    role: 'student' | 'instructor' = 'student',
+    role: 'student' | 'instructor' | 'admin' = 'student',
     yearLevel: 1 | 2 | 3 | 4 = 1,
     section = '',
     teachingYearLevels?: number[],
-    teachingSections?: string[]
+    teachingSections?: string[],
+    adminSecret?: string
   ) {
     return this.request('/auth/register', {
       method: 'POST',
@@ -126,14 +127,15 @@ class ApiService {
         section,
         teaching_year_levels: teachingYearLevels,
         teaching_sections: teachingSections,
+        admin_secret: adminSecret,
       }),
     });
   }
 
-  async login(email: string, password: string) {
+  async login(email: string, password: string, adminSecret?: string) {
     const result = await this.request('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, admin_secret: adminSecret }),
     });
     
     

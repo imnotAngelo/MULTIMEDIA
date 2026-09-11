@@ -413,7 +413,7 @@ export function SignupPage() {
                 type="button"
                 variant="outline"
                 onClick={() => navigate('/login')}
-                className="w-full border-slate-700 text-slate-300 hover:bg-slate-800/50 hover:text-white h-11 transition-all"
+                className="w-full border-cyan-400/40 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/20 hover:text-white h-11 transition-all"
               >
                 Sign In
               </Button>

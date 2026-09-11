@@ -222,7 +222,7 @@ export function LoginPage() {
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-[#101d3d] hover:bg-[#1a2c55] text-white h-12 font-medium shadow-lg shadow-slate-900/15 transition-all"
+                className="w-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 h-12 font-semibold shadow-lg shadow-cyan-500/20 transition-all"
               >
                 {isLoading ? (
                   <>
@@ -239,7 +239,7 @@ export function LoginPage() {
                   <div className="w-full border-t border-slate-800"></div>
                 </div>
                 <div className="relative flex justify-center text-xs">
-                  <span className="px-3 bg-[#101d3d] text-slate-500">or</span>
+                  <span className="px-3 bg-transparent text-slate-300 font-medium">or</span>
                 </div>
               </div>
 

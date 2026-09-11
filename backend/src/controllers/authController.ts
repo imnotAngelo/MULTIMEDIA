@@ -31,17 +31,36 @@ export const register = async (req: AuthRequest, res: Response) => {
       section,
       teaching_year_levels,
       teaching_sections,
+      admin_secret,
     } = req.body;
     const email = typeof rawEmail === 'string' ? rawEmail.trim().toLowerCase() : '';
 
-    if (role !== 'student' && role !== 'instructor') {
+    if (role !== 'student' && role !== 'instructor' && role !== 'admin') {
       return res.status(400).json({
         success: false,
-        error: { code: 'INVALID_ROLE', message: 'Only student and instructor registration is allowed' },
+        error: { code: 'INVALID_ROLE', message: 'Only student, instructor, and admin registration is allowed' },
       });
     }
 
-    let parsedYear = 0;
+    if (role === 'admin') {
+      const configuredAdminSecret = process.env.ADMIN_SECRET?.trim();
+
+      if (!configuredAdminSecret) {
+        return res.status(500).json({
+          success: false,
+          error: { code: 'ADMIN_SECRET_NOT_CONFIGURED', message: 'Admin registration is not configured on the server.' },
+        });
+      }
+
+      if (typeof admin_secret !== 'string' || admin_secret.trim() !== configuredAdminSecret) {
+        return res.status(401).json({
+          success: false,
+          error: { code: 'INVALID_ADMIN_SECRET', message: 'Invalid admin secret.' },
+        });
+      }
+    }
+
+    let parsedYear: number | null = null;
     let parsedTeachingYears: number[] = [];
     let parsedSection = '';
     let parsedTeachingSections: string[] = [];
@@ -85,7 +104,7 @@ export const register = async (req: AuthRequest, res: Response) => {
 
       parsedYear = parsedTeachingYears[0];
       parsedSection = parsedTeachingSections[0];
-    } else {
+    } else if (role === 'student') {
       parsedYear = Number(year_level);
       if (!Number.isInteger(parsedYear) || parsedYear < 1 || parsedYear > 3) {
         return res.status(400).json({
@@ -101,6 +120,9 @@ export const register = async (req: AuthRequest, res: Response) => {
         });
       }
       parsedSection = section.trim();
+    } else if (role === 'admin') {
+      parsedYear = null;
+      parsedSection = 'admin';
     }
 
     // Validate input
@@ -265,7 +287,7 @@ export const register = async (req: AuthRequest, res: Response) => {
 
 export const login = async (req: AuthRequest, res: Response) => {
   try {
-    const { email: rawEmail, password } = req.body;
+    const { email: rawEmail, password, admin_secret } = req.body;
     const email = typeof rawEmail === 'string' ? rawEmail.trim().toLowerCase() : '';
 
 
@@ -321,6 +343,24 @@ export const login = async (req: AuthRequest, res: Response) => {
           message: 'Invalid email or password',
         },
       });
+    }
+
+    if (user.role === 'admin') {
+      const configuredAdminSecret = process.env.ADMIN_SECRET?.trim();
+
+      if (!configuredAdminSecret) {
+        return res.status(500).json({
+          success: false,
+          error: { code: 'ADMIN_SECRET_NOT_CONFIGURED', message: 'Admin login is not configured on the server.' },
+        });
+      }
+
+      if (typeof admin_secret !== 'string' || admin_secret.trim() !== configuredAdminSecret) {
+        return res.status(401).json({
+          success: false,
+          error: { code: 'INVALID_ADMIN_SECRET', message: 'Invalid admin secret.' },
+        });
+      }
     }
 
     if (user.email_verified === false) {

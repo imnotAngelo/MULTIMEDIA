@@ -7,7 +7,7 @@ import { AetherLoader } from '@/components/AetherLoader';
 import { Toaster } from '@/components/ui/sonner';
 
 // Auth Pages
-import { LoginPage, SignupPage, VerifyEmailPage, CheckEmailPage, ForgotPasswordPage, ResetPasswordPage } from '@/pages/auth';
+import { LoginPage, SignupPage, AdminLoginPage, AdminSignupPage, VerifyEmailPage, CheckEmailPage, ForgotPasswordPage, ResetPasswordPage } from '@/pages/auth';
 
 // Layouts
 import { StudentLayout, InstructorLayout } from '@/components/layout';
@@ -46,6 +46,8 @@ export function App() {
         {/* Public Routes */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
+        <Route path="/admin/login" element={<AdminLoginPage />} />
+        <Route path="/admin/signup" element={<AdminSignupPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route path="/verify-email/:token" element={<VerifyEmailPage />} />
         <Route path="/check-email" element={<CheckEmailPage />} />
