@@ -473,9 +473,30 @@ export function normalizeGeneratedQuestions(rawQuestions: any[], targetCount = 5
             ? `List the key items, steps, characteristics, or examples related to ${topicFromQuestion(normalizedText)}.`
             : normalizedText)
         : type === 'identification'
-          ? (/^(which|true\s+or\s+false|explain|how|why)\b/i.test(normalizedText)
-              ? `Identify the specific concept, term, or process described by: ${normalizedText.replace(/[?]+$/, '')}.`
-              : normalizedText)
+          ? (() => {
+              const answer = String(item.correctAnswer ?? item.answer ?? '').trim();
+              const genericIdentificationPatterns = [
+                /^what concept(\s+is|\s+is represented by this description|\s+is represented by the lesson|\s+does the lesson describe|\s+is being described)/i,
+                /^what\s+(term|concept|idea|process|object)\b/i,
+                /^which\s+(term|concept|idea|process|object)\b/i,
+              ];
+
+              if (genericIdentificationPatterns.some((pattern) => pattern.test(normalizedText))) {
+                const professionalStems = [
+                  'Identify the specific concept, term, or process described in the lesson.',
+                  'Name the concept that best fits this lesson discussion.',
+                  'Identify the term or concept the lesson is introducing.',
+                  'Determine the concept described by the lesson content.'
+                ];
+                return professionalStems[(normalized.length + 1) % professionalStems.length];
+              }
+
+              if (answer && normalizedText.toLowerCase().includes(answer.toLowerCase())) {
+                return `Identify the specific concept, term, or process described by the lesson.`;
+              }
+
+              return normalizedText;
+            })()
           : type === 'essay'
             && !/^(explain|how|why|discuss|evaluate|analyze)\b/i.test(normalizedText)
             ? `Explain the significance of ${normalizedText.replace(/[?]+$/, '')}.`
@@ -600,12 +621,34 @@ export function buildFallbackQuizQuestions(sourceText: string, targetCount: numb
       .replace(/^(the|a|an)\s+/i, '')
       .replace(/^(according to the lesson|statement\s*\d+)\s*/i, '');
     const isFalseStatement = type === 'true-false' && index % 2 === 1;
+
+    const buildIdentificationStem = (sourceAnswer: string, sourceTopic: string, questionIndex: number) => {
+      const trimmedAnswer = sourceAnswer.replace(/[?]+$/, '').trim();
+      const description = trimmedAnswer
+        .replace(new RegExp(`^${sourceTopic.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*(?:[-:]|is|are|was|were|refers to|means|describes|explains|uses|helps|allows|includes|involves)\\s*`, 'i'), '')
+        .replace(/^the\s+/i, '')
+        .trim();
+
+      const templates = [
+        'Identify the specific concept, term, or process described in the lesson.',
+        'Name the concept that best fits this lesson discussion.',
+        'Identify the term or concept the lesson is introducing.',
+        'Determine the concept described by the lesson content.'
+      ];
+
+      if (description && description.length > 12 && description.toLowerCase() !== trimmedAnswer.toLowerCase()) {
+        return `Identify the term or concept that best matches the following description: ${description}`;
+      }
+
+      return templates[questionIndex % templates.length];
+    };
+
     const questionText = type === 'multiple-choice'
       ? buildProfessionalMultipleChoiceStem(topic, answer, index)
       : type === 'true-false'
         ? `${isFalseStatement ? 'True or False: The lesson states the opposite of ' : 'True or False: '} ${answer.replace(/[?]+$/, '')}.`
         : type === 'identification'
-          ? `Identify the specific concept, term, or process described by: ${answer.replace(/[?]+$/, '')}.`
+          ? buildIdentificationStem(answer, topic, index)
           : type === 'enumeration'
             ? `List the key items, steps, characteristics, or examples related to ${topic}.`
             : `Explain the significance of ${topic}.`;
@@ -1675,6 +1718,8 @@ STRICT GENERATION REQUIREMENTS:
   - Avoid partially true or ambiguous statements.
 - identification:
   - Ask for a specific term, concept, name, process, or principle.
+  - Use realistic, professional stems such as "Identify the term or concept described in the lesson", "Name the concept that best fits this lesson discussion", or "Determine the concept described by the lesson content".
+  - Do not use generic or repetitive stems such as "What concept is represented by this description..." or "What concept...".
   - The correct answer must be short and precise.
 - enumeration:
   - Ask the learner to list a specific number of items that are explicitly present in the lesson.
@@ -1691,6 +1736,7 @@ STRICT GENERATION REQUIREMENTS:
 - Questions that can be answered without reading the lesson content.
 - Any information not found in the provided lessons.
 - Repetitive question stems or duplicated concepts.
+- Generic identification wording such as "What concept is represented by this description..." or repeated "What concept..." stems.
 
 6. Output Requirements
 - Return ONLY valid JSON, with no markdown fences, no commentary, and no extra text.
