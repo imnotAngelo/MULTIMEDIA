@@ -211,7 +211,7 @@ export function StudentQuizzes() {
     return (
       <div
         key={quiz.id}
-        className="bg-gradient-to-r from-slate-900/60 to-slate-900/30 border border-slate-800 rounded-xl p-5 flex items-start gap-4 hover:border-violet-500/30 transition-all group"
+        className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.45)] backdrop-blur-xl transition-all hover:border-cyan-400/40 hover:bg-white/10 flex items-start gap-4"
       >
         <div className="w-10 h-10 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center shrink-0">
           <Zap className="w-5 h-5 text-violet-400" />

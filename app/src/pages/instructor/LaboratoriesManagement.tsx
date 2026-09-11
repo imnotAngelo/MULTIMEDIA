@@ -669,7 +669,7 @@ export function LaboratoriesManagement() {
             return (
               <div
                 key={`${lab.id || 'laboratory'}-${index}`}
-                className="bg-gradient-to-r from-slate-900/60 to-slate-900/30 border border-slate-800 rounded-xl overflow-hidden"
+                className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-[0_18px_40px_rgba(15,23,42,0.45)] backdrop-blur-xl transition-all hover:border-cyan-400/40 hover:bg-white/10"
               >
                 {/* Row Header */}
                 <div className="flex items-start gap-4 p-5">
