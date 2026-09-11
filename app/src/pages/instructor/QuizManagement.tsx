@@ -49,7 +49,8 @@ interface QuizSubmission {
 interface QuizStats {
   totalQuizzes: number;
   totalSubmissions: number;
-  averageScore: number;
+  gradedSubmissions: number;
+  submissionRate: number;
 }
 
 export function QuizManagement() {
@@ -59,7 +60,8 @@ export function QuizManagement() {
   const [stats, setStats] = useState<QuizStats>({
     totalQuizzes: 0,
     totalSubmissions: 0,
-    averageScore: 0,
+    gradedSubmissions: 0,
+    submissionRate: 0,
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -126,10 +128,14 @@ export function QuizManagement() {
 
   const calculateStats = (quizList: Quiz[]) => {
     const totalSubmissions = quizList.reduce((sum, q) => sum + q.submissions, 0);
+    const gradedSubmissions = quizList.reduce((sum, q) => sum + (q.graded || 0), 0);
+    const submissionRate = totalSubmissions > 0 ? Math.round((gradedSubmissions / totalSubmissions) * 100) : 0;
+
     const stats: QuizStats = {
       totalQuizzes: quizList.length,
-      totalSubmissions: totalSubmissions,
-      averageScore: 0,
+      totalSubmissions,
+      gradedSubmissions,
+      submissionRate,
     };
 
     setStats(stats);
@@ -207,6 +213,35 @@ export function QuizManagement() {
     return legacySection || 'Unassigned';
   };
 
+  const getQuizStatus = (quiz: Quiz) => {
+    const diff = daysUntilDue(quiz.dueDate);
+
+    if (!quiz.dueDate) {
+      return { label: 'No due date', tone: 'bg-slate-700/60 text-slate-200 border-slate-600' };
+    }
+
+    if (diff === null) {
+      return { label: 'No due date', tone: 'bg-slate-700/60 text-slate-200 border-slate-600' };
+    }
+
+    if (diff < 0) {
+      return {
+        label: `Overdue by ${Math.abs(diff)} day${Math.abs(diff) === 1 ? '' : 's'}`,
+        tone: 'bg-red-500/10 text-red-300 border-red-500/30',
+      };
+    }
+
+    if (diff === 0) {
+      return { label: 'Due today', tone: 'bg-amber-500/10 text-amber-300 border-amber-500/30' };
+    }
+
+    if (diff <= 3) {
+      return { label: `Due in ${diff} day${diff === 1 ? '' : 's'}`, tone: 'bg-amber-500/10 text-amber-300 border-amber-500/30' };
+    }
+
+    return { label: `Due in ${diff} days`, tone: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30' };
+  };
+
   const groupSubmissionsBySection = (quizId: string) => {
     const groups = new Map<string, QuizSubmission[]>();
     for (const submission of submissions[quizId] || []) {
@@ -274,9 +309,9 @@ export function QuizManagement() {
       )}
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         <div className="group bg-slate-900/60 border border-slate-800/60 rounded-xl p-5 hover:border-violet-500/30 transition-all">
-          <div className="flex items-center gap-3 mb-3">
+          <div className="flex items-center justify-between mb-3">
             <div className="w-9 h-9 rounded-lg bg-violet-500/10 flex items-center justify-center">
               <ClipboardList className="w-4.5 h-4.5 text-violet-400" />
             </div>
@@ -284,14 +319,35 @@ export function QuizManagement() {
           <div className="text-2xl font-bold text-white">{stats.totalQuizzes}</div>
           <p className="text-slate-500 text-xs mt-1">Total Quizzes</p>
         </div>
+
         <div className="group bg-slate-900/60 border border-slate-800/60 rounded-xl p-5 hover:border-blue-500/30 transition-all">
-          <div className="flex items-center gap-3 mb-3">
+          <div className="flex items-center justify-between mb-3">
             <div className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center">
               <Users className="w-4.5 h-4.5 text-blue-400" />
             </div>
           </div>
           <div className="text-2xl font-bold text-white">{stats.totalSubmissions}</div>
           <p className="text-slate-500 text-xs mt-1">Total Submissions</p>
+        </div>
+
+        <div className="group bg-slate-900/60 border border-slate-800/60 rounded-xl p-5 hover:border-emerald-500/30 transition-all">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+              <TrendingUp className="w-4.5 h-4.5 text-emerald-400" />
+            </div>
+          </div>
+          <div className="text-2xl font-bold text-white">{stats.gradedSubmissions}</div>
+          <p className="text-slate-500 text-xs mt-1">Graded</p>
+        </div>
+
+        <div className="group bg-slate-900/60 border border-slate-800/60 rounded-xl p-5 hover:border-amber-500/30 transition-all">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center">
+              <Calendar className="w-4.5 h-4.5 text-amber-400" />
+            </div>
+          </div>
+          <div className="text-2xl font-bold text-white">{stats.submissionRate}%</div>
+          <p className="text-slate-500 text-xs mt-1">Grading Rate</p>
         </div>
       </div>
       {loading && (
@@ -316,148 +372,172 @@ export function QuizManagement() {
       {/* Quizzes Grid */}
       {!loading && quizzes.length > 0 && (
         <div className="space-y-4">
-          {quizzes.map((quiz) => (
-            <div
-              key={quiz.id}
-              className="bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden hover:border-violet-500/30 transition-colors"
-            >
-              <button
-                onClick={() => toggleQuiz(quiz.id)}
-                className="w-full p-6 flex items-center justify-between hover:bg-slate-800/30 transition-colors text-left"
+          {quizzes.map((quiz) => {
+            const status = getQuizStatus(quiz);
+
+            return (
+              <div
+                key={quiz.id}
+                className="bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden hover:border-violet-500/30 transition-colors"
               >
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-white">{quiz.title}</h3>
-                  <p className="text-sm text-slate-400 mt-1">{quiz.description}</p>
-                  <div className="flex gap-4 mt-3 flex-wrap">
-                    <span className="inline-flex items-center gap-1 text-sm text-slate-300">
-                      <Users className="w-4 h-4" />
-                      {quiz.submissions} submissions
-                    </span>
-                    {quiz.dueDate && daysUntilDue(quiz.dueDate) !== null && (
+                <button
+                  onClick={() => toggleQuiz(quiz.id)}
+                  className="w-full p-6 flex items-center justify-between hover:bg-slate-800/30 transition-colors text-left"
+                >
+                  <div className="flex-1">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <h3 className="text-lg font-semibold text-white">{quiz.title}</h3>
+                        <p className="text-sm text-slate-400 mt-1">{quiz.description}</p>
+                      </div>
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full border text-xs font-medium ${status.tone}`}>
+                        {status.label}
+                      </span>
+                    </div>
+
+                    <div className="flex gap-4 mt-3 flex-wrap">
+                      <span className="inline-flex items-center gap-1 text-sm text-slate-300">
+                        <Users className="w-4 h-4" />
+                        {quiz.submissions} submissions
+                      </span>
+                      <span className="inline-flex items-center gap-1 text-sm text-slate-300">
+                        <TrendingUp className="w-4 h-4" />
+                        {quiz.graded || 0} graded
+                      </span>
                       <span className="inline-flex items-center gap-1 text-sm text-slate-300">
                         <Calendar className="w-4 h-4" />
-                        Due in {daysUntilDue(quiz.dueDate)} days
+                        {quiz.totalPoints} points
                       </span>
-                    )}
-                    <span className="inline-flex items-center gap-1 text-sm text-slate-300">
-                      <TrendingUp className="w-4 h-4" />
-                      {quiz.totalPoints} points
-                    </span>
-                  </div>
-                </div>
-                <ChevronDown
-                  className={`w-5 h-5 text-slate-400 transition-transform ${
-                    expandedId === quiz.id ? 'transform rotate-180' : ''
-                  }`}
-                />
-              </button>
-
-              {expandedId === quiz.id && (
-                <div className="border-t border-slate-800 p-6 bg-slate-800/20 space-y-4">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div>
-                      <p className="text-xs text-slate-500 uppercase">Unit</p>
-                      <p className="text-sm text-slate-300">{quiz.unitName}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500 uppercase">Created</p>
-                      <p className="text-sm text-slate-300">
-                        {new Date(quiz.createdAt).toLocaleDateString()}
-                      </p>
                     </div>
                   </div>
+                  <ChevronDown
+                    className={`w-5 h-5 text-slate-400 transition-transform ${
+                      expandedId === quiz.id ? 'transform rotate-180' : ''
+                    }`}
+                  />
+                </button>
 
-                  <div className="border-t border-slate-700 pt-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="text-sm font-semibold text-white">Student Submissions</h4>
+                {expandedId === quiz.id && (
+                  <div className="border-t border-slate-800 p-6 bg-slate-800/20 space-y-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <p className="text-xs text-slate-500 uppercase">Unit</p>
+                        <p className="text-sm text-slate-300">{quiz.unitName}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500 uppercase">Created</p>
+                        <p className="text-sm text-slate-300">
+                          {new Date(quiz.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="border-t border-slate-700 pt-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-sm font-semibold text-white">Student Submissions</h4>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => loadSubmissions(quiz.id)}
+                          className="text-slate-400 hover:text-white"
+                        >
+                          <RefreshCw className={`w-3.5 h-3.5 mr-2 ${submissionsLoading === quiz.id ? 'animate-spin' : ''}`} />
+                          Refresh
+                        </Button>
+                      </div>
+                      {submissionsLoading === quiz.id && !submissions[quiz.id] ? (
+                        <div className="flex items-center gap-2 text-sm text-slate-400 py-4">
+                          <Loader2 className="w-4 h-4 animate-spin" /> Loading submissions...
+                        </div>
+                      ) : !submissions[quiz.id]?.length ? (
+                        <p className="text-sm text-slate-500 py-3">No students have submitted this quiz yet.</p>
+                      ) : (
+                        <div className="overflow-x-auto rounded-lg border border-slate-700">
+                          <table className="w-full text-left text-sm">
+                            <thead className="bg-slate-900/80 text-xs uppercase text-slate-500">
+                              <tr>
+                                <th className="px-3 py-2">Student</th>
+                                <th className="px-3 py-2">Score</th>
+                                <th className="px-3 py-2">Status</th>
+                                <th className="px-3 py-2">Submitted</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-800">
+                              {groupSubmissionsBySection(quiz.id).map(([section, sectionSubmissions]) => (
+                                <Fragment key={section}>
+                                  <tr className="bg-slate-800/60">
+                                    <td colSpan={4} className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-cyan-300">
+                                      Section {section} · {sectionSubmissions.length} submission{sectionSubmissions.length !== 1 ? 's' : ''}
+                                    </td>
+                                  </tr>
+                                  {sectionSubmissions.map((submission) => (
+                                    <tr key={submission.id} className="text-slate-300 hover:bg-slate-800/40 transition-colors">
+                                      <td className="px-3 py-3">
+                                        <div className="font-medium text-white">{submission.student?.full_name || 'Unknown student'}</div>
+                                        <div className="text-xs text-slate-500">{submission.student?.email || 'No email'}</div>
+                                      </td>
+                                      <td className="px-3 py-3">
+                                        {submission.score === null || submission.score === undefined ? (
+                                          <span className="inline-flex items-center rounded-full border border-slate-600 bg-slate-800/80 px-2 py-0.5 text-xs text-slate-300">
+                                            Not graded
+                                          </span>
+                                        ) : (
+                                          <span className="font-semibold text-emerald-400">{submission.score}</span>
+                                        )}
+                                      </td>
+                                      <td className="px-3 py-3">
+                                        <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs capitalize ${submission.status === 'submitted'
+                                          ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+                                          : 'border-slate-600 bg-slate-800/80 text-slate-300'}`}>
+                                          {submission.status || 'submitted'}
+                                        </span>
+                                      </td>
+                                      <td className="px-3 py-3 text-xs text-slate-400">
+                                        {submission.submitted_at ? new Date(submission.submitted_at).toLocaleString() : 'Unknown'}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </Fragment>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex gap-2 pt-4 border-t border-slate-700">
+                      {quiz.quiz_category === 'exam' && (
+                        <>
+                          <Button
+                            onClick={() => navigate(`/instructor/exam/${quiz.id}`)}
+                            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                          >
+                            <Download className="w-4 h-4 mr-2" />
+                            Exam
+                          </Button>
+                          <Button
+                            onClick={() => navigate(`/instructor/exam/${quiz.id}?mode=answer-key`)}
+                            className="flex-1 bg-amber-600 hover:bg-amber-700 text-white"
+                          >
+                            <KeyRound className="w-4 h-4 mr-2" />
+                            Answer Key
+                          </Button>
+                        </>
+                      )}
                       <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => loadSubmissions(quiz.id)}
-                        className="text-slate-400 hover:text-white"
+                        onClick={() => handleDeleteQuiz(quiz.id)}
+                        className="flex-1 bg-red-600 hover:bg-red-700 text-white"
                       >
-                        <RefreshCw className={`w-3.5 h-3.5 mr-2 ${submissionsLoading === quiz.id ? 'animate-spin' : ''}`} />
-                        Refresh
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Delete
                       </Button>
                     </div>
-                    {submissionsLoading === quiz.id && !submissions[quiz.id] ? (
-                      <div className="flex items-center gap-2 text-sm text-slate-400 py-4">
-                        <Loader2 className="w-4 h-4 animate-spin" /> Loading submissions...
-                      </div>
-                    ) : !submissions[quiz.id]?.length ? (
-                      <p className="text-sm text-slate-500 py-3">No students have submitted this quiz yet.</p>
-                    ) : (
-                      <div className="overflow-x-auto rounded-lg border border-slate-700">
-                        <table className="w-full text-left text-sm">
-                          <thead className="bg-slate-900/80 text-xs uppercase text-slate-500">
-                            <tr>
-                              <th className="px-3 py-2">Student</th>
-                              <th className="px-3 py-2">Score</th>
-                              <th className="px-3 py-2">Status</th>
-                              <th className="px-3 py-2">Submitted</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-800">
-                            {groupSubmissionsBySection(quiz.id).map(([section, sectionSubmissions]) => (
-                              <Fragment key={section}>
-                                <tr key={`section-${section}`} className="bg-slate-800/60">
-                                  <td colSpan={4} className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-cyan-300">
-                                    Section {section} · {sectionSubmissions.length} submission{sectionSubmissions.length !== 1 ? 's' : ''}
-                                  </td>
-                                </tr>
-                                {sectionSubmissions.map((submission) => <tr key={submission.id} className="text-slate-300">
-                                <td className="px-3 py-3">
-                                  <div className="font-medium text-white">{submission.student?.full_name || 'Unknown student'}</div>
-                                  <div className="text-xs text-slate-500">{submission.student?.email || 'No email'}</div>
-                                </td>
-                                <td className="px-3 py-3 font-semibold text-emerald-400">
-                                  {submission.score === null || submission.score === undefined ? 'Not graded' : submission.score}
-                                </td>
-                                <td className="px-3 py-3 capitalize">{submission.status || 'submitted'}</td>
-                                <td className="px-3 py-3 text-xs text-slate-400">
-                                  {submission.submitted_at ? new Date(submission.submitted_at).toLocaleString() : 'Unknown'}
-                                </td>
-                              </tr>)}
-                              </Fragment>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
                   </div>
-
-                  <div className="flex gap-2 pt-4 border-t border-slate-700">
-                    {quiz.quiz_category === 'exam' && (
-                      <>
-                        <Button
-                          onClick={() => navigate(`/instructor/exam/${quiz.id}`)}
-                          className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
-                        >
-                          <Download className="w-4 h-4 mr-2" />
-                          Exam
-                        </Button>
-                        <Button
-                          onClick={() => navigate(`/instructor/exam/${quiz.id}?mode=answer-key`)}
-                          className="flex-1 bg-amber-600 hover:bg-amber-700 text-white"
-                        >
-                          <KeyRound className="w-4 h-4 mr-2" />
-                          Answer Key
-                        </Button>
-                      </>
-                    )}
-                    <Button
-                      onClick={() => handleDeleteQuiz(quiz.id)}
-                      className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-                    >
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Delete
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

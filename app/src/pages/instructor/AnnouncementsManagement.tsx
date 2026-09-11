@@ -71,7 +71,7 @@ export function AnnouncementsManagement() {
     try {
       // Build multipart form for file + text fields
       const fd = new FormData();
-      fd.append('title', `📢 ${title.trim()}`);
+      fd.append('title', title.trim());
       fd.append('message', message.trim());
       if (file) fd.append('file', file);
 
@@ -259,7 +259,7 @@ export function AnnouncementsManagement() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-base">📢</span>
+                      <span className="text-base">•</span>
                       <h3 className="text-base font-semibold text-white truncate">{a.title}</h3>
                     </div>
                     <p className="text-sm text-slate-300 whitespace-pre-wrap">{a.message}</p>

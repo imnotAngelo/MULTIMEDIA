@@ -12,6 +12,7 @@ import { authFetch } from '@/lib/authFetch';
 import { API_BASE_URL } from '@/lib/apiConfig';
 import { notificationService } from '@/services/notificationService';
 import { useAuthStore } from '@/stores/authStore';
+import { useThemeStore } from '@/stores/themeStore';
 
 interface Question {
   id: string;
@@ -75,6 +76,33 @@ function adaptQuestionTextForType(text: string, type: Question['type']): string 
 export function CreateQuiz() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  const theme = useThemeStore((state) => state.theme);
+  const isLightMode = theme === 'light';
+  const headingTextClass = isLightMode ? 'text-slate-900' : 'text-white';
+  const secondaryTextClass = isLightMode ? 'text-slate-600' : 'text-slate-400';
+  const labelTextClass = isLightMode ? 'text-slate-700' : 'text-slate-300';
+  const inputClass = isLightMode
+    ? 'bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-500'
+    : 'bg-slate-800 border-slate-700 text-white placeholder:text-slate-500';
+  const selectTriggerClass = isLightMode
+    ? 'bg-slate-50 border-slate-200 text-slate-900'
+    : 'bg-slate-800 border-slate-700 text-white';
+  const selectContentClass = isLightMode
+    ? 'create-quiz-select-content bg-white border-slate-200'
+    : 'create-quiz-select-content bg-slate-800 border-slate-700';
+  const itemClass = isLightMode ? 'text-slate-900' : 'text-white';
+  const cardClass = isLightMode
+    ? 'p-6 bg-white border border-slate-200 shadow-sm'
+    : 'p-6 bg-slate-900/60 border-slate-800/60';
+  const sectionPanelClass = isLightMode
+    ? 'mt-2 space-y-2 rounded-md border border-slate-200 bg-slate-50 p-3'
+    : 'mt-2 space-y-2 rounded-md border border-slate-700 bg-slate-800 p-3';
+  const questionCardClass = isLightMode
+    ? 'border border-slate-200 rounded-lg overflow-hidden bg-slate-50'
+    : 'border border-slate-700 rounded-lg overflow-hidden bg-slate-800/40';
+  const questionExpandedClass = isLightMode
+    ? 'border-t border-slate-200 p-4 space-y-4 bg-white'
+    : 'border-t border-slate-700 p-4 space-y-4 bg-slate-900/40';
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -332,75 +360,75 @@ export function CreateQuiz() {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-6 create-quiz-page">
       <div className="max-w-4xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-2xl font-semibold text-white">Create Quiz</h1>
-          <p className="text-sm text-slate-400 mt-1">Create a new quiz for your students</p>
+          <h1 className={`text-2xl font-semibold ${headingTextClass}`}>Create Quiz</h1>
+          <p className={`text-sm mt-1 ${secondaryTextClass}`}>Create a new quiz for your students</p>
         </div>
         {loading ? (
           <div className="flex flex-col items-center justify-center py-16 gap-3">
             <AetherSpinner className="w-6 h-6 text-violet-400" />
-            <p className="text-slate-400">Loading units...</p>
+            <p className={secondaryTextClass}>Loading units...</p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-6">
-            <Card className="p-6 bg-slate-900/60 border-slate-800/60">
-              <h2 className="text-lg font-semibold text-white mb-4">Quiz Details</h2>
+            <Card className={cardClass}>
+              <h2 className={`text-lg font-semibold mb-4 ${headingTextClass}`}>Quiz Details</h2>
               <div className="space-y-4">
                 <div>
-                  <Label className="text-slate-300">Quiz Title</Label>
+                  <Label className={labelTextClass}>Quiz Title</Label>
                   <Input
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                     placeholder="Enter quiz title"
-                    className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 mt-1"
+                    className={`${inputClass} mt-1`}
                   />
                 </div>
                 <div>
-                  <Label className="text-slate-300">Description</Label>
+                  <Label className={labelTextClass}>Description</Label>
                   <Textarea
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     placeholder="Enter quiz description"
-                    className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 mt-1"
+                    className={`${inputClass} mt-1`}
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-slate-300">Quiz Category</Label>
+                    <Label className={labelTextClass}>Quiz Category</Label>
                     <Select value={formData.quizCategory} onValueChange={(value) => updateQuizCategory(value as 'short' | 'long' | 'exam')}>
-                      <SelectTrigger className="bg-slate-800 border-slate-700 text-white mt-1">
+                      <SelectTrigger className={`${selectTriggerClass} mt-1`}>
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="bg-slate-800 border-slate-700">
-                        <SelectItem value="short" className="text-white">Short Quiz</SelectItem>
-                        <SelectItem value="long" className="text-white">Long Quiz</SelectItem>
-                        <SelectItem value="exam" className="text-white">Exam</SelectItem>
+                      <SelectContent className={selectContentClass}>
+                        <SelectItem value="short" className={itemClass}>Short Quiz</SelectItem>
+                        <SelectItem value="long" className={itemClass}>Long Quiz</SelectItem>
+                        <SelectItem value="exam" className={itemClass}>Exam</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div>
-                    <Label className="text-slate-300">Question Types</Label>
+                    <Label className={labelTextClass}>Question Types</Label>
                     <div className="mt-2 grid grid-cols-2 gap-2">
                       {(['multiple-choice', 'enumeration', 'true-false', 'identification', 'essay'] as QuizType[]).map((type) => (
-                        <label key={type} className="flex items-center gap-2 text-xs text-slate-300">
+                        <label key={type} className={`flex items-center gap-2 text-xs ${labelTextClass}`}>
                           <input type="checkbox" checked={formData.quizTypes.includes(type)} disabled={formData.quizCategory === 'long' && type === 'multiple-choice'} onChange={() => toggleQuizType(type)} />
                           {type === 'multiple-choice' ? 'Multiple Choice' : type === 'true-false' ? 'True or False' : type.charAt(0).toUpperCase() + type.slice(1)}
                         </label>
                       ))}
                     </div>
-                    <p className="text-xs text-slate-500 mt-1">{formData.quizCategory === 'short' ? 'Choose 1 type.' : formData.quizCategory === 'long' ? 'Choose 2 types.' : 'All 5 types are required.'}</p>
+                    <p className={`text-xs mt-1 ${secondaryTextClass}`}>{formData.quizCategory === 'short' ? 'Choose 1 type.' : formData.quizCategory === 'long' ? 'Choose 2 types.' : 'All 5 types are required.'}</p>
                     <div className="mt-3 grid grid-cols-2 gap-2">
                       {formData.quizTypes.map((type) => (
-                        <label key={`${type}-points`} className="text-xs text-slate-400">
+                        <label key={`${type}-points`} className={`text-xs ${secondaryTextClass}`}>
                           {type === 'multiple-choice' ? 'Multiple Choice' : type === 'true-false' ? 'True or False' : type.charAt(0).toUpperCase() + type.slice(1)} points
                           <Input
                             type="number"
                             min="1"
                             value={formData.pointsByType[type]}
                             onChange={(e) => setFormData(prev => ({ ...prev, pointsByType: { ...prev.pointsByType, [type]: Math.max(1, parseInt(e.target.value) || 1) } }))}
-                            className="mt-1 h-8 bg-slate-800 border-slate-700 text-white"
+                            className={`mt-1 h-8 ${inputClass}`}
                           />
                         </label>
                       ))}
@@ -408,34 +436,34 @@ export function CreateQuiz() {
                     {formData.quizCategory !== 'short' && (
                       <div className="mt-3 grid grid-cols-2 gap-2">
                         {formData.quizTypes.map((type) => (
-                          <label key={`${type}-count`} className="text-xs text-slate-400">
+                          <label key={`${type}-count`} className={`text-xs ${secondaryTextClass}`}>
                             {type === 'multiple-choice' ? 'Multiple Choice' : type === 'true-false' ? 'True or False' : type.charAt(0).toUpperCase() + type.slice(1)} questions
                             <Input
                               type="number"
                               min="1"
                               value={formData.questionCountsByType[type] || 0}
                               onChange={(e) => setFormData(prev => ({ ...prev, questionCountsByType: { ...prev.questionCountsByType, [type]: Math.max(1, parseInt(e.target.value) || 1) } }))}
-                              className="mt-1 h-8 bg-slate-800 border-slate-700 text-white"
+                              className={`mt-1 h-8 ${inputClass}`}
                             />
                           </label>
                         ))}
                       </div>
                     )}
                     {formData.quizCategory !== 'short' && (
-                      <p className="mt-2 text-xs text-slate-500">Total configured questions: {Object.values(formData.questionCountsByType).reduce((sum, count) => sum + (count || 0), 0)}</p>
+                      <p className={`mt-2 text-xs ${secondaryTextClass}`}>Total configured questions: {Object.values(formData.questionCountsByType).reduce((sum, count) => sum + (count || 0), 0)}</p>
                     )}
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-slate-300">Unit</Label>
+                    <Label className={labelTextClass}>Unit</Label>
                     <Select value={formData.unitId} onValueChange={(value) => setFormData({ ...formData, unitId: value, lessonIds: [] })}>
-                      <SelectTrigger className="bg-slate-800 border-slate-700 text-white mt-1">
+                      <SelectTrigger className={`${selectTriggerClass} mt-1`}>
                         <SelectValue placeholder="Select a unit" />
                       </SelectTrigger>
-                      <SelectContent className="bg-slate-800 border-slate-700">
+                      <SelectContent className={selectContentClass}>
                         {units.map(unit => (
-                          <SelectItem key={unit.id} value={unit.id} className="text-white">
+                          <SelectItem key={unit.id} value={unit.id} className={itemClass}>
                             {unit.title}
                           </SelectItem>
                         ))}
@@ -443,20 +471,20 @@ export function CreateQuiz() {
                     </Select>
                   </div>
                   <div>
-                    <Label className="text-slate-300">Time Limit (minutes)</Label>
+                    <Label className={labelTextClass}>Time Limit (minutes)</Label>
                     <Input
                       type="number"
                       value={formData.timeLimit}
                       onChange={(e) => setFormData({ ...formData, timeLimit: parseInt(e.target.value) })}
                       min="1"
-                      className="bg-slate-800 border-slate-700 text-white mt-1"
+                      className={`${inputClass} mt-1`}
                     />
                   </div>
                 </div>
                 <div>
-                  <Label className="text-slate-300">Lessons in this unit</Label>
+                  <Label className={labelTextClass}>Lessons in this unit</Label>
                   {formData.quizCategory === 'exam' && (
-                    <div className="mt-2 flex gap-4 text-sm text-slate-300">
+                    <div className={`mt-2 flex gap-4 text-sm ${labelTextClass}`}>
                       <label className="flex items-center gap-2">
                         <input
                           type="radio"
@@ -475,10 +503,10 @@ export function CreateQuiz() {
                       </label>
                     </div>
                   )}
-                  <div className="mt-2 space-y-2 rounded-md border border-slate-700 bg-slate-800 p-3">
-                    {loadingLessons && <p className="text-xs text-slate-400">Loading lessons...</p>}
+                  <div className={sectionPanelClass}>
+                    {loadingLessons && <p className={`text-xs ${secondaryTextClass}`}>Loading lessons...</p>}
                     {!loadingLessons && lessons.map(lesson => (
-                      <label key={lesson.id} className="flex items-center gap-2 text-sm text-slate-300">
+                      <label key={lesson.id} className={`flex items-center gap-2 text-sm ${labelTextClass}`}>
                         <input
                           type="checkbox"
                           checked={formData.lessonIds.includes(lesson.id)}
@@ -494,7 +522,7 @@ export function CreateQuiz() {
                     <p className="mt-1 text-xs text-amber-300">No lessons are available in this unit.</p>
                   )}
                 </div>
-                <label className="flex items-center gap-2 text-sm text-slate-300">
+                <label className={`flex items-center gap-2 text-sm ${labelTextClass}`}>
                   <input
                     type="checkbox"
                     checked={formData.allowLateSubmissions}
@@ -504,14 +532,14 @@ export function CreateQuiz() {
                   Allow late submissions after the due date
                 </label>
                 <div>
-                  <Label className="text-slate-300">Passing Score (%)</Label>
+                  <Label className={labelTextClass}>Passing Score (%)</Label>
                   <Input
                     type="number"
                     value={formData.passingScore}
                     onChange={(e) => setFormData({ ...formData, passingScore: parseInt(e.target.value) })}
                     min="0"
                     max="100"
-                    className="bg-slate-800 border-slate-700 text-white mt-1"
+                    className={`${inputClass} mt-1`}
                   />
                 </div>
               </div>
@@ -519,9 +547,9 @@ export function CreateQuiz() {
 
             {/* Teaching Sections Selection */}
             {user?.teaching_sections && user.teaching_sections.length > 0 && (
-              <Card className="p-6 bg-slate-900/60 border-slate-800/60">
-                <h2 className="text-lg font-semibold text-white mb-4">Assign to Sections</h2>
-                <p className="text-sm text-slate-400 mb-4">Select which sections can access this quiz (leave unchecked for all sections)</p>
+              <Card className={cardClass}>
+                <h2 className={`text-lg font-semibold mb-4 ${headingTextClass}`}>Assign to Sections</h2>
+                <p className={`text-sm mb-4 ${secondaryTextClass}`}>Select which sections can access this quiz (leave unchecked for all sections)</p>
                 <div className="flex flex-wrap gap-3">
                   {user.teaching_sections.map((section) => (
                     <label key={section} className="flex items-center gap-2 cursor-pointer">
@@ -537,7 +565,7 @@ export function CreateQuiz() {
                         }}
                         className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-violet-500 focus:ring-violet-500 cursor-pointer"
                       />
-                      <span className="text-sm text-slate-300">{section}</span>
+                      <span className={`text-sm ${labelTextClass}`}>{section}</span>
                     </label>
                   ))}
                 </div>
@@ -545,9 +573,9 @@ export function CreateQuiz() {
             )}
 
             {/* Questions Section */}
-            <Card className="p-6 bg-slate-900/60 border-slate-800/60">
+            <Card className={cardClass}>
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-white">Questions</h2>
+                <h2 className={`text-lg font-semibold ${headingTextClass}`}>Questions</h2>
                 <Button type="button" onClick={handleAddQuestion} size="sm" className="bg-violet-600 hover:bg-violet-700 text-white">
                   <Plus className="w-4 h-4 mr-2" />
                   Add Question
@@ -555,13 +583,13 @@ export function CreateQuiz() {
               </div>
               <div className="space-y-3">
                 {questions.map((question) => (
-                  <div key={question.id} className="border border-slate-700 rounded-lg overflow-hidden bg-slate-800/40">
+                  <div key={question.id} className={questionCardClass}>
                     <button
                       type="button"
                       onClick={() => setExpandedQuestion(expandedQuestion === question.id ? '' : question.id)}
-                      className="w-full flex items-center justify-between p-4 hover:bg-slate-800/60 transition-colors"
+                      className={`w-full flex items-center justify-between p-4 transition-colors ${isLightMode ? 'hover:bg-slate-100' : 'hover:bg-slate-800/60'}`}
                     >
-                      <span className="text-slate-200 font-medium">
+                      <span className={labelTextClass + ' font-medium'}>
                         {question.text || '(Untitled Question)'}
                       </span>
                       {expandedQuestion === question.id ? (
@@ -571,27 +599,27 @@ export function CreateQuiz() {
                       )}
                     </button>
                     {expandedQuestion === question.id && (
-                      <div className="border-t border-slate-700 p-4 space-y-4 bg-slate-900/40">
+                      <div className={questionExpandedClass}>
                         <div>
-                          <Label className="text-slate-300">Question Text</Label>
+                          <Label className={labelTextClass}>Question Text</Label>
                           <Textarea
                             value={question.text}
                             onChange={(e) => handleUpdateQuestion(question.id, { text: e.target.value })}
                             placeholder="Enter question text"
                             rows={2}
-                            className="mt-1 bg-slate-800 border-slate-700 text-white placeholder:text-slate-500"
+                            className={`${inputClass} mt-1`}
                           />
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <Label className="text-slate-300">Question Type</Label>
+                            <Label className={labelTextClass}>Question Type</Label>
                             <Select value={question.type} onValueChange={(value) => handleQuestionTypeChange(question, value as Question['type'])}>
-                              <SelectTrigger className="mt-1 bg-slate-800 border-slate-700 text-white">
+                              <SelectTrigger className={`${selectTriggerClass} mt-1`}>
                                 <SelectValue />
                               </SelectTrigger>
-                              <SelectContent className="bg-slate-800 border-slate-700">
+                              <SelectContent className={selectContentClass}>
                                 {formData.quizTypes.map((type) => (
-                                  <SelectItem key={type} value={type} className="text-white">
+                                  <SelectItem key={type} value={type} className={itemClass}>
                                     {type === 'multiple-choice' ? 'Multiple Choice' : type === 'true-false' ? 'True or False' : type.charAt(0).toUpperCase() + type.slice(1)}
                                   </SelectItem>
                                 ))}
@@ -599,19 +627,19 @@ export function CreateQuiz() {
                             </Select>
                           </div>
                           <div>
-                            <Label className="text-slate-300">Points</Label>
+                            <Label className={labelTextClass}>Points</Label>
                             <Input
                               type="number"
                               value={question.points}
                               onChange={(e) => handleUpdateQuestion(question.id, { points: parseInt(e.target.value) || 1 })}
                               min="1"
-                              className="mt-1 bg-slate-800 border-slate-700 text-white"
+                              className={`${inputClass} mt-1`}
                             />
                           </div>
                         </div>
                         {question.type === 'multiple-choice' && (
                           <div className="space-y-3">
-                            <Label className="text-slate-300">Answer Choices</Label>
+                            <Label className={labelTextClass}>Answer Choices</Label>
                             {(question.options || ['', '', '', '']).map((option, optionIndex) => (
                               <Input
                                 key={`${question.id}-option-${optionIndex}`}
@@ -628,29 +656,29 @@ export function CreateQuiz() {
                                   });
                                 }}
                                 placeholder={`Choice ${String.fromCharCode(65 + optionIndex)}`}
-                                className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500"
+                                className={inputClass}
                               />
                             ))}
-                            <p className="text-xs text-slate-500">The first choice is automatically marked as correct. Edit the choices as needed.</p>
+                            <p className={`text-xs ${secondaryTextClass}`}>The first choice is automatically marked as correct. Edit the choices as needed.</p>
                           </div>
                         )}
                         {(question.type === 'short-answer' || question.type === 'enumeration' || question.type === 'identification' || question.type === 'essay') && (
                           <div>
-                            <Label className="text-slate-300">Correct Answer</Label>
+                            <Label className={labelTextClass}>Correct Answer</Label>
                             <Input
                               value={typeof question.correctAnswer === 'string' ? question.correctAnswer : ''}
                               onChange={(e) => handleUpdateQuestion(question.id, { correctAnswer: e.target.value })}
                               placeholder={question.type === 'essay' ? 'Enter a model answer' : 'Enter the expected answer'}
-                              className="mt-1 bg-slate-800 border-slate-700 text-white placeholder:text-slate-500"
+                              className={`${inputClass} mt-1`}
                             />
                           </div>
                         )}
                         {question.type === 'true-false' && (
                           <div className="space-y-3">
-                            <Label className="text-slate-300">Correct Answer</Label>
+                            <Label className={labelTextClass}>Correct Answer</Label>
                             <div className="flex gap-3">
                               {['True', 'False'].map((option) => (
-                                <label key={option} className="flex items-center gap-2 text-slate-300">
+                                <label key={option} className={`flex items-center gap-2 ${labelTextClass}`}>
                                   <input
                                     type="radio"
                                     name={`true-false-${question.id}`}
@@ -686,7 +714,12 @@ export function CreateQuiz() {
             </Card>
 
             <div className="flex gap-3 justify-end pt-4">
-              <Button type="button" onClick={() => navigate('/instructor/quizzes')} variant="outline" className="border-slate-700 text-slate-300">
+              <Button
+                type="button"
+                onClick={() => navigate('/instructor/quizzes')}
+                variant="outline"
+                className={isLightMode ? 'border-slate-300 text-slate-700 hover:bg-slate-100' : 'border-slate-700 text-slate-300'}
+              >
                 Cancel
               </Button>
               <Button type="submit" disabled={submitting} className="bg-violet-600 hover:bg-violet-700 text-white">

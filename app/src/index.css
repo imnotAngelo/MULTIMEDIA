@@ -15,8 +15,9 @@
 
 @layer base {
   :root {
+    /* Dark Mode Colors (Default) */
     --background: 252 32% 7%;
-    --foreground: 36 33% 96%;
+    --foreground: 210 40% 96%;
     --card: 252 28% 11%;
     --card-foreground: 210 40% 98%;
     --popover: 252 28% 11%;
@@ -26,23 +27,55 @@
     --secondary: 252 25% 18%;
     --secondary-foreground: 210 40% 98%;
     --muted: 252 23% 18%;
-    --muted-foreground: 36 17% 70%;
+    --muted-foreground: 148 3% 55%;
     --accent: 28 92% 63%;
     --accent-foreground: 252 32% 7%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 210 40% 98%;
-    --border: 280 20% 27%;
-    --input: 280 20% 27%;
+    --border: 220 25% 35%;
+    --input: 220 20% 25%;
     --ring: 164 73% 55%;
-    --radius: 0.625rem;
+    --radius: 0.875rem;
     --sidebar-background: 258 31% 8%;
-    --sidebar-foreground: 36 33% 96%;
+    --sidebar-foreground: 210 40% 96%;
     --sidebar-primary: 164 73% 55%;
     --sidebar-primary-foreground: 252 32% 7%;
     --sidebar-accent: 252 23% 18%;
     --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 280 20% 27%;
+    --sidebar-border: 220 25% 35%;
     --sidebar-ring: 164 73% 55%;
+  }
+
+  html.light {
+    /* Light Mode Colors */
+    --background: 0 0% 100%;
+    --foreground: 224 71% 4%;
+    --card: 0 0% 100%;
+    --card-foreground: 224 71% 4%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 224 71% 4%;
+    --primary: 220 90% 56%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 224 71% 4%;
+    --muted: 220 13% 91%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 262 80% 50%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 220 90% 56%;
+    --radius: 0.875rem;
+    --sidebar-background: 220 14% 96%;
+    --sidebar-foreground: 224 71% 4%;
+    --sidebar-primary: 220 90% 56%;
+    --sidebar-primary-foreground: 210 40% 98%;
+    --sidebar-accent: 220 13% 91%;
+    --sidebar-accent-foreground: 224 71% 4%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 220 90% 56%;
   }
 }
 
@@ -53,10 +86,16 @@
   
   html {
     scroll-behavior: smooth;
+    color-scheme: dark;
+  }
+
+  html.light {
+    color-scheme: light;
   }
   
+  /* Dark Mode Background */
   body {
-    @apply text-slate-200 antialiased;
+    @apply text-sky-100 antialiased;
     min-height: 100vh;
     overflow-x: hidden;
     background:
@@ -65,8 +104,95 @@
       radial-gradient(ellipse at 50% 44%, rgba(75, 52, 116, 0.3), transparent 64%),
       linear-gradient(145deg, #171126 0%, #0d0b17 48%, #171027 100%);
     background-attachment: fixed;
-    font-family: "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", "Space Grotesk", sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
+    transition: background-color 300ms ease, color 300ms ease;
+  }
+
+  /* Light Mode Background */
+  html.light body {
+    @apply text-slate-900;
+    background:
+      radial-gradient(circle at 8% 0%, rgba(59, 130, 246, 0.08), transparent 24rem),
+      radial-gradient(circle at 92% 18%, rgba(99, 102, 241, 0.06), transparent 22rem),
+      radial-gradient(ellipse at 50% 44%, rgba(147, 112, 219, 0.1), transparent 64%),
+      linear-gradient(145deg, #f8fafc 0%, #f1f5f9 48%, #e2e8f0 100%);
+    background-attachment: fixed;
+  }
+
+  html.light .aether-shell,
+  html.light .aether-loading-screen {
+    background-color: #f8fafc;
+    color: hsl(var(--foreground));
+  }
+
+  /* Existing screens use slate utilities directly; map them to the day palette. */
+  html.light .bg-slate-950,
+  html.light .bg-slate-950\/65,
+  html.light .bg-slate-950\/45,
+  html.light .bg-slate-900 {
+    background-color: rgba(255, 255, 255, 0.86);
+  }
+
+  html.light .bg-slate-800,
+  html.light .bg-slate-800\/50,
+  html.light .bg-slate-800\/30 {
+    background-color: rgba(241, 245, 249, 0.9);
+  }
+
+  html.light .text-slate-200,
+  html.light .text-slate-300,
+  html.light .text-white {
+    color: #172033;
+  }
+
+  html.light .text-slate-100,
+  html.light .text-slate-400,
+  html.light .text-slate-500 {
+    color: #334155;
+  }
+
+  html.light .text-violet-400,
+  html.light .text-blue-400,
+  html.light .text-cyan-400 {
+    color: #1d4ed8;
+  }
+
+  html.light .text-yellow-400 {
+    color: #a16207;
+  }
+
+  html.light .aether-sidebar .sidebar-nav-link,
+  html.light .aether-sidebar .sidebar-subnav-link,
+  html.light .aether-sidebar button,
+  html.light .aether-header button {
+    font-weight: 600;
+  }
+
+  html.light .aether-sidebar .sidebar-nav-link--active,
+  html.light .aether-sidebar .sidebar-subnav-link[aria-current="page"] {
+    color: #1e40af;
+    font-weight: 700;
+  }
+
+  html.light .border-slate-700,
+  html.light .border-slate-800,
+  html.light .border-teal-400\/20 {
+    border-color: hsl(var(--border));
+  }
+
+  /* Preserve contrast for labels placed on colored action controls. */
+  html.light .text-white:is(
+    .bg-blue-500, .bg-blue-600, .bg-emerald-500, .bg-emerald-600,
+    .bg-violet-500, .bg-violet-600, .bg-indigo-500, .bg-indigo-600,
+    .bg-red-500, .bg-red-600, .bg-orange-500, .bg-orange-600
+  ),
+  html.light :is(
+    .bg-blue-500, .bg-blue-600, .bg-emerald-500, .bg-emerald-600,
+    .bg-violet-500, .bg-violet-600, .bg-indigo-500, .bg-indigo-600,
+    .bg-red-500, .bg-red-600, .bg-orange-500, .bg-orange-600
+  ) .text-white {
+    color: #ffffff;
   }
 
   button,
@@ -81,6 +207,12 @@
     outline: 2px solid rgba(103, 232, 249, 0.85);
     outline-offset: 3px;
     box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.12);
+  }
+
+  html.light :focus-visible {
+    outline: 2px solid rgba(59, 130, 246, 0.85);
+    outline-offset: 3px;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.12);
   }
 
   body::before,
@@ -185,12 +317,97 @@
 }
 
 @layer utilities {
+  /* ===== GLASSMORPHISM EFFECTS ===== */
+
+  /* Crystal Glass - Dark Mode */
+  .glass {
+    @apply backdrop-blur-xl transition-all duration-300;
+    background: linear-gradient(135deg, rgba(13, 43, 53, 0.66), rgba(5, 17, 26, 0.78));
+    border: 1px solid rgba(103, 232, 249, 0.22);
+    box-shadow: 
+      inset 0 1px 2px rgba(255, 255, 255, 0.14),
+      0 18px 60px rgba(2, 10, 18, 0.42),
+      0 0 24px rgba(34, 211, 238, 0.08);
+  }
+
+  .glass:hover {
+    border-color: rgba(103, 232, 249, 0.45);
+    box-shadow: 
+      inset 0 1px 2px rgba(255, 255, 255, 0.18),
+      0 24px 70px rgba(2, 10, 18, 0.5),
+      0 0 32px rgba(34, 211, 238, 0.15);
+  }
+
+  /* Crystal Glass - Light Mode */
+  html.light .glass {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(248, 250, 252, 0.78));
+    border-color: rgba(59, 130, 246, 0.15);
+    box-shadow: 
+      inset 0 1px 2px rgba(255, 255, 255, 0.8),
+      0 18px 60px rgba(15, 23, 42, 0.08),
+      0 0 24px rgba(59, 130, 246, 0.06);
+  }
+
+  html.light .glass:hover {
+    border-color: rgba(59, 130, 246, 0.3);
+    box-shadow: 
+      inset 0 1px 2px rgba(255, 255, 255, 0.9),
+      0 24px 70px rgba(15, 23, 42, 0.12),
+      0 0 32px rgba(59, 130, 246, 0.1);
+  }
+
+  /* Glass effect for cards */
+  .glass-card {
+    @apply glass rounded-xl p-6 border;
+  }
+
+  .glass-button {
+    @apply glass px-4 py-2 rounded-lg font-medium;
+    transition: all 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .glass-button:hover {
+    transform: translateY(-2px);
+  }
+
+  .glass-input {
+    @apply backdrop-blur-md transition-all duration-200;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(103, 232, 249, 0.2);
+    border-radius: 0.75rem;
+  }
+
+  .glass-input:focus {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(103, 232, 249, 0.5);
+    box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.1);
+  }
+
+  html.light .glass-input {
+    background: rgba(255, 255, 255, 0.6);
+    border-color: rgba(59, 130, 246, 0.15);
+  }
+
+  html.light .glass-input:focus {
+    background: rgba(255, 255, 255, 0.8);
+    border-color: rgba(59, 130, 246, 0.5);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+
+  /* ===== AUTH PAGE STYLING ===== */
   .auth-aether-page {
     isolation: isolate;
     background:
       radial-gradient(circle at 12% 12%, rgba(56, 189, 248, 0.2), transparent 25rem),
       radial-gradient(circle at 88% 78%, rgba(217, 70, 239, 0.16), transparent 28rem),
       linear-gradient(145deg, #182b58 0%, #101b3b 48%, #0a122a 100%);
+  }
+
+  html.light .auth-aether-page {
+    background:
+      radial-gradient(circle at 12% 12%, rgba(59, 130, 246, 0.15), transparent 25rem),
+      radial-gradient(circle at 88% 78%, rgba(99, 102, 241, 0.1), transparent 28rem),
+      linear-gradient(145deg, #f8fafc 0%, #e0e7ff 48%, #f3e8ff 100%);
   }
 
   .auth-aether-page::before,
@@ -211,6 +428,12 @@
     mask-image: linear-gradient(to bottom, black, transparent 86%);
   }
 
+  html.light .auth-aether-page::before {
+    background-image:
+      linear-gradient(rgba(59, 130, 246, 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(59, 130, 246, 0.04) 1px, transparent 1px);
+  }
+
   .auth-aether-page::after {
     width: 34rem;
     height: 34rem;
@@ -219,6 +442,11 @@
     border: 1px solid rgba(103, 232, 249, 0.18);
     border-radius: 999px;
     box-shadow: 0 0 80px rgba(34, 211, 238, 0.08);
+  }
+
+  html.light .auth-aether-page::after {
+    border-color: rgba(59, 130, 246, 0.1);
+    box-shadow: 0 0 80px rgba(59, 130, 246, 0.04);
   }
 
   .auth-form-surface {
@@ -238,12 +466,28 @@
     transition: transform 240ms ease, box-shadow 240ms ease, border-color 240ms ease;
   }
 
+  html.light .auth-form-surface {
+    background:
+      linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.88)),
+      rgba(255, 255, 255, 0.9) !important;
+    border-color: rgba(59, 130, 246, 0.15) !important;
+    box-shadow:
+      inset 0 1px rgba(255, 255, 255, 0.8),
+      0 28px 70px rgba(15, 23, 42, 0.1),
+      0 0 34px rgba(59, 130, 246, 0.05);
+    color: #1e293b;
+  }
+
   .auth-form-surface::before {
     content: "";
     position: absolute;
     inset: 0;
     pointer-events: none;
     background: linear-gradient(125deg, rgba(103, 232, 249, 0.12), transparent 32%, transparent 68%, rgba(232, 121, 249, 0.08));
+  }
+
+  html.light .auth-form-surface::before {
+    background: linear-gradient(125deg, rgba(59, 130, 246, 0.08), transparent 32%, transparent 68%, rgba(99, 102, 241, 0.05));
   }
 
   .auth-form-surface:hover {
@@ -458,6 +702,160 @@
   .aether-header input {
     border-color: rgba(244, 114, 82, 0.3);
     box-shadow: 0 0 18px rgba(244, 114, 82, 0.08);
+  }
+
+  /* Day mode overrides the shared dark shell surfaces. */
+  html.light .aether-shell {
+    background:
+      radial-gradient(circle at 12% 12%, rgba(59, 130, 246, 0.1), transparent 25rem),
+      radial-gradient(circle at 88% 78%, rgba(99, 102, 241, 0.08), transparent 28rem),
+      linear-gradient(145deg, #ffffff 0%, #f8fafc 48%, #eef2ff 100%) !important;
+  }
+
+  html.light .aether-shell::before {
+    background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.045), transparent);
+  }
+
+  html.light .aether-sidebar {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(241, 245, 249, 0.96));
+    border-color: rgba(59, 130, 246, 0.16) !important;
+    box-shadow: 10px 0 30px rgba(15, 23, 42, 0.06);
+  }
+
+  html.light .aether-header {
+    background-image: linear-gradient(90deg, rgba(255, 255, 255, 0.94), rgba(239, 246, 255, 0.9));
+    box-shadow: 0 1px 0 rgba(59, 130, 246, 0.16), 0 12px 35px rgba(15, 23, 42, 0.08);
+  }
+
+  html.light .aether-panel,
+  html.light .aether-shell .bg-slate-900\/60,
+  html.light .aether-shell .bg-slate-900\/50,
+  html.light .aether-shell .bg-slate-900\/40,
+  html.light .aether-shell .bg-slate-900\/70,
+  html.light .aether-shell .bg-slate-900\/80,
+  html.light .aether-shell .bg-slate-900 {
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(241, 245, 249, 0.84)) !important;
+    border-color: rgba(59, 130, 246, 0.16) !important;
+    box-shadow: inset 0 1px rgba(255, 255, 255, 0.9), 0 14px 36px rgba(15, 23, 42, 0.08);
+  }
+
+  html.light .aether-shell .bg-slate-800,
+  html.light .aether-shell .bg-slate-800\/40,
+  html.light .aether-shell .bg-slate-800\/50,
+  html.light .aether-shell .bg-slate-800\/60,
+  html.light .aether-shell .bg-slate-800\/70 {
+    background: rgba(226, 232, 240, 0.72) !important;
+    border-color: rgba(100, 116, 139, 0.3) !important;
+  }
+
+  html.light .aether-shell .border-dashed {
+    background: rgba(255, 255, 255, 0.7) !important;
+  }
+
+  html.light .aether-shell .text-slate-100,
+  html.light .aether-shell .text-slate-200,
+  html.light .aether-shell .text-slate-300,
+  html.light .aether-shell .text-white {
+    color: #172033;
+  }
+
+  html.light .aether-shell .text-slate-400,
+  html.light .aether-shell .text-slate-500,
+  html.light .aether-shell .text-slate-600 {
+    color: #475569;
+  }
+
+  /* Instructor workflow pages use explicit dark utility classes. */
+  html.light .create-quiz-page,
+  html.light .laboratory-submissions-page {
+    color: #172033;
+  }
+
+  html.light .create-quiz-page > div > form > .bg-slate-900\/60,
+  html.light .create-quiz-page .bg-slate-900\/60,
+  html.light .laboratory-submissions-page > .bg-slate-900\/60,
+  html.light .laboratory-submissions-page .bg-slate-900\/30,
+  html.light .laboratory-submissions-page .bg-slate-950\/30,
+  html.light .laboratory-submissions-page .bg-slate-950\/40 {
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    color: #172033;
+  }
+
+  html.light .create-quiz-page .bg-slate-800,
+  html.light .create-quiz-page .bg-slate-800\/40,
+  html.light .laboratory-submissions-page .bg-slate-800,
+  html.light .laboratory-submissions-page .bg-slate-800\/60,
+  html.light .laboratory-submissions-page .bg-slate-800\/70 {
+    background: #f8fafc !important;
+    border-color: #cbd5e1 !important;
+    color: #172033;
+  }
+
+  html.light .create-quiz-page h1,
+  html.light .create-quiz-page h2,
+  html.light .create-quiz-page h3,
+  html.light .laboratory-submissions-page h1,
+  html.light .laboratory-submissions-page h2,
+  html.light .laboratory-submissions-page h3,
+  html.light .create-quiz-page label,
+  html.light .laboratory-submissions-page label {
+    color: #172033 !important;
+    font-weight: 700;
+  }
+
+  html.light .create-quiz-page p,
+  html.light .create-quiz-page span,
+  html.light .laboratory-submissions-page p,
+  html.light .laboratory-submissions-page span {
+    color: #334155;
+  }
+
+  html.light .create-quiz-page input:not([type="checkbox"]):not([type="radio"]),
+  html.light .create-quiz-page textarea,
+  html.light .create-quiz-page [role="combobox"],
+  html.light .laboratory-submissions-page input,
+  html.light .laboratory-submissions-page textarea,
+  html.light .laboratory-submissions-page select {
+    background: #ffffff !important;
+    border-color: #94a3b8 !important;
+    color: #172033 !important;
+    font-weight: 600;
+  }
+
+  html.light .create-quiz-page input::placeholder,
+  html.light .create-quiz-page textarea::placeholder,
+  html.light .laboratory-submissions-page input::placeholder,
+  html.light .laboratory-submissions-page textarea::placeholder {
+    color: #64748b !important;
+    opacity: 1;
+  }
+
+  html.light .create-quiz-select-content {
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    color: #172033 !important;
+  }
+
+  html.light .create-quiz-select-content [data-slot="select-item"] {
+    color: #172033 !important;
+    font-weight: 600;
+  }
+
+  html.light .aether-shell input,
+  html.light .aether-shell textarea,
+  html.light .aether-shell select {
+    background-color: rgba(255, 255, 255, 0.76);
+    border-color: rgba(59, 130, 246, 0.18);
+    color: hsl(var(--foreground));
+  }
+
+  html.light .aether-shell input:focus,
+  html.light .aether-shell textarea:focus,
+  html.light .aether-shell select:focus {
+    background-color: #ffffff;
+    border-color: rgba(59, 130, 246, 0.55);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
   }
 
   .aether-shell input,

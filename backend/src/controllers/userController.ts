@@ -910,25 +910,9 @@ export const updateSemesterAndClearProgress = async (req: AuthRequest, res: Resp
     }
 
     const moduleIds = modules?.map(m => m.id) || [];
-    let archiveModuleIds = moduleIds;
+    const archiveModuleIds = moduleIds;
 
-    // Older records may have been created through the shared/default course,
-    // so they are visible in the dashboard but not linked to this instructor's
-    // course row. Archive those visible active modules as a compatibility fallback.
-    if (archiveModuleIds.length === 0) {
-      const { data: visibleModules, error: visibleModulesError } = await supabase
-        .from('modules')
-        .select('id')
-        .neq('status', 'archived');
-
-      if (visibleModulesError) {
-        throw new Error(`Failed to find active modules: ${visibleModulesError.message}`);
-      }
-
-      archiveModuleIds = visibleModules?.map(m => m.id) || [];
-      console.warn(`   ⚠️ No modules linked to instructor courses; using ${archiveModuleIds.length} active shared modules`);
-    }
-    console.log(`   ✅ Found ${courseIds.length} courses and ${archiveModuleIds.length} active modules`);
+    console.log(`   ✅ Found ${courseIds.length} courses and ${archiveModuleIds.length} course-linked active modules`);
     results.steps.push({ name: 'Fetch instructor modules', count: archiveModuleIds.length, status: 'success' });
 
     const { data: ownedAssessments, error: ownedAssessmentsError } = await supabase

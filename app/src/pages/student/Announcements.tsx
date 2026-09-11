@@ -145,7 +145,7 @@ export function Announcements() {
               }`}
             >
               <div className="flex items-start gap-3">
-                <div className="text-2xl shrink-0">📢</div>
+                <div className="text-2xl shrink-0">•</div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-3 mb-2">
                     <h3 className="text-base font-semibold text-white leading-tight">

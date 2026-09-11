@@ -145,7 +145,7 @@ export function LaboratorySubmissions() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 laboratory-submissions-page">
       {/* Grading modal */}
       {gradingFile && (
         <div

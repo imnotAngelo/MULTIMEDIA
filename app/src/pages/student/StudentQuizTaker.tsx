@@ -254,12 +254,27 @@ export function StudentQuizTaker() {
             })));
 
             const possiblePoints = finalQuiz.questions_data.reduce((sum, question) => sum + (Number(question.points) || 0), 0);
-            const legacyPercentScore = Number(savedSubmission.score);
-            const earnedPoints = Number.isFinite(Number(savedSubmission.earned_points))
+            const savedScoreValue = Number(savedSubmission.score);
+            const savedEarnedPoints = Number.isFinite(Number(savedSubmission.earned_points))
               ? Number(savedSubmission.earned_points)
-              : Number.isFinite(legacyPercentScore) && possiblePoints > 0
-                ? (legacyPercentScore / 100) * possiblePoints
-                : getRawScoreBreakdown(finalQuiz.questions_data, savedAnswers as StudentAnswer[]).earnedPoints;
+              : null;
+            const savedPossiblePoints = Number.isFinite(Number(savedSubmission.possible_points))
+              ? Number(savedSubmission.possible_points)
+              : possiblePoints;
+
+            let earnedPoints = savedEarnedPoints;
+
+            if (earnedPoints === null && Number.isFinite(savedScoreValue)) {
+              if (savedPossiblePoints > 0 && savedScoreValue <= savedPossiblePoints) {
+                earnedPoints = savedScoreValue;
+              } else if (savedScoreValue <= 100 && possiblePoints > 0) {
+                earnedPoints = (savedScoreValue / 100) * possiblePoints;
+              }
+            }
+
+            if (earnedPoints === null) {
+              earnedPoints = getRawScoreBreakdown(finalQuiz.questions_data, savedAnswers as StudentAnswer[]).earnedPoints;
+            }
 
             setScore(earnedPoints || 0);
             setSubmitted(true);
@@ -353,7 +368,12 @@ export function StudentQuizTaker() {
       }
 
       const rawBreakdown = getRawScoreBreakdown(quiz.questions_data, studentAnswers);
-      const earnedPoints = Number(result.data?.earned_points ?? result.earned_points ?? result.data?.score ?? result.score ?? calculateScore());
+      const derivedEarnedPoints = Array.isArray(result.results)
+        ? result.results.reduce((sum: number, item: any) => sum + (Number(item.earnedPoints) || 0), 0)
+        : null;
+      const earnedPoints = Number.isFinite(derivedEarnedPoints)
+        ? derivedEarnedPoints
+        : Number(result.data?.earned_points ?? result.earned_points ?? result.data?.score ?? result.score ?? calculateScore());
       const possiblePoints = Number(result.data?.possible_points ?? result.possible_points ?? rawBreakdown.possiblePoints);
       const normalizedEarnedPoints = Number.isFinite(earnedPoints) && possiblePoints > 0 && earnedPoints <= possiblePoints
         ? earnedPoints

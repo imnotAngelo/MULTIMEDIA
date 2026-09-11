@@ -172,7 +172,7 @@ export function StudentSettings() {
       setUser(updatedUser);
       console.log(`✅ [SEMESTER UPDATE] Auth store updated with new user data`);
       
-      toast.success(`✅ Semester updated to ${semesterLabel}! Previous content has been archived.`);
+      toast.success(`Semester updated to ${semesterLabel}! Previous content has been archived.`);
       console.log(`✅ [SEMESTER UPDATE] Toast shown, loading archives...`);
       
       // Reload archives
@@ -247,7 +247,7 @@ export function StudentSettings() {
       
       const lessonCount = data.data?.restoredLessonCount || 0;
       if (lessonCount > 0) {
-        toast.success(`✅ Unit restored with ${lessonCount} lesson${lessonCount !== 1 ? 's' : ''} and all videos`);
+        toast.success(`Unit restored with ${lessonCount} lesson${lessonCount !== 1 ? 's' : ''} and all videos`);
       } else {
         toast.success('✅ Unit restored successfully');
       }
@@ -270,7 +270,7 @@ export function StudentSettings() {
       if (!data.success) throw new Error(data.error?.message);
       
       const hasVideo = data.data?.video_url ? ' with video' : '';
-      toast.success(`✅ Lesson restored successfully${hasVideo}`);
+      toast.success(`Lesson restored successfully${hasVideo}`);
       await loadArchives();
     } catch (err: any) {
       toast.error(err?.message || 'Failed to restore lesson');

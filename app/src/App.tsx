@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { useAuthStore } from '@/stores/authStore';
+import { useThemeStore } from '@/stores/themeStore';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { CursorTrail } from '@/components/CursorTrail';
 import { AetherLoader } from '@/components/AetherLoader';
@@ -23,11 +24,14 @@ import { InstructorApprovals } from '@/pages/admin';
 
 export function App() {
   const { isAuthenticated, user, isHydrated, verifySession } = useAuthStore();
+  const { theme, setTheme } = useThemeStore();
 
-  // Verify session on app load
+  // Verify session and apply theme on app load
   useEffect(() => {
     verifySession();
-  }, []);
+    // Apply theme from store
+    setTheme(theme);
+  }, [theme, setTheme]);
 
   // Wait for auth state to hydrate from localStorage
   if (!isHydrated) {

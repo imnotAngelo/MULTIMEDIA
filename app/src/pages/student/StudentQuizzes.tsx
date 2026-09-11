@@ -37,6 +37,7 @@ interface Quiz {
   submission?: {
     score: number | null;
     earned_points?: number | null;
+    possible_points?: number | null;
     status?: string;
     submitted_at?: string;
   } | null;
@@ -173,13 +174,29 @@ export function StudentQuizzes() {
     const totalPoints = Number(quiz.total_points || (Array.isArray(quiz.questions_data)
       ? quiz.questions_data.reduce((sum, question) => sum + (Number(question.points) || 0), 0)
       : 0));
-    const earnedPoints = Number.isFinite(Number(quiz.submission?.earned_points))
-      ? Number(quiz.submission?.earned_points)
-      : Number.isFinite(Number(quiz.submission?.score)) && totalPoints > 0 && Number(quiz.submission?.score) <= 100
-        ? (Number(quiz.submission?.score) / 100) * totalPoints
-        : 0;
 
-    return { earnedPoints, totalPoints };
+    const submissionScore = Number(quiz.submission?.score);
+    const earnedPointsFromSubmission = Number.isFinite(Number(quiz.submission?.earned_points))
+      ? Number(quiz.submission?.earned_points)
+      : null;
+    const possiblePointsFromSubmission = Number.isFinite(Number(quiz.submission?.possible_points))
+      ? Number(quiz.submission?.possible_points)
+      : totalPoints;
+
+    let earnedPoints = earnedPointsFromSubmission;
+
+    if (earnedPoints === null && Number.isFinite(submissionScore)) {
+      if (possiblePointsFromSubmission > 0 && submissionScore <= possiblePointsFromSubmission) {
+        earnedPoints = submissionScore;
+      } else if (submissionScore <= 100 && totalPoints > 0) {
+        earnedPoints = (submissionScore / 100) * totalPoints;
+      }
+    }
+
+    return {
+      earnedPoints: Number.isFinite(earnedPoints) ? Number(earnedPoints) : 0,
+      totalPoints,
+    };
   };
 
   const renderQuiz = (quiz: Quiz) => {

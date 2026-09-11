@@ -1,5 +1,6 @@
 import { Bell, Search, Sparkles, LogOut as LogOutIcon, CheckCheck, BookOpen, FileText, ClipboardList, Layers, X } from 'lucide-react';
 import { AetherSpinner } from '@/components/AetherSpinner';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -238,13 +239,13 @@ export function Header({ title, subtitle }: HeaderProps) {
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
-      case 'lesson':     return <span className="text-lg">📖</span>;
-      case 'unit':       return <span className="text-lg">📚</span>;
-      case 'quiz':       return <span className="text-lg">📝</span>;
-      case 'lab':        return <span className="text-lg">🧪</span>;
-      case 'assignment': return <span className="text-lg">✏️</span>;
-      case 'achievement':return <span className="text-lg">🎉</span>;
-      case 'announcement': return <span className="text-lg">📢</span>;
+      case 'lesson':     return <span className="text-lg">•</span>;
+      case 'unit':       return <span className="text-lg">•</span>;
+      case 'quiz':       return <span className="text-lg">•</span>;
+      case 'lab':        return <span className="text-lg">•</span>;
+      case 'assignment': return <span className="text-lg">•</span>;
+      case 'achievement':return <span className="text-lg">•</span>;
+      case 'announcement': return <span className="text-lg">•</span>;
       default:           return <Sparkles className="w-4 h-4 text-yellow-400" />;
     }
   };
@@ -448,6 +449,7 @@ export function Header({ title, subtitle }: HeaderProps) {
         </DropdownMenu>
 
         {/* Profile and logout actions */}
+        <ThemeToggle />
         <Button
           variant="ghost"
           onClick={handleProfileClick}
