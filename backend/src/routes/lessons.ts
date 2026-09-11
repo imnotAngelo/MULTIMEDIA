@@ -452,7 +452,7 @@ export function normalizeGeneratedQuestions(rawQuestions: any[], targetCount = 5
     if (!dedupeKey || seen.has(dedupeKey)) continue;
     seen.add(dedupeKey);
 
-    const supportedTypes = ['multiple-choice', 'enumeration', 'true-false', 'identification', 'essay'];
+    const supportedTypes = ['multiple-choice', 'short-answer', 'enumeration', 'true-false', 'identification', 'essay'];
     const allocation = requestedTypes.flatMap(requestedType => Array.from({ length: Math.max(0, Number(questionCountsByType[requestedType]) || 0) }, () => requestedType));
     const requestedType = allocation[normalized.length] || requestedTypes[normalized.length % requestedTypes.length];
     const type = requestedTypes.length > 0 && supportedTypes.includes(requestedType)
@@ -515,7 +515,7 @@ export function normalizeGeneratedQuestions(rawQuestions: any[], targetCount = 5
   return normalized;
 }
 
-function buildFallbackQuizQuestions(sourceText: string, targetCount: number, requestedTypes: string[], pointsByType: Record<string, number>, questionCountsByType: Record<string, number>, excludedTitle = '') {
+export function buildFallbackQuizQuestions(sourceText: string, targetCount: number, requestedTypes: string[], pointsByType: Record<string, number>, questionCountsByType: Record<string, number>, excludedTitle = '') {
   const sourceParts = sourceText
     .split(/(?<=[.!?])\s+|\n+/)
     .map(part => part.replace(/\s+/g, ' ').trim())
@@ -526,6 +526,59 @@ function buildFallbackQuizQuestions(sourceText: string, targetCount: number, req
 
   const allocation = requestedTypes.flatMap(type => Array.from({ length: Math.max(0, Number(questionCountsByType[type]) || 0) }, () => type));
   const questions: any[] = [];
+
+  const buildProfessionalMultipleChoiceStem = (topic: string, answer: string, index: number) => {
+    const stems = [
+      `Which statement most accurately reflects the lesson's explanation of ${topic}?`,
+      `Which interpretation is best supported by the lesson regarding ${topic}?`,
+      `Which option best captures the lesson's view of ${topic}?`,
+      `Which response most clearly matches the lesson's discussion of ${topic}?`,
+    ];
+
+    if (/\b(combine|combines|includes|supports|helps|enables|allows|improves|creates)\b/i.test(answer)) {
+      stems.unshift(`Which statement best describes how ${topic} functions within the lesson?`);
+    }
+
+    return stems[index % stems.length];
+  };
+
+  const buildUniqueOptions = (answer: string, topic: string, index: number) => {
+    const baseOptions = [answer.trim()];
+
+    for (let offset = 1; offset < sourceParts.length; offset += 1) {
+      const candidate = sourceParts[(index + offset) % sourceParts.length]?.trim();
+      if (candidate && candidate.toLowerCase() !== answer.trim().toLowerCase()) {
+        baseOptions.push(candidate);
+      }
+      if (baseOptions.length >= 4) break;
+    }
+
+    baseOptions.push(
+      `A narrower description of ${topic} that overlooks the broader function explained in the lesson.`,
+      `A misleading statement that treats ${topic} as only a storage or formatting tool.`,
+      `A claim that confuses ${topic} with a related concept the lesson distinguishes from it.`
+    );
+
+    const uniqueOptions: string[] = [];
+    const seen = new Set<string>();
+    for (const option of baseOptions) {
+      const normalizedOption = option.replace(/\s+/g, ' ').trim();
+      if (!normalizedOption) continue;
+      const key = normalizedOption.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      uniqueOptions.push(normalizedOption);
+      if (uniqueOptions.length === 4) break;
+    }
+
+    return uniqueOptions.length === 4 ? uniqueOptions : [
+      answer.trim(),
+      `A narrower description of ${topic} that overlooks the broader function explained in the lesson.`,
+      `A misleading statement that treats ${topic} as only a storage or formatting tool.`,
+      `A claim that confuses ${topic} with a related concept the lesson distinguishes from it.`
+    ];
+  };
+
   for (let index = 0; index < targetCount; index += 1) {
     const answer = sourceParts[index % sourceParts.length];
     const type = allocation[index] || requestedTypes[index % requestedTypes.length] || 'multiple-choice';
@@ -536,7 +589,7 @@ function buildFallbackQuizQuestions(sourceText: string, targetCount: number, req
       .replace(/^(according to the lesson|statement\s*\d+)\s*/i, '');
     const isFalseStatement = type === 'true-false' && index % 2 === 1;
     const questionText = type === 'multiple-choice'
-      ? `Which statement best explains ${topic}?`
+      ? buildProfessionalMultipleChoiceStem(topic, answer, index)
       : type === 'true-false'
         ? `${isFalseStatement ? 'True or False: The lesson states the opposite of ' : 'True or False: '} ${answer}`
         : type === 'identification'
@@ -545,12 +598,7 @@ function buildFallbackQuizQuestions(sourceText: string, targetCount: number, req
             ? `What key idea or detail does the lesson identify about ${topic}?`
             : `Explain the lesson's main idea about ${topic}.`;
     const options = type === 'multiple-choice'
-      ? [answer, 1, 2, 3].map((offset, optionIndex) => ({
-          id: String(optionIndex + 1),
-          text: typeof offset === 'number'
-            ? sourceParts[(index + offset) % sourceParts.length] || `Lesson detail ${optionIndex + 1}`
-            : offset,
-        }))
+      ? buildUniqueOptions(answer, topic, index).map((text, optionIndex) => ({ id: String(optionIndex + 1), text }))
       : type === 'true-false'
         ? ['True', 'False'].map((text, optionIndex) => ({ id: String(optionIndex + 1), text }))
         : [];
@@ -560,10 +608,7 @@ function buildFallbackQuizQuestions(sourceText: string, targetCount: number, req
       text: questionText,
       type,
       points: Number(pointsByType[type]) > 0 ? Number(pointsByType[type]) : 2,
-      options: options.map(option => option.text).map((option, optionIndex, allOptions) => {
-        if (allOptions.indexOf(option) === optionIndex) return option;
-        return `Lesson detail ${optionIndex + 1}`;
-      }),
+      options: options.map(option => option.text),
       correctAnswer: type === 'multiple-choice' ? answer : type === 'true-false' ? (isFalseStatement ? 'False' : 'True') : answer,
     });
   }
@@ -1535,8 +1580,10 @@ RULES:
 - Make the questions precise, high-quality, and academically appropriate.
 - Use only these question types: ${normalizedTypes.join(', ')}.
 - Follow this exact number of questions per type: ${JSON.stringify(questionCountsByType)}.
+- For multiple-choice: write a professional, interpretive question that requires understanding of the lesson, not a direct restatement of the topic. Use a stem such as "Which statement most accurately reflects...", "Which interpretation is best supported...", or "Which option best captures...".
 - For multiple-choice: provide exactly 4 unique options and exactly 1 correct answer.
-- For multiple-choice: the question must ask which option is best; provide exactly 4 unique options and exactly 1 correct answer.
+- For multiple-choice: the distractors must be plausible but clearly incorrect based on the lesson content; do not use obvious repetition, unsupported claims, or generic placeholder answers.
+- Avoid awkward or repetitive stems such as "Which statement best explains [topic]?" when the lesson already says the topic plainly.
 - For true-false: write a complete declarative claim that can be judged true or false. Do not begin with "Which", "What", or "Which statement". options must be ["True","False"] and correctAnswer must be exactly "True" or "False".
 - For enumeration: ask the learner to list two or more named items, steps, characteristics, or examples, using wording such as "List..." or "Name...". Provide a concise list model answer in correctAnswer and use an empty options array.
 - For identification: ask "What is..." or "Identify..." for exactly one concrete concept, term, person, process, or object. Provide one concise model answer in correctAnswer and use an empty options array.

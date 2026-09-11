@@ -6,6 +6,7 @@ import { ArrowLeft, Trash2, Sparkles, Settings2, BookOpen, Wand2, CheckCircle2 }
 import { AetherSpinner } from '@/components/AetherSpinner';
 import { SectionYearTargetPicker } from '@/components/SectionYearTargetPicker';
 import { useAuthStore } from '@/stores/authStore';
+import { useThemeStore } from '@/stores/themeStore';
 
 interface Unit {
   id: string;
@@ -38,6 +39,32 @@ interface Question {
 export function AutoGenerateQuiz() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  const theme = useThemeStore((state) => state.theme);
+  const isLightMode = theme === 'light';
+
+  const shellClass = isLightMode
+    ? 'min-h-screen bg-gradient-to-br from-slate-100 via-slate-200 to-slate-300 p-6'
+    : 'min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-6';
+  const headingTextClass = isLightMode ? 'text-slate-900' : 'text-white';
+  const secondaryTextClass = isLightMode ? 'text-slate-600' : 'text-slate-400';
+  const panelClass = isLightMode
+    ? 'bg-white/80 border border-slate-200 rounded-xl p-6 space-y-5 shadow-sm'
+    : 'bg-slate-900/60 border border-slate-800/60 rounded-xl p-6 space-y-5';
+  const generatedPanelClass = isLightMode
+    ? 'bg-white/80 border border-slate-200 rounded-xl p-6 space-y-4 shadow-sm'
+    : 'bg-slate-900/60 border border-slate-800/60 rounded-xl p-6 space-y-4';
+  const nestedCardClass = isLightMode
+    ? 'bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3'
+    : 'bg-slate-800/40 border border-slate-700/50 rounded-lg p-4 space-y-3';
+  const fieldClass = isLightMode
+    ? 'w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 placeholder:text-slate-500 focus:border-violet-500 focus:outline-none'
+    : 'w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder:text-slate-600 focus:border-violet-500 focus:outline-none';
+  const compactFieldClass = isLightMode
+    ? 'w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded text-slate-900 placeholder:text-slate-500 focus:border-violet-500 focus:outline-none'
+    : 'w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white placeholder:text-slate-600 focus:border-violet-500 focus:outline-none';
+  const labelTextClass = isLightMode ? 'text-slate-700' : 'text-slate-300';
+  const mutedTextClass = isLightMode ? 'text-slate-500' : 'text-slate-400';
+
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [units, setUnits] = useState<Unit[]>([]);
@@ -475,7 +502,7 @@ export function AutoGenerateQuiz() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-6">
+    <div className={shellClass}>
       <div className="max-w-5xl mx-auto">
         {/* Header */}
         <button
@@ -491,36 +518,36 @@ export function AutoGenerateQuiz() {
             <Wand2 className="w-6 h-6 text-violet-400" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-white">Auto-Generate Quiz</h1>
-            <p className="text-slate-400 mt-0.5 text-sm">Create a quiz from lesson content using AI</p>
+            <h1 className={`text-3xl font-bold ${headingTextClass}`}>Auto-Generate Quiz</h1>
+            <p className={`mt-0.5 text-sm ${secondaryTextClass}`}>Create a quiz from lesson content using AI</p>
           </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Configuration Section */}
-          <div className="bg-slate-900/60 border border-slate-800/60 rounded-xl p-6 space-y-5">
+          <div className={panelClass}>
             <div className="flex items-center gap-2.5">
-              <Settings2 className="w-5 h-5 text-slate-400" />
-              <h2 className="text-lg font-semibold text-white">Quiz Configuration</h2>
+              <Settings2 className={`w-5 h-5 ${mutedTextClass}`} />
+              <h2 className={`text-lg font-semibold ${headingTextClass}`}>Quiz Configuration</h2>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Quiz Title *</label>
+                <label className={`block text-sm font-medium mb-2 ${labelTextClass}`}>Quiz Title *</label>
                 <input
                   type="text"
                   name="title"
                   value={formData.title}
                   onChange={handleInputChange}
                   placeholder="e.g., Chapter 5 Quiz"
-                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder:text-slate-600 focus:border-violet-500 focus:outline-none"
+                  className={fieldClass}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Select Unit *</label>
+                <label className={`block text-sm font-medium mb-2 ${labelTextClass}`}>Select Unit *</label>
                 {loadingUnits ? (
-                  <div className="flex items-center gap-2 text-slate-400 py-2">
+                  <div className={`flex items-center gap-2 ${mutedTextClass} py-2`}>
                     <AetherSpinner className="w-4 h-4" />
                     <span className="text-sm">Loading units...</span>
                   </div>
@@ -531,7 +558,7 @@ export function AutoGenerateQuiz() {
                       setSelectedUnit(e.target.value);
                       setQuestionsGenerated(false);
                     }}
-                    className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:border-violet-500 focus:outline-none"
+                    className={fieldClass}
                   >
                     <option value="">-- Select Unit --</option>
                     {units.map(unit => (
@@ -543,22 +570,22 @@ export function AutoGenerateQuiz() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Description *</label>
+              <label className={`block text-sm font-medium mb-2 ${labelTextClass}`}>Description *</label>
               <textarea
                 name="description"
                 value={formData.description}
                 onChange={handleInputChange}
                 placeholder="Describe the quiz purpose and content..."
                 rows={2}
-                className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder:text-slate-600 focus:border-violet-500 focus:outline-none"
+                className={fieldClass}
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Select Lessons *</label>
+                <label className={`block text-sm font-medium mb-2 ${labelTextClass}`}>Select Lessons *</label>
                 {formData.quizCategory === 'exam' && (
-                  <div className="mb-2 flex gap-4 text-sm text-slate-300">
+                  <div className={`mb-2 flex gap-4 text-sm ${labelTextClass}`}>
                     <label className="flex items-center gap-2">
                       <input type="radio" checked={lessonScope === 'all'} onChange={() => { setLessonScope('all'); setSelectedLessons(lessons.map(lesson => lesson.id)); }} />
                       All lessons in this unit
@@ -575,7 +602,7 @@ export function AutoGenerateQuiz() {
                     setSelectedLessons(Array.from(e.target.selectedOptions, option => option.value));
                     setQuestionsGenerated(false);
                   }}
-                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:border-violet-500 focus:outline-none"
+                  className={fieldClass}
                   disabled={!selectedUnit || (formData.quizCategory === 'exam' && lessonScope === 'all')}
                   multiple
                   size={Math.min(Math.max(lessons.length, 3), 6)}
@@ -587,7 +614,7 @@ export function AutoGenerateQuiz() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Number of Questions</label>
+                <label className={`block text-sm font-medium mb-2 ${labelTextClass}`}>Number of Questions</label>
                 <input
                   type="number"
                   name="numberOfQuestions"
@@ -596,18 +623,18 @@ export function AutoGenerateQuiz() {
                   min={getQuizCategoryRange(formData.quizCategory).min}
                   max={getQuizCategoryRange(formData.quizCategory).max}
                   disabled={formData.quizCategory !== 'short'}
-                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:border-violet-500 focus:outline-none"
+                  className={fieldClass}
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Quiz Category</label>
+                <label className={`block text-sm font-medium mb-2 ${labelTextClass}`}>Quiz Category</label>
                 <select
                   value={formData.quizCategory}
                   onChange={(e) => updateCategory(e.target.value as 'short' | 'long' | 'exam')}
-                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:border-violet-500 focus:outline-none"
+                  className={fieldClass}
                 >
                   <option value="short">Short Quiz (5-10 questions)</option>
                   <option value="long">Long Quiz (20-30 questions)</option>
@@ -615,10 +642,10 @@ export function AutoGenerateQuiz() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Question Types</label>
-                <div className="grid grid-cols-2 gap-2 rounded-md border border-slate-700 bg-slate-800 p-3">
+                <label className={`block text-sm font-medium mb-2 ${labelTextClass}`}>Question Types</label>
+                <div className={`grid grid-cols-2 gap-2 rounded-md border p-3 ${isLightMode ? 'border-slate-200 bg-slate-50' : 'border-slate-700 bg-slate-800'}`}>
                   {(['multiple-choice', 'enumeration', 'true-false', 'identification', 'essay'] as QuizType[]).map((type) => (
-                    <label key={type} className="flex items-center gap-2 text-xs text-slate-300">
+                    <label key={type} className={`flex items-center gap-2 text-xs ${labelTextClass}`}>
                       <input type="checkbox" checked={formData.quizTypes.includes(type)} disabled={formData.quizCategory === 'long' && type === 'multiple-choice'} onChange={() => toggleQuizType(type)} />
                       {type === 'multiple-choice' ? 'Multiple Choice' : type === 'true-false' ? 'True or False' : type.charAt(0).toUpperCase() + type.slice(1)}
                     </label>
@@ -627,44 +654,44 @@ export function AutoGenerateQuiz() {
                 {formData.quizCategory !== 'short' && (
                   <div className="mt-3 grid grid-cols-2 gap-2">
                     {formData.quizTypes.map((type) => (
-                      <label key={`${type}-count`} className="text-xs text-slate-400">
+                      <label key={`${type}-count`} className={`text-xs ${mutedTextClass}`}>
                         {type === 'multiple-choice' ? 'Multiple Choice' : type === 'true-false' ? 'True or False' : type.charAt(0).toUpperCase() + type.slice(1)} questions
                         <input
                           type="number"
                           min="1"
                           value={formData.questionCountsByType[type] || 0}
                           onChange={(e) => setFormData(prev => ({ ...prev, questionCountsByType: { ...prev.questionCountsByType, [type]: Math.max(1, parseInt(e.target.value) || 1) } }))}
-                          className="mt-1 w-full px-2 py-1 bg-slate-800 border border-slate-700 rounded text-white"
+                          className={compactFieldClass}
                         />
                       </label>
                     ))}
                   </div>
                 )}
                 {formData.quizCategory !== 'short' && (
-                  <p className="mt-2 text-xs text-slate-500">Total configured questions: {configuredQuestionTotal()}</p>
+                  <p className={`mt-2 text-xs ${mutedTextClass}`}>Total configured questions: {configuredQuestionTotal()}</p>
                 )}
-                <p className="text-xs text-slate-500 mt-1">{formData.quizCategory === 'short' ? 'Choose 1 type.' : formData.quizCategory === 'long' ? 'Choose 2 types.' : 'All 5 types are required.'}</p>
+                <p className={`text-xs mt-1 ${mutedTextClass}`}>{formData.quizCategory === 'short' ? 'Choose 1 type.' : formData.quizCategory === 'long' ? 'Choose 2 types.' : 'All 5 types are required.'}</p>
                 <div className="mt-3 grid grid-cols-2 gap-2">
                   {formData.quizTypes.map((type) => (
-                    <label key={`${type}-points`} className="text-xs text-slate-400">
+                    <label key={`${type}-points`} className={`text-xs ${mutedTextClass}`}>
                       {type === 'multiple-choice' ? 'Multiple Choice' : type === 'true-false' ? 'True or False' : type.charAt(0).toUpperCase() + type.slice(1)} points
                       <input
                         type="number"
                         min="1"
                         value={formData.pointsByType[type]}
                         onChange={(e) => setFormData(prev => ({ ...prev, pointsByType: { ...prev.pointsByType, [type]: Math.max(1, parseInt(e.target.value) || 1) } }))}
-                        className="mt-1 w-full px-2 py-1 bg-slate-800 border border-slate-700 rounded text-white"
+                        className={`mt-1 ${compactFieldClass}`}
                       />
                     </label>
                   ))}
                 </div>
                 {formData.quizCategory === 'exam' && (
                   <div className="mt-4 rounded-md border border-amber-500/30 bg-amber-500/10 p-3">
-                    <label className="block text-xs font-medium text-amber-200 mb-1">Exam Visibility</label>
+                    <label className="block text-xs font-medium text-amber-700 mb-1">Exam Visibility</label>
                     <select
                       value={formData.visibility}
                       onChange={(e) => setFormData(prev => ({ ...prev, visibility: e.target.value as 'public' | 'private' }))}
-                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded text-white"
+                      className={fieldClass}
                     >
                       <option value="public">Public - students can see it</option>
                       <option value="private">Private - save as draft</option>
@@ -676,47 +703,47 @@ export function AutoGenerateQuiz() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Due Date *</label>
+                <label className={`block text-sm font-medium mb-2 ${labelTextClass}`}>Due Date *</label>
                 <input
                   type="datetime-local"
                   name="dueDate"
                   value={formData.dueDate}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:border-violet-500 focus:outline-none"
+                  className={fieldClass}
                 />
               </div>
-              <label className="flex items-center gap-2 self-end pb-2 text-sm text-slate-300">
+              <label className={`flex items-center gap-2 self-end pb-2 text-sm ${labelTextClass}`}>
                 <input
                   type="checkbox"
                   checked={formData.allowLateSubmissions}
                   onChange={(e) => setFormData(prev => ({ ...prev, allowLateSubmissions: e.target.checked }))}
-                  className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-violet-500"
+                  className={isLightMode ? 'h-4 w-4 rounded border-slate-300 bg-white text-violet-500' : 'h-4 w-4 rounded border-slate-600 bg-slate-800 text-violet-500'}
                 />
                 Allow late submissions
               </label>
 
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Time Limit (minutes)</label>
+                <label className={`block text-sm font-medium mb-2 ${labelTextClass}`}>Time Limit (minutes)</label>
                 <input
                   type="number"
                   name="timeLimit"
                   value={formData.timeLimit}
                   onChange={handleInputChange}
                   min="1"
-                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:border-violet-500 focus:outline-none"
+                  className={fieldClass}
                 />
               </div>
 
               <div className="flex flex-col gap-4">
-                <label className="flex items-center gap-2 cursor-pointer mt-7">
+                <label className={`flex items-center gap-2 cursor-pointer mt-7 ${labelTextClass}`}>
                   <input
                     type="checkbox"
                     name="shuffleQuestions"
                     checked={formData.shuffleQuestions}
                     onChange={(e) => setFormData(prev => ({ ...prev, shuffleQuestions: e.target.checked }))}
-                    className="w-4 h-4"
+                    className={isLightMode ? 'w-4 h-4 rounded border-slate-300 bg-white text-violet-500' : 'w-4 h-4 rounded border-slate-600 bg-slate-800 text-violet-500'}
                   />
-                  <span className="text-slate-300 text-sm">Shuffle questions</span>
+                  <span className={`text-sm ${labelTextClass}`}>Shuffle questions</span>
                 </label>
               </div>
             </div>
@@ -764,12 +791,12 @@ export function AutoGenerateQuiz() {
 
           {/* Generated Questions Section */}
           {questionsGenerated && (
-            <div className="bg-slate-900/60 border border-slate-800/60 rounded-xl p-6 space-y-4">
+            <div className={generatedPanelClass}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <BookOpen className="w-5 h-5 text-emerald-400" />
-                  <h2 className="text-lg font-semibold text-white">Generated Questions</h2>
-                  <span className="text-xs font-medium text-slate-400 bg-slate-800 px-2 py-0.5 rounded-full">{generatedQuestions.length}</span>
+                  <h2 className={`text-lg font-semibold ${headingTextClass}`}>Generated Questions</h2>
+                  <span className={`text-xs font-medium ${isLightMode ? 'text-slate-600 bg-slate-200' : 'text-slate-400 bg-slate-800'} px-2 py-0.5 rounded-full`}>{generatedQuestions.length}</span>
                 </div>
                 <button
                   type="button"
@@ -785,15 +812,15 @@ export function AutoGenerateQuiz() {
 
               <div className="space-y-4">
                 {generatedQuestions.map((question, qIndex) => (
-                  <div key={question.id} className="bg-slate-800/40 border border-slate-700/50 rounded-lg p-4 space-y-3">
+                  <div key={question.id} className={nestedCardClass}>
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1">
-                        <label className="block text-sm font-medium text-slate-300 mb-1.5">Question {qIndex + 1}</label>
+                        <label className={`block text-sm font-medium mb-1.5 ${labelTextClass}`}>Question {qIndex + 1}</label>
                         <textarea
                           value={question.title}
                           onChange={(e) => handleQuestionChange(qIndex, 'title', e.target.value)}
                           rows={2}
-                          className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:border-violet-500 focus:outline-none"
+                          className={compactFieldClass}
                         />
                       </div>
                       {generatedQuestions.length > 1 && (
@@ -808,27 +835,27 @@ export function AutoGenerateQuiz() {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-slate-400 mb-1">Points</label>
+                      <label className={`block text-xs font-medium mb-1 ${mutedTextClass}`}>Points</label>
                       <input
                         type="number"
                         value={question.points}
                         onChange={(e) => handleQuestionChange(qIndex, 'points', parseInt(e.target.value))}
                         min="1"
                         max="20"
-                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white text-sm focus:border-violet-500 focus:outline-none"
+                        className={compactFieldClass}
                       />
                     </div>
 
-                    <div className="flex items-center gap-2 text-xs text-slate-400">
+                    <div className={`flex items-center gap-2 text-xs ${mutedTextClass}`}>
                       <span>Question Type:</span>
-                      <span className="font-medium text-emerald-300">
+                      <span className={`font-medium ${isLightMode ? 'text-emerald-600' : 'text-emerald-300'}`}>
                         {question.type === 'multiple-choice' ? 'Multiple Choice' : question.type === 'true-false' ? 'True or False' : question.type.charAt(0).toUpperCase() + question.type.slice(1)}
                       </span>
                     </div>
 
                     {question.type === 'multiple-choice' && (
                       <div className="space-y-2">
-                        <label className="block text-xs font-medium text-slate-400">Options (Select Correct Answer)</label>
+                        <label className={`block text-xs font-medium ${mutedTextClass}`}>Options (Select Correct Answer)</label>
                         {question.options.map((option, oIndex) => (
                           <div key={option.id} className="flex gap-2 items-center">
                             <input
@@ -849,7 +876,7 @@ export function AutoGenerateQuiz() {
                               value={option.text}
                               onChange={(e) => handleOptionChange(qIndex, oIndex, 'text', e.target.value)}
                               placeholder={`Option ${oIndex + 1}`}
-                              className="flex-1 px-2 py-1 bg-slate-700 border border-slate-600 rounded text-white text-sm placeholder:text-slate-600 focus:border-violet-500 focus:outline-none"
+                              className={`${compactFieldClass} flex-1`}
                             />
                           </div>
                         ))}
@@ -857,13 +884,13 @@ export function AutoGenerateQuiz() {
                     )}
                     {question.type !== 'multiple-choice' && (
                       <div>
-                        <label className="block text-xs font-medium text-slate-400 mb-1">Model Answer</label>
+                        <label className={`block text-xs font-medium mb-1 ${mutedTextClass}`}>Model Answer</label>
                         <input
                           type="text"
                           value={question.correctAnswer || ''}
                           onChange={(e) => handleQuestionChange(qIndex, 'correctAnswer', e.target.value)}
                           placeholder={question.type === 'essay' ? 'Enter a model answer for AI-assisted grading' : 'Enter the expected answer'}
-                          className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white text-sm placeholder:text-slate-600 focus:border-violet-500 focus:outline-none"
+                          className={compactFieldClass}
                         />
                       </div>
                     )}
@@ -879,7 +906,7 @@ export function AutoGenerateQuiz() {
               <Button
                 type="button"
                 onClick={() => navigate(-1)}
-                className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700"
+                className={isLightMode ? 'flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300' : 'flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'}
               >
                 Cancel
               </Button>

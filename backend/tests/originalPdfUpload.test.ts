@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildOriginalPdfLessonRecord, normalizeGeneratedQuestions, createUniqueStorageName } from '../src/routes/lessons.ts';
+import { buildOriginalPdfLessonRecord, normalizeGeneratedQuestions, createUniqueStorageName, buildFallbackQuizQuestions } from '../src/routes/lessons.ts';
 
 test('keeps uploaded PDFs as original documents without slide generation', () => {
   const record = buildOriginalPdfLessonRecord({
@@ -61,4 +61,14 @@ test('removes duplicate generated questions and keeps only valid multiple-choice
   assert.equal(normalized[2].text, 'Which item is correct?');
   assert.ok(normalized.every((q) => q.text.trim().length > 0));
   assert.ok(normalized.every((q) => q.points >= 1));
+});
+
+test('buildFallbackQuizQuestions avoids awkward obvious stems and repeats the answer in the prompt', () => {
+  const sourceText = 'Multimedia technology combines text, audio, video, and animation in digital experiences. It supports education, entertainment, and communication across platforms.';
+  const questions = buildFallbackQuizQuestions(sourceText, 3, ['multiple-choice'], { 'multiple-choice': 2 }, { 'multiple-choice': 3 }, 'Multimedia Technology');
+
+  assert.ok(questions.length >= 1);
+  assert.ok(questions.every((question) => !/which statement best explains/i.test(question.text)));
+  assert.ok(questions.every((question) => !question.options.some((option) => option.toLowerCase() === question.correctAnswer.toLowerCase())) === false);
+  assert.ok(questions.every((question) => question.options.length === 4));
 });

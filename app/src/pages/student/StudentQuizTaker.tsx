@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
+import { useThemeStore } from '@/stores/themeStore';
 import { authFetch } from '@/lib/authFetch';
 import { Button } from '@/components/ui/button';
 import {
@@ -53,6 +54,37 @@ export function StudentQuizTaker() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  const theme = useThemeStore((state) => state.theme);
+  const isLightMode = theme === 'light';
+
+  const pageBackgroundClass = isLightMode
+    ? 'bg-gradient-to-b from-slate-100 via-white to-slate-200'
+    : 'bg-gradient-to-b from-slate-950 to-slate-900';
+  const panelClass = isLightMode
+    ? 'bg-white border border-slate-200 shadow-sm'
+    : 'bg-slate-900/60 border border-slate-800 shadow-lg';
+  const softPanelClass = isLightMode
+    ? 'bg-slate-50 border border-slate-200'
+    : 'bg-slate-800/50 border border-slate-700';
+  const headingTextClass = isLightMode ? 'text-slate-900' : 'text-white';
+  const secondaryTextClass = isLightMode ? 'text-slate-600' : 'text-slate-400';
+  const subtleTextClass = isLightMode ? 'text-slate-500' : 'text-slate-500';
+  const inputClass = isLightMode
+    ? 'w-full px-4 py-3 bg-white border border-slate-300 rounded-xl text-slate-900 placeholder:text-slate-500 focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-100'
+    : 'w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20';
+  const headerCardClass = isLightMode
+    ? 'rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm'
+    : 'rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-lg';
+  const chipClass = isLightMode
+    ? 'px-3 py-1 rounded-full bg-violet-50 border border-violet-200'
+    : 'px-3 py-1 rounded-full bg-violet-600/20 border border-violet-500/30';
+  const timerClass = isLightMode
+    ? 'rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 shadow-sm'
+    : 'rounded-xl border border-slate-700 bg-slate-800 px-4 py-3';
+  const optionBaseClass = isLightMode
+    ? 'p-4 rounded-xl border cursor-pointer transition-all bg-slate-50 border-slate-200 hover:border-violet-300 hover:bg-violet-50'
+    : 'p-4 rounded-xl border cursor-pointer transition-all bg-slate-800/50 border-slate-700 hover:border-slate-600';
+
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -403,20 +435,22 @@ export function StudentQuizTaker() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-950"><AetherLoader label="Loading your quiz" /></div>
+      <div className={`flex items-center justify-center min-h-screen ${pageBackgroundClass}`}>
+        <AetherLoader label="Loading your quiz" />
+      </div>
     );
   }
 
   if (error || !quiz) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-6 flex items-center justify-center">
+      <div className={`min-h-screen ${pageBackgroundClass} p-6 flex items-center justify-center`}>
         <div className="max-w-md text-center">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-white mb-2">Error Loading Quiz</h1>
-          <p className="text-slate-300 mb-6 whitespace-pre-wrap text-sm leading-relaxed">{error || 'Unable to load the quiz.'}</p>
-          <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 mb-6 text-left">
-            <p className="text-xs text-slate-400 mb-2"><strong>Troubleshooting:</strong></p>
-            <ul className="text-xs text-slate-400 space-y-1 list-disc list-inside">
+          <h1 className={`text-2xl font-bold ${headingTextClass} mb-2`}>Error Loading Quiz</h1>
+          <p className={`${secondaryTextClass} mb-6 whitespace-pre-wrap text-sm leading-relaxed`}>{error || 'Unable to load the quiz.'}</p>
+          <div className={`${softPanelClass} rounded-lg p-4 mb-6 text-left`}>
+            <p className={`text-xs ${secondaryTextClass} mb-2`}><strong>Troubleshooting:</strong></p>
+            <ul className={`text-xs ${secondaryTextClass} space-y-1 list-disc list-inside`}>
               <li>Check browser console (F12) for detailed logs</li>
               <li>Ask instructor to create a new quiz</li>
               <li>Refresh the page and try again</li>
@@ -436,17 +470,17 @@ export function StudentQuizTaker() {
 
   if (submitted) {
     return (
-      <div className="space-y-6 max-w-2xl mx-auto py-8">
+      <div className={`space-y-6 max-w-2xl mx-auto py-8 ${pageBackgroundClass}`}>
         {/* Results Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-white">Quiz Submitted!</h1>
-            <p className="text-slate-400 mt-2">{quiz.title}</p>
+            <h1 className={`text-3xl font-bold ${headingTextClass}`}>Quiz Submitted!</h1>
+            <p className={`${secondaryTextClass} mt-2`}>{quiz.title}</p>
           </div>
           <Button
             onClick={() => navigate('/quizzes')}
             variant="outline"
-            className="border-slate-700 text-slate-300 hover:bg-slate-800/50"
+            className={isLightMode ? 'border-slate-300 text-slate-700 hover:bg-slate-100' : 'border-slate-700 text-slate-300 hover:bg-slate-800/50'}
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back
@@ -456,12 +490,12 @@ export function StudentQuizTaker() {
         {/* Score Display */}
         <div className="bg-gradient-to-br from-emerald-600/20 to-emerald-800/20 border border-emerald-500/30 rounded-xl p-8 text-center">
           <div className="text-6xl font-bold text-emerald-400 mb-2">{formatRawScore(score, quiz.questions_data.reduce((sum, question) => sum + (Number(question.points) || 0), 0))}</div>
-          <p className="text-slate-300 text-lg">Quiz Score</p>
+          <p className={`${secondaryTextClass} text-lg`}>Quiz Score</p>
         </div>
 
         {/* Results Summary */}
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6">
-          <h2 className="text-xl font-semibold text-white mb-4">Results Summary</h2>
+        <div className={`${panelClass} rounded-xl p-6`}>
+          <h2 className={`text-xl font-semibold ${headingTextClass} mb-4`}>Results Summary</h2>
           <div className="space-y-3">
             {quiz.questions_data.map((question, index) => {
               const studentAnswer = studentAnswers.find(
@@ -487,10 +521,10 @@ export function StudentQuizTaker() {
                       <XCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="text-white font-medium mb-1">
+                      <p className={`${headingTextClass} font-medium mb-1`}>
                         Question {index + 1}: {question.text || question.title || 'Question'}
                       </p>
-                      <p className="text-slate-400 text-sm mb-2">
+                      <p className={`${secondaryTextClass} text-sm mb-2`}>
                         Your answer: {studentAnswer?.answer || 'No answer'}
                       </p>
                       {!isCorrect && quiz.show_correct_answers && (
@@ -498,7 +532,7 @@ export function StudentQuizTaker() {
                           Correct answer: {question.correctAnswer}
                         </p>
                       )}
-                      <p className="text-slate-500 text-xs mt-2">
+                      <p className={`${subtleTextClass} text-xs mt-2`}>
                         {question.points} point{question.points !== 1 ? 's' : ''}
                       </p>
                     </div>
@@ -520,7 +554,7 @@ export function StudentQuizTaker() {
           <Button
             onClick={() => navigate('/dashboard')}
             variant="outline"
-            className="border-slate-700 text-slate-300 hover:bg-slate-800/50"
+            className={isLightMode ? 'border-slate-300 text-slate-700 hover:bg-slate-100' : 'border-slate-700 text-slate-300 hover:bg-slate-800/50'}
           >
             Go to Dashboard
           </Button>
@@ -532,11 +566,11 @@ export function StudentQuizTaker() {
   // Quiz Taking View
   if (!quiz || !quiz.questions_data || quiz.questions_data.length === 0) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-950">
+      <div className={`flex items-center justify-center min-h-screen ${pageBackgroundClass}`}>
         <div className="text-center max-w-md">
           <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-white mb-2">No Questions Available</h2>
-          <p className="text-slate-400 mb-6">This quiz does not have any questions.</p>
+          <h2 className={`text-xl font-bold ${headingTextClass} mb-2`}>No Questions Available</h2>
+          <p className={`${secondaryTextClass} mb-6`}>This quiz does not have any questions.</p>
           <Button
             onClick={() => navigate('/quizzes')}
             className="bg-violet-600 hover:bg-violet-700 text-white"
@@ -553,31 +587,29 @@ export function StudentQuizTaker() {
   const studentAnswer = studentAnswers.find(a => a.questionId === question.id);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 to-slate-900 py-8">
-      <div className="max-w-2xl mx-auto px-4">
+    <div className={`min-h-screen ${pageBackgroundClass} py-8`}>
+      <div className="max-w-3xl mx-auto px-4">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className={`${headerCardClass} flex items-center justify-between mb-8`}>
           <div className="flex-1">
-            <h1 className="text-3xl font-bold text-white">{quiz.title}</h1>
-            <p className="text-slate-400 mt-1">
+            <h1 className={`text-2xl md:text-3xl font-bold ${headingTextClass}`}>{quiz.title}</h1>
+            <p className={`${secondaryTextClass} mt-1`}>
               Question {currentQuestionIndex + 1} of {quiz.questions_data.length}
             </p>
           </div>
           {timeRemaining !== null && (
             <div
-              className={`text-center px-4 py-2 rounded-lg border ${
-                timeRemaining < 300
-                  ? 'bg-red-500/10 border-red-500/30'
-                  : 'bg-slate-800 border-slate-700'
+              className={`${timerClass} text-center ${
+                timeRemaining < 300 ? 'bg-red-500/10 border-red-500/30' : ''
               }`}
             >
               <div className="flex items-center gap-2 justify-center">
                 <Clock className="w-4 h-4" />
                 <div className="text-right">
-                  <p className="text-xs text-slate-400">Time</p>
+                  <p className={`text-xs ${secondaryTextClass}`}>Time</p>
                   <p
                     className={`font-semibold ${
-                      timeRemaining < 300 ? 'text-red-400' : 'text-white'
+                      timeRemaining < 300 ? 'text-red-400' : headingTextClass
                     }`}
                   >
                     {Math.floor(timeRemaining / 60)}:
@@ -591,7 +623,7 @@ export function StudentQuizTaker() {
 
         {/* Progress Bar */}
         <div className="mb-8">
-          <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+          <div className={`h-2 ${isLightMode ? 'bg-slate-200' : 'bg-slate-800'} rounded-full overflow-hidden`}>
             <div
               className="h-full bg-gradient-to-r from-violet-600 to-violet-400 transition-all duration-300"
               style={{
@@ -602,12 +634,12 @@ export function StudentQuizTaker() {
         </div>
 
         {/* Question Card */}
-        <div className="bg-gradient-to-br from-slate-900/60 to-slate-900/30 border border-slate-800 rounded-xl p-8 mb-8">
+        <div className={`${panelClass} rounded-2xl p-6 md:p-8 mb-8`}>
           {/* Question */}
           <div className="mb-8">
             <div className="flex items-center gap-2 mb-4">
-              <div className="px-3 py-1 rounded-full bg-violet-600/20 border border-violet-500/30">
-                <p className="text-sm font-medium text-violet-300">
+              <div className={chipClass}>
+                <p className="text-sm font-medium text-violet-600 dark:text-violet-300">
                   {question.type === 'multiple-choice'
                     ? 'Multiple Choice'
                     : question.type === 'short-answer'
@@ -621,9 +653,9 @@ export function StudentQuizTaker() {
                             : 'Essay'}
                 </p>
               </div>
-              <p className="text-slate-400 text-sm">{question.points} points</p>
+              <p className={`${secondaryTextClass} text-sm`}>{question.points} points</p>
             </div>
-            <h2 className="text-2xl font-semibold text-white">
+            <h2 className={`text-2xl font-semibold ${headingTextClass}`}>
               {currentQuestionIndex + 1}. {question.text || question.title || 'Question text not available'}
             </h2>
           </div>
@@ -638,10 +670,10 @@ export function StudentQuizTaker() {
                   return (
                     <label
                       key={index}
-                      className={`p-4 rounded-lg border cursor-pointer transition-all ${
+                      className={`${optionBaseClass} ${
                         studentAnswer?.answer === optionText
-                          ? 'bg-violet-600/20 border-violet-500/50'
-                          : 'bg-slate-800/50 border-slate-700 hover:border-slate-600'
+                          ? 'bg-violet-600/10 border-violet-500/50 shadow-sm'
+                          : ''
                       }`}
                     >
                       <div className="flex items-center gap-3">
@@ -653,25 +685,25 @@ export function StudentQuizTaker() {
                           onChange={e => handleAnswerChange(question.id, e.target.value)}
                           className="w-4 h-4 accent-violet-600"
                         />
-                        <span className="w-7 h-7 rounded-full border border-slate-600 flex items-center justify-center text-xs font-semibold text-violet-300 shrink-0">
+                        <span className={`w-7 h-7 rounded-full border ${isLightMode ? 'border-slate-300 text-violet-600' : 'border-slate-600 text-violet-300'} flex items-center justify-center text-xs font-semibold shrink-0`}>
                           {optionLabel}
                         </span>
-                        <span className="text-white">{optionText}</span>
+                        <span className={headingTextClass}>{optionText}</span>
                       </div>
                     </label>
                   );
                 })
               ) : (
-                <div className="text-slate-400">No options available for this question</div>
+                <div className={secondaryTextClass}>No options available for this question</div>
               )
             ) : question.type === 'true-false' ? (
               ['True', 'False'].map((option) => (
                 <label
                   key={option}
-                  className={`p-4 rounded-lg border cursor-pointer transition-all ${
+                  className={`${optionBaseClass} ${
                     studentAnswer?.answer === option
-                      ? 'bg-violet-600/20 border-violet-500/50'
-                      : 'bg-slate-800/50 border-slate-700 hover:border-slate-600'
+                      ? 'bg-violet-600/10 border-violet-500/50 shadow-sm'
+                      : ''
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -683,7 +715,7 @@ export function StudentQuizTaker() {
                       onChange={e => handleAnswerChange(question.id, e.target.value)}
                       className="w-4 h-4 accent-violet-600"
                     />
-                    <span className="text-white">{option}</span>
+                    <span className={headingTextClass}>{option}</span>
                   </div>
                 </label>
               ))
@@ -693,7 +725,7 @@ export function StudentQuizTaker() {
                 placeholder={question.type === 'enumeration' ? 'Enter your enumerated answer...' : question.type === 'identification' ? 'Enter the identification...' : 'Enter your short answer here...'}
                 value={studentAnswer?.answer || ''}
                 onChange={e => handleAnswerChange(question.id, e.target.value)}
-                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-violet-500"
+                className={inputClass}
               />
             ) : (
               <textarea
@@ -701,14 +733,14 @@ export function StudentQuizTaker() {
                 value={studentAnswer?.answer || ''}
                 onChange={e => handleAnswerChange(question.id, e.target.value)}
                 rows={6}
-                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-violet-500 resize-none"
+                className={`${inputClass} resize-none`}
               />
             )}
           </div>
         </div>
 
         {/* Navigation Buttons */}
-        <div className="flex gap-4 justify-between">
+        <div className="flex gap-4 justify-between items-center">
           <Button
             onClick={() =>
               setCurrentQuestionIndex(prev =>
@@ -717,7 +749,7 @@ export function StudentQuizTaker() {
             }
             disabled={currentQuestionIndex === 0}
             variant="outline"
-            className="border-slate-700 text-slate-300 hover:bg-slate-800/50 disabled:opacity-50"
+            className={isLightMode ? 'border-slate-300 text-slate-700 hover:bg-slate-100 disabled:opacity-50' : 'border-slate-700 text-slate-300 hover:bg-slate-800/50 disabled:opacity-50'}
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Previous
@@ -748,8 +780,8 @@ export function StudentQuizTaker() {
         </div>
 
         {/* Questions List - Optional Quick Navigation */}
-        <div className="mt-8 p-6 bg-slate-900/60 border border-slate-800 rounded-xl">
-          <h3 className="text-sm font-semibold text-white mb-4">Question Navigation</h3>
+        <div className={`${panelClass} mt-8 p-6 rounded-2xl`}>
+          <h3 className={`text-sm font-semibold ${headingTextClass} mb-4`}>Question Navigation</h3>
           <div className="grid grid-cols-5 md:grid-cols-10 gap-2">
             {quiz.questions_data.map((_, index) => {
               const answered = studentAnswers.some(
@@ -765,7 +797,9 @@ export function StudentQuizTaker() {
                       ? 'bg-violet-600 text-white'
                       : answered
                         ? 'bg-emerald-600/20 border border-emerald-500/30 text-emerald-300'
-                        : 'bg-slate-800 border border-slate-700 text-slate-400 hover:border-slate-600'
+                        : isLightMode
+                          ? 'bg-slate-100 border border-slate-300 text-slate-600 hover:border-slate-400'
+                          : 'bg-slate-800 border border-slate-700 text-slate-400 hover:border-slate-600'
                   }`}
                 >
                   {index + 1}

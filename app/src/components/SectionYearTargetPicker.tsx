@@ -1,6 +1,7 @@
 import { X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useThemeStore } from '@/stores/themeStore';
 
 const YEAR_LEVEL_OPTIONS: Array<1 | 2 | 3 | 4> = [1, 2, 3, 4];
 
@@ -30,6 +31,26 @@ export function SectionYearTargetPicker({
   showYearLevels = true,
   sectionOptions = [],
 }: SectionYearTargetPickerProps) {
+  const theme = useThemeStore((state) => state.theme);
+  const isLightMode = theme === 'light';
+
+  const containerClass = isLightMode
+    ? 'space-y-3 rounded-lg border border-slate-200 bg-slate-50/80 p-3 shadow-sm'
+    : 'space-y-3 rounded-lg border border-slate-800 bg-slate-900/40 p-3';
+  const labelClass = isLightMode ? 'text-slate-700 text-sm' : 'text-slate-300 text-sm';
+  const chipClass = isLightMode
+    ? 'border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200'
+    : 'border-slate-700 bg-slate-800/40 text-slate-300 hover:bg-slate-800/70';
+  const inputClass = isLightMode
+    ? 'bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-500 h-9'
+    : 'bg-slate-800/60 border-slate-700 text-white placeholder:text-slate-500 h-9';
+  const buttonClass = isLightMode
+    ? 'shrink-0 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 hover:bg-slate-100'
+    : 'shrink-0 rounded-md border border-slate-700 bg-slate-800/40 px-3 text-sm text-slate-200 hover:bg-slate-800/70';
+  const checkboxClass = isLightMode
+    ? 'h-4 w-4 rounded border-slate-300 bg-white text-violet-500 focus:ring-violet-500'
+    : 'h-4 w-4 rounded border-slate-600 bg-slate-800 text-violet-500 focus:ring-violet-500';
+
   const toggleYear = (level: number) => {
     onYearLevelsChange(
       yearLevels.includes(level) ? yearLevels.filter((l) => l !== level) : [...yearLevels, level].sort()
@@ -48,24 +69,26 @@ export function SectionYearTargetPicker({
   };
 
   return (
-    <div className="space-y-3 rounded-lg border border-slate-800 bg-slate-900/40 p-3">
+    <div className={containerClass}>
       {showYearLevels && <div className="space-y-2">
-        <Label className="text-slate-300 text-sm">Year levels</Label>
+        <Label className={labelClass}>Year levels</Label>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {YEAR_LEVEL_OPTIONS.map((level) => (
             <label
               key={level}
               className={`flex h-9 cursor-pointer items-center gap-2 rounded-md border px-3 text-sm font-medium transition-all ${
                 yearLevels.includes(level)
-                  ? 'border-violet-500/60 bg-violet-500/10 text-white'
-                  : 'border-slate-700 bg-slate-800/40 text-slate-300 hover:bg-slate-800/70'
+                  ? isLightMode
+                    ? 'border-violet-500/60 bg-violet-500/10 text-slate-900'
+                    : 'border-violet-500/60 bg-violet-500/10 text-white'
+                  : chipClass
               }`}
             >
               <input
                 type="checkbox"
                 checked={yearLevels.includes(level)}
                 onChange={() => toggleYear(level)}
-                className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-violet-500 focus:ring-violet-500"
+                className={checkboxClass}
               />
               Year {level}
             </label>
@@ -73,7 +96,7 @@ export function SectionYearTargetPicker({
         </div>
       </div>}
       <div className="space-y-2">
-        <Label className="text-slate-300 text-sm">Sections</Label>
+        <Label className={labelClass}>Sections</Label>
         {sectionOptions.length > 0 ? (
           <div className="flex flex-wrap gap-3">
             {sectionOptions.map((section) => (
@@ -88,9 +111,9 @@ export function SectionYearTargetPicker({
                         : sections.filter((value) => value !== section)
                     );
                   }}
-                  className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-violet-500 focus:ring-violet-500"
+                  className={checkboxClass}
                 />
-                <span className="text-sm text-slate-300">{section}</span>
+                <span className={`text-sm ${labelClass}`}>{section}</span>
               </label>
             ))}
           </div>
@@ -107,12 +130,12 @@ export function SectionYearTargetPicker({
               }
             }}
             maxLength={50}
-            className="bg-slate-800/60 border-slate-700 text-white placeholder:text-slate-500 h-9"
+            className={inputClass}
           />
           <button
             type="button"
             onClick={addSection}
-            className="shrink-0 rounded-md border border-slate-700 bg-slate-800/40 px-3 text-sm text-slate-200 hover:bg-slate-800/70"
+            className={buttonClass}
           >
             Add
           </button>

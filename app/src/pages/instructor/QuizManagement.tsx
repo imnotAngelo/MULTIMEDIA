@@ -10,7 +10,6 @@ import {
   Calendar,
   Users,
   RefreshCw,
-  TrendingUp,
   ClipboardList,
   Loader2,
   Download,
@@ -49,8 +48,6 @@ interface QuizSubmission {
 interface QuizStats {
   totalQuizzes: number;
   totalSubmissions: number;
-  gradedSubmissions: number;
-  submissionRate: number;
 }
 
 export function QuizManagement() {
@@ -60,8 +57,6 @@ export function QuizManagement() {
   const [stats, setStats] = useState<QuizStats>({
     totalQuizzes: 0,
     totalSubmissions: 0,
-    gradedSubmissions: 0,
-    submissionRate: 0,
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -128,14 +123,10 @@ export function QuizManagement() {
 
   const calculateStats = (quizList: Quiz[]) => {
     const totalSubmissions = quizList.reduce((sum, q) => sum + q.submissions, 0);
-    const gradedSubmissions = quizList.reduce((sum, q) => sum + (q.graded || 0), 0);
-    const submissionRate = totalSubmissions > 0 ? Math.round((gradedSubmissions / totalSubmissions) * 100) : 0;
 
     const stats: QuizStats = {
       totalQuizzes: quizList.length,
       totalSubmissions,
-      gradedSubmissions,
-      submissionRate,
     };
 
     setStats(stats);
@@ -309,7 +300,7 @@ export function QuizManagement() {
       )}
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         <div className="group bg-slate-900/60 border border-slate-800/60 rounded-xl p-5 hover:border-violet-500/30 transition-all">
           <div className="flex items-center justify-between mb-3">
             <div className="w-9 h-9 rounded-lg bg-violet-500/10 flex items-center justify-center">
@@ -328,26 +319,6 @@ export function QuizManagement() {
           </div>
           <div className="text-2xl font-bold text-white">{stats.totalSubmissions}</div>
           <p className="text-slate-500 text-xs mt-1">Total Submissions</p>
-        </div>
-
-        <div className="group bg-slate-900/60 border border-slate-800/60 rounded-xl p-5 hover:border-emerald-500/30 transition-all">
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-              <TrendingUp className="w-4.5 h-4.5 text-emerald-400" />
-            </div>
-          </div>
-          <div className="text-2xl font-bold text-white">{stats.gradedSubmissions}</div>
-          <p className="text-slate-500 text-xs mt-1">Graded</p>
-        </div>
-
-        <div className="group bg-slate-900/60 border border-slate-800/60 rounded-xl p-5 hover:border-amber-500/30 transition-all">
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center">
-              <Calendar className="w-4.5 h-4.5 text-amber-400" />
-            </div>
-          </div>
-          <div className="text-2xl font-bold text-white">{stats.submissionRate}%</div>
-          <p className="text-slate-500 text-xs mt-1">Grading Rate</p>
         </div>
       </div>
       {loading && (
@@ -399,10 +370,6 @@ export function QuizManagement() {
                       <span className="inline-flex items-center gap-1 text-sm text-slate-300">
                         <Users className="w-4 h-4" />
                         {quiz.submissions} submissions
-                      </span>
-                      <span className="inline-flex items-center gap-1 text-sm text-slate-300">
-                        <TrendingUp className="w-4 h-4" />
-                        {quiz.graded || 0} graded
                       </span>
                       <span className="inline-flex items-center gap-1 text-sm text-slate-300">
                         <Calendar className="w-4 h-4" />
