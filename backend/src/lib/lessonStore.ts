@@ -57,6 +57,10 @@ export function createLocalLesson(lesson: LocalLesson): LocalLesson {
   return nextLesson;
 }
 
+export function listLocalLessons(): LocalLesson[] {
+  return readLessonsStore();
+}
+
 export function listLocalLessonsByModuleId(moduleId: string): LocalLesson[] {
   return readLessonsStore().filter((lesson) => lesson.moduleId === moduleId);
 }

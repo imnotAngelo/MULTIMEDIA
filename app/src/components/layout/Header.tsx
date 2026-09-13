@@ -168,8 +168,18 @@ export function Header({ title, subtitle }: HeaderProps) {
   };
 
   const fetchNotifications = async () => {
+    if (!user) {
+      setFromApi([]);
+      return;
+    }
+
     try {
       const res = await authFetch('/notifications');
+      if (res.status === 401) {
+        setFromApi([]);
+        return;
+      }
+
       if (!res.ok) {
         const text = await res.text().catch(() => '');
         console.error('[notify] Fetch failed:', res.status, text);
@@ -194,7 +204,7 @@ export function Header({ title, subtitle }: HeaderProps) {
       const errorMsg = err?.message || String(err);
       if (errorMsg.includes('Failed to fetch')) {
         console.warn('[notify] Backend API not accessible. Is the backend server running on port 3001?');
-      } else {
+      } else if (!errorMsg.includes('Not authenticated')) {
         console.error('[notify] Fetch error:', err);
       }
       setFromApi([]);
@@ -208,7 +218,7 @@ export function Header({ title, subtitle }: HeaderProps) {
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, []);
+  }, [user?.id]);
 
   const handleMarkAllRead = async () => {
     markAllRead();

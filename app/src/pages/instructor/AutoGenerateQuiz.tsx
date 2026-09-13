@@ -171,6 +171,7 @@ export function AutoGenerateQuiz() {
 
   useEffect(() => {
     if (selectedUnit) {
+      setSelectedLessons([]);
       fetchLessons(selectedUnit);
     } else {
       setLessons([]);
@@ -197,14 +198,18 @@ export function AutoGenerateQuiz() {
 
   const fetchLessons = async (unitId: string) => {
     try {
-      const response = await authFetch(`/units/${unitId}/lessons`);
+      const response = await authFetch(`/units/${unitId}/lessons`, {
+        cache: 'no-store',
+      });
 
       if (response.ok) {
         const data = await response.json();
         if (data.success && Array.isArray(data.data)) {
-          setLessons(data.data);
+          const loadedLessons = data.data as Lesson[];
+          setLessons(loadedLessons);
+          setSelectedLessons((prev) => prev.filter((lessonId) => loadedLessons.some((lesson) => lesson.id === lessonId)));
           if (lessonScope === 'all' && formData.quizCategory === 'exam') {
-            setSelectedLessons(data.data.map((lesson: Lesson) => lesson.id));
+            setSelectedLessons(loadedLessons.map((lesson: Lesson) => lesson.id));
           }
         }
       }
@@ -238,13 +243,7 @@ export function AutoGenerateQuiz() {
       ? [cleanAnswer, ...uniqueSourceOptions]
       : uniqueSourceOptions;
 
-    const fallbackDistractors = [
-      'A broader statement that includes the idea but is not the lesson\'s most precise explanation.',
-      'A narrower statement that overlooks an important part of the concept.',
-      'A related idea that appears in the lesson but does not match the correct answer.'
-    ];
-
-    const combinedOptions = [...preferredOptions, ...fallbackDistractors];
+    const combinedOptions = preferredOptions;
     const uniqueOptions: string[] = [];
     const seen = new Set<string>();
 
@@ -280,10 +279,17 @@ export function AutoGenerateQuiz() {
   };
 
   const generateQuestions = async () => {
-    if (!selectedUnit || selectedLessons.length === 0 || !formData.title || formData.quizTypes.length === 0) {
+    const validSelectedLessons = selectedLessons.filter((lessonId) => lessons.some((lesson) => lesson.id === lessonId));
+
+    if (!selectedUnit || validSelectedLessons.length === 0 || !formData.title || formData.quizTypes.length === 0) {
       alert('Please fill in all required fields');
       return;
     }
+
+    if (validSelectedLessons.length !== selectedLessons.length) {
+      setSelectedLessons(validSelectedLessons);
+    }
+
     const categoryRange = getQuizCategoryRange(formData.quizCategory);
     const requestedQuestionTotal = configuredQuestionTotal();
     if (requestedQuestionTotal < categoryRange.min || requestedQuestionTotal > categoryRange.max) {
@@ -307,11 +313,11 @@ export function AutoGenerateQuiz() {
       while (batchStart < requestedQuestionTotal && attempts < 12) {
         const batchTypes = allocation.slice(batchStart, Math.min(batchStart + 10, requestedQuestionTotal));
         const batchCounts = batchTypes.reduce((counts, type) => ({ ...counts, [type]: (counts[type] || 0) + 1 }), {} as Record<string, number>);
-        const response = await authFetch(`/lessons/${selectedLessons[0]}/generate-questions`, {
+        const response = await authFetch(`/lessons/${validSelectedLessons[0]}/generate-questions`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            lessonIds: selectedLessons,
+            lessonIds: validSelectedLessons,
             numberOfQuestions: batchTypes.length,
             quizTypes: formData.quizTypes,
             pointsByType: formData.pointsByType,
@@ -320,8 +326,20 @@ export function AutoGenerateQuiz() {
             generationAttempt: attempts,
           }),
         });
-        const responseData = response.ok ? await response.json() : null;
-        const batchQuestions = responseData?.success && Array.isArray(responseData.data) ? responseData.data : [];
+
+        let responseData: any = null;
+        try {
+          responseData = await response.json();
+        } catch {
+          responseData = null;
+        }
+
+        if (!response.ok || responseData?.success === false) {
+          const backendMessage = responseData?.error?.message || responseData?.message || `Request failed (${response.status})`;
+          throw new Error(backendMessage);
+        }
+
+        const batchQuestions = Array.isArray(responseData?.data) ? responseData.data : [];
 
         for (const question of batchQuestions) {
           const key = String(question.text || question.title || '').replace(/\s+/g, ' ').trim().toLowerCase();
@@ -396,7 +414,14 @@ export function AutoGenerateQuiz() {
       const message = error?.name === 'AbortError'
         ? 'Quiz generation timed out. Please try again or reduce the number of questions.'
         : error?.message || 'Unable to generate questions.';
-      setGenerationError(`Failed to generate questions: ${message}`);
+      if (/lesson not found/i.test(message) && selectedUnit) {
+        await fetchLessons(selectedUnit);
+        setSelectedLessons([]);
+        setQuestionsGenerated(false);
+        setGenerationError('The lesson list was outdated. Lessons were refreshed; please select a lesson and try again.');
+      } else {
+        setGenerationError(`Failed to generate questions: ${message}`);
+      }
     } finally {
       setGenerating(false);
     }
@@ -619,6 +644,7 @@ export function AutoGenerateQuiz() {
                     value={selectedUnit}
                     onChange={(e) => {
                       setSelectedUnit(e.target.value);
+                      setSelectedLessons([]);
                       setQuestionsGenerated(false);
                     }}
                     className={fieldClass}

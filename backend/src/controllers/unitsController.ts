@@ -4,7 +4,8 @@ import { supabase } from '../config/supabase.js';
 import { v4 as uuidv4 } from 'uuid';
 import { findUserById } from '../lib/userStore.js';
 import { matchesContentTarget } from '../lib/contentTargeting.js';
-import { listLocalLessonsByModuleId } from '../lib/lessonStore.js';
+import { listLocalLessons, listLocalLessonsByModuleId } from '../lib/lessonStore.js';
+import { listLocalUnits } from '../lib/unitStore.js';
 
 // Use a consistent default instructor ID for unauthenticated requests (proper UUID)
 const DEFAULT_INSTRUCTOR_ID = '12345678-1234-4234-8234-123456789012';
@@ -259,6 +260,11 @@ export const getUnits = async (req: AuthRequest, res: Response) => {
     res.set('Pragma', 'no-cache');
     res.set('Expires', '0');
 
+    const requester = (req as any).user;
+    if (!requester) {
+      return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Login required' } });
+    }
+
     const unitsFromDb = await safeSupabaseCall(async () => {
       if (!supabase) {
         throw new Error('Supabase unavailable');
@@ -314,23 +320,54 @@ export const getUnits = async (req: AuthRequest, res: Response) => {
       }) as Array<{ id: string; title: string; description: string; created_at: string; status: string; target_sections: string[]; target_year_levels: number[]; owner_sections: string[]; owner_year_levels: number[] }>;
     }, null as any);
 
-    if (unitsFromDb !== null) {
-      console.log('📚 Units fetched from Supabase:', unitsFromDb.length);
-      const requester = (req as any).user;
-      if (!requester) {
-        return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Login required' } });
-      }
-      
-      // Separate active and archived units
-      const activeUnits = unitsFromDb.filter(u => u.status !== 'archived');
-      const archivedUnits = unitsFromDb.filter(u => u.status === 'archived');
-      
+    const localUnitsFromStore = listLocalUnits().map((unit: any) => ({
+      id: unit.id,
+      title: unit.title,
+      description: unit.description || '',
+      created_at: unit.createdAt || new Date().toISOString(),
+      status: unit.status || 'active',
+      target_sections: [],
+      target_year_levels: Array.isArray(unit.yearLevels) ? unit.yearLevels : [],
+      owner_sections: [],
+      owner_year_levels: [],
+    }));
+
+    const localUnitsFromLessons = Array.from(
+      new Map(
+        listLocalLessons().map((lesson: any) => [lesson.moduleId, {
+          id: lesson.moduleId,
+          title: `Local Unit ${lesson.moduleId.slice(0, 8)}`,
+          description: 'Local unit created from persisted lesson data.',
+          created_at: lesson.createdAt || new Date().toISOString(),
+          status: 'active',
+          target_sections: [],
+          target_year_levels: [],
+          owner_sections: [],
+          owner_year_levels: [],
+        }])
+      ).values()
+    );
+
+    const localUnits = [...localUnitsFromStore, ...localUnitsFromLessons];
+
+    const dbUnits = Array.isArray(unitsFromDb) ? unitsFromDb : [];
+    const mergedUnits = Array.from(
+      new Map(
+        [...dbUnits, ...localUnits].map((unit) => [unit.id, unit])
+      ).values()
+    );
+
+    if (mergedUnits.length > 0 || unitsFromDb !== null) {
+      console.log('📚 Units fetched from merged sources:', mergedUnits.length);
+      const activeUnits = mergedUnits.filter(u => u.status !== 'archived');
+      const archivedUnits = mergedUnits.filter(u => u.status === 'archived');
+
       const visibleActiveUnits = requester?.role === 'student'
         ? activeUnits.filter((u) => matchesContentTarget(u.target_sections, u.target_year_levels, requester.section, requester.year_level)
           && u.owner_sections !== undefined
           && matchesContentTarget(u.owner_sections, u.owner_year_levels, requester.section, requester.year_level))
         : activeUnits;
-      
+
       const visibleArchivedUnits = requester?.role === 'student'
         ? archivedUnits.filter((u) => matchesContentTarget(u.target_sections, u.target_year_levels, requester.section, requester.year_level)
           && u.owner_sections !== undefined
@@ -343,7 +380,7 @@ export const getUnits = async (req: AuthRequest, res: Response) => {
           id: u.id,
           title: u.title,
           description: u.description,
-          lessonCount: 0, // Will be updated when fetching lessons
+          lessonCount: 0,
           createdAt: u.created_at,
           status: u.status,
           yearLevel: u.archived_year_level ?? null,
@@ -397,7 +434,7 @@ export const getUnitLessons = async (req: AuthRequest, res: Response) => {
     }
     const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(unitId);
 
-    if (requester.role === 'instructor') {
+    if (requester.role === 'instructor' && supabase) {
       const { data: ownedUnit, error: ownershipError } = await supabase
         .from('modules')
         .select('id, courses!inner(instructor_id)')
@@ -410,7 +447,7 @@ export const getUnitLessons = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    if (requester.role === 'student') {
+    if (requester.role === 'student' && supabase) {
       const { data: visibleUnit, error: visibilityError } = await supabase
         .from('modules')
         .select('id, course_id, target_sections, target_year_levels')
@@ -439,7 +476,8 @@ export const getUnitLessons = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    const localLessons = requester.role === 'student' ? [] : listLocalLessonsByModuleId(unitId).map((l) => ({
+    const hasSupabase = !!supabase;
+    const localLessons = listLocalLessonsByModuleId(unitId).map((l) => ({
       id: l.id,
       title: l.title,
       content: l.content || '',
@@ -458,7 +496,7 @@ export const getUnitLessons = async (req: AuthRequest, res: Response) => {
     }));
 
     let allDbLessons: any[] = [];
-    if (isValidUuid) {
+    if (hasSupabase && isValidUuid) {
       allDbLessons = await safeSupabaseCall(async () => {
         if (!supabase) {
           throw new Error('Supabase unavailable');

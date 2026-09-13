@@ -557,6 +557,13 @@ export function buildFallbackQuizQuestions(sourceText: string, targetCount: numb
     .filter(part => part.length >= 12);
   if (sourceParts.length === 0) return [];
 
+  const sourceFacts = Array.from(new Set(
+    sourceText
+      .split(/(?<=[.!?])\s+|[;:\n]+|,\s*/)
+      .map(part => part.replace(/\s+/g, ' ').trim())
+      .filter(part => part.length >= 4)
+  ));
+
   const allocation = requestedTypes.flatMap(type => Array.from({ length: Math.max(0, Number(questionCountsByType[type]) || 0) }, () => type));
   const questions: any[] = [];
 
@@ -575,22 +582,16 @@ export function buildFallbackQuizQuestions(sourceText: string, targetCount: numb
     return stems[index % stems.length];
   };
 
-  const buildUniqueOptions = (answer: string, topic: string, index: number) => {
+  const buildUniqueOptions = (answer: string, index: number) => {
     const baseOptions = [answer.trim()];
 
-    for (let offset = 1; offset < sourceParts.length; offset += 1) {
-      const candidate = sourceParts[(index + offset) % sourceParts.length]?.trim();
+    for (let offset = 1; offset < sourceFacts.length; offset += 1) {
+      const candidate = sourceFacts[(index + offset) % sourceFacts.length]?.trim();
       if (candidate && candidate.toLowerCase() !== answer.trim().toLowerCase()) {
         baseOptions.push(candidate);
       }
       if (baseOptions.length >= 4) break;
     }
-
-    baseOptions.push(
-      `A narrower description of ${topic} that overlooks the broader function explained in the lesson.`,
-      `A misleading statement that treats ${topic} as only a storage or formatting tool.`,
-      `A claim that confuses ${topic} with a related concept the lesson distinguishes from it.`
-    );
 
     const uniqueOptions: string[] = [];
     const seen = new Set<string>();
@@ -604,12 +605,7 @@ export function buildFallbackQuizQuestions(sourceText: string, targetCount: numb
       if (uniqueOptions.length === 4) break;
     }
 
-    return uniqueOptions.length === 4 ? uniqueOptions : [
-      answer.trim(),
-      `A narrower description of ${topic} that overlooks the broader function explained in the lesson.`,
-      `A misleading statement that treats ${topic} as only a storage or formatting tool.`,
-      `A claim that confuses ${topic} with a related concept the lesson distinguishes from it.`
-    ];
+    return uniqueOptions.length === 4 ? uniqueOptions : [];
   };
 
   for (let index = 0; index < targetCount; index += 1) {
@@ -620,8 +616,6 @@ export function buildFallbackQuizQuestions(sourceText: string, targetCount: numb
       .trim()
       .replace(/^(the|a|an)\s+/i, '')
       .replace(/^(according to the lesson|statement\s*\d+)\s*/i, '');
-    const isFalseStatement = type === 'true-false' && index % 2 === 1;
-
     const buildIdentificationStem = (sourceAnswer: string, sourceTopic: string, questionIndex: number) => {
       const trimmedAnswer = sourceAnswer.replace(/[?]+$/, '').trim();
       const description = trimmedAnswer
@@ -646,17 +640,19 @@ export function buildFallbackQuizQuestions(sourceText: string, targetCount: numb
     const questionText = type === 'multiple-choice'
       ? buildProfessionalMultipleChoiceStem(topic, answer, index)
       : type === 'true-false'
-        ? `${isFalseStatement ? 'True or False: The lesson states the opposite of ' : 'True or False: '} ${answer.replace(/[?]+$/, '')}.`
+        ? `True or False: The lesson states that ${answer.replace(/[?]+$/, '')}.`
         : type === 'identification'
           ? buildIdentificationStem(answer, topic, index)
           : type === 'enumeration'
             ? `List the key items, steps, characteristics, or examples related to ${topic}.`
             : `Explain the significance of ${topic}.`;
     const options = type === 'multiple-choice'
-      ? buildUniqueOptions(answer, topic, index)
+      ? buildUniqueOptions(answer, index)
       : type === 'true-false'
         ? ['True', 'False']
         : [];
+
+      if (type === 'multiple-choice' && options.length < 4) continue;
 
     const multipleChoiceOptions = type === 'multiple-choice'
       ? (() => {
@@ -676,7 +672,7 @@ export function buildFallbackQuizQuestions(sourceText: string, targetCount: numb
       type,
       points: Number(pointsByType[type]) > 0 ? Number(pointsByType[type]) : 2,
       options: multipleChoiceOptions,
-      correctAnswer: type === 'multiple-choice' ? answer : type === 'true-false' ? (isFalseStatement ? 'False' : 'True') : answer,
+      correctAnswer: type === 'multiple-choice' ? answer : type === 'true-false' ? 'True' : answer,
     });
   }
 
@@ -1520,6 +1516,7 @@ router.post(
       const finalLessonIds = requestedLessonIds.length > 0 ? requestedLessonIds : [lessonId];
 
       const lessonsForGeneration: any[] = [];
+      const missingLessonIds: string[] = [];
 
       for (const requestedLessonId of finalLessonIds) {
         let currentLesson: any = null;
@@ -1530,7 +1527,7 @@ router.post(
             const result = await Promise.race([
               supabase
                 .from('lessons')
-                .select('id, title, content, slides, pdf_url, original_format, description, summary, text, file_url, pdfUrl, fileUrl')
+                .select('id, title, content, slides, pdf_url, original_format')
                 .eq('id', requestedLessonId)
                 .single(),
               new Promise<never>((_, reject) =>
@@ -1561,6 +1558,8 @@ router.post(
 
         if (currentLesson) {
           lessonsForGeneration.push(currentLesson);
+        } else {
+          missingLessonIds.push(requestedLessonId);
         }
       }
 
@@ -1572,12 +1571,19 @@ router.post(
       }
 
       lesson = lessonsForGeneration[0] || null;
-      lessonError = lessonsForGeneration.length > 0 ? null : new Error('Lesson not found');
+      lessonError = lessonsForGeneration.length > 0 ? null : new Error(
+        missingLessonIds.length > 0
+          ? `Lesson not found for selected lesson ID(s): ${missingLessonIds.join(', ')}`
+          : 'Lesson not found'
+      );
 
       if (lessonError || !lesson) {
         return res.status(404).json({
           success: false,
-          error: { code: 'LESSON_NOT_FOUND', message: 'Lesson not found' },
+          error: {
+            code: 'LESSON_NOT_FOUND',
+            message: lessonError?.message || 'Lesson not found',
+          },
         });
       }
 
@@ -1696,6 +1702,12 @@ STRICT GENERATION REQUIREMENTS:
 1. Language
 - Use clear, precise, formal, and professional language.
 - Avoid vague, conversational, ambiguous, or casual wording.
+
+1a. Source fidelity
+- Every question, correct answer, and multiple-choice option must be directly supported by the lesson content.
+- Do not invent examples, facts, distractors, opposites, terminology, or applications that are not stated or clearly implied by the lesson.
+- For true-false items, use a statement from the lesson and mark it true; do not create a false statement by adding an unsupported negation.
+- If the lesson does not support enough distinct questions, return only supportable questions rather than filling the response with unrelated content.
 
 2. Content Focus
 - Focus only on important concepts, relationships, processes, principles, and applications found in the lesson.
