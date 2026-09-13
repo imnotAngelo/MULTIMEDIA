@@ -42,7 +42,21 @@ export function AnnouncementsManagement() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    setAnnouncements(loadAnnouncements());
+    const loadHistory = async () => {
+      const localHistory = loadAnnouncements();
+      try {
+        const response = await authFetch('/notifications/sent-announcements');
+        if (!response.ok) throw new Error(`Server error (${response.status})`);
+        const rows = await response.json();
+        const history = Array.isArray(rows) ? rows : localHistory;
+        setAnnouncements(history);
+        saveAnnouncements(history);
+      } catch {
+        setAnnouncements(localHistory);
+      }
+    };
+
+    loadHistory();
   }, []);
 
   const formatDate = (iso: string) => {

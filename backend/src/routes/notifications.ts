@@ -115,6 +115,54 @@ router.get('/announcements', authMiddleware, async (req: AuthRequest, res: Respo
 });
 
 /**
+ * GET /api/notifications/sent-announcements
+ * Returns announcements created by the authenticated instructor.
+ */
+router.get('/sent-announcements', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!supabase) return res.json([]);
+    const senderId = req.user?.id;
+    if (!senderId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const { data: sender, error: senderError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', senderId)
+      .maybeSingle();
+    if (senderError) throw senderError;
+    if (!sender || sender.role !== 'instructor') return res.status(403).json({ error: 'Instructor access required' });
+
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('type', 'announcement')
+      .eq('sender_id', senderId)
+      .order('created_at', { ascending: false })
+      .limit(500);
+    if (error) throw error;
+
+    const unique = new Map<string, any>();
+    for (const item of data ?? []) {
+      const key = `${item.created_at}:${item.title}:${item.message}`;
+      if (!unique.has(key)) unique.set(key, item);
+    }
+
+    res.json([...unique.values()].map((item: any) => ({
+      id: item.id,
+      title: item.title,
+      message: item.message,
+      createdAt: item.created_at,
+      attachmentUrl: item.attachment_url ?? null,
+      attachmentName: item.attachment_name ?? null,
+    })));
+  } catch (err: any) {
+    if (isSupabaseUnavailableError(err)) return res.json([]);
+    console.error('Error loading sent announcements:', err);
+    res.status(500).json({ error: err?.message || 'Failed to load sent announcements' });
+  }
+});
+
+/**
  * POST /api/notifications
  * Instructor broadcasts a notification to all students (or a specific role).
  * Body: { type, title, message, recipientRole?, attachmentUrl?, attachmentName? }
