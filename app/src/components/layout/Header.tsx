@@ -66,7 +66,7 @@ export function Header({ title, subtitle }: HeaderProps) {
           type: 'unit' as const,
           title: u.title || 'Untitled unit',
           subtitle: u.description,
-          path: isInstructor ? '/instructor/courses' : '/lessons',
+          path: `${isInstructor ? '/instructor/courses' : '/lessons'}?unit=${encodeURIComponent(u.id)}`,
         })));
 
         const lessonGroups = await Promise.all(units.map(async (u) => {
@@ -101,7 +101,9 @@ export function Header({ title, subtitle }: HeaderProps) {
             type: 'assessment',
             title: a.title || 'Untitled assessment',
             subtitle: a.type || a.assessment_type,
-            path: isInstructor ? '/instructor/assessments' : '/quizzes',
+            path: isInstructor
+              ? `/instructor/assessments?assessment=${encodeURIComponent(a.id)}`
+              : `/assessment/${encodeURIComponent(a.id)}`,
           });
         }
       } catch { /* ignore */ }

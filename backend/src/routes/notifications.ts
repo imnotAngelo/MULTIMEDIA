@@ -205,22 +205,43 @@ router.post(
           return res.json({ sent: 0, skipped: true, attachmentUrl, attachmentName });
         }
 
+        // Read current assignments instead of relying on values from an older JWT.
+        const { data: sender, error: senderError } = await supabase
+          .from('users')
+          .select('id, role, section, year_level, teaching_sections, teaching_year_levels')
+          .eq('id', senderId)
+          .maybeSingle();
+        if (senderError) throw senderError;
+        if (!sender || sender.role !== 'instructor') {
+          return res.status(403).json({ error: 'Only instructors can send announcements.' });
+        }
+
         // Only broadcast to students in the instructor's own sections and taught year levels.
-        const teachingSections = (req.user?.teaching_sections?.length ? req.user.teaching_sections : (req.user?.section ? [req.user.section] : []))
-          .map((s: string) => String(s).trim()).filter(Boolean);
-        const teachingYearLevels = req.user?.teaching_year_levels || [];
+        const teachingSections = (Array.isArray(sender.teaching_sections) && sender.teaching_sections.length
+          ? sender.teaching_sections
+          : (sender.section ? [sender.section] : []))
+          .map((section: unknown) => String(section).trim().toLowerCase())
+          .filter(Boolean);
+        const teachingYearLevels = (Array.isArray(sender.teaching_year_levels) && sender.teaching_year_levels.length
+          ? sender.teaching_year_levels
+          : (sender.year_level !== null && sender.year_level !== undefined ? [sender.year_level] : []))
+          .map((year: unknown) => Number(year))
+          .filter(Number.isInteger);
 
         if (teachingSections.length === 0 || teachingYearLevels.length === 0) {
           return res.status(403).json({ error: 'Your instructor account has no section/year level assigned.' });
         }
 
-        const { data: recipients, error: rErr } = await supabase
+        const { data: students, error: rErr } = await supabase
           .from('users')
-          .select('id')
-          .eq('role', 'student')
-          .in('section', teachingSections)
-          .in('year_level', teachingYearLevels);
+          .select('id, section, year_level')
+          .eq('role', 'student');
         if (rErr) throw rErr;
+
+        const recipients = (students ?? []).filter((student: any) =>
+          teachingSections.includes(String(student.section ?? '').trim().toLowerCase())
+          && teachingYearLevels.includes(Number(student.year_level))
+        );
 
         const rows = (recipients ?? []).map((r: any) => ({
           recipient_id: r.id,
@@ -235,7 +256,14 @@ router.post(
           context_name: contextName || null,
         }));
 
-        if (rows.length === 0) return res.json({ sent: 0, attachmentUrl, attachmentName });
+        if (rows.length === 0) {
+          return res.status(409).json({
+            error: 'No students match your assigned sections and year levels.',
+            sent: 0,
+            attachmentUrl,
+            attachmentName,
+          });
+        }
 
         let { error: insErr } = await supabase.from('notifications').insert(rows);
         if (insErr && /column|context_type|does not exist/i.test(insErr.message || '')) {
@@ -245,16 +273,18 @@ router.post(
         }
         if (insErr) {
           if (isSupabaseUnavailableError(insErr)) {
-            logNotificationFallback('Could not create announcement because the notifications table is unavailable.', insErr.message);
-            return res.json({ sent: 0, skipped: true, attachmentUrl, attachmentName });
+            throw new Error(`Announcements could not be saved. Run the notifications migration in Supabase. ${insErr.message}`);
           }
           throw insErr;
         }
 
         res.json({ sent: rows.length, attachmentUrl, attachmentName });
       } catch (err: any) {
-        logNotificationFallback('Error creating announcement; returning a no-op response.', err?.message);
-        res.json({ sent: 0, skipped: true });
+        logNotificationFallback('Error creating announcement.', err?.message);
+        res.status(503).json({
+          success: false,
+          error: { code: 'ANNOUNCEMENT_FAILED', message: err?.message || 'Announcement could not be saved.' },
+        });
       }
     });
   }

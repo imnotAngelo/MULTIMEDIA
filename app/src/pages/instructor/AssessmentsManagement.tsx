@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { authFetch } from '@/lib/authFetch';
 import { Button } from '@/components/ui/button';
@@ -44,6 +44,8 @@ interface AssessmentStats {
 export function InstructorAssessments() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const requestedAssessmentId = searchParams.get('assessment');
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [stats, setStats] = useState<AssessmentStats>({
     totalAssessments: 0,
@@ -74,6 +76,12 @@ export function InstructorAssessments() {
     }
     loadAssessments();
   }, []);
+
+  useEffect(() => {
+    if (requestedAssessmentId && assessments.some((assessment) => assessment.id === requestedAssessmentId)) {
+      setExpandedId(requestedAssessmentId);
+    }
+  }, [requestedAssessmentId, assessments]);
 
   const loadAssessments = async () => {
     try {

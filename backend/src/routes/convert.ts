@@ -630,6 +630,13 @@ router.post('/pptx', upload.single('file'), async (req: Request, res: Response) 
     const unitId = String(req.body.unitId || req.body.moduleId || '').trim();
     const lessonModuleId = unitId || null;
 
+    if (!lessonModuleId) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'UNIT_REQUIRED', message: 'Select a unit before saving the converted lesson.' },
+      });
+    }
+
     if (lessonModuleId && !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(lessonModuleId)) {
       return res.status(400).json({
         success: false,
@@ -819,7 +826,7 @@ router.post('/pptx', upload.single('file'), async (req: Request, res: Response) 
     if (!savedLesson) {
       const localLesson = createLocalLesson({
         id: lessonId,
-        moduleId: lessonModuleId || 'local-unit',
+        moduleId: lessonModuleId,
         title,
         content: lessonPayload.content,
         slides: [],

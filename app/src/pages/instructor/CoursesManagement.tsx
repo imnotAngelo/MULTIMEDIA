@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { 
   BookOpen, 
@@ -303,6 +303,8 @@ function UnitSection({
 export function CoursesManagement() {
   const { user, isAuthenticated, isHydrated } = useAuthStore();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const requestedUnitId = searchParams.get('unit');
   const [units, setUnits] = useState<Unit[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [expandedUnits, setExpandedUnits] = useState<string[]>([]);
@@ -347,6 +349,13 @@ export function CoursesManagement() {
       loadData();
     }
   }, [isHydrated, isAuthenticated, user?.id]);
+
+  useEffect(() => {
+    if (!requestedUnitId || !units.some((unit) => unit.id === requestedUnitId)) return;
+    setExpandedUnits([requestedUnitId]);
+    const firstLesson = lessons.find((lesson) => lesson.unitId === requestedUnitId);
+    if (firstLesson) setActiveLessonId(firstLesson.id);
+  }, [requestedUnitId, units, lessons]);
 
   const loadData = async () => {
     try {

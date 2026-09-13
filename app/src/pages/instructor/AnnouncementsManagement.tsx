@@ -80,10 +80,13 @@ export function AnnouncementsManagement() {
         body: fd,
       });
       if (!res.ok) {
-        const errText = await res.text().catch(() => '');
-        throw new Error(errText || `Server error (${res.status})`);
+        const errorPayload = await res.json().catch(() => null);
+        throw new Error(errorPayload?.error?.message || errorPayload?.error || `Server error (${res.status})`);
       }
       const data = await res.json();
+      if (!data?.sent) {
+        throw new Error(data?.error?.message || data?.error || 'No students matched your assigned sections and year levels.');
+      }
 
       // Toast for the instructor + add to their own bell list
       notificationService.notifyAnnouncement(`${title.trim()} — ${message.trim()}`);

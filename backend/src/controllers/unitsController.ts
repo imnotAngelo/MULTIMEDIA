@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { findUserById } from '../lib/userStore.js';
 import { matchesContentTarget } from '../lib/contentTargeting.js';
 import { listLocalLessons, listLocalLessonsByModuleId } from '../lib/lessonStore.js';
-import { listLocalUnits } from '../lib/unitStore.js';
+import { getLocalUnitById, listLocalUnits } from '../lib/unitStore.js';
 
 // Use a consistent default instructor ID for unauthenticated requests (proper UUID)
 const DEFAULT_INSTRUCTOR_ID = '12345678-1234-4234-8234-123456789012';
@@ -433,8 +433,9 @@ export const getUnitLessons = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Login required' } });
     }
     const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(unitId);
+    const hasLocalContent = Boolean(getLocalUnitById(unitId) || listLocalLessonsByModuleId(unitId).length > 0);
 
-    if (requester.role === 'instructor' && supabase) {
+    if (!hasLocalContent && requester.role === 'instructor' && supabase && isValidUuid) {
       const { data: ownedUnit, error: ownershipError } = await supabase
         .from('modules')
         .select('id, courses!inner(instructor_id)')
@@ -447,7 +448,7 @@ export const getUnitLessons = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    if (requester.role === 'student' && supabase) {
+    if (!hasLocalContent && requester.role === 'student' && supabase && isValidUuid) {
       const { data: visibleUnit, error: visibilityError } = await supabase
         .from('modules')
         .select('id, course_id, target_sections, target_year_levels')

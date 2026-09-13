@@ -16,6 +16,7 @@ import { SlideViewer } from './SlideViewer';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
 import { AetherLoader } from '@/components/AetherLoader';
+import { useSearchParams } from 'react-router-dom';
 
 interface Unit {
   id: string;
@@ -179,6 +180,8 @@ function UnitSection({
 
 export function Lessons() {
   const { user } = useAuthStore();
+  const [searchParams] = useSearchParams();
+  const requestedUnitId = searchParams.get('unit');
   const [units, setUnits] = useState<Unit[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [expandedUnits, setExpandedUnits] = useState<string[]>([]);
@@ -189,6 +192,13 @@ export function Lessons() {
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (!requestedUnitId || !units.some((unit) => unit.id === requestedUnitId)) return;
+    setExpandedUnits([requestedUnitId]);
+    const firstLesson = lessons.find((lesson) => lesson.unitId === requestedUnitId);
+    if (firstLesson) setActiveLessonId(firstLesson.id);
+  }, [requestedUnitId, units, lessons]);
 
   const loadData = async () => {
     try {
