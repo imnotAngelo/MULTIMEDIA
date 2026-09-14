@@ -32,7 +32,6 @@ interface NavItem {
 
 const studentNavItems: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { label: 'Lessons', href: '/lessons', icon: BookOpen },
   { label: 'Laboratories', href: '/laboratories', icon: Layers },
   { label: 'Portfolio', href: '/portfolio', icon: Image },
   { label: 'Quizzes', href: '/quizzes', icon: Zap },
@@ -41,7 +40,6 @@ const studentNavItems: NavItem[] = [
 
 const instructorNavItems: NavItem[] = [
   { label: 'Dashboard', href: '/instructor/dashboard', icon: LayoutDashboard },
-  { label: 'Units', href: '/instructor/courses', icon: BookOpen },
   { label: 'Laboratory Submissions', href: '/instructor/laboratory-submissions', icon: Palette },
   { 
     label: 'Laboratories', 

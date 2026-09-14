@@ -24,7 +24,6 @@ export function StudentApprovals() {
   const [error, setError] = useState('');
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [sectionFilter, setSectionFilter] = useState('all');
-  const [yearFilter, setYearFilter] = useState('all');
 
   const loadRequests = async () => {
     setLoading(true);
@@ -56,10 +55,8 @@ export function StudentApprovals() {
   }, []);
 
   const sections = Array.from(new Set([...requests, ...students].map((s) => s.section).filter(Boolean))).sort();
-  const years = Array.from(new Set([...requests, ...students].map((s) => s.year_level).filter((year) => year !== null && year !== undefined))).sort((a, b) => a - b);
   const matchesFilters = (student: StudentRequest) =>
-    (sectionFilter === 'all' || student.section === sectionFilter) &&
-    (yearFilter === 'all' || String(student.year_level) === yearFilter);
+    sectionFilter === 'all' || student.section === sectionFilter;
   const filteredRequests = requests.filter(matchesFilters);
   const filteredStudents = students.filter(matchesFilters);
 
@@ -96,7 +93,7 @@ export function StudentApprovals() {
         </Button>
       </div>
 
-      {(sections.length > 0 || years.length > 0) && (
+      {sections.length > 0 && (
         <div className="flex flex-wrap items-center gap-3">
           <label htmlFor="sectionFilter" className="text-sm text-slate-400">Filter students</label>
           <select
@@ -108,17 +105,6 @@ export function StudentApprovals() {
             <option value="all">All sections</option>
             {sections.map((s) => (
               <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
-          <select
-            id="yearFilter"
-            value={yearFilter}
-            onChange={(e) => setYearFilter(e.target.value)}
-            className="h-9 rounded-md border border-slate-700 bg-slate-800/60 px-3 text-sm text-white focus:border-violet-500/50 focus:outline-none focus:ring-2 focus:ring-violet-500/30"
-          >
-            <option value="all">All year levels</option>
-            {years.map((year) => (
-              <option key={year} value={String(year)}>Year {year}</option>
             ))}
           </select>
         </div>

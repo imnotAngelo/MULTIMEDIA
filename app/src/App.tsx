@@ -14,10 +14,10 @@ import { StudentLayout, InstructorLayout } from '@/components/layout';
 import { AdminLayout, AdminSettings } from '@/pages/admin';
 
 // Student Pages
-import { StudentDashboard, Lessons, StudentQuizTaker, Laboratories, Portfolio, StudentQuizzes, Chatbox, StudentSettings } from '@/pages/student';
+import { StudentDashboard, StudentQuizTaker, Laboratories, Portfolio, StudentQuizzes, Chatbox, StudentSettings } from '@/pages/student';
 
 // Instructor Pages
-import { InstructorDashboard, UnitsManagement, ViewLesson, InstructorAssessments, CreateAssessment, QuizManagement, QuizMethodPicker, CreateQuiz, AutoGenerateQuiz, ExamDocument, LaboratorySubmissions, LaboratoriesManagement, InstructorMessages, InstructorSettings, StudentApprovals, StudentPerformance } from '@/pages/instructor';
+import { InstructorDashboard, InstructorAssessments, CreateAssessment, QuizManagement, QuizMethodPicker, CreateQuiz, AutoGenerateQuiz, ExamDocument, LaboratorySubmissions, LaboratoriesManagement, InstructorMessages, InstructorSettings, StudentApprovals, StudentPerformance } from '@/pages/instructor';
 import { InstructorApprovals } from '@/pages/admin';
 
 
@@ -90,7 +90,6 @@ export function App() {
           }
         >
           <Route path="/dashboard" element={<StudentDashboard />} />
-          <Route path="/lessons" element={<Lessons />} />
           <Route path="/laboratories" element={<Laboratories />} />
           <Route path="/portfolio" element={<Portfolio />} />
           <Route path="/assessments" element={<StudentQuizzes />} />
@@ -110,8 +109,6 @@ export function App() {
           }
         >
           <Route path="/instructor/dashboard" element={<InstructorDashboard />} />
-          <Route path="/instructor/courses" element={<UnitsManagement />} />
-          <Route path="/instructor/lesson/:unitId/:lessonId" element={<ViewLesson />} />
           <Route path="/instructor/assessments" element={<InstructorAssessments />} />
           <Route path="/instructor/assessments/create" element={<CreateAssessment />} />
           <Route path="/instructor/quizzes" element={<QuizManagement />} />

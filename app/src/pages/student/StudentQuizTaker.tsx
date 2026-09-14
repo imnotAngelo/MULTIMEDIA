@@ -82,8 +82,14 @@ export function StudentQuizTaker() {
     ? 'rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 shadow-sm'
     : 'rounded-xl border border-slate-700 bg-slate-800 px-4 py-3';
   const optionBaseClass = isLightMode
-    ? 'p-4 rounded-xl border cursor-pointer transition-all bg-slate-50 border-slate-200 hover:border-violet-300 hover:bg-violet-50'
-    : 'p-4 rounded-xl border cursor-pointer transition-all bg-slate-800/50 border-slate-700 hover:border-slate-600';
+    ? 'p-2 rounded-xl cursor-pointer transition-all duration-200 bg-transparent border border-transparent hover:bg-violet-50/40'
+    : 'p-2 rounded-xl cursor-pointer transition-all duration-200 bg-transparent border border-transparent hover:bg-transparent';
+  const optionRadioContainerClass = isLightMode
+    ? 'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-violet-400 bg-white transition-all duration-200'
+    : 'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-slate-500 bg-slate-900 transition-all duration-200';
+  const optionLetterClass = isLightMode
+    ? 'flex h-7 w-7 items-center justify-center rounded-full bg-violet-100 text-xs font-bold text-violet-700'
+    : 'flex h-7 w-7 items-center justify-center rounded-full bg-violet-500/15 text-xs font-bold text-violet-300';
 
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [loading, setLoading] = useState(true);
@@ -667,28 +673,38 @@ export function StudentQuizTaker() {
                 question.options.map((option, index) => {
                   const optionText = typeof option === 'string' ? option : (option as any).text || '';
                   const optionLabel = String.fromCharCode(65 + index);
+                  const isSelected = studentAnswer?.answer === optionText;
+
                   return (
                     <label
                       key={index}
                       className={`${optionBaseClass} ${
-                        studentAnswer?.answer === optionText
-                          ? 'bg-violet-600/10 border-violet-500/50 shadow-sm'
+                        isSelected
+                          ? isLightMode
+                            ? 'border-transparent bg-transparent'
+                            : 'border-transparent bg-transparent'
                           : ''
                       }`}
                     >
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="radio"
-                          name={`question-${question.id}`}
-                          value={optionText}
-                          checked={studentAnswer?.answer === optionText}
-                          onChange={e => handleAnswerChange(question.id, e.target.value)}
-                          className="w-4 h-4 accent-violet-600"
-                        />
-                        <span className={`w-7 h-7 rounded-full border ${isLightMode ? 'border-slate-300 text-violet-600' : 'border-slate-600 text-violet-300'} flex items-center justify-center text-xs font-semibold shrink-0`}>
-                          {optionLabel}
-                        </span>
-                        <span className={headingTextClass}>{optionText}</span>
+                      <div className="flex items-start gap-4">
+                        <div className="self-center">
+                          <input
+                            type="radio"
+                            name={`question-${question.id}`}
+                            value={optionText}
+                            checked={isSelected}
+                            onChange={e => handleAnswerChange(question.id, e.target.value)}
+                            className="sr-only"
+                          />
+                          <div className={`${optionRadioContainerClass} ${isSelected ? (isLightMode ? 'border-violet-600 bg-violet-100' : 'border-violet-400 bg-violet-500') : ''}`}>
+                            {isSelected && <span className="h-2.5 w-2.5 rounded-full bg-violet-600" />}
+                          </div>
+                        </div>
+
+                        <div className="flex flex-1 items-start gap-3">
+                          <span className={optionLetterClass}>{optionLabel}</span>
+                          <span className={`flex-1 text-base leading-relaxed ${headingTextClass}`}>{optionText}</span>
+                        </div>
                       </div>
                     </label>
                   );
@@ -697,28 +713,36 @@ export function StudentQuizTaker() {
                 <div className={secondaryTextClass}>No options available for this question</div>
               )
             ) : question.type === 'true-false' ? (
-              ['True', 'False'].map((option) => (
-                <label
-                  key={option}
-                  className={`${optionBaseClass} ${
-                    studentAnswer?.answer === option
-                      ? 'bg-violet-600/10 border-violet-500/50 shadow-sm'
-                      : ''
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="radio"
-                      name={`question-${question.id}`}
-                      value={option}
-                      checked={studentAnswer?.answer === option}
-                      onChange={e => handleAnswerChange(question.id, e.target.value)}
-                      className="w-4 h-4 accent-violet-600"
-                    />
-                    <span className={headingTextClass}>{option}</span>
-                  </div>
-                </label>
-              ))
+              ['True', 'False'].map((option) => {
+                const isSelected = studentAnswer?.answer === option;
+                return (
+                  <label
+                    key={option}
+                    className={`${optionBaseClass} ${
+                      isSelected
+                        ? isLightMode
+                          ? 'border-transparent bg-transparent'
+                          : 'border-transparent bg-transparent'
+                        : ''
+                    }`}
+                  >
+                    <div className="flex items-center gap-4">
+                      <input
+                        type="radio"
+                        name={`question-${question.id}`}
+                        value={option}
+                        checked={isSelected}
+                        onChange={e => handleAnswerChange(question.id, e.target.value)}
+                        className="sr-only"
+                      />
+                      <div className={`${optionRadioContainerClass} ${isSelected ? (isLightMode ? 'border-violet-600 bg-violet-100' : 'border-violet-400 bg-violet-500') : ''}`}>
+                        {isSelected && <span className="h-2.5 w-2.5 rounded-full bg-violet-600" />}
+                      </div>
+                      <span className={`text-base font-medium ${headingTextClass}`}>{option}</span>
+                    </div>
+                  </label>
+                );
+              })
             ) : question.type === 'short-answer' || question.type === 'enumeration' || question.type === 'identification' ? (
               <input
                 type="text"
