@@ -165,7 +165,6 @@ export function StudentPerformance() {
                       <div className="min-w-0">
                         <h3 className="font-semibold text-white">{student.full_name}</h3>
                         <p className="truncate text-sm text-slate-400">{student.email}</p>
-                        <p className="mt-1 text-xs text-slate-500">Year {student.year_level ?? '-'}</p>
                       </div>
                     </div>
                     <div className="mt-4 grid gap-4 sm:grid-cols-2">
