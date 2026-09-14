@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Check, RefreshCw, UserCheck, Users } from 'lucide-react';
+import { Check, RefreshCw, Trash2, UserCheck, Users } from 'lucide-react';
 import { AetherSpinner } from '@/components/AetherSpinner';
 import { authFetch } from '@/lib/authFetch';
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,7 @@ export function StudentApprovals() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [sectionFilter, setSectionFilter] = useState('all');
 
   const loadRequests = async () => {
@@ -76,6 +77,29 @@ export function StudentApprovals() {
       setError(approveError instanceof Error ? approveError.message : 'Could not approve student');
     } finally {
       setApprovingId(null);
+    }
+  };
+
+  const deleteStudent = async (id: string) => {
+    const studentToDelete = [...requests, ...students].find((student) => student.id === id);
+    const studentName = studentToDelete?.full_name || 'this student';
+
+    const confirmed = window.confirm(`Are you sure you want to permanently delete ${studentName}? This student will no longer belong to the classroom.`);
+    if (!confirmed) return;
+
+    setDeletingId(id);
+    try {
+      const response = await authFetch(`/instructor/student-requests/${id}`, { method: 'DELETE' });
+      const payload = await response.json();
+      if (!response.ok || !payload.success) {
+        throw new Error(payload.error?.message || 'Could not delete student');
+      }
+      setRequests((current) => current.filter((request) => request.id !== id));
+      setStudents((current) => current.filter((student) => student.id !== id));
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : 'Could not delete student');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -143,10 +167,16 @@ export function StudentApprovals() {
                     </p>
                     </div>
                   </div>
-                  <Button onClick={() => approveRequest(request.id)} disabled={approvingId === request.id} className="bg-emerald-600 text-white hover:bg-emerald-500">
-                    {approvingId === request.id ? <AetherSpinner className="mr-2 h-4 w-4" /> : <Check className="mr-2 h-4 w-4" />}
-                    Approve student
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button onClick={() => approveRequest(request.id)} disabled={approvingId === request.id} className="bg-emerald-600 text-white hover:bg-emerald-500">
+                      {approvingId === request.id ? <AetherSpinner className="mr-2 h-4 w-4" /> : <Check className="mr-2 h-4 w-4" />}
+                      Approve student
+                    </Button>
+                    <Button onClick={() => deleteStudent(request.id)} disabled={deletingId === request.id} variant="destructive" className="bg-red-600 text-white hover:bg-red-500">
+                      {deletingId === request.id ? <AetherSpinner className="mr-2 h-4 w-4" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                      Delete
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -179,9 +209,15 @@ export function StudentApprovals() {
                       </p>
                     </div>
                   </div>
-                  <span className={`w-fit rounded-full border px-2.5 py-1 text-xs ${student.student_approved === false ? 'border-amber-500/30 bg-amber-500/10 text-amber-300' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'}`}>
-                    {student.student_approved === false ? 'Pending approval' : 'Approved'}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className={`w-fit rounded-full border px-2.5 py-1 text-xs ${student.student_approved === false ? 'border-amber-500/30 bg-amber-500/10 text-amber-300' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'}`}>
+                      {student.student_approved === false ? 'Pending approval' : 'Approved'}
+                    </span>
+                    <Button onClick={() => deleteStudent(student.id)} disabled={deletingId === student.id} variant="destructive" className="bg-red-600 text-white hover:bg-red-500">
+                      {deletingId === student.id ? <AetherSpinner className="mr-2 h-4 w-4" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                      Delete
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>

@@ -179,4 +179,58 @@ router.patch('/student-requests/:id/approve', async (req: AuthRequest, res: Resp
   }
 });
 
+router.delete('/student-requests/:id', async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const scope = await getInstructorScope(req.user!.id);
+    if (!scope) return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Instructor account not found' } });
+    const { sections: teachingSections, yearLevels: teachingYearLevels } = scope;
+
+    if (!supabase) {
+      return res.status(503).json({
+        success: false,
+        error: { code: 'DB_UNAVAILABLE', message: 'Database is unavailable.' },
+      });
+    }
+
+    if (teachingSections.length === 0 || teachingYearLevels.length === 0) {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'Your instructor account has no section/year level assigned.' },
+      });
+    }
+
+    const { data: student, error: studentError } = await supabase
+      .from('users')
+      .select('id, email, full_name, avatar_url, created_at, year_level, section, role')
+      .eq('id', id)
+      .eq('role', 'student')
+      .in('year_level', teachingYearLevels)
+      .maybeSingle();
+
+    if (studentError || !student || !belongsToInstructorSection(student.section, teachingSections)) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'STUDENT_NOT_FOUND', message: 'Student not found in your section' },
+      });
+    }
+
+    const { error } = await supabase
+      .from('users')
+      .delete()
+      .eq('id', student.id)
+      .eq('role', 'student');
+
+    if (error) throw error;
+
+    return res.json({ success: true, data: { id: student.id, deleted: true } });
+  } catch (error: any) {
+    console.error('Delete student error:', error);
+    return res.status(500).json({
+      success: false,
+      error: { code: 'DELETE_STUDENT_FAILED', message: error.message },
+    });
+  }
+});
+
 export default router;
