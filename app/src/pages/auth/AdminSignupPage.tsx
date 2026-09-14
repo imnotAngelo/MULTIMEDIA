@@ -38,7 +38,7 @@ export function AdminSignupPage() {
     const success = await registerAsync(normalizedEmail, password, fullName.trim(), 'admin', 1, 'admin', undefined, undefined, adminSecret);
 
     if (success) {
-      navigate('/check-email', { state: { email: normalizedEmail } });
+      navigate('/check-email', { state: { email: normalizedEmail, isAdmin: true } });
     }
   };
 

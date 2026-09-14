@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,9 +8,11 @@ import { api } from '@/services/api';
 export function VerifyEmailPage() {
   const [searchParams] = useSearchParams();
   const { token: routeToken } = useParams();
+  const navigate = useNavigate();
   const token = routeToken || searchParams.get('token') || '';
   const [status, setStatus] = useState<'verifying' | 'success' | 'error'>('verifying');
   const [message, setMessage] = useState('');
+  const [destination, setDestination] = useState('/login');
 
   useEffect(() => {
     if (!token) {
@@ -23,12 +25,15 @@ export function VerifyEmailPage() {
       if (response.success) {
         setStatus('success');
         setMessage((response.data as any)?.message || 'Your email has been verified.');
+        const destination = (response.data as any)?.role === 'admin' ? '/admin/login' : '/login';
+        setDestination(destination);
+        setTimeout(() => navigate(destination), 1200);
       } else {
         setStatus('error');
         setMessage(response.error?.message || 'Could not verify your email.');
       }
     });
-  }, [token]);
+  }, [navigate, token]);
 
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
@@ -49,7 +54,7 @@ export function VerifyEmailPage() {
           </CardHeader>
           <CardContent>
             <Button asChild className="w-full bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-500 hover:to-violet-400 text-white h-11">
-              <Link to="/login">Go to Sign In</Link>
+              <Link to={destination}>Go to Sign In</Link>
             </Button>
           </CardContent>
         </Card>

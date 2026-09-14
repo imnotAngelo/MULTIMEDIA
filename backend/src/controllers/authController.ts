@@ -546,7 +546,7 @@ export const verifyEmail = async (req: AuthRequest, res: Response) => {
 
     const { data: user, error } = await supabase
       .from('users')
-      .select('id, email_verified, email_verification_expires')
+      .select('id, role, email_verified, email_verification_expires')
       .eq('email_verification_token', token)
       .single();
 
@@ -558,7 +558,7 @@ export const verifyEmail = async (req: AuthRequest, res: Response) => {
     }
 
     if (user.email_verified) {
-      return res.json({ success: true, data: { message: 'Your email is already verified.' } });
+      return res.json({ success: true, data: { message: 'Your email is already verified.', role: user.role } });
     }
 
     if (user.email_verification_expires && new Date(user.email_verification_expires).getTime() < Date.now()) {
@@ -575,7 +575,7 @@ export const verifyEmail = async (req: AuthRequest, res: Response) => {
 
     if (updateError) throw updateError;
 
-    return res.json({ success: true, data: { message: 'Email verified. You can now sign in.' } });
+    return res.json({ success: true, data: { message: 'Email verified. You can now sign in.', role: user.role } });
   } catch (error: any) {
     console.error('Verify email error:', error);
     return res.status(500).json({
@@ -608,7 +608,7 @@ export const verifyEmailCode = async (req: AuthRequest, res: Response) => {
 
     const { data: user, error } = await supabase
       .from('users')
-      .select('id, email_verified, email_verification_code, email_verification_expires')
+      .select('id, role, email_verified, email_verification_code, email_verification_expires')
       .eq('email', email)
       .single();
 
@@ -620,7 +620,7 @@ export const verifyEmailCode = async (req: AuthRequest, res: Response) => {
     }
 
     if (user.email_verified) {
-      return res.json({ success: true, data: { message: 'Your email is already verified.' } });
+      return res.json({ success: true, data: { message: 'Your email is already verified.', role: user.role } });
     }
 
     if (!user.email_verification_code || user.email_verification_code !== code) {
@@ -644,7 +644,7 @@ export const verifyEmailCode = async (req: AuthRequest, res: Response) => {
 
     if (updateError) throw updateError;
 
-    return res.json({ success: true, data: { message: 'Email verified. You can now sign in.' } });
+    return res.json({ success: true, data: { message: 'Email verified. You can now sign in.', role: user.role } });
   } catch (error: any) {
     console.error('Verify email code error:', error);
     return res.status(500).json({
