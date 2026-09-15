@@ -159,3 +159,37 @@ test('rejects incomplete true-false title statements', () => {
 
   assert.equal(normalized.length, 0);
 });
+
+test('rejects bullet-point instructions used as enumeration questions', () => {
+  const normalized = normalizeGeneratedQuestions(
+    [{
+      text: 'Identify and list the three key items, steps, characteristics, or examples related to •Discuss the hardware requirement of that are stated in the lesson.',
+      type: 'enumeration',
+      correctAnswer: '•Discuss the hardware requirement of',
+    }],
+    1,
+    ['enumeration'],
+    'short',
+    { enumeration: 2 },
+    { enumeration: 1 }
+  );
+
+  assert.equal(normalized.length, 0);
+});
+
+test('rejects questions that reveal their answer in the stem', () => {
+  const normalized = normalizeGeneratedQuestions(
+    [{
+      text: 'Which concept refers to multimedia technology?',
+      type: 'identification',
+      correctAnswer: 'multimedia technology',
+    }],
+    1,
+    ['identification'],
+    'short',
+    { identification: 2 },
+    { identification: 1 }
+  );
+
+  assert.equal(normalized.length, 0);
+});

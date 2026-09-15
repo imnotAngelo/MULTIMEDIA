@@ -437,6 +437,7 @@ function isRejectedQuizFragment(text: string): boolean {
     || /\b(double\s*click|right\s*click|click\s+on|select\s+the|go\s+to|navigate\s+to|press\s+the)\b/i.test(normalized)
     || /(?:➡|➜|→|->|=>)/u.test(normalized)
     || /^\s*(key\s+takeaway|summary|learning objectives?|objectives?|note|example|activity)\s*[:.-]/i.test(normalized)
+    || /^\s*[•●▪◦]\s*(discuss|explain|identify|list|enumerate|describe|define|compare|analyze)\b/i.test(normalized)
     || /^https?:\/\//i.test(normalized)
     || /@[a-z0-9.-]+\.[a-z]{2,}/i.test(normalized);
 }
@@ -444,6 +445,15 @@ function isRejectedQuizFragment(text: string): boolean {
 function isUsableQuizContent(text: string): boolean {
   const normalized = text.replace(/\s+/g, ' ').trim();
   return normalized.length >= 12 && !isRejectedQuizFragment(normalized);
+}
+
+function hasInstructionalQuizSource(text: string): boolean {
+  const usableParts = String(text || '')
+    .split(/(?<=[.!?])\s+|\n+/)
+    .map((part) => part.replace(/\s+/g, ' ').trim())
+    .filter(isUsableQuizContent);
+
+  return usableParts.length >= 2 && usableParts.join(' ').length >= 120;
 }
 
 export function normalizeGeneratedQuestions(rawQuestions: any[], targetCount = 5, requestedTypes: string[] = [], quizCategory = 'short', pointsByType: Record<string, number> = {}, questionCountsByType: Record<string, number> = {}) {
@@ -483,6 +493,11 @@ export function normalizeGeneratedQuestions(rawQuestions: any[], targetCount = 5
     if (type === 'true-false' && !/^(true|false)$/i.test(answerValue)) continue;
     if (['identification', 'enumeration', 'essay'].includes(type) && !answerValue) continue;
     if (type === 'essay' && answerValue.length < 40) continue;
+    const answerLeak = answerValue.length >= 8
+      && normalizedText.toLowerCase().includes(answerValue.toLowerCase());
+    if (type !== 'true-false' && answerLeak) continue;
+    if (type === 'enumeration' && !/\b(?:list|enumerate|identify)\b/i.test(normalizedText)) continue;
+    if (type === 'enumeration' && answerValue.toLowerCase() === normalizedText.toLowerCase()) continue;
 
     if (type === 'multiple-choice') {
       const rawOptions = Array.isArray(item.options) ? item.options : [];
@@ -495,6 +510,7 @@ export function normalizeGeneratedQuestions(rawQuestions: any[], targetCount = 5
       if (validOptions.length !== 4 || !answerValue) continue;
       const correctAnswer = validOptions.find((option) => option.toLowerCase() === answerValue.toLowerCase());
       if (!correctAnswer) continue;
+      if (answerValue.length >= 8 && normalizedText.toLowerCase().includes(answerValue.toLowerCase())) continue;
       const shuffledOptions = [...validOptions];
       for (let index = shuffledOptions.length - 1; index > 0; index -= 1) {
         const swapIndex = Math.floor(Math.random() * (index + 1));
@@ -1580,6 +1596,7 @@ router.post(
       }
 
       const lessonContents: string[] = [];
+      const unreadableLessonTitles: string[] = [];
       for (const lessonEntry of lessonsForGeneration) {
         let originalDocumentText = '';
         if (lessonEntry.pdf_url || lessonEntry.pdfUrl || lessonEntry.file_url || lessonEntry.fileUrl) {
@@ -1621,7 +1638,19 @@ router.post(
 
         if (lessonFullContent && !isThinLessonContent(lessonFullContent, 1)) {
           lessonContents.push(lessonFullContent);
+        } else {
+          unreadableLessonTitles.push(String(lessonEntry.title || 'Untitled lesson').trim());
         }
+      }
+
+      if (unreadableLessonTitles.length > 0) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'LESSON_CONTENT_UNREADABLE',
+            message: `The selected lesson${unreadableLessonTitles.length > 1 ? 's' : ''} ${unreadableLessonTitles.map((title) => `"${title}"`).join(', ')} ${unreadableLessonTitles.length > 1 ? 'do' : 'does'} not contain readable instructional content after the cover page was excluded.`,
+          },
+        });
       }
 
       let fullContent = lessonContents.join('\n\n').trim();
@@ -1642,6 +1671,16 @@ router.post(
           error: {
             code: 'NO_CONTENT',
             message: 'The original lesson file is unavailable or has no readable text. Please re-upload the original PDF, PPT, PPTX, DOCX, TXT, or Markdown file.',
+          },
+        });
+      }
+
+      if (!hasInstructionalQuizSource(fullContent)) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'INSUFFICIENT_LESSON_CONTENT',
+            message: 'The selected lesson does not contain enough readable instructional content to create professional questions. Remove the cover page or select a lesson with substantive content.',
           },
         });
       }
@@ -1678,6 +1717,8 @@ router.post(
 
     Your task is to generate high-quality quiz questions based strictly and only on the provided lesson content.
 
+    The lesson content below has already been read and validated. Use only its substantive instructional concepts, relationships, processes, principles, and applications. Do not use a cover-page title, slide heading, bullet instruction, screenshot label, navigation step, copyright notice, or license statement as a question or answer.
+
     Generate exactly the following number of questions for each type:
 
 TARGET QUESTION TYPE DISTRIBUTION:
@@ -1697,6 +1738,9 @@ STRICT GENERATION REQUIREMENTS:
 1. Language
 - Use clear, precise, formal, and professional language.
 - Avoid vague, conversational, ambiguous, or casual wording.
+- Write like a human university instructor who understands the subject, not like a template or a document summarizer.
+- Use natural variation in sentence structure and realistic academic wording.
+- Do not begin every question with "What is", "Which statement", or "The lesson states".
 
 Do not use lesson titles, slide headings, navigation instructions, screenshot labels, IP-address configuration steps, copyright notices, or license text as the subject of a question. Convert usable instructional content into a complete learning claim before writing the question.
 
@@ -1709,12 +1753,16 @@ Do not use lesson titles, slide headings, navigation instructions, screenshot la
 2. Content Focus
 - Focus only on important concepts, relationships, processes, principles, and applications found in the lesson.
 - Do not create questions about trivial, minor, or peripheral details.
+- Before writing each item, identify the specific lesson concept being assessed and formulate a complete assessment task around it.
+- Do not generate a question until it can be answered from a substantive passage in the selected lesson.
 
 3. Cognitive Level
 - Prefer higher-order thinking such as understand, apply, and analyze.
 - Avoid overly simple recall questions unless they are clearly necessary.
 - Use a different concept, relationship, or context for every question.
 - Do not reuse a question stem more than once in the same response.
+- Ask what a knowledgeable student should be able to do with the concept: interpret a result, choose an appropriate method, explain a relationship, or apply a principle to a lesson-based situation.
+- Do not copy a source sentence and add a question mark. Reframe the idea into a purposeful assessment task.
 
 4. Rules by Question Type
 - multiple-choice:
@@ -1725,6 +1773,7 @@ Do not use lesson titles, slide headings, navigation instructions, screenshot la
   - Do not use "All of the above" or "None of the above".
   - Place the correct answer at a different position across questions; never use a fixed answer position.
   - Do not make the correct answer longer, more detailed, or more qualified than every distractor.
+  - Do not repeat the correct answer, its defining phrase, or an unmistakable synonym in the question stem.
 - true-false:
   - The statement must be clearly true or clearly false based on the lesson.
   - Avoid partially true or ambiguous statements.
@@ -1733,6 +1782,7 @@ Do not use lesson titles, slide headings, navigation instructions, screenshot la
   - Include a specific, lesson-based description that lets the learner identify the answer.
   - Do not reveal the answer or use a generic stem without a description.
   - The correct answer must be short and precise.
+  - Do not include the term or a defining phrase that gives the answer away in the stem.
 - enumeration:
   - Ask the learner to list a specific number of items that are explicitly present in the lesson, and state that number in the question.
   - The expected answer must be a concise list of the required items.
@@ -1740,6 +1790,7 @@ Do not use lesson titles, slide headings, navigation instructions, screenshot la
   - Require explanation, analysis, comparison, or application.
   - The question should have clear scope and be answerable from the lesson content.
   - Provide a concise model answer containing the key points expected in a strong response.
+  - Do not use a generic prompt such as "Explain the significance of [topic]". State what relationship, consequence, comparison, or application the student must address.
 
 5. Strict Avoidances
 - Ambiguous or double-barreled questions.
@@ -1752,6 +1803,8 @@ Do not use lesson titles, slide headings, navigation instructions, screenshot la
 - Generic identification wording such as "What concept is represented by this description..." or repeated "What concept..." stems.
 - Generic essay stems such as "Explain the significance of [topic]" without a focused analytical task.
 - Answers that merely repeat the question, a heading, a title, or a slide instruction.
+- Questions whose answer is directly copied into the stem or can be guessed from the most detailed option.
+- Formulaic wording that sounds machine-generated or uses the same structure repeatedly.
 
 6. Output Requirements
 - Return ONLY valid JSON, with no markdown fences, no commentary, and no extra text.
@@ -1771,6 +1824,7 @@ Do not use lesson titles, slide headings, navigation instructions, screenshot la
 QUALITY CHECK BEFORE RETURNING JSON:
 - Confirm every question uses a substantive lesson concept rather than a heading or procedure.
 - Confirm every answer is supported by the lesson and is not merely copied from the question.
+- Confirm the correct answer is not revealed by the question wording or by being noticeably longer or more specific than the distractors.
 - Confirm every essay has a focused analytical task and a substantive model answer.
 - Confirm every enumeration specifies the exact number of expected items.
 
