@@ -12,7 +12,7 @@ import { createLocalLesson, getLocalLessonById, listLocalLessonsByModuleId } fro
 import { clipQuizSource, extractTextFromLessonFile, isThinLessonContent, removeCoverPage } from '../lib/lessonDocumentText.js';
 import { matchesContentTarget } from '../lib/contentTargeting.js';
 
-const router = Router();
+const router: Router = Router();
 const routeDir = path.dirname(fileURLToPath(import.meta.url));
 const backendRoot = path.resolve(routeDir, '..', '..');
 const uploadDir = path.join(backendRoot, 'uploads');
@@ -1847,7 +1847,7 @@ LESSON CONTENT END.`;
               responseMimeType: 'application/json',
             },
           }),
-        }, 120000);
+        }, 45000);
         responseBody = await response.json();
         if (response.ok) break;
 
