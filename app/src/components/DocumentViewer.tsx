@@ -44,12 +44,12 @@ export function DocumentViewer({ lessonId, documentUrl, title, fileType }: Docum
   }
 
   if (fileType === 'pptx' && migrating) {
-    return <div className="flex min-h-[420px] items-center justify-center rounded-xl border border-slate-800 bg-slate-950 p-8 text-center text-slate-300">Preparing PowerPoint preview...</div>;
+    return <div className="flex min-h-[420px] items-center justify-center rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">Preparing PowerPoint preview...</div>;
   }
 
   if (fileType === 'pptx' && isLocalDocument) {
     return (
-      <div className="flex min-h-[420px] flex-col items-center justify-center gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-8 text-center text-amber-200">
+      <div className="flex min-h-[420px] flex-col items-center justify-center gap-3 rounded-xl border border-amber-400/40 bg-amber-50 p-8 text-center text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
         <AlertCircle className="h-5 w-5" />
         <span>PowerPoint preview requires a publicly reachable document URL. Download the file to view it locally.</span>
       </div>
@@ -58,7 +58,7 @@ export function DocumentViewer({ lessonId, documentUrl, title, fileType }: Docum
 
   if (!resolvedUrl) {
     return (
-      <div className="flex min-h-[420px] items-center justify-center gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-8 text-center text-amber-200">
+      <div className="flex min-h-[420px] items-center justify-center gap-3 rounded-xl border border-amber-400/40 bg-amber-50 p-8 text-center text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
         <AlertCircle className="h-5 w-5 shrink-0" />
         <span>Document preview is not available.</span>
       </div>
@@ -66,7 +66,7 @@ export function DocumentViewer({ lessonId, documentUrl, title, fileType }: Docum
   }
 
   return (
-    <div className="min-h-[70vh] w-full overflow-hidden rounded-xl border border-slate-800 bg-slate-950">
+    <div className="min-h-[70vh] w-full overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
       <DocViewer
         documents={[{ uri: resolvedUrl, fileType, fileName: `${title}.${fileType}` }]}
         pluginRenderers={DocViewerRenderers}
@@ -75,7 +75,7 @@ export function DocumentViewer({ lessonId, documentUrl, title, fileType }: Docum
         style={{ height: '80vh', minHeight: '600px', width: '100%' }}
         onError={() => setError('Document preview could not be loaded.')}
       />
-      {error && <p className="p-4 text-center text-sm text-amber-200">{error}</p>}
+      {error && <p className="p-4 text-center text-sm text-amber-800 dark:text-amber-200">{error}</p>}
     </div>
   );
 }

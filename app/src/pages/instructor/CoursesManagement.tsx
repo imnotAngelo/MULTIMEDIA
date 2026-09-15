@@ -31,6 +31,7 @@ import {
   DialogTrigger
 } from '@/components/ui/dialog';
 import { authFetch } from '@/lib/authFetch';
+import { buildInstructorLessonPath, getLessonRouteLessonId, getLessonRouteUnitId } from '@/lib/lessonRoutes';
 import { notificationService } from '@/services/notificationService';
 import { cn } from '@/lib/utils';
 import { AetherLoader } from '@/components/AetherLoader';
@@ -381,12 +382,24 @@ export function CoursesManagement() {
         }
         const unitLessons = lessonsData.success ? lessonsData.data || [] : [];
         console.log(`✅ Lessons for unit "${unit.title}": ${unitLessons.length}`);
-        return unitLessons.map((lesson: any) => ({
-          ...lesson,
-          unitId: unit.id,
-          pdfUrl: lesson.pdfUrl || lesson.pdf_url || '',
-          originalFormat: lesson.originalFormat || lesson.original_format || '',
-        }));
+        return unitLessons
+          .map((lesson: any) => {
+            const id = getLessonRouteLessonId(lesson);
+            const normalizedUnitId = getLessonRouteUnitId(lesson, unit.id);
+
+            if (!id || !normalizedUnitId) {
+              return null;
+            }
+
+            return {
+              ...lesson,
+              id,
+              unitId: normalizedUnitId,
+              pdfUrl: lesson.pdfUrl || lesson.pdf_url || '',
+              originalFormat: lesson.originalFormat || lesson.original_format || '',
+            };
+          })
+          .filter((lesson): lesson is Lesson => lesson !== null);
       }));
       const allLessons: Lesson[] = lessonResults.flat();
 
@@ -738,6 +751,7 @@ export function CoursesManagement() {
   };
 
   const activeLesson = lessons.find(l => l.id === activeLessonId);
+  const activeLessonPath = activeLesson ? buildInstructorLessonPath(activeLesson) : null;
 
   if (loading) {
     return (
@@ -1194,8 +1208,10 @@ export function CoursesManagement() {
                 <Button 
                   className="w-full bg-violet-600 hover:bg-violet-700"
                   onClick={() => {
-                    if (activeLesson) {
-                      navigate(`/instructor/lesson/${activeLesson.unitId}/${activeLesson.id}`);
+                    if (activeLessonPath) {
+                      navigate(activeLessonPath);
+                    } else if (activeLesson) {
+                      toast.error('This lesson is missing routing information. Please refresh and try again.');
                     }
                   }}
                 >

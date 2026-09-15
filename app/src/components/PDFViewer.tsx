@@ -197,10 +197,10 @@ export function PDFViewer({ url, title = 'PDF Document', onDownload }: PDFViewer
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96 bg-slate-900/60 rounded-lg">
+      <div className="flex h-96 items-center justify-center rounded-lg border border-slate-200 bg-white/80 dark:border-slate-800 dark:bg-slate-900/60">
         <div className="text-center">
-          <p className="text-slate-400 mb-2">Loading PDF...</p>
-          <p className="text-slate-500 text-xs">{debugInfo}</p>
+          <p className="mb-2 text-slate-700 dark:text-slate-300">Loading PDF...</p>
+          <p className="text-xs text-slate-500 dark:text-slate-500">{debugInfo}</p>
         </div>
       </div>
     );
@@ -208,14 +208,14 @@ export function PDFViewer({ url, title = 'PDF Document', onDownload }: PDFViewer
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-96 bg-slate-900/60 rounded-lg">
+      <div className="flex h-96 items-center justify-center rounded-lg border border-slate-200 bg-white/80 dark:border-slate-800 dark:bg-slate-900/60">
         <div className="text-center max-w-md">
-          <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
-          <p className="text-red-400 mb-2 font-semibold">Failed to Load PDF</p>
-          <p className="text-red-300 text-sm mb-4">{error}</p>
-          <p className="text-slate-400 text-xs mb-3">Debug Info:</p>
-          <p className="text-slate-500 text-xs bg-slate-800/50 p-2 rounded break-all">{debugInfo}</p>
-          <p className="text-slate-400 text-xs mt-3">Check browser console for more details</p>
+          <AlertCircle className="mx-auto mb-4 h-12 w-12 text-red-500 dark:text-red-400" />
+          <p className="mb-2 font-semibold text-red-600 dark:text-red-400">Failed to Load PDF</p>
+          <p className="mb-4 text-sm text-red-500 dark:text-red-300">{error}</p>
+          <p className="mb-3 text-xs text-slate-600 dark:text-slate-400">Debug Info:</p>
+          <p className="break-all rounded border border-slate-200 bg-slate-100 p-2 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-400">{debugInfo}</p>
+          <p className="mt-3 text-xs text-slate-600 dark:text-slate-400">Check browser console for more details</p>
         </div>
       </div>
     );
@@ -226,16 +226,16 @@ export function PDFViewer({ url, title = 'PDF Document', onDownload }: PDFViewer
       ref={containerRef}
       className={`flex flex-col gap-0 ${
         isFullscreen
-          ? 'fixed inset-0 bg-slate-950 z-50'
+          ? 'fixed inset-0 z-50 bg-slate-100 dark:bg-slate-950'
           : 'w-full'
       }`}
     >
       {/* Header */}
-      <div className="flex items-center justify-between gap-4 bg-slate-900/60 border border-slate-800 rounded-lg p-4 flex-shrink-0">
+      <div className="flex flex-shrink-0 items-center justify-between gap-4 rounded-lg border border-slate-200 bg-white/80 p-4 dark:border-slate-800 dark:bg-slate-900/60">
         <div>
-          <h3 className="text-lg font-semibold text-white">{title}</h3>
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{title}</h3>
           {numPages && (
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-slate-600 dark:text-slate-400">
               Page {currentPage} of {numPages}
             </p>
           )}
@@ -272,23 +272,23 @@ export function PDFViewer({ url, title = 'PDF Document', onDownload }: PDFViewer
       </div>
 
       {/* Toolbar */}
-      <div className="flex items-center justify-between gap-2 bg-slate-900/60 border border-slate-800 rounded-lg p-3 flex-shrink-0 m-4 mt-0">
+      <div className="m-4 mt-0 flex flex-shrink-0 items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white/80 p-3 dark:border-slate-800 dark:bg-slate-900/60">
         <div className="flex items-center gap-2">
           <Button
             onClick={handlePrevPage}
             disabled={currentPage === 1}
-            className="bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-700 text-white"
+            className="border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 hover:text-slate-900 disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:hover:bg-slate-700 dark:disabled:border-slate-800 dark:disabled:bg-slate-900 dark:disabled:text-slate-600"
             size="sm"
           >
             <ChevronLeft className="w-4 h-4" />
           </Button>
-          <span className="px-3 text-sm text-slate-300">
+          <span className="px-3 text-sm text-slate-600 dark:text-slate-300">
             {currentPage} / {numPages}
           </span>
           <Button
             onClick={handleNextPage}
             disabled={!numPages || currentPage === numPages}
-            className="bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-700 text-white"
+            className="border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 hover:text-slate-900 disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:hover:bg-slate-700 dark:disabled:border-slate-800 dark:disabled:bg-slate-900 dark:disabled:text-slate-600"
             size="sm"
           >
             <ChevronRight className="w-4 h-4" />
@@ -296,10 +296,10 @@ export function PDFViewer({ url, title = 'PDF Document', onDownload }: PDFViewer
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-sm text-slate-400">{zoom}%</span>
+          <span className="text-sm text-slate-600 dark:text-slate-400">{zoom}%</span>
           <Button
             onClick={handleZoomOut}
-            className="bg-slate-800 hover:bg-slate-700 text-white"
+            className="border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:hover:bg-slate-700"
             size="sm"
             title="Zoom Out"
           >
@@ -307,7 +307,7 @@ export function PDFViewer({ url, title = 'PDF Document', onDownload }: PDFViewer
           </Button>
           <Button
             onClick={handleFitToScreen}
-            className="bg-slate-800 hover:bg-slate-700 text-white"
+            className="border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:hover:bg-slate-700"
             size="sm"
             title="Fit to Screen"
           >
@@ -315,7 +315,7 @@ export function PDFViewer({ url, title = 'PDF Document', onDownload }: PDFViewer
           </Button>
           <Button
             onClick={handleZoomIn}
-            className="bg-slate-800 hover:bg-slate-700 text-white"
+            className="border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:hover:bg-slate-700"
             size="sm"
             title="Zoom In"
           >
@@ -327,12 +327,12 @@ export function PDFViewer({ url, title = 'PDF Document', onDownload }: PDFViewer
       {/* Canvas - PDF Rendering */}
       <div className={`flex-1 overflow-auto flex items-center justify-center ${
         isFullscreen
-          ? 'bg-slate-950 p-4'
-          : 'bg-slate-900/60 border border-slate-800 rounded-lg p-4 m-4 mt-0'
+          ? 'bg-slate-100 p-4 dark:bg-slate-950'
+          : 'm-4 mt-0 rounded-lg border border-slate-200 bg-slate-100/80 p-4 dark:border-slate-800 dark:bg-slate-900/60'
       }`}>
         <canvas
           ref={canvasRef}
-          className="bg-white shadow-lg rounded"
+          className="rounded bg-white shadow-lg ring-1 ring-slate-200 dark:ring-slate-700"
           style={{
             width: '100%',
             maxWidth: '100%',
