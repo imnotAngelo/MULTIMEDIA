@@ -252,24 +252,24 @@ export function ViewLesson() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <p className="text-slate-400">Loading lesson...</p>
+      <div className="flex h-screen items-center justify-center bg-gradient-to-br from-slate-100 via-white to-slate-200 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+        <p className="text-slate-600 dark:text-slate-400">Loading lesson...</p>
       </div>
     );
   }
 
   if (error || !lesson) {
     return (
-      <div className="flex items-center justify-center h-screen flex-col gap-4">
-        <p className="text-red-400">{error || 'Lesson not found'}</p>
-            <p className="text-slate-400 text-sm">Route params - unitId: {unitId}, lessonId: {lessonId}</p>
-            <Button onClick={() => navigate(-1)} className="bg-violet-600 hover:bg-violet-700">
-              <ChevronLeft className="w-4 h-4 mr-2" />
-              Go Back
-            </Button>
-          </div>
-        );
-      }
+      <div className="flex h-screen flex-col items-center justify-center gap-4 bg-gradient-to-br from-slate-100 via-white to-slate-200 px-6 text-center dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+        <p className="text-red-600 dark:text-red-400">{error || 'Lesson not found'}</p>
+        <p className="text-sm text-slate-600 dark:text-slate-400">Route params - unitId: {unitId}, lessonId: {lessonId}</p>
+        <Button onClick={() => navigate(-1)} className="bg-violet-600 hover:bg-violet-700 text-white">
+          <ChevronLeft className="w-4 h-4 mr-2" />
+          Go Back
+        </Button>
+      </div>
+    );
+  }
 
       const currentSlideData = lesson.slides?.[currentSlide];
       const hasSlides = lesson.slides && lesson.slides.length > 0;
@@ -344,19 +344,19 @@ export function ViewLesson() {
         });
         
         return (
-          <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-6">
+          <div className="min-h-screen bg-gradient-to-br from-slate-100 via-white to-slate-200 p-6 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
             <div className="max-w-6xl mx-auto space-y-6">
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <button
                     onClick={() => navigate(-1)}
-                    className="flex items-center gap-2 text-violet-400 hover:text-violet-300 mb-4 transition-colors"
+                    className="mb-4 flex items-center gap-2 text-violet-600 transition-colors hover:text-violet-700 dark:text-violet-400 dark:hover:text-violet-300"
                   >
                     <ChevronLeft className="w-4 h-4" />
                     Back to Lessons
                   </button>
-                  <h1 className="text-4xl font-bold text-white">{lesson.title}</h1>
-                  <p className="text-slate-400 mt-2">PDF Document</p>
+                  <h1 className="text-4xl font-bold text-slate-900 dark:text-white">{lesson.title}</h1>
+                  <p className="mt-2 text-slate-600 dark:text-slate-400">PDF Document</p>
                 </div>
               </div>  
 
