@@ -1,5 +1,5 @@
 export { InstructorDashboard } from './Dashboard';
-export { CoursesManagement as UnitsManagement } from './CoursesManagement';
+export { CoursesManagement, CoursesManagement as UnitsManagement } from './CoursesManagement';
 export { ViewLesson } from './ViewLesson';
 export { InstructorAssessments } from './AssessmentsManagement';
 export { CreateAssessment } from './CreateAssessment';
