@@ -17,11 +17,11 @@ export function InstructorLayout() {
         yearLevel={user.year_level}
         section={user.section}
       />
-      <div className="lg:ml-64 min-h-screen flex flex-col">
+      <div className="lg:ml-64 min-w-0 min-h-screen flex flex-col">
         <Header
           title="Instructor Dashboard"
         />
-        <main className="flex-1 p-6">
+        <main className="min-w-0 flex-1 p-4 sm:p-6">
           <Outlet />
         </main>
       </div>

@@ -66,7 +66,7 @@ export function DocumentViewer({ lessonId, documentUrl, title, fileType }: Docum
   }
 
   return (
-    <div className="min-h-[70vh] w-full overflow-hidden rounded-xl border border-slate-800 bg-slate-950">
+    <div className="glass-panel min-h-[70vh] w-full overflow-hidden rounded-xl">
       <DocViewer
         documents={[{ uri: resolvedUrl, fileType, fileName: `${title}.${fileType}` }]}
         pluginRenderers={DocViewerRenderers}

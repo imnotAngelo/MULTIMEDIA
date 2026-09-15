@@ -10,7 +10,7 @@
   min-height: 600px !important;
   border: 0 !important;
   display: block !important;
-  background: #0b1115 !important;
+  background: transparent !important;
 }
 
 @layer base {

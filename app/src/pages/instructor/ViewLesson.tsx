@@ -30,28 +30,16 @@ export function ViewLesson() {
   const theme = useThemeStore((state) => state.theme);
   const isLightMode = theme === 'light';
   const pageClass = isLightMode
-    ? 'min-h-screen bg-gradient-to-br from-slate-100 via-white to-slate-200 p-6'
-    : 'min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-6';
-  const panelClass = isLightMode
-    ? 'rounded-2xl border border-slate-200 bg-white/85 p-6 shadow-sm'
-    : 'rounded-2xl border border-slate-800 bg-slate-900/70 p-6';
-  const mediaPanelClass = isLightMode
-    ? 'rounded-2xl border border-slate-200 bg-white/85 p-4 shadow-sm'
-    : 'rounded-2xl border border-slate-800 bg-slate-900/70 p-4';
+    ? 'min-h-screen bg-gradient-to-br from-cyan-50 via-white to-teal-50 p-6'
+    : 'min-h-screen bg-gradient-to-br from-[#061b24] via-[#092f3b] to-[#06151d] p-6';
+  const panelClass = 'glass-panel rounded-2xl p-6';
+  const mediaPanelClass = 'glass-panel rounded-2xl p-4';
   const headingClass = isLightMode ? 'text-slate-900' : 'text-white';
   const mutedTextClass = isLightMode ? 'text-slate-600' : 'text-slate-400';
-  const softPanelClass = isLightMode
-    ? 'bg-white border border-slate-200 rounded-xl p-12 text-center shadow-sm'
-    : 'bg-slate-900/60 border border-slate-800 rounded-xl p-12 text-center';
-  const slidePanelClass = isLightMode
-    ? 'bg-gradient-to-br from-white to-slate-50 border border-slate-200 rounded-2xl p-8 mb-6 min-h-96 flex flex-col shadow-sm'
-    : 'bg-gradient-to-br from-slate-900/80 to-slate-800/50 border border-slate-800 rounded-2xl p-8 mb-6 min-h-96 flex flex-col';
-  const nestedPanelClass = isLightMode
-    ? 'bg-slate-50 border border-slate-200 rounded-lg p-4 mb-6'
-    : 'bg-slate-900/50 border border-slate-700 rounded-lg p-4 mb-6';
-  const navigationPanelClass = isLightMode
-    ? 'bg-white border border-slate-200 rounded-xl p-4 sticky top-6 shadow-sm'
-    : 'bg-slate-900/60 border border-slate-800 rounded-xl p-4 sticky top-6';
+  const softPanelClass = 'glass-panel rounded-xl p-12 text-center';
+  const slidePanelClass = 'glass-panel rounded-2xl p-8 mb-6 min-h-96 flex flex-col';
+  const nestedPanelClass = 'glass-panel rounded-lg p-4 mb-6';
+  const navigationPanelClass = 'glass-panel rounded-xl p-4 sticky top-6';
   const [lesson, setLesson] = useState<Lesson | null>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -320,7 +308,7 @@ export function ViewLesson() {
 
         return (
           <div className={pageClass}>
-            <div className="max-w-6xl mx-auto space-y-6">
+            <div className="w-full max-w-6xl min-w-0 mx-auto space-y-6">
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <button
@@ -371,7 +359,7 @@ export function ViewLesson() {
         
         return (
           <div className={pageClass}>
-            <div className="max-w-6xl mx-auto space-y-6">
+            <div className="w-full max-w-6xl min-w-0 mx-auto space-y-6">
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <button
@@ -394,7 +382,7 @@ export function ViewLesson() {
 
       return (
         <div className={pageClass}>
-          <div className="max-w-7xl mx-auto">
+          <div className="w-full max-w-7xl min-w-0 mx-auto">
             {/* Header */}
             <div className="mb-6 flex items-center justify-between">
           <div>
@@ -444,9 +432,9 @@ export function ViewLesson() {
             <p className="text-yellow-400 text-xs mt-2">Try clicking View again or check browser console for details</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          <div className="grid min-w-0 grid-cols-1 lg:grid-cols-4 gap-6">
             {/* Slide Navigation Sidebar */}
-            <div className="lg:col-span-1 order-2 lg:order-1">
+            <div className="min-w-0 lg:col-span-1 order-2 lg:order-1">
               <div className={navigationPanelClass}>
                 <h3 className={`text-sm font-semibold ${isLightMode ? 'text-slate-800' : 'text-slate-200'} mb-4`}>Slides</h3>
                 <div className="space-y-2 max-h-96 overflow-y-auto">
@@ -471,7 +459,7 @@ export function ViewLesson() {
             </div>
 
             {/* Main Content */}
-            <div className="lg:col-span-3 order-1 lg:order-2">
+            <div className="min-w-0 lg:col-span-3 order-1 lg:order-2">
               {/* Slide Content */}
               <div className={slidePanelClass}>
                 <div className="flex-1">
