@@ -111,3 +111,51 @@ test('buildFallbackQuizQuestions does not make the correct answer the most obvio
   assert.notEqual(questions[0].options[0].toLowerCase(), questions[0].correctAnswer.toLowerCase());
   assert.doesNotMatch(questions[0].text, /which statement best explains/i);
 });
+
+test('rejects slide instructions and metadata as quiz content', () => {
+  const questions = buildFallbackQuizQuestions(
+    'Key takeaway: Security profile Ip address double click address (10.10.10.7/24) wlan1 4. The network interface uses an assigned address to communicate on the local network.',
+    5,
+    ['true-false', 'essay', 'identification', 'enumeration', 'multiple-choice'],
+    { 'true-false': 2, essay: 5, identification: 2, enumeration: 2, 'multiple-choice': 1 },
+    { 'true-false': 1, essay: 1, identification: 1, enumeration: 1, 'multiple-choice': 1 },
+    'Security Profile'
+  );
+
+  assert.ok(questions.length >= 1);
+  assert.ok(questions.every((question) => !/key takeaway|double click|➡|10\.10\.10\.7/i.test(`${question.text} ${question.correctAnswer}`)));
+});
+
+test('rejects generic significance-only essay questions', () => {
+  const normalized = normalizeGeneratedQuestions(
+    [{
+      text: 'Explain the significance of Multimedia Technology.',
+      type: 'essay',
+      correctAnswer: 'Multimedia Technology is important.',
+    }],
+    1,
+    ['essay'],
+    'short',
+    { essay: 5 },
+    { essay: 1 }
+  );
+
+  assert.equal(normalized.length, 0);
+});
+
+test('rejects incomplete true-false title statements', () => {
+  const normalized = normalizeGeneratedQuestions(
+    [{
+      text: 'True or False: The lesson states that Multimedia Technology.',
+      type: 'true-false',
+      correctAnswer: 'True',
+    }],
+    1,
+    ['true-false'],
+    'short',
+    { 'true-false': 2 },
+    { 'true-false': 1 }
+  );
+
+  assert.equal(normalized.length, 0);
+});

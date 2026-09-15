@@ -228,56 +228,6 @@ export function AutoGenerateQuiz() {
     }));
   };
 
-  const buildProfessionalMultipleChoiceOptions = (answer: string, sourceOptions: string[]) => {
-    const cleanAnswer = answer
-      .replace(/\s+/g, ' ')
-      .trim();
-
-    const uniqueSourceOptions = Array.from(new Set(
-      sourceOptions
-        .map(option => option.replace(/\s+/g, ' ').trim())
-        .filter(option => option.length > 0 && option.toLowerCase() !== cleanAnswer.toLowerCase())
-    ));
-
-    const preferredOptions = cleanAnswer
-      ? [cleanAnswer, ...uniqueSourceOptions]
-      : uniqueSourceOptions;
-
-    const combinedOptions = preferredOptions;
-    const uniqueOptions: string[] = [];
-    const seen = new Set<string>();
-
-    for (const option of combinedOptions) {
-      const normalized = option.replace(/\s+/g, ' ').trim();
-      if (!normalized) continue;
-
-      const key = normalized.toLowerCase();
-      if (seen.has(key)) continue;
-
-      seen.add(key);
-      uniqueOptions.push(normalized);
-      if (uniqueOptions.length === 4) break;
-    }
-
-    if (uniqueOptions.length < 4) {
-      uniqueOptions.push(
-        'A statement that is not supported by the lesson content.',
-        'A related concept that is mentioned but not fully explained in the same way.',
-        'A misleading interpretation of the lesson topic.'
-      );
-    }
-
-    const finalOptions = uniqueOptions.slice(0, 4);
-    const answerIndex = finalOptions.findIndex((option) => option.toLowerCase() === cleanAnswer.toLowerCase());
-
-    if (answerIndex > -1 && answerIndex !== finalOptions.length - 1) {
-      const [answerOption] = finalOptions.splice(answerIndex, 1);
-      finalOptions.push(answerOption);
-    }
-
-    return finalOptions;
-  };
-
   const generateQuestions = async () => {
     const validSelectedLessons = selectedLessons.filter((lessonId) => lessons.some((lesson) => lesson.id === lessonId));
 
@@ -304,7 +254,6 @@ export function AutoGenerateQuiz() {
       // Generate in small quota-aware batches so long exams do not get truncated
       // by one oversized AI response.
       const generatedData: any[] = [];
-      const fallbackGeneratedData: any[] = [];
       const seenGeneratedQuestions = new Set<string>();
       const allocation = formData.quizTypes.flatMap(type => Array.from({ length: formData.questionCountsByType[type] || 0 }, () => type));
       let batchStart = 0;
@@ -343,7 +292,6 @@ export function AutoGenerateQuiz() {
 
         for (const question of batchQuestions) {
           const key = String(question.text || question.title || '').replace(/\s+/g, ' ').trim().toLowerCase();
-          fallbackGeneratedData.push(question);
           if (key && !seenGeneratedQuestions.has(key)) {
             seenGeneratedQuestions.add(key);
             generatedData.push(question);
@@ -357,36 +305,32 @@ export function AutoGenerateQuiz() {
 
       if (generatedData.length === 0) throw new Error('No questions were generated');
 
-      // If the source has fewer unique concepts than the requested exam size,
-      // reuse valid source questions as a final fallback instead of failing.
-      let fallbackIndex = 0;
-      while (generatedData.length < requestedQuestionTotal && fallbackGeneratedData.length > 0) {
-        generatedData.push({
-          ...fallbackGeneratedData[fallbackIndex % fallbackGeneratedData.length],
-          id: `fallback-${generatedData.length + 1}`,
-          text: `${fallbackGeneratedData[fallbackIndex % fallbackGeneratedData.length].text || fallbackGeneratedData[fallbackIndex % fallbackGeneratedData.length].title} (${formData.quizTypes[generatedData.length % formData.quizTypes.length]})`,
-        });
-        fallbackIndex += 1;
-      }
-
       const aiQuestions: Question[] = generatedData
-        .map((q: any, idx: number) => {
-          const type = allocation[idx] || formData.quizTypes[idx % formData.quizTypes.length];
+        .map((q: any, idx: number): Question | null => {
+          const supportedType: QuizType[] = ['multiple-choice', 'essay', 'true-false', 'enumeration', 'identification'];
+          const type = supportedType.includes(q.type) ? q.type as QuizType : '';
+          if (!type) return null;
           const title = (q.text || q.title || '').trim();
           const answer = String(q.correctAnswer || q.answer || '').trim();
-          const sourceOptions = Array.isArray(q.options)
+          const sourceOptions: string[] = Array.isArray(q.options)
             ? q.options.map((option: any) => String(typeof option === 'string' ? option : option?.text || '').trim()).filter(Boolean)
             : [];
           const options = type === 'multiple-choice'
-            ? buildProfessionalMultipleChoiceOptions(answer || sourceOptions[0] || 'Correct answer', sourceOptions)
+            ? Array.from(new Set<string>(sourceOptions.map((option: string) => option.replace(/\s+/g, ' ').trim()).filter(Boolean))).slice(0, 4)
                 .map((text) => ({
                   id: String(Math.random().toString(36).slice(2, 9)),
                   text,
-                  isCorrect: text.toLowerCase() === (answer || sourceOptions[0] || 'Correct answer').toLowerCase(),
+                  isCorrect: text.toLowerCase() === answer.toLowerCase(),
                 }))
             : type === 'true-false'
               ? ['True', 'False'].map((text, optionIndex) => ({ id: String(optionIndex + 1), text, isCorrect: text.toLowerCase() === answer.toLowerCase() }))
               : [];
+
+          if ((type === 'multiple-choice' && (options.length !== 4 || !options.some(option => option.isCorrect)))
+            || (type === 'true-false' && !/^(true|false)$/i.test(answer))
+            || (!['multiple-choice', 'true-false'].includes(type) && !answer)) {
+            return null;
+          }
 
           return {
             id: String(idx + 1),
@@ -397,10 +341,10 @@ export function AutoGenerateQuiz() {
             options,
           };
         })
-        .filter((q: { title: string | any[]; }) => q.title.length > 0)
+        .filter((q): q is Question => q !== null && q.title.length > 0)
         .slice(0, requestedQuestionTotal);
 
-      const cleanedQuestions = normalizeQuestionSet(aiQuestions, true);
+      const cleanedQuestions = normalizeQuestionSet(aiQuestions);
       if (cleanedQuestions.length === 0) {
         throw new Error('The generated content did not produce valid unique questions. Please regenerate.');
       }

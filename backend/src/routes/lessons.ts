@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import pdfParser from 'pdf-parse';
 import { v4 as uuidv4 } from 'uuid';
 import { createLocalLesson, getLocalLessonById, listLocalLessonsByModuleId } from '../lib/lessonStore.js';
-import { clipQuizSource, extractTextFromLessonFile, isThinLessonContent } from '../lib/lessonDocumentText.js';
+import { clipQuizSource, extractTextFromLessonFile, isThinLessonContent, removeCoverPage } from '../lib/lessonDocumentText.js';
 import { matchesContentTarget } from '../lib/contentTargeting.js';
 
 const router = Router();
@@ -431,9 +431,26 @@ function topicFromQuestion(text: string): string {
     .trim() || 'the lesson topic';
 }
 
+function isRejectedQuizFragment(text: string): boolean {
+  const normalized = text.replace(/\s+/g, ' ').trim();
+  return /\b(creativecommons|open courseware|copyright|all rights reserved|licensed under|terms of use|this work is licensed)\b/i.test(normalized)
+    || /\b(double\s*click|right\s*click|click\s+on|select\s+the|go\s+to|navigate\s+to|press\s+the)\b/i.test(normalized)
+    || /(?:➡|➜|→|->|=>)/u.test(normalized)
+    || /^\s*(key\s+takeaway|summary|learning objectives?|objectives?|note|example|activity)\s*[:.-]/i.test(normalized)
+    || /^https?:\/\//i.test(normalized)
+    || /@[a-z0-9.-]+\.[a-z]{2,}/i.test(normalized);
+}
+
+function isUsableQuizContent(text: string): boolean {
+  const normalized = text.replace(/\s+/g, ' ').trim();
+  return normalized.length >= 12 && !isRejectedQuizFragment(normalized);
+}
+
 export function normalizeGeneratedQuestions(rawQuestions: any[], targetCount = 5, requestedTypes: string[] = [], quizCategory = 'short', pointsByType: Record<string, number> = {}, questionCountsByType: Record<string, number> = {}) {
   const normalized: any[] = [];
   const seen = new Set<string>();
+  const supportedTypes = ['multiple-choice', 'short-answer', 'enumeration', 'true-false', 'identification', 'essay'];
+  const requestedTypeSet = new Set(requestedTypes);
 
   for (const item of rawQuestions || []) {
     if (!item || typeof item !== 'object') continue;
@@ -448,59 +465,24 @@ export function normalizeGeneratedQuestions(rawQuestions: any[], targetCount = 5
     }
 
     const normalizedText = rawText.replace(/\s+/g, ' ').trim();
+    const itemType = String(item.type || '').trim().toLowerCase();
+    if (!isUsableQuizContent(normalizedText)) continue;
+    if (/^explain\s+the\s+significance\s+of\s+[^.?!]+[.?!]?$/i.test(normalizedText)) continue;
+    if (itemType === 'true-false' && /^true\s+or\s+false:\s*the\s+lesson\s+states\s+that\s+[^.?!]+[.]?$/i.test(normalizedText)) continue;
+    if (itemType === 'true-false' && /^true\s+or\s+false:\s*(?:the\s+lesson\s+)?(?:states\s+that\s+)?[A-Z][\w\s&/-]{1,80}[.]?$/i.test(normalizedText)) continue;
     const dedupeKey = normalizedText.toLowerCase();
     if (!dedupeKey || seen.has(dedupeKey)) continue;
     seen.add(dedupeKey);
 
-    const supportedTypes = ['multiple-choice', 'short-answer', 'enumeration', 'true-false', 'identification', 'essay'];
-    const allocation = requestedTypes.flatMap(requestedType => Array.from({ length: Math.max(0, Number(questionCountsByType[requestedType]) || 0) }, () => requestedType));
-    const requestedType = allocation[normalized.length] || requestedTypes[normalized.length % requestedTypes.length];
-    const type = requestedTypes.length > 0 && supportedTypes.includes(requestedType)
-      ? requestedType
-      : supportedTypes.includes(item.type) ? item.type : 'multiple-choice';
+    if (requestedTypeSet.size > 0 && (!supportedTypes.includes(itemType) || !requestedTypeSet.has(itemType))) continue;
+    const type = supportedTypes.includes(itemType) ? itemType : 'multiple-choice';
     const points = Number(pointsByType[type]) > 0 ? Number(pointsByType[type]) : Number(item.points) > 0 ? Number(item.points) : 2;
 
-    const typeSpecificText = type === 'true-false'
-      ? (/^which\s+(statement|option)|^what\s+/i.test(normalizedText)
-          ? `True or False: ${normalizedText
-              .replace(/^which\s+(statement|option)\s+best\s+explains\s+/i, '')
-              .replace(/^what\s+(is|are)\s+/i, '')
-              .replace(/[?]+$/, '')
-              .trim()}.`
-          : normalizedText)
-      : type === 'enumeration'
-        ? (/^(which|what|true\s+or\s+false|explain|how|why)\b/i.test(normalizedText)
-            ? `List the key items, steps, characteristics, or examples related to ${topicFromQuestion(normalizedText)}.`
-            : normalizedText)
-        : type === 'identification'
-          ? (() => {
-              const answer = String(item.correctAnswer ?? item.answer ?? '').trim();
-              const genericIdentificationPatterns = [
-                /^what concept(\s+is|\s+is represented by this description|\s+is represented by the lesson|\s+does the lesson describe|\s+is being described)/i,
-                /^what\s+(term|concept|idea|process|object)\b/i,
-                /^which\s+(term|concept|idea|process|object)\b/i,
-              ];
-
-              if (genericIdentificationPatterns.some((pattern) => pattern.test(normalizedText))) {
-                const professionalStems = [
-                  'Identify the specific concept, term, or process described in the lesson.',
-                  'Name the concept that best fits this lesson discussion.',
-                  'Identify the term or concept the lesson is introducing.',
-                  'Determine the concept described by the lesson content.'
-                ];
-                return professionalStems[(normalized.length + 1) % professionalStems.length];
-              }
-
-              if (answer && normalizedText.toLowerCase().includes(answer.toLowerCase())) {
-                return `Identify the specific concept, term, or process described by the lesson.`;
-              }
-
-              return normalizedText;
-            })()
-          : type === 'essay'
-            && !/^(explain|how|why|discuss|evaluate|analyze)\b/i.test(normalizedText)
-            ? `Explain the significance of ${normalizedText.replace(/[?]+$/, '')}.`
-            : normalizedText;
+    const answerValue = String(item.correctAnswer ?? item.answer ?? '').replace(/\s+/g, ' ').trim();
+    if (isRejectedQuizFragment(answerValue)) continue;
+    if (type === 'true-false' && !/^(true|false)$/i.test(answerValue)) continue;
+    if (['identification', 'enumeration', 'essay'].includes(type) && !answerValue) continue;
+    if (type === 'essay' && answerValue.length < 40) continue;
 
     if (type === 'multiple-choice') {
       const rawOptions = Array.isArray(item.options) ? item.options : [];
@@ -510,35 +492,35 @@ export function normalizeGeneratedQuestions(rawQuestions: any[], targetCount = 5
         .filter((option, index, arr) => arr.findIndex((candidate) => candidate.toLowerCase() === option.toLowerCase()) === index)
         .filter((option) => !/^(true|false)$/i.test(option));
 
-      if (validOptions.length < 4) continue;
-
-      const uniqueOptions = validOptions.slice(0, 4);
-      const answerValue = String(item.correctAnswer ?? item.answer ?? '').trim();
-      const correctAnswer = uniqueOptions.find((option) => option.toLowerCase() === answerValue.toLowerCase()) || uniqueOptions[0];
-      const shuffledOptions = [...uniqueOptions];
-      const answerIndex = shuffledOptions.findIndex((option) => option.toLowerCase() === correctAnswer.toLowerCase());
-
-      if (answerIndex > -1 && answerIndex !== shuffledOptions.length - 1) {
-        const [answerOption] = shuffledOptions.splice(answerIndex, 1);
-        shuffledOptions.push(answerOption);
+      if (validOptions.length !== 4 || !answerValue) continue;
+      const correctAnswer = validOptions.find((option) => option.toLowerCase() === answerValue.toLowerCase());
+      if (!correctAnswer) continue;
+      const shuffledOptions = [...validOptions];
+      for (let index = shuffledOptions.length - 1; index > 0; index -= 1) {
+        const swapIndex = Math.floor(Math.random() * (index + 1));
+        [shuffledOptions[index], shuffledOptions[swapIndex]] = [shuffledOptions[swapIndex], shuffledOptions[index]];
       }
 
       normalized.push({
         id: item.id ?? String(normalized.length + 1),
-        text: typeSpecificText,
+        text: normalizedText,
         type,
         points,
         options: shuffledOptions,
         correctAnswer,
       });
     } else {
+      const questionText = type === 'true-false'
+        && /^which\s+(statement|option)\s+best\s+explains\s+/i.test(normalizedText)
+        ? `True or False: ${normalizedText.replace(/^which\s+(statement|option)\s+best\s+explains\s+/i, '').replace(/[?]+$/, '').trim()}.`
+        : normalizedText;
       normalized.push({
         id: item.id ?? String(normalized.length + 1),
-        text: typeSpecificText,
+        text: questionText,
         type,
         points,
         options: type === 'true-false' ? ['True', 'False'] : [],
-        correctAnswer: String(item.correctAnswer ?? item.answer ?? '').trim(),
+        correctAnswer: answerValue,
       });
     }
 
@@ -549,12 +531,18 @@ export function normalizeGeneratedQuestions(rawQuestions: any[], targetCount = 5
 }
 
 export function buildFallbackQuizQuestions(sourceText: string, targetCount: number, requestedTypes: string[], pointsByType: Record<string, number>, questionCountsByType: Record<string, number>, excludedTitle = '') {
+  const isSourceFact = (part: string) => {
+    const normalized = part.replace(/\s+/g, ' ').trim();
+    if (!isUsableQuizContent(normalized)) return false;
+    if (/^[A-Z][\w\s&/-]{1,80}$/.test(normalized) && !/[.!?]/.test(normalized)) return false;
+    return true;
+  };
+
   const sourceParts = sourceText
     .split(/(?<=[.!?])\s+|\n+/)
     .map(part => part.replace(/\s+/g, ' ').trim())
-    .filter(part => part.length >= 12)
     .map(part => excludedTitle ? part.replace(new RegExp(excludedTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig'), '').replace(/\s+/g, ' ').trim() : part)
-    .filter(part => part.length >= 12);
+    .filter(isSourceFact);
   if (sourceParts.length === 0) return [];
 
   const sourceFacts = Array.from(new Set(
@@ -562,21 +550,23 @@ export function buildFallbackQuizQuestions(sourceText: string, targetCount: numb
       .split(/(?<=[.!?])\s+|[;:\n]+|,\s*/)
       .map(part => part.replace(/\s+/g, ' ').trim())
       .filter(part => part.length >= 4)
+      .filter(part => isUsableQuizContent(part))
   ));
 
   const allocation = requestedTypes.flatMap(type => Array.from({ length: Math.max(0, Number(questionCountsByType[type]) || 0) }, () => type));
   const questions: any[] = [];
+  const usedFallbackAnswers = new Set<string>();
 
   const buildProfessionalMultipleChoiceStem = (topic: string, answer: string, index: number) => {
     const stems = [
-      `Which statement most accurately reflects the lesson's explanation of ${topic}?`,
-      `Which interpretation is best supported by the lesson regarding ${topic}?`,
-      `Which option best captures the lesson's view of ${topic}?`,
-      `Which response most clearly matches the lesson's discussion of ${topic}?`,
+      `Which statement is best supported by the lesson about ${topic}?`,
+      `What conclusion about ${topic} follows from the lesson?`,
+      `Which interpretation of ${topic} is accurate according to the lesson?`,
+      `How does the lesson characterize ${topic}?`,
     ];
 
     if (/\b(combine|combines|includes|supports|helps|enables|allows|improves|creates)\b/i.test(answer)) {
-      stems.unshift(`Which statement best describes how ${topic} functions within the lesson?`);
+      stems.unshift(`Which statement best describes the role of ${topic} in the lesson?`);
     }
 
     return stems[index % stems.length];
@@ -608,44 +598,45 @@ export function buildFallbackQuizQuestions(sourceText: string, targetCount: numb
     return uniqueOptions.length === 4 ? uniqueOptions : [];
   };
 
-  for (let index = 0; index < targetCount; index += 1) {
-    const answer = sourceParts[index % sourceParts.length];
+  for (let index = 0; index < sourceParts.length && questions.length < targetCount; index += 1) {
+    const answer = sourceParts[index]
+      .replace(/^true\s+or\s+false\s*:\s*/i, '')
+      .replace(/^the lesson states that\s+/i, '')
+      .replace(/[?]+$/, '')
+      .trim();
+    if (!isUsableQuizContent(answer)) continue;
+    const answerKey = answer.toLowerCase();
+    if (usedFallbackAnswers.has(answerKey)) continue;
+    usedFallbackAnswers.add(answerKey);
     const type = allocation[index] || requestedTypes[index % requestedTypes.length] || 'multiple-choice';
     const topicMatch = answer.match(/^(.{8,90}?)(?:\s+(?:is|are|was|were|refers to|means|describes|explains|uses|helps|allows|includes|involves)\s+)/i);
     const topic = (topicMatch?.[1] || answer.split(/[,;:.]/)[0] || answer)
       .trim()
       .replace(/^(the|a|an)\s+/i, '')
       .replace(/^(according to the lesson|statement\s*\d+)\s*/i, '');
-    const buildIdentificationStem = (sourceAnswer: string, sourceTopic: string, questionIndex: number) => {
+    const buildIdentificationStem = (sourceAnswer: string, sourceTopic: string) => {
       const trimmedAnswer = sourceAnswer.replace(/[?]+$/, '').trim();
       const description = trimmedAnswer
         .replace(new RegExp(`^${sourceTopic.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*(?:[-:]|is|are|was|were|refers to|means|describes|explains|uses|helps|allows|includes|involves)\\s*`, 'i'), '')
         .replace(/^the\s+/i, '')
         .trim();
 
-      const templates = [
-        'Identify the specific concept, term, or process described in the lesson.',
-        'Name the concept that best fits this lesson discussion.',
-        'Identify the term or concept the lesson is introducing.',
-        'Determine the concept described by the lesson content.'
-      ];
-
       if (description && description.length > 12 && description.toLowerCase() !== trimmedAnswer.toLowerCase()) {
         return `Identify the term or concept that best matches the following description: ${description}`;
       }
 
-      return templates[questionIndex % templates.length];
+      return `Which term or concept from the lesson is represented by this description: ${trimmedAnswer}?`;
     };
 
     const questionText = type === 'multiple-choice'
       ? buildProfessionalMultipleChoiceStem(topic, answer, index)
       : type === 'true-false'
-        ? `True or False: The lesson states that ${answer.replace(/[?]+$/, '')}.`
+        ? `True or False: ${answer.charAt(0).toUpperCase()}${answer.slice(1)}${/[.!?]$/.test(answer) ? '' : '.'}`
         : type === 'identification'
-          ? buildIdentificationStem(answer, topic, index)
+          ? buildIdentificationStem(answer, topic)
           : type === 'enumeration'
-            ? `List the key items, steps, characteristics, or examples related to ${topic}.`
-            : `Explain the significance of ${topic}.`;
+            ? `Identify and list the three key items, steps, characteristics, or examples related to ${topic} that are stated in the lesson.`
+            : `Analyze how ${topic} is described in the lesson. Explain its primary role and connect it to one related process, benefit, or outcome identified in the lesson.`;
     const options = type === 'multiple-choice'
       ? buildUniqueOptions(answer, index)
       : type === 'true-false'
@@ -658,9 +649,10 @@ export function buildFallbackQuizQuestions(sourceText: string, targetCount: numb
       ? (() => {
           const optionList = [...options];
           const answerIndex = optionList.findIndex((option) => option.toLowerCase() === answer.trim().toLowerCase());
-          if (answerIndex > -1 && answerIndex !== optionList.length - 1) {
+          if (answerIndex > -1) {
             const [answerOption] = optionList.splice(answerIndex, 1);
-            optionList.push(answerOption);
+            const targetIndex = 1 + (index % Math.max(1, optionList.length - 1));
+            optionList.splice(targetIndex, 0, answerOption);
           }
           return optionList;
         })()
@@ -1607,9 +1599,10 @@ router.post(
         const start = Math.max(1, Number(startPage) || 1);
         const requestedEnd = Number(endPage);
         const end = Number.isInteger(requestedEnd) && requestedEnd >= start ? requestedEnd : Number.MAX_SAFE_INTEGER;
-        const sourcePages = Array.isArray(lessonEntry.slides) && lessonEntry.slides.length > 0
+        const rawSourcePages = Array.isArray(lessonEntry.slides) && lessonEntry.slides.length > 0
           ? lessonEntry.slides.map((slide: any) => String(slide.content || slide.summary || '').trim()).filter(Boolean)
           : lessonFullContent.split(/\f+/).map((page: string) => page.trim()).filter(Boolean);
+        const sourcePages = removeCoverPage(rawSourcePages);
         if (sourcePages.length > 1) {
           lessonFullContent = sourcePages.slice(start - 1, end).join('\n\n').trim();
         } else if (start > 1) {
@@ -1681,9 +1674,11 @@ router.post(
       const model = configuredModel || 'gemini-3.6-flash';
       const fallbackModel = 'gemini-3.6-flash';
       const modelsToTry = [...new Set([model, fallbackModel])];
-      const prompt = `You are a senior instructional designer and professional assessment specialist with extensive experience creating high-stakes examinations for universities and professional certifications.
+      const prompt = `You are a senior instructional designer and professional assessment specialist with extensive experience writing high-quality examinations for universities and professional certifications.
 
-Based strictly and only on the lesson content below, generate exactly the requested number of questions with the required distribution across the supported question types.
+    Your task is to generate high-quality quiz questions based strictly and only on the provided lesson content.
+
+    Generate exactly the following number of questions for each type:
 
 TARGET QUESTION TYPE DISTRIBUTION:
 ${JSON.stringify(questionCountsByType, null, 2)}
@@ -1703,6 +1698,8 @@ STRICT GENERATION REQUIREMENTS:
 - Use clear, precise, formal, and professional language.
 - Avoid vague, conversational, ambiguous, or casual wording.
 
+Do not use lesson titles, slide headings, navigation instructions, screenshot labels, IP-address configuration steps, copyright notices, or license text as the subject of a question. Convert usable instructional content into a complete learning claim before writing the question.
+
 1a. Source fidelity
 - Every question, correct answer, and multiple-choice option must be directly supported by the lesson content.
 - Do not invent examples, facts, distractors, opposites, terminology, or applications that are not stated or clearly implied by the lesson.
@@ -1716,30 +1713,33 @@ STRICT GENERATION REQUIREMENTS:
 3. Cognitive Level
 - Prefer higher-order thinking such as understand, apply, and analyze.
 - Avoid overly simple recall questions unless they are clearly necessary.
+- Use a different concept, relationship, or context for every question.
+- Do not reuse a question stem more than once in the same response.
 
 4. Rules by Question Type
 - multiple-choice:
   - Exactly 4 options.
   - Only one correct answer.
-  - Three plausible distractors based on common misconceptions or closely related concepts.
+  - Three high-quality, plausible distractors based on common misconceptions or closely related concepts explicitly supported by the lesson.
   - Options must be parallel in structure and length.
   - Do not use "All of the above" or "None of the above".
-  - The correct answer must not be the first option.
+  - Place the correct answer at a different position across questions; never use a fixed answer position.
+  - Do not make the correct answer longer, more detailed, or more qualified than every distractor.
 - true-false:
   - The statement must be clearly true or clearly false based on the lesson.
   - Avoid partially true or ambiguous statements.
 - identification:
   - Ask for a specific term, concept, name, process, or principle.
-  - Use realistic, professional stems such as "Identify the term or concept described in the lesson", "Name the concept that best fits this lesson discussion", or "Determine the concept described by the lesson content".
-  - Do not use generic or repetitive stems such as "What concept is represented by this description..." or "What concept...".
+  - Include a specific, lesson-based description that lets the learner identify the answer.
+  - Do not reveal the answer or use a generic stem without a description.
   - The correct answer must be short and precise.
 - enumeration:
-  - Ask the learner to list a specific number of items that are explicitly present in the lesson.
+  - Ask the learner to list a specific number of items that are explicitly present in the lesson, and state that number in the question.
   - The expected answer must be a concise list of the required items.
 - essay:
   - Require explanation, analysis, comparison, or application.
   - The question should have clear scope and be answerable from the lesson content.
-  - Provide a concise model answer for grading guidance.
+  - Provide a concise model answer containing the key points expected in a strong response.
 
 5. Strict Avoidances
 - Ambiguous or double-barreled questions.
@@ -1748,7 +1748,10 @@ STRICT GENERATION REQUIREMENTS:
 - Questions that can be answered without reading the lesson content.
 - Any information not found in the provided lessons.
 - Repetitive question stems or duplicated concepts.
+- Questions that differ only by numbering, punctuation, or a question-type label.
 - Generic identification wording such as "What concept is represented by this description..." or repeated "What concept..." stems.
+- Generic essay stems such as "Explain the significance of [topic]" without a focused analytical task.
+- Answers that merely repeat the question, a heading, a title, or a slide instruction.
 
 6. Output Requirements
 - Return ONLY valid JSON, with no markdown fences, no commentary, and no extra text.
@@ -1762,8 +1765,14 @@ STRICT GENERATION REQUIREMENTS:
   }
 - For all non-multiple-choice questions, do not include an options array.
 - For multiple-choice, include exactly four options and the correctAnswer must match one option exactly.
-- Ensure the total number of generated questions matches the requested distribution exactly.
+- Return only questions that meet these rules. Do not invent or recycle questions to reach the requested count.
 - The response must contain only the JSON array and nothing else.
+
+QUALITY CHECK BEFORE RETURNING JSON:
+- Confirm every question uses a substantive lesson concept rather than a heading or procedure.
+- Confirm every answer is supported by the lesson and is not merely copied from the question.
+- Confirm every essay has a focused analytical task and a substantive model answer.
+- Confirm every enumeration specifies the exact number of expected items.
 
 This is generation batch ${Number(generationAttempt) || 0}; use different concepts and wording from earlier batches when possible.
 
@@ -1779,7 +1788,7 @@ LESSON CONTENT END.`;
           body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
             generationConfig: {
-              temperature: 0.2,
+              temperature: 0.7,
               maxOutputTokens: 32768,
               responseMimeType: 'application/json',
             },

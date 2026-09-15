@@ -6,6 +6,7 @@ import {
   extractTextFromPptxBuffer,
   extractTextFromPlainTextBuffer,
   isThinLessonContent,
+  removeCoverPage,
 } from '../src/lib/lessonDocumentText.ts';
 
 test('treats placeholder lesson copy as insufficient quiz source', () => {
@@ -17,6 +18,31 @@ test('treats placeholder lesson copy as insufficient quiz source', () => {
 test('accepts short real lesson text when a caller only needs to reject empty content', () => {
   assert.equal(isThinLessonContent('Light makes glucose.', 1), false);
   assert.equal(isThinLessonContent('   ', 1), true);
+});
+
+test('removes a title-only cover page before quiz generation', () => {
+  assert.deepEqual(removeCoverPage([
+    'Multimedia Technology',
+    'Multimedia technology combines text, audio, video, and animation in digital experiences.',
+  ]), [
+    'Multimedia technology combines text, audio, video, and animation in digital experiences.',
+  ]);
+});
+
+test('removes a metadata cover page but preserves a substantive first page', () => {
+  assert.deepEqual(removeCoverPage([
+    'Course: Multimedia Technology | Instructor: A. Santos | University',
+    'The lesson explains how multimedia supports communication and collaboration.',
+  ]), [
+    'The lesson explains how multimedia supports communication and collaboration.',
+  ]);
+  assert.deepEqual(removeCoverPage([
+    'Multimedia technology combines text, audio, video, and animation in digital experiences. It supports education.',
+    'The lesson explains how multimedia supports communication.',
+  ]), [
+    'Multimedia technology combines text, audio, video, and animation in digital experiences. It supports education.',
+    'The lesson explains how multimedia supports communication.',
+  ]);
 });
 
 test('extracts readable text from a PowerPoint lesson file', async () => {

@@ -139,3 +139,14 @@ export function clipQuizSource(text: string, maxLength = MAX_QUIZ_SOURCE_CHARS):
   if (normalized.length <= maxLength) return normalized;
   return `${normalized.slice(0, maxLength - 3).trim()}...`;
 }
+
+export function removeCoverPage(pages: string[]): string[] {
+  if (pages.length < 2) return pages;
+
+  const firstPage = String(pages[0] || '').replace(/\s+/g, ' ').trim();
+  const hasCoverMetadata = /\b(title|author|instructor|course|university|college|copyright|licensed|contents|table of contents|open courseware)\b/i.test(firstPage);
+  const hasInstructionalSentence = /[.!?].+[.!?]/.test(firstPage);
+  const isShortTitlePage = firstPage.length <= 600 && !hasInstructionalSentence;
+
+  return hasCoverMetadata || isShortTitlePage ? pages.slice(1) : pages;
+}
