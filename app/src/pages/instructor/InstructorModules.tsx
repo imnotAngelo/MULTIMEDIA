@@ -7,6 +7,7 @@ import { UploadLesson } from './UploadLesson';
 import { notificationService } from '@/services/notificationService';
 import { authFetch } from '@/lib/authFetch';
 import { API_BASE_URL } from '@/lib/apiConfig';
+import { buildInstructorLessonPath, getLessonRouteLessonId, getLessonRouteUnitId } from '@/lib/lessonRoutes';
 
 interface Unit {
   id: string;
@@ -60,7 +61,24 @@ export function InstructorModules() {
       const response = await authFetch(`${API_BASE_URL}/units/${unitId}/lessons`);
       const result = await response.json();
       if (!response.ok || !result.success) throw new Error(result.error?.message || 'Failed to load lessons');
-      setLessons(result.data || []);
+      setLessons(
+        (result.data || [])
+          .map((lesson: Lesson) => {
+            const id = getLessonRouteLessonId(lesson);
+            const normalizedUnitId = getLessonRouteUnitId(lesson, unitId);
+
+            if (!id || !normalizedUnitId) {
+              return null;
+            }
+
+            return {
+              ...lesson,
+              id,
+              unitId: normalizedUnitId,
+            };
+          })
+          .filter((lesson): lesson is Lesson => lesson !== null)
+      );
     } catch (err) {
       console.error('Failed to load lessons:', err);
       setLessons([]);
@@ -110,7 +128,10 @@ export function InstructorModules() {
 
   const handleViewLesson = (lesson: Lesson) => {
     if (selectedUnit) {
-      navigate(`/instructor/lesson/${selectedUnit.id}/${lesson.id}`);
+      const lessonPath = buildInstructorLessonPath(lesson, selectedUnit.id);
+      if (lessonPath) {
+        navigate(lessonPath);
+      }
     }
   };
 
