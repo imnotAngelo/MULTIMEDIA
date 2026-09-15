@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import crypto from 'node:crypto';
 import { EmailServiceError, sendPasswordResetEmail, sendVerificationEmail } from '../lib/email.js';
 import { requireJwtSecret } from '../middleware/security.js';
+import { listUsersByRole } from '../lib/userStore.js';
 
 const VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const PASSWORD_RESET_TOKEN_TTL_MS = 30 * 60 * 1000;
@@ -18,6 +19,114 @@ function createVerificationToken() {
     expiresAt: new Date(Date.now() + VERIFICATION_TOKEN_TTL_MS).toISOString(),
   };
 }
+
+function normalizeSection(section: unknown): string {
+  return typeof section === 'string' ? section.trim().toLowerCase() : '';
+}
+
+function normalizeSemesters(values: unknown[]): number[] {
+  const semesters: number[] = [];
+  for (const value of values) {
+    const parsed = Number(value);
+    if (Number.isInteger(parsed) && parsed >= 1 && parsed <= 3 && !semesters.includes(parsed)) {
+      semesters.push(parsed);
+    }
+  }
+  return semesters.sort((a, b) => a - b);
+}
+
+type InstructorSectionAssignment = {
+  semesters: number[];
+  primarySemester: number | null;
+  instructorCount: number;
+};
+
+async function getInstructorSectionAssignment(sectionName: string): Promise<InstructorSectionAssignment> {
+  const normalizedSection = normalizeSection(sectionName);
+  if (!normalizedSection) {
+    return { semesters: [], primarySemester: null, instructorCount: 0 };
+  }
+
+  let data: any[] = [];
+  if (supabase) {
+    const { data: instructorRows, error } = await supabase
+      .from('users')
+      .select('id, section, teaching_sections, year_level, teaching_year_levels')
+      .eq('role', 'instructor');
+    if (error) throw error;
+    data = instructorRows || [];
+  } else {
+    data = listUsersByRole('instructor');
+  }
+
+  let primarySemester: number | null = null;
+  let instructorCount = 0;
+  const semesterSet = new Set<number>();
+
+  for (const instructor of data || []) {
+    const handledSections = Array.isArray(instructor.teaching_sections) && instructor.teaching_sections.length > 0
+      ? instructor.teaching_sections
+      : [instructor.section];
+    const sectionMatch = handledSections.some((value: unknown) => normalizeSection(value) === normalizedSection);
+    if (!sectionMatch) continue;
+
+    instructorCount += 1;
+    const semesters = normalizeSemesters(
+      Array.isArray(instructor.teaching_year_levels) && instructor.teaching_year_levels.length > 0
+        ? instructor.teaching_year_levels
+        : [instructor.year_level]
+    );
+
+    if (primarySemester === null && semesters.length > 0) {
+      primarySemester = semesters[0];
+    }
+    semesters.forEach((semester) => semesterSet.add(semester));
+  }
+
+  const semesters = Array.from(semesterSet).sort((a, b) => a - b);
+  return {
+    semesters,
+    primarySemester: primarySemester ?? semesters[0] ?? null,
+    instructorCount,
+  };
+}
+
+export const getSectionSemester = async (req: AuthRequest, res: Response) => {
+  try {
+    const section = typeof req.query.section === 'string' ? req.query.section.trim() : '';
+    if (!section || section.length > 50) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_SECTION', message: 'Section is required and must be 50 characters or fewer' },
+      });
+    }
+
+    const assignment = await getInstructorSectionAssignment(section);
+    if (assignment.instructorCount === 0 || !assignment.primarySemester) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'SECTION_NOT_FOUND', message: 'No instructor assignment found for this section.' },
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        section,
+        semesters: assignment.semesters,
+        primary_semester: assignment.primarySemester,
+        primarySemester: assignment.primarySemester,
+        instructor_count: assignment.instructorCount,
+      },
+    });
+  } catch (error: any) {
+    console.error('Get section semester error:', error);
+    return res.status(500).json({
+      success: false,
+      error: { code: 'SECTION_LOOKUP_FAILED', message: error.message },
+    });
+  }
+};
 
 
 export const register = async (req: AuthRequest, res: Response) => {
@@ -105,14 +214,6 @@ export const register = async (req: AuthRequest, res: Response) => {
       parsedYear = parsedTeachingYears[0];
       parsedSection = parsedTeachingSections[0];
     } else if (role === 'student') {
-      parsedYear = Number(year_level);
-      if (!Number.isInteger(parsedYear) || parsedYear < 1 || parsedYear > 3) {
-        return res.status(400).json({
-          success: false,
-          error: { code: 'INVALID_YEAR_LEVEL', message: 'Academic year must be 1 (1st Sem), 2 (2nd Sem), or 3 (Summer)' },
-        });
-      }
-
       if (typeof section !== 'string' || !section.trim() || section.trim().length > 50) {
         return res.status(400).json({
           success: false,
@@ -159,6 +260,20 @@ export const register = async (req: AuthRequest, res: Response) => {
             message: 'User already exists',
           },
         });
+      }
+
+      if (role === 'student') {
+        const assignment = await getInstructorSectionAssignment(parsedSection);
+        if (assignment.instructorCount === 0 || !assignment.primarySemester) {
+          return res.status(400).json({
+            success: false,
+            error: {
+              code: 'SECTION_NOT_FOUND',
+              message: 'No instructor assignment found for this section. Please ask your instructor to register their section first.',
+            },
+          });
+        }
+        parsedYear = assignment.primarySemester;
       }
 
       if (role === 'instructor') {

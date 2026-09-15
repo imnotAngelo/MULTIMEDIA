@@ -132,6 +132,16 @@ class ApiService {
     });
   }
 
+  async getSectionSemester(section: string) {
+    return this.request<{
+      section: string;
+      semesters: number[];
+      primary_semester: number;
+      primarySemester: number;
+      instructor_count: number;
+    }>(`/auth/section-semester?section=${encodeURIComponent(section)}`);
+  }
+
   async login(email: string, password: string, adminSecret?: string) {
     const result = await this.request('/auth/login', {
       method: 'POST',

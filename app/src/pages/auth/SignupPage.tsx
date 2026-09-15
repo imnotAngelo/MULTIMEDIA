@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
+import { api } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,6 +24,10 @@ export function SignupPage() {
   const [role, setRole] = useState<'student' | 'instructor'>('student');
   const [yearLevel, setYearLevel] = useState<1 | 2 | 3>(1);
   const [section, setSection] = useState('');
+  const [isSemesterAutoAssigned, setIsSemesterAutoAssigned] = useState(false);
+  const [availableSemesters, setAvailableSemesters] = useState<(1 | 2 | 3)[]>([]);
+  const [semesterLookupError, setSemesterLookupError] = useState('');
+  const [isLookingUpSemester, setIsLookingUpSemester] = useState(false);
   const [teachingYearLevels, setTeachingYearLevels] = useState<(1 | 2 | 3)[]>([]);
   const [teachingSections, setTeachingSections] = useState<string[]>([]);
   const [sectionInput, setSectionInput] = useState('');
@@ -30,6 +35,56 @@ export function SignupPage() {
   const [validationError, setValidationError] = useState('');
   const { registerAsync, isLoading, error } = useAuthStore();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (role !== 'student') {
+      setIsSemesterAutoAssigned(false);
+      setAvailableSemesters([]);
+      setSemesterLookupError('');
+      setIsLookingUpSemester(false);
+      return;
+    }
+
+    const trimmedSection = section.trim();
+    if (!trimmedSection) {
+      setIsSemesterAutoAssigned(false);
+      setAvailableSemesters([]);
+      setSemesterLookupError('');
+      setIsLookingUpSemester(false);
+      return;
+    }
+
+    let cancelled = false;
+    const lookupSemester = async () => {
+      setIsLookingUpSemester(true);
+      setIsSemesterAutoAssigned(false);
+      setSemesterLookupError('');
+      const response = await api.getSectionSemester(trimmedSection);
+      if (cancelled) return;
+
+      if (response.success && response.data?.primarySemester) {
+        const semesters = (response.data.semesters || [])
+          .map((value) => Number(value))
+          .filter((value): value is 1 | 2 | 3 => Number.isInteger(value) && value >= 1 && value <= 3)
+          .sort();
+        const selectedSemester = Number(response.data.primarySemester) as 1 | 2 | 3;
+        setAvailableSemesters(semesters);
+        setYearLevel(selectedSemester);
+        setIsSemesterAutoAssigned(true);
+      } else {
+        setAvailableSemesters([]);
+        setIsSemesterAutoAssigned(false);
+        setSemesterLookupError(response.error?.message || 'Could not auto-assign semester for this section.');
+      }
+
+      setIsLookingUpSemester(false);
+    };
+
+    lookupSemester();
+    return () => {
+      cancelled = true;
+    };
+  }, [role, section]);
 
   const toggleTeachingYear = (level: 1 | 2 | 3) => {
     setTeachingYearLevels((current) =>
@@ -78,9 +133,15 @@ export function SignupPage() {
         setValidationError('Add at least one section you handle');
         return;
       }
-    } else if (!section.trim()) {
-      setValidationError('Section is required');
-      return;
+    } else {
+      if (!section.trim()) {
+        setValidationError('Section is required');
+        return;
+      }
+      if (!isSemesterAutoAssigned) {
+        setValidationError('Semester is auto-assigned from your section. Enter a valid section handled by an instructor.');
+        return;
+      }
     }
 
     const normalizedEmail = email.trim().toLowerCase();
@@ -201,22 +262,7 @@ export function SignupPage() {
               </div>
 
               {role === 'student' ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="yearLevel" className="text-slate-300 text-sm">
-                      Academic Semester
-                    </Label>
-                    <select
-                      id="yearLevel"
-                      value={yearLevel}
-                      onChange={(e) => setYearLevel(Number(e.target.value) as 1 | 2 | 3)}
-                      className="h-11 w-full rounded-md border border-slate-700 bg-slate-800/60 px-3 text-sm text-white focus:border-violet-500/50 focus:outline-none focus:ring-2 focus:ring-violet-500/30"
-                    >
-                      <option value={1}>1st Sem</option>
-                      <option value={2}>2nd Sem</option>
-                      <option value={3}>Summer</option>
-                    </select>
-                  </div>
+                <div className="space-y-3">
                   <div className="space-y-2">
                     <Label htmlFor="section" className="text-slate-300 text-sm">
                       Section
@@ -231,10 +277,36 @@ export function SignupPage() {
                       required
                       className="bg-slate-800/60 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-violet-500/50 focus-visible:border-violet-500/50 h-11"
                     />
-                    <p className="text-xs text-slate-500">
-                      Your account will need approval from the instructor assigned to this section and term before you can sign in.
-                    </p>
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="yearLevel" className="text-slate-300 text-sm">
+                      Academic Semester (Auto-assigned)
+                    </Label>
+                    <Input
+                      id="yearLevel"
+                      type="text"
+                      readOnly
+                      value={isSemesterAutoAssigned
+                        ? (ACADEMIC_YEAR_OPTIONS.find((option) => option.value === yearLevel)?.label ?? 'Not assigned')
+                        : 'Not assigned yet'}
+                      className="h-11 bg-slate-800/60 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-violet-500/50 focus-visible:border-violet-500/50"
+                    />
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    Your semester is automatically assigned based on your section&apos;s instructor.
+                    {isLookingUpSemester ? ' Checking instructor assignment...' : ''}
+                  </p>
+                  {availableSemesters.length > 1 && (
+                    <p className="text-xs text-slate-500">
+                      Your instructor handles: {availableSemesters.map((value) => ACADEMIC_YEAR_OPTIONS.find((option) => option.value === value)?.label).filter(Boolean).join(', ')}. We selected the first semester by default.
+                    </p>
+                  )}
+                  {semesterLookupError && (
+                    <p className="text-xs text-amber-400">{semesterLookupError}</p>
+                  )}
+                  <p className="text-xs text-slate-500">
+                    Your account will need approval from the instructor assigned to this section and term before you can sign in.
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-4">
