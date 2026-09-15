@@ -55,6 +55,7 @@ export function SignupPage() {
     }
 
     let cancelled = false;
+    let lookupTimer: ReturnType<typeof setTimeout> | null = null;
     const lookupSemester = async () => {
       setIsLookingUpSemester(true);
       setIsSemesterAutoAssigned(false);
@@ -74,15 +75,29 @@ export function SignupPage() {
       } else {
         setAvailableSemesters([]);
         setIsSemesterAutoAssigned(false);
-        setSemesterLookupError(response.error?.message || 'Could not auto-assign semester for this section.');
+        const errorCode = response.error?.code;
+        const errorMessage = response.error?.message || '';
+        if (errorCode === 'SECTION_NOT_FOUND') {
+          setSemesterLookupError('No instructor assignment was found for this section yet.');
+        } else if (errorCode === 'NOT_FOUND' || errorMessage === 'Endpoint not found') {
+          setSemesterLookupError('Semester preview is temporarily unavailable. The server will still assign your semester after sign up.');
+        } else {
+          setSemesterLookupError('Could not preview the assigned semester right now. The server will still assign it after sign up.');
+        }
       }
 
       setIsLookingUpSemester(false);
     };
 
-    lookupSemester();
+    lookupTimer = setTimeout(() => {
+      void lookupSemester();
+    }, 350);
+
     return () => {
       cancelled = true;
+      if (lookupTimer) {
+        clearTimeout(lookupTimer);
+      }
     };
   }, [role, section]);
 
@@ -136,10 +151,6 @@ export function SignupPage() {
     } else {
       if (!section.trim()) {
         setValidationError('Section is required');
-        return;
-      }
-      if (!isSemesterAutoAssigned) {
-        setValidationError('Semester is auto-assigned from your section. Enter a valid section handled by an instructor.');
         return;
       }
     }
@@ -288,13 +299,12 @@ export function SignupPage() {
                       readOnly
                       value={isSemesterAutoAssigned
                         ? (ACADEMIC_YEAR_OPTIONS.find((option) => option.value === yearLevel)?.label ?? 'Not assigned')
-                        : 'Not assigned yet'}
+                        : (isLookingUpSemester ? 'Checking section...' : 'Assigned after sign up')}
                       className="h-11 bg-slate-800/60 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-violet-500/50 focus-visible:border-violet-500/50"
                     />
                   </div>
                   <p className="text-xs text-slate-500">
-                    Your semester is automatically assigned based on your section&apos;s instructor.
-                    {isLookingUpSemester ? ' Checking instructor assignment...' : ''}
+                    Your semester is assigned from your section&apos;s instructor. We&apos;ll preview it here when available.
                   </p>
                   {availableSemesters.length > 1 && (
                     <p className="text-xs text-slate-500">
