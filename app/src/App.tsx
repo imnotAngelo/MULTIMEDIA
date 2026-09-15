@@ -17,7 +17,7 @@ import { AdminLayout, AdminSettings } from '@/pages/admin';
 import { StudentDashboard, StudentQuizTaker, Lessons, Laboratories, Portfolio, StudentQuizzes, Chatbox, StudentSettings } from '@/pages/student';
 
 // Instructor Pages
-import { InstructorDashboard, UnitsManagement, InstructorAssessments, CreateAssessment, QuizManagement, QuizMethodPicker, CreateQuiz, AutoGenerateQuiz, ExamDocument, LaboratorySubmissions, LaboratoriesManagement, InstructorMessages, InstructorSettings, StudentApprovals, StudentPerformance } from '@/pages/instructor';
+import { InstructorDashboard, UnitsManagement, InstructorAssessments, CreateAssessment, QuizManagement, QuizMethodPicker, CreateQuiz, AutoGenerateQuiz, ExamDocument, LaboratorySubmissions, LaboratoriesManagement, InstructorMessages, InstructorSettings, StudentApprovals, StudentPerformance, ViewLesson, CoursesManagement } from '@/pages/instructor';
 import { InstructorApprovals } from '@/pages/admin';
 
 
@@ -81,6 +81,16 @@ export function App() {
           }
         />
 
+        {/* View Lesson Route (Full Page, No Layout) */}
+        <Route
+          path="/instructor/lesson/:unitId/:lessonId"
+          element={
+            <ProtectedRoute requiredRole="instructor">
+              <ViewLesson />
+            </ProtectedRoute>
+          }
+        />
+
         {/* Student Routes with Layout */}
         <Route
           element={
@@ -110,7 +120,7 @@ export function App() {
           }
         >
           <Route path="/instructor/dashboard" element={<InstructorDashboard />} />
-          <Route path="/instructor/courses" element={<UnitsManagement />} />
+          <Route path="/instructor/courses" element={<CoursesManagement />} />
           <Route path="/instructor/assessments" element={<InstructorAssessments />} />
           <Route path="/instructor/assessments/create" element={<CreateAssessment />} />
           <Route path="/instructor/quizzes" element={<QuizManagement />} />
