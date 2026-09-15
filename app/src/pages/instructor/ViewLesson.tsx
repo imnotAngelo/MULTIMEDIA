@@ -293,23 +293,23 @@ export function ViewLesson() {
         const presentationUrl = resolveBackendAssetUrl(lesson.pdfUrl || '');
 
         return (
-          <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-6">
+          <div className="min-h-screen bg-gradient-to-br from-slate-100 via-white to-slate-200 p-6 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
             <div className="max-w-6xl mx-auto space-y-6">
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <button
                     onClick={() => navigate(-1)}
-                    className="flex items-center gap-2 text-violet-400 hover:text-violet-300 mb-4 transition-colors"
+                    className="mb-4 flex items-center gap-2 text-violet-600 transition-colors hover:text-violet-700 dark:text-violet-400 dark:hover:text-violet-300"
                   >
                     <ChevronLeft className="w-4 h-4" />
                     Back to Lessons
                   </button>
-                  <h1 className="text-4xl font-bold text-white">{lesson.title}</h1>
-                  <p className="text-slate-400 mt-2">Converted PowerPoint lesson</p>
+                  <h1 className="text-4xl font-bold text-slate-900 dark:text-white">{lesson.title}</h1>
+                  <p className="mt-2 text-slate-600 dark:text-slate-400">Converted PowerPoint lesson</p>
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
+              <div className="rounded-2xl border border-slate-200 bg-white/80 p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/70">
                 <div className="flex flex-wrap gap-3">
                   <Button
                     onClick={() => window.open(presentationUrl, '_blank', 'noopener,noreferrer')}
@@ -327,7 +327,7 @@ export function ViewLesson() {
                 </div>
               </div>
 
-              <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 shadow-2xl shadow-cyan-500/10">
+              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-300/30 dark:border-slate-800 dark:bg-slate-950 dark:shadow-cyan-500/10">
                 <DocumentViewer lessonId={lesson.id} documentUrl={lesson.pdfUrl || ''} title={lesson.title} fileType="pptx" />
               </div>
             </div>
@@ -367,20 +367,20 @@ export function ViewLesson() {
       }
 
       return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-6">
+        <div className="min-h-screen bg-gradient-to-br from-slate-100 via-white to-slate-200 p-6 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
           <div className="max-w-7xl mx-auto">
             {/* Header */}
             <div className="mb-6 flex items-center justify-between">
           <div>
             <button
               onClick={() => navigate(-1)}
-              className="flex items-center gap-2 text-violet-400 hover:text-violet-300 mb-4 transition-colors"
+              className="mb-4 flex items-center gap-2 text-violet-600 transition-colors hover:text-violet-700 dark:text-violet-400 dark:hover:text-violet-300"
             >
               <ChevronLeft className="w-4 h-4" />
               Back to Lessons
             </button>
-            <h1 className="text-4xl font-bold text-white">{lesson.title}</h1>
-            <p className="text-slate-400 mt-2">
+            <h1 className="text-4xl font-bold text-slate-900 dark:text-white">{lesson.title}</h1>
+            <p className="mt-2 text-slate-600 dark:text-slate-400">
               Created{' '}
               {new Date(lesson.createdAt).toLocaleDateString()}
             </p>
@@ -397,32 +397,32 @@ export function ViewLesson() {
         {(lesson.videoUrl || lesson.graphicUrl) && (
           <div className="mb-6 grid gap-4 lg:grid-cols-2">
             {lesson.videoUrl && (
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
-                <h3 className="text-sm font-semibold text-violet-300 mb-3">Class video</h3>
+              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/70">
+                <h3 className="mb-3 text-sm font-semibold text-violet-600 dark:text-violet-300">Class video</h3>
                 <video src={lesson.videoUrl} controls className="w-full rounded-xl max-h-72 object-cover" />
               </div>
             )}
 
             {lesson.graphicUrl && (
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
-                <h3 className="text-sm font-semibold text-violet-300 mb-3">Class graphic</h3>
-                <img src={lesson.graphicUrl} alt={`${lesson.title} graphic`} className="w-full rounded-xl max-h-72 object-cover border border-slate-700" />
+              <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/70">
+                <h3 className="mb-3 text-sm font-semibold text-violet-600 dark:text-violet-300">Class graphic</h3>
+                <img src={lesson.graphicUrl} alt={`${lesson.title} graphic`} className="w-full rounded-xl max-h-72 object-cover border border-slate-200 dark:border-slate-700" />
               </div>
             )}
           </div>
         )}
 
         {!hasSlides ? (
-          <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-12 text-center">
-            <p className="text-slate-400 mb-4">No slides available for this lesson</p>
-            <p className="text-yellow-400 text-xs mt-2">Try clicking View again or check browser console for details</p>
+          <div className="rounded-xl border border-slate-200 bg-white/80 p-12 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
+            <p className="mb-4 text-slate-600 dark:text-slate-400">No slides available for this lesson</p>
+            <p className="mt-2 text-xs text-amber-600 dark:text-yellow-400">Try clicking View again or check browser console for details</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             {/* Slide Navigation Sidebar */}
             <div className="lg:col-span-1 order-2 lg:order-1">
-              <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 sticky top-6">
-                <h3 className="text-sm font-semibold text-slate-200 mb-4">Slides</h3>
+              <div className="sticky top-6 rounded-xl border border-slate-200 bg-white/80 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
+                <h3 className="mb-4 text-sm font-semibold text-slate-800 dark:text-slate-200">Slides</h3>
                 <div className="space-y-2 max-h-96 overflow-y-auto">
                   {lesson.slides?.map((slide, idx) => (
                     <button
@@ -431,7 +431,7 @@ export function ViewLesson() {
                       className={`w-full text-left p-3 rounded-lg transition-all ${
                         idx === currentSlide
                           ? 'bg-violet-600 border-violet-500 text-white'
-                          : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
+                          : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
                       } border`}
                     >
                       <div className="text-xs font-medium opacity-75">Slide {idx + 1}</div>
@@ -445,30 +445,30 @@ export function ViewLesson() {
             {/* Main Content */}
             <div className="lg:col-span-3 order-1 lg:order-2">
               {/* Slide Content */}
-              <div className="bg-gradient-to-br from-slate-900/80 to-slate-800/50 border border-slate-800 rounded-2xl p-8 mb-6 min-h-96 flex flex-col">
+              <div className="mb-6 flex min-h-96 flex-col rounded-2xl border border-slate-200 bg-gradient-to-br from-white to-slate-100/80 p-8 shadow-sm dark:border-slate-800 dark:from-slate-900/80 dark:to-slate-800/50">
                 <div className="flex-1">
                   <div className="text-sm font-semibold text-violet-400 mb-3">
                     Slide {currentSlide + 1} of {lesson.slides?.length || 0}
                   </div>
-                  <h2 className="text-4xl font-bold text-white mb-6">{currentSlideData?.title}</h2>
-                  <div className="prose prose-invert max-w-none mb-6">
-                    <p className="text-lg text-slate-300 leading-relaxed">{currentSlideData?.content}</p>
+                  <h2 className="mb-6 text-4xl font-bold text-slate-900 dark:text-white">{currentSlideData?.title}</h2>
+                  <div className="prose max-w-none mb-6 dark:prose-invert">
+                    <p className="text-lg leading-relaxed text-slate-700 dark:text-slate-300">{currentSlideData?.content}</p>
                   </div>
 
                   {currentSlideData?.summary && (
-                    <div className="bg-slate-900/50 border border-slate-700 rounded-lg p-4 mb-6">
-                      <h4 className="text-sm font-semibold text-violet-400 mb-2">Summary</h4>
-                      <p className="text-slate-300 text-sm">{currentSlideData.summary}</p>
+                    <div className="mb-6 rounded-lg border border-slate-200 bg-slate-50/90 p-4 dark:border-slate-700 dark:bg-slate-900/50">
+                      <h4 className="mb-2 text-sm font-semibold text-violet-500 dark:text-violet-400">Summary</h4>
+                      <p className="text-sm text-slate-700 dark:text-slate-300">{currentSlideData.summary}</p>
                     </div>
                   )}
 
                   {currentSlideData?.keyPoints && currentSlideData.keyPoints.length > 0 && (
-                    <div className="bg-slate-900/30 rounded-lg p-6">
-                      <h4 className="text-sm font-semibold text-violet-400 mb-4">Key Points</h4>
+                    <div className="rounded-lg bg-slate-100/80 p-6 dark:bg-slate-900/30">
+                      <h4 className="mb-4 text-sm font-semibold text-violet-500 dark:text-violet-400">Key Points</h4>
                       <ul className="space-y-3">
                         {currentSlideData.keyPoints.map((point: string, idx: number) => (
-                          <li key={idx} className="flex gap-3 text-slate-300">
-                            <span className="inline-flex items-center justify-center w-6 h-6 bg-violet-600/20 border border-violet-600/40 rounded-full text-violet-400 text-xs flex-shrink-0">
+                          <li key={idx} className="flex gap-3 text-slate-700 dark:text-slate-300">
+                            <span className="inline-flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full border border-violet-600/30 bg-violet-600/10 text-xs text-violet-600 dark:border-violet-600/40 dark:bg-violet-600/20 dark:text-violet-400">
                               {idx + 1}
                             </span>
                             <span className="pt-0.5">{point}</span>
@@ -485,7 +485,7 @@ export function ViewLesson() {
                 <Button
                   onClick={handlePrevSlide}
                   disabled={currentSlide === 0}
-                  className="bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-700 text-white gap-2"
+                  className="gap-2 border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 hover:text-slate-900 disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:hover:bg-slate-700 dark:disabled:border-slate-800 dark:disabled:bg-slate-900 dark:disabled:text-slate-600"
                 >
                   <ChevronLeft className="w-4 h-4" />
                   Previous
@@ -500,7 +500,7 @@ export function ViewLesson() {
                       className={`transition-all ${
                         idx === currentSlide
                           ? 'w-8 h-2 bg-violet-500'
-                          : 'w-2 h-2 bg-slate-600 hover:bg-slate-500'
+                          : 'h-2 w-2 bg-slate-300 hover:bg-slate-400 dark:bg-slate-600 dark:hover:bg-slate-500'
                       } rounded-full`}
                       title={`Go to slide ${idx + 1}`}
                     />
@@ -510,7 +510,7 @@ export function ViewLesson() {
                 <Button
                   onClick={handleNextSlide}
                   disabled={currentSlide === (lesson.slides?.length || 0) - 1}
-                  className="bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-700 text-white gap-2"
+                  className="gap-2 border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 hover:text-slate-900 disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:hover:bg-slate-700 dark:disabled:border-slate-800 dark:disabled:bg-slate-900 dark:disabled:text-slate-600"
                 >
                   Next
                   <ChevronRight className="w-4 h-4" />
@@ -518,7 +518,7 @@ export function ViewLesson() {
               </div>
 
               {/* Progress Bar */}
-              <div className="mt-6 bg-slate-900 rounded-full h-1 overflow-hidden">
+              <div className="mt-6 h-1 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-900">
                 <div
                   className="h-full bg-gradient-to-r from-violet-600 to-violet-500 transition-all duration-300"
                   style={{
