@@ -260,11 +260,7 @@ export function AutoGenerateQuiz() {
     }
 
     if (uniqueOptions.length < 4) {
-      uniqueOptions.push(
-        'A statement that is not supported by the lesson content.',
-        'A related concept that is mentioned but not fully explained in the same way.',
-        'A misleading interpretation of the lesson topic.'
-      );
+      return [];
     }
 
     const finalOptions = uniqueOptions.slice(0, 4);
@@ -304,7 +300,6 @@ export function AutoGenerateQuiz() {
       // Generate in small quota-aware batches so long exams do not get truncated
       // by one oversized AI response.
       const generatedData: any[] = [];
-      const fallbackGeneratedData: any[] = [];
       const seenGeneratedQuestions = new Set<string>();
       const allocation = formData.quizTypes.flatMap(type => Array.from({ length: formData.questionCountsByType[type] || 0 }, () => type));
       let batchStart = 0;
@@ -324,6 +319,8 @@ export function AutoGenerateQuiz() {
             questionCountsByType: batchCounts,
             quizCategory: formData.quizCategory,
             generationAttempt: attempts,
+            excludedQuestionTexts: generatedData.map((question) => String(question.text || question.title || '').trim()).filter(Boolean),
+            excludedAnswers: generatedData.map((question) => String(question.correctAnswer || question.answer || '').trim()).filter(Boolean),
           }),
         });
 
@@ -343,7 +340,6 @@ export function AutoGenerateQuiz() {
 
         for (const question of batchQuestions) {
           const key = String(question.text || question.title || '').replace(/\s+/g, ' ').trim().toLowerCase();
-          fallbackGeneratedData.push(question);
           if (key && !seenGeneratedQuestions.has(key)) {
             seenGeneratedQuestions.add(key);
             generatedData.push(question);
@@ -357,21 +353,11 @@ export function AutoGenerateQuiz() {
 
       if (generatedData.length === 0) throw new Error('No questions were generated');
 
-      // If the source has fewer unique concepts than the requested exam size,
-      // reuse valid source questions as a final fallback instead of failing.
-      let fallbackIndex = 0;
-      while (generatedData.length < requestedQuestionTotal && fallbackGeneratedData.length > 0) {
-        generatedData.push({
-          ...fallbackGeneratedData[fallbackIndex % fallbackGeneratedData.length],
-          id: `fallback-${generatedData.length + 1}`,
-          text: `${fallbackGeneratedData[fallbackIndex % fallbackGeneratedData.length].text || fallbackGeneratedData[fallbackIndex % fallbackGeneratedData.length].title} (${formData.quizTypes[generatedData.length % formData.quizTypes.length]})`,
-        });
-        fallbackIndex += 1;
-      }
-
       const aiQuestions: Question[] = generatedData
         .map((q: any, idx: number) => {
-          const type = allocation[idx] || formData.quizTypes[idx % formData.quizTypes.length];
+          const type = formData.quizTypes.includes(q.type)
+            ? q.type
+            : allocation[idx] || formData.quizTypes[idx % formData.quizTypes.length];
           const title = (q.text || q.title || '').trim();
           const answer = String(q.correctAnswer || q.answer || '').trim();
           const sourceOptions = Array.isArray(q.options)
@@ -400,7 +386,7 @@ export function AutoGenerateQuiz() {
         .filter((q: { title: string | any[]; }) => q.title.length > 0)
         .slice(0, requestedQuestionTotal);
 
-      const cleanedQuestions = normalizeQuestionSet(aiQuestions, true);
+      const cleanedQuestions = normalizeQuestionSet(aiQuestions);
       if (cleanedQuestions.length === 0) {
         throw new Error('The generated content did not produce valid unique questions. Please regenerate.');
       }
@@ -447,11 +433,16 @@ export function AutoGenerateQuiz() {
 
   const normalizeQuestionSet = (questions: Question[], allowDuplicateQuestions = false) => {
     const seen = new Set<string>();
+    const seenAnswers = new Set<string>();
     return questions.filter((question) => {
       const text = question.title.trim();
       const key = text.toLowerCase();
+      const answerKey = String(question.correctAnswer || '').replace(/\s+/g, ' ').trim().toLowerCase();
+      const shouldDedupeAnswer = answerKey.length > 0 && !['essay', 'enumeration', 'true-false'].includes(question.type);
       if (!text || (!allowDuplicateQuestions && seen.has(key))) return false;
+      if (!allowDuplicateQuestions && shouldDedupeAnswer && seenAnswers.has(`${question.type}:${answerKey}`)) return false;
       seen.add(key);
+      if (shouldDedupeAnswer) seenAnswers.add(`${question.type}:${answerKey}`);
       return true;
     }).map((question) => {
       const normalizedQuestion = { ...question, title: question.title.trim() };

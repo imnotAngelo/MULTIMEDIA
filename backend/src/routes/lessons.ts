@@ -431,6 +431,63 @@ function topicFromQuestion(text: string): string {
     .trim() || 'the lesson topic';
 }
 
+function normalizeQuizText(value: unknown): string {
+  return String(value || '').replace(/\s+/g, ' ').trim();
+}
+
+function buildQuestionSemanticKey(type: string, text: string, answer: string): string {
+  const normalizedText = normalizeQuizText(text).toLowerCase();
+  const normalizedAnswer = normalizeQuizText(answer).toLowerCase();
+
+  if (type === 'true-false') {
+    return `${type}:${normalizedText.replace(/^true\s+or\s+false:\s*/i, '').replace(/[.]+$/, '')}`;
+  }
+
+  if (normalizedAnswer && !['essay', 'enumeration'].includes(type)) {
+    return `${type}:${normalizedAnswer}`;
+  }
+
+  return `${type}:${topicFromQuestion(normalizedText).toLowerCase() || normalizedText}`;
+}
+
+function filterNovelQuestions(questions: any[], excludedQuestionTexts: string[] = [], excludedAnswers: string[] = []) {
+  const seenQuestionTexts = new Set(
+    excludedQuestionTexts
+      .map((text) => normalizeQuizText(text).toLowerCase())
+      .filter(Boolean)
+  );
+  const seenSemanticKeys = new Set<string>();
+  const seenAnswerKeys = new Set(
+    excludedAnswers
+      .map((answer) => normalizeQuizText(answer).toLowerCase())
+      .filter(Boolean)
+  );
+
+  return questions.filter((question) => {
+    const text = normalizeQuizText(question?.text ?? question?.title ?? '');
+    const type = normalizeQuizText(question?.type || 'multiple-choice').toLowerCase();
+    const answer = normalizeQuizText(question?.correctAnswer ?? question?.answer ?? '');
+    const textKey = text.toLowerCase();
+    const semanticKey = buildQuestionSemanticKey(type, text, answer);
+    const shouldDedupeAnswer = answer.length > 0 && !['essay', 'enumeration', 'true-false'].includes(type);
+
+    if (!textKey || seenQuestionTexts.has(textKey) || seenSemanticKeys.has(semanticKey)) {
+      return false;
+    }
+
+    if (shouldDedupeAnswer && seenAnswerKeys.has(answer.toLowerCase())) {
+      return false;
+    }
+
+    seenQuestionTexts.add(textKey);
+    seenSemanticKeys.add(semanticKey);
+    if (shouldDedupeAnswer) {
+      seenAnswerKeys.add(answer.toLowerCase());
+    }
+    return true;
+  });
+}
+
 export function normalizeGeneratedQuestions(rawQuestions: any[], targetCount = 5, requestedTypes: string[] = [], quizCategory = 'short', pointsByType: Record<string, number> = {}, questionCountsByType: Record<string, number> = {}) {
   const normalized: any[] = [];
   const seen = new Set<string>();
@@ -447,11 +504,6 @@ export function normalizeGeneratedQuestions(rawQuestions: any[], targetCount = 5
       continue;
     }
 
-    const normalizedText = rawText.replace(/\s+/g, ' ').trim();
-    const dedupeKey = normalizedText.toLowerCase();
-    if (!dedupeKey || seen.has(dedupeKey)) continue;
-    seen.add(dedupeKey);
-
     const supportedTypes = ['multiple-choice', 'short-answer', 'enumeration', 'true-false', 'identification', 'essay'];
     const allocation = requestedTypes.flatMap(requestedType => Array.from({ length: Math.max(0, Number(questionCountsByType[requestedType]) || 0) }, () => requestedType));
     const requestedType = allocation[normalized.length] || requestedTypes[normalized.length % requestedTypes.length];
@@ -459,6 +511,11 @@ export function normalizeGeneratedQuestions(rawQuestions: any[], targetCount = 5
       ? requestedType
       : supportedTypes.includes(item.type) ? item.type : 'multiple-choice';
     const points = Number(pointsByType[type]) > 0 ? Number(pointsByType[type]) : Number(item.points) > 0 ? Number(item.points) : 2;
+    const normalizedText = rawText.replace(/\s+/g, ' ').trim();
+    const answerValue = normalizeQuizText(item.correctAnswer ?? item.answer ?? '');
+    const dedupeKey = buildQuestionSemanticKey(type, normalizedText, answerValue);
+    if (!dedupeKey || seen.has(dedupeKey)) continue;
+    seen.add(dedupeKey);
 
     const typeSpecificText = type === 'true-false'
       ? (/^which\s+(statement|option)|^what\s+/i.test(normalizedText)
@@ -513,7 +570,6 @@ export function normalizeGeneratedQuestions(rawQuestions: any[], targetCount = 5
       if (validOptions.length < 4) continue;
 
       const uniqueOptions = validOptions.slice(0, 4);
-      const answerValue = String(item.correctAnswer ?? item.answer ?? '').trim();
       const correctAnswer = uniqueOptions.find((option) => option.toLowerCase() === answerValue.toLowerCase()) || uniqueOptions[0];
       const shuffledOptions = [...uniqueOptions];
       const answerIndex = shuffledOptions.findIndex((option) => option.toLowerCase() === correctAnswer.toLowerCase());
@@ -549,12 +605,14 @@ export function normalizeGeneratedQuestions(rawQuestions: any[], targetCount = 5
 }
 
 export function buildFallbackQuizQuestions(sourceText: string, targetCount: number, requestedTypes: string[], pointsByType: Record<string, number>, questionCountsByType: Record<string, number>, excludedTitle = '') {
-  const sourceParts = sourceText
-    .split(/(?<=[.!?])\s+|\n+/)
-    .map(part => part.replace(/\s+/g, ' ').trim())
-    .filter(part => part.length >= 12)
-    .map(part => excludedTitle ? part.replace(new RegExp(excludedTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig'), '').replace(/\s+/g, ' ').trim() : part)
-    .filter(part => part.length >= 12);
+  const sourceParts = Array.from(new Set(
+    sourceText
+      .split(/(?<=[.!?])\s+|\n+/)
+      .map(part => part.replace(/\s+/g, ' ').trim())
+      .filter(part => part.length >= 12)
+      .map(part => excludedTitle ? part.replace(new RegExp(excludedTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig'), '').replace(/\s+/g, ' ').trim() : part)
+      .filter(part => part.length >= 12)
+  ));
   if (sourceParts.length === 0) return [];
 
   const sourceFacts = Array.from(new Set(
@@ -566,6 +624,7 @@ export function buildFallbackQuizQuestions(sourceText: string, targetCount: numb
 
   const allocation = requestedTypes.flatMap(type => Array.from({ length: Math.max(0, Number(questionCountsByType[type]) || 0) }, () => type));
   const questions: any[] = [];
+  const seenConcepts = new Set<string>();
 
   const buildProfessionalMultipleChoiceStem = (topic: string, answer: string, index: number) => {
     const stems = [
@@ -608,9 +667,9 @@ export function buildFallbackQuizQuestions(sourceText: string, targetCount: numb
     return uniqueOptions.length === 4 ? uniqueOptions : [];
   };
 
-  for (let index = 0; index < targetCount; index += 1) {
-    const answer = sourceParts[index % sourceParts.length];
-    const type = allocation[index] || requestedTypes[index % requestedTypes.length] || 'multiple-choice';
+  for (let index = 0; index < sourceParts.length && questions.length < targetCount; index += 1) {
+    const answer = sourceParts[index];
+    const type = allocation[questions.length] || requestedTypes[questions.length % requestedTypes.length] || 'multiple-choice';
     const topicMatch = answer.match(/^(.{8,90}?)(?:\s+(?:is|are|was|were|refers to|means|describes|explains|uses|helps|allows|includes|involves)\s+)/i);
     const topic = (topicMatch?.[1] || answer.split(/[,;:.]/)[0] || answer)
       .trim()
@@ -666,8 +725,12 @@ export function buildFallbackQuizQuestions(sourceText: string, targetCount: numb
         })()
       : options;
 
+    const conceptKey = buildQuestionSemanticKey(type, questionText, answer);
+    if (seenConcepts.has(conceptKey)) continue;
+    seenConcepts.add(conceptKey);
+
     questions.push({
-      id: `fallback-${index + 1}`,
+      id: `fallback-${questions.length + 1}`,
       text: questionText,
       type,
       points: Number(pointsByType[type]) > 0 ? Number(pointsByType[type]) : 2,
@@ -1499,6 +1562,12 @@ router.post(
     try {
       const { lessonId } = req.params;
       const { numberOfQuestions = 5, startPage = 1, endPage, quizType = 'multiple-choice', quizTypes = [], quizCategory = 'short', pointsByType = {}, questionCountsByType = {}, generationAttempt = 0 } = req.body;
+      const excludedQuestionTexts = Array.isArray(req.body.excludedQuestionTexts)
+        ? req.body.excludedQuestionTexts.filter((text: unknown): text is string => typeof text === 'string' && text.trim().length > 0).map((text: string) => text.trim())
+        : [];
+      const excludedAnswers = Array.isArray(req.body.excludedAnswers)
+        ? req.body.excludedAnswers.filter((text: unknown): text is string => typeof text === 'string' && text.trim().length > 0).map((text: string) => text.trim())
+        : [];
 
       console.log('🧠 Generating quiz questions for lesson:', lessonId);
 
@@ -1767,6 +1836,12 @@ STRICT GENERATION REQUIREMENTS:
 
 This is generation batch ${Number(generationAttempt) || 0}; use different concepts and wording from earlier batches when possible.
 
+ALREADY USED QUESTIONS TO AVOID:
+${excludedQuestionTexts.length > 0 ? JSON.stringify(excludedQuestionTexts, null, 2) : '[]'}
+
+ALREADY USED ANSWERS OR CONCEPT LABELS TO AVOID REPEATING:
+${excludedAnswers.length > 0 ? JSON.stringify(excludedAnswers, null, 2) : '[]'}
+
 LESSON CONTENT END.`;
 
       let response: globalThis.Response | null = null;
@@ -1819,16 +1894,24 @@ LESSON CONTENT END.`;
         : Array.isArray(parsed.questions)
           ? parsed.questions
           : [];
-      const questions = normalizeGeneratedQuestions(rawQuestions, numQuestions, normalizedTypes, quizCategory, pointsByType, questionCountsByType);
+      const questions = filterNovelQuestions(
+        normalizeGeneratedQuestions(rawQuestions, numQuestions, normalizedTypes, quizCategory, pointsByType, questionCountsByType),
+        excludedQuestionTexts,
+        excludedAnswers
+      );
       const completedQuestions = questions.length >= numQuestions
         ? questions
-        : normalizeGeneratedQuestions(
-            [...questions, ...buildFallbackQuizQuestions(fullContent, numQuestions - questions.length, normalizedTypes, pointsByType, questionCountsByType, String(lesson.title || ''))],
-            numQuestions,
-            normalizedTypes,
-            quizCategory,
-            pointsByType,
-            questionCountsByType
+        : filterNovelQuestions(
+            normalizeGeneratedQuestions(
+              [...questions, ...buildFallbackQuizQuestions(fullContent, numQuestions - questions.length, normalizedTypes, pointsByType, questionCountsByType, String(lesson.title || ''))],
+              numQuestions,
+              normalizedTypes,
+              quizCategory,
+              pointsByType,
+              questionCountsByType
+            ),
+            excludedQuestionTexts,
+            excludedAnswers
           );
 
       console.log('🧠 Generated', completedQuestions.length, 'questions from lesson content');
