@@ -353,6 +353,66 @@ export function CoursesManagement() {
   }, [isHydrated, isAuthenticated, user?.id]);
 
   useEffect(() => {
+    const triggerQuickAction = () => {
+      const rawAction = sessionStorage.getItem('aether-course-quick-action');
+      if (!rawAction) return;
+
+      try {
+        const quickAction = JSON.parse(rawAction) as { mode?: 'unit' | 'lesson'; unitId?: string | null };
+        if (!quickAction.mode) return;
+
+        if (quickAction.mode === 'unit') {
+          setActiveLessonId(null);
+          setShowCreateUnitDialog(true);
+          setShowUploadDialog(false);
+          sessionStorage.removeItem('aether-course-quick-action');
+          return;
+        }
+
+        const targetUnitId = quickAction.unitId || requestedUnitId || units[0]?.id || null;
+        if (!targetUnitId) {
+          sessionStorage.removeItem('aether-course-quick-action');
+          return;
+        }
+
+        setActiveLessonId(null);
+        setSelectedUnitForUpload(targetUnitId);
+        setShowUploadDialog(true);
+        setShowCreateUnitDialog(false);
+        sessionStorage.removeItem('aether-course-quick-action');
+      } catch {
+        sessionStorage.removeItem('aether-course-quick-action');
+      }
+    };
+
+    triggerQuickAction();
+
+    const onQuickAction = (event: Event) => {
+      const customEvent = event as CustomEvent<{ mode?: 'unit' | 'lesson'; unitId?: string | null }>;
+      const quickAction = customEvent.detail;
+      if (!quickAction?.mode) return;
+
+      if (quickAction.mode === 'unit') {
+        setActiveLessonId(null);
+        setShowCreateUnitDialog(true);
+        setShowUploadDialog(false);
+        return;
+      }
+
+      const targetUnitId = quickAction.unitId || requestedUnitId || units[0]?.id || null;
+      if (!targetUnitId) return;
+
+      setActiveLessonId(null);
+      setSelectedUnitForUpload(targetUnitId);
+      setShowUploadDialog(true);
+      setShowCreateUnitDialog(false);
+    };
+
+    window.addEventListener('aether-course-quick-action', onQuickAction);
+    return () => window.removeEventListener('aether-course-quick-action', onQuickAction);
+  }, [requestedUnitId, units]);
+
+  useEffect(() => {
     if (!requestedUnitId || !units.some((unit) => unit.id === requestedUnitId)) return;
     setExpandedUnits([requestedUnitId]);
     const requestedLesson = lessons.find((lesson) => lesson.id === requestedLessonId && lesson.unitId === requestedUnitId);
@@ -754,8 +814,9 @@ export function CoursesManagement() {
   };
 
   const selectedLesson = lessons.find(l => l.id === activeLessonId);
+  const hasCourseModalOpen = showCreateUnitDialog || showUploadDialog;
 
-  if (activeLessonId && Boolean(selectedLesson)) {
+  if (activeLessonId && Boolean(selectedLesson) && !hasCourseModalOpen) {
     const viewerLesson = selectedLesson as Lesson;
     return (
       <ViewLesson
@@ -799,37 +860,37 @@ export function CoursesManagement() {
                 New Unit
               </Button>
             </DialogTrigger>
-            <DialogContent className="bg-slate-900 border-slate-800 text-slate-100">
+            <DialogContent className="bg-white/95 border-slate-200 text-slate-900 shadow-[0_28px_90px_rgba(15,23,42,0.18)]">
               <DialogHeader>
                 <DialogTitle>Create New Unit</DialogTitle>
                 <DialogDescription>
                   Unit title will be auto-generated as UNIT I, UNIT II, etc.
                 </DialogDescription>
               </DialogHeader>
-              <div className="space-y-4">
+              <div className="space-y-5">
                 <div className="bg-slate-800/40 border border-slate-700 rounded-lg p-3">
                   <p className="text-sm text-slate-400 font-medium">
                     Auto-Generated Title: <span className="text-violet-400 font-semibold">UNIT {numberToRoman(units.length + 1)}</span>
                   </p>
                 </div>
-                <div>
-                  <Label htmlFor="unitTitle" className="text-slate-300">Topic/Subject (Optional)</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="unitTitle" className="text-slate-700 font-medium">Topic/Subject (Optional)</Label>
                   <Input
                     id="unitTitle"
                     placeholder="e.g., Advanced Python, Web Development, etc."
                     value={newUnitTitle}
                     onChange={(e) => setNewUnitTitle(e.target.value)}
-                    className="bg-slate-800 border-slate-700 text-slate-100"
+                    className="bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-400"
                   />
                 </div>
-                <div>
-                  <Label htmlFor="unitDescription" className="text-slate-300">Description (Optional)</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="unitDescription" className="text-slate-700 font-medium">Description (Optional)</Label>
                   <Input
                     id="unitDescription"
                     placeholder="Brief description of the unit content"
                     value={newUnitDescription}
                     onChange={(e) => setNewUnitDescription(e.target.value)}
-                    className="bg-slate-800 border-slate-700 text-slate-100"
+                    className="bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-400"
                   />
                 </div>
                 <SectionYearTargetPicker
@@ -1300,25 +1361,25 @@ export function CoursesManagement() {
       </Dialog>
 
       <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
-        <DialogContent className="bg-slate-900 border-slate-800 text-slate-100">
+        <DialogContent className="bg-white/95 border-slate-200 text-slate-900 shadow-[0_28px_90px_rgba(15,23,42,0.18)]">
           <DialogHeader>
             <DialogTitle>Add Lesson</DialogTitle>
             <DialogDescription>Upload a PDF to create a new lesson</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-5">
             <>
-            <div>
-              <Label htmlFor="lessonTitle" className="text-slate-300">Lesson Title</Label>
+            <div className="space-y-2">
+              <Label htmlFor="lessonTitle" className="text-slate-700 font-medium">Lesson Title</Label>
               <Input
                 id="lessonTitle"
                 placeholder="Enter lesson title"
                 value={lessonTitle}
                 onChange={(e) => setLessonTitle(e.target.value)}
-                className="bg-slate-800 border-slate-700 text-slate-100"
+                className="bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-400"
               />
             </div>
-            <div>
-              <Label htmlFor="lessonFile" className="text-slate-300">PDF File</Label>
+            <div className="space-y-2">
+              <Label htmlFor="lessonFile" className="text-slate-700 font-medium">PDF File</Label>
               <label
                 htmlFor="lessonFile"
                 onDragEnter={(event) => {
