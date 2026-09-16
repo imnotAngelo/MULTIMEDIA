@@ -35,7 +35,6 @@ import { notificationService } from '@/services/notificationService';
 import { cn } from '@/lib/utils';
 import { AetherLoader } from '@/components/AetherLoader';
 import { SectionYearTargetPicker } from '@/components/SectionYearTargetPicker';
-import { FileToPptxUploader } from '@/components/FileToPptxUploader';
 
 interface Unit {
   id: string;
@@ -327,7 +326,6 @@ export function CoursesManagement() {
   const [lessonTargetYearLevels, setLessonTargetYearLevels] = useState<number[]>([]);
   const [lessonTargetSections, setLessonTargetSections] = useState<string[]>([]);
   const [lessonSectionInput, setLessonSectionInput] = useState('');
-  const [lessonFormat, setLessonFormat] = useState<'pdf' | 'pptx'>('pdf');
 
   // State for editing lesson metadata (video/app)
   const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
@@ -1272,41 +1270,9 @@ export function CoursesManagement() {
         <DialogContent className="bg-slate-900 border-slate-800 text-slate-100">
           <DialogHeader>
             <DialogTitle>Add Lesson</DialogTitle>
-            <DialogDescription>Upload a PDF to create a new lesson, or convert a file to PowerPoint</DialogDescription>
+            <DialogDescription>Upload a PDF to create a new lesson</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Lesson format">
-              <button
-                type="button"
-                role="radio"
-                aria-checked={lessonFormat === 'pdf'}
-                onClick={() => setLessonFormat('pdf')}
-                className={`flex items-center justify-center gap-2 h-10 rounded-md border text-sm font-medium transition-all ${
-                  lessonFormat === 'pdf'
-                    ? 'border-violet-500/60 bg-violet-500/10 text-white'
-                    : 'border-slate-700 bg-slate-800/40 text-slate-300 hover:bg-slate-800/70 hover:text-white'
-                }`}
-              >
-                Continue with PDF
-              </button>
-              <button
-                type="button"
-                role="radio"
-                aria-checked={lessonFormat === 'pptx'}
-                onClick={() => setLessonFormat('pptx')}
-                className={`flex items-center justify-center gap-2 h-10 rounded-md border text-sm font-medium transition-all ${
-                  lessonFormat === 'pptx'
-                    ? 'border-cyan-400/60 bg-cyan-400/10 text-white'
-                    : 'border-slate-700 bg-slate-800/40 text-slate-300 hover:bg-slate-800/70 hover:text-white'
-                }`}
-              >
-                Convert to PowerPoint
-              </button>
-            </div>
-
-            {lessonFormat === 'pptx' ? (
-              <FileToPptxUploader unitId={selectedUnitForUpload || undefined} />
-            ) : (
             <>
             <div>
               <Label htmlFor="lessonTitle" className="text-slate-300">Lesson Title</Label>
@@ -1356,7 +1322,6 @@ export function CoursesManagement() {
               </Button>
             </div>
             </>
-            )}
           </div>
         </DialogContent>
       </Dialog>

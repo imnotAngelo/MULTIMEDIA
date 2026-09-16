@@ -1527,12 +1527,6 @@ router.post(
   '/:lessonId/generate-questions',
   optionalAuthMiddleware,
   async (req: Request, res: Response) => {
-    let fallbackFullContent = '';
-    let fallbackNumQuestions = 5;
-    let fallbackTypes: string[] = ['multiple-choice'];
-    let fallbackPoints: Record<string, number> = {};
-    let fallbackCounts: Record<string, number> = {};
-    let fallbackLessonTitle = '';
     try {
       const { lessonId } = req.params;
       const { numberOfQuestions = 5, startPage = 1, endPage, quizType = 'multiple-choice', quizTypes = [], quizCategory = 'short', pointsByType = {}, questionCountsByType = {}, generationAttempt = 0 } = req.body;
@@ -1691,9 +1685,6 @@ router.post(
           fullContent = `The lesson topic is ${lessonTitle}.`;
         }
       }
-      fallbackFullContent = fullContent;
-      fallbackLessonTitle = String(lesson.title || '');
-
       if (isThinLessonContent(fullContent, 1)) {
         return res.status(400).json({
           success: false,
@@ -1734,10 +1725,6 @@ router.post(
       const requestedTypes = (Array.isArray(quizTypes) ? quizTypes : [quizType])
         .filter((type: unknown, index: number, types: unknown[]) => allowedTypes.includes(String(type)) && types.indexOf(type) === index);
       const normalizedTypes = requestedTypes.length > 0 ? requestedTypes : ['multiple-choice'];
-      fallbackTypes = normalizedTypes;
-      fallbackPoints = pointsByType;
-      fallbackCounts = questionCountsByType;
-      fallbackNumQuestions = numQuestions;
       const configuredModel = process.env.GEMINI_MODEL?.trim();
       const model = configuredModel || 'gemini-3.6-flash';
       const fallbackModel = 'gemini-3.6-flash';
@@ -1912,16 +1899,10 @@ LESSON CONTENT END.`;
           ? parsed.questions
           : [];
       const questions = normalizeGeneratedQuestions(rawQuestions, numQuestions, normalizedTypes, quizCategory, pointsByType, questionCountsByType);
-      const completedQuestions = questions.length >= numQuestions
-        ? questions
-        : normalizeGeneratedQuestions(
-            [...questions, ...buildFallbackQuizQuestions(fullContent, numQuestions - questions.length, normalizedTypes, pointsByType, questionCountsByType, String(lesson.title || ''))],
-            numQuestions,
-            normalizedTypes,
-            quizCategory,
-            pointsByType,
-            questionCountsByType
-          );
+      if (questions.length < numQuestions) {
+        throw new Error(`AI returned only ${questions.length} of ${numQuestions} valid questions. Please try generating again.`);
+      }
+      const completedQuestions = questions;
 
       console.log('🧠 Generated', completedQuestions.length, 'questions from lesson content');
 
@@ -1931,22 +1912,6 @@ LESSON CONTENT END.`;
       });
     } catch (error: any) {
       console.error('Generate questions error:', error);
-
-      const fallbackQuestions = normalizeGeneratedQuestions(
-        buildFallbackQuizQuestions(fallbackFullContent, fallbackNumQuestions, fallbackTypes, fallbackPoints, fallbackCounts, fallbackLessonTitle),
-        fallbackNumQuestions,
-        fallbackTypes,
-        'short',
-        fallbackPoints,
-        fallbackCounts
-      );
-      if (fallbackQuestions.length > 0) {
-        return res.json({
-          success: true,
-          data: fallbackQuestions,
-          fallback: true,
-        });
-      }
 
       if (error.message?.includes('GEMINI_API_KEY')) {
         return res.status(500).json({
