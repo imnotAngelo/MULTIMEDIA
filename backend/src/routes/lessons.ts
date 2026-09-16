@@ -17,6 +17,10 @@ const routeDir = path.dirname(fileURLToPath(import.meta.url));
 const backendRoot = path.resolve(routeDir, '..', '..');
 const uploadDir = path.join(backendRoot, 'uploads');
 
+function isPdfBuffer(buffer: Buffer): boolean {
+  return buffer.subarray(0, 5).toString('ascii') === '%PDF-';
+}
+
 async function canAccessLesson(lessonId: string, requester: AuthRequest['user']) {
   if (!requester || !supabase) return false;
   const { data: lesson, error: lessonError } = await supabase
@@ -789,9 +793,18 @@ router.post(
       const destinationPath = path.join(uploadDir, fileName);
       fs.renameSync(uploadedFile.path, destinationPath);
 
+      const uploadedPdf = fs.readFileSync(destinationPath);
+      if (!isPdfBuffer(uploadedPdf)) {
+        fs.unlinkSync(destinationPath);
+        return res.status(400).json({
+          success: false,
+          error: { code: 'INVALID_PDF', message: 'The uploaded file is not a valid PDF.' },
+        });
+      }
+
       let pdfUrl = `/uploads/${fileName}`;
       if (supabase) {
-        const pdfBuffer = fs.readFileSync(destinationPath);
+        const pdfBuffer = uploadedPdf;
         const storagePath = `lessons/${fileName}`;
         const bucketName = 'lesson-pdfs';
 
@@ -1259,6 +1272,14 @@ router.get('/:lessonId/pdf', authMiddleware, async (req: AuthRequest, res: Respo
     const localPath = path.join(uploadDir, fileName);
 
     if (fs.existsSync(localPath)) {
+      const localPdf = fs.readFileSync(localPath);
+      if (!isPdfBuffer(localPdf)) {
+        return res.status(422).json({
+          success: false,
+          error: { code: 'INVALID_PDF', message: 'The stored lesson file is not a valid PDF.' },
+        });
+      }
+      res.type('application/pdf');
       return res.sendFile(localPath);
     }
 
@@ -1267,9 +1288,13 @@ router.get('/:lessonId/pdf', authMiddleware, async (req: AuthRequest, res: Respo
       try {
         const remoteResponse = await fetch(storedUrl);
         if (remoteResponse.ok) {
-          res.setHeader('Content-Type', 'application/pdf');
-          res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
-          return res.send(Buffer.from(await remoteResponse.arrayBuffer()));
+          const remotePdf = Buffer.from(await remoteResponse.arrayBuffer());
+          if (isPdfBuffer(remotePdf)) {
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
+            return res.send(remotePdf);
+          }
+          console.warn('⚠️ Stored lesson URL did not return PDF bytes:', storedUrl);
         }
       } catch (remoteError) {
         console.warn('⚠️ Stored PDF URL could not be fetched:', remoteError);
@@ -1283,9 +1308,13 @@ router.get('/:lessonId/pdf', authMiddleware, async (req: AuthRequest, res: Respo
         .download(storagePath);
 
       if (!storageError && file) {
+        const storagePdf = Buffer.from(await file.arrayBuffer());
+        if (!isPdfBuffer(storagePdf)) {
+          continue;
+        }
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
-        return res.send(Buffer.from(await file.arrayBuffer()));
+        return res.send(storagePdf);
       }
     }
 

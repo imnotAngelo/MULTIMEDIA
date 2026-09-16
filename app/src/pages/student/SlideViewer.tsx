@@ -304,7 +304,10 @@ export function SlideViewer({ lessonId, lessonTitle, lesson: initialLesson }: Sl
   );
 
   if (isPdfLesson && !isPptLesson) {
-    const pdfViewerUrl = pdfUrl || resolveBackendAssetUrl(lesson?.pdfUrl || lesson?.pdf_url || '');
+    const directPdfUrl = pdfUrl || resolveBackendAssetUrl(lesson?.pdfUrl || lesson?.pdf_url || '');
+    const pdfViewerUrl = lessonId
+      ? `${API_BASE_URL}/lessons/${lessonId}/pdf`
+      : directPdfUrl;
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between gap-4">
@@ -313,7 +316,7 @@ export function SlideViewer({ lessonId, lessonTitle, lesson: initialLesson }: Sl
             <p className="text-sm text-slate-400">PDF Document</p>
           </div>
           <a
-            href={pdfViewerUrl}
+            href={directPdfUrl || pdfViewerUrl}
             target="_blank"
             rel="noreferrer"
             className="inline-flex items-center gap-2 rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700"
