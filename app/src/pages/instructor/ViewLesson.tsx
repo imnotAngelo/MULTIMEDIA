@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Download } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Edit2, Link as LinkIcon, Save, Upload, Video, X } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { Button } from '@/components/ui/button';
 import { authFetch } from '@/lib/authFetch';
@@ -9,6 +9,13 @@ import { downloadLessonAsPDF } from '@/lib/downloadUtils';
 import { DocumentViewer } from '@/components/DocumentViewer';
 import { PDFViewer } from '@/components/PDFViewer';
 import { useThemeStore } from '@/stores/themeStore';
+import { toast } from 'sonner';
+
+interface ViewLessonProps {
+  unitId?: string;
+  lessonId?: string;
+  embedded?: boolean;
+}
 
 interface Lesson {
   id: string;
@@ -22,10 +29,14 @@ interface Lesson {
   graphicUrl?: string;
   pdfUrl?: string;
   originalFormat?: string;
+  appLink?: string;
+  appName?: string;
 }
 
-export function ViewLesson() {
-  const { unitId, lessonId } = useParams();
+export function ViewLesson({ unitId: providedUnitId, lessonId: providedLessonId, embedded = false }: ViewLessonProps = {}) {
+  const routeParams = useParams();
+  const unitId = providedUnitId || routeParams.unitId;
+  const lessonId = providedLessonId || routeParams.lessonId;
   const navigate = useNavigate();
   const theme = useThemeStore((state) => state.theme);
   const isLightMode = theme === 'light';
@@ -44,10 +55,68 @@ export function ViewLesson() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [editingMedia, setEditingMedia] = useState(false);
+  const [savingMedia, setSavingMedia] = useState(false);
+  const [mediaVideoUrl, setMediaVideoUrl] = useState('');
+  const [mediaVideoFile, setMediaVideoFile] = useState<File | null>(null);
+  const [mediaAppName, setMediaAppName] = useState('');
+  const [mediaAppLink, setMediaAppLink] = useState('');
 
   useEffect(() => {
     loadLesson();
   }, [unitId, lessonId]);
+
+  useEffect(() => {
+    if (!lesson) return;
+    setMediaVideoUrl(lesson.videoUrl || '');
+    setMediaAppName(lesson.appName || '');
+    setMediaAppLink(lesson.appLink || '');
+  }, [lesson?.id]);
+
+  const saveMedia = async () => {
+    if (!lessonId || !lesson) return;
+    try {
+      setSavingMedia(true);
+      let videoUrl = mediaVideoUrl.trim();
+
+      if (mediaVideoFile) {
+        const formData = new FormData();
+        formData.append('video', mediaVideoFile);
+        const uploadResponse = await authFetch(`/units/lessons/${lessonId}/upload-video`, {
+          method: 'POST',
+          body: formData,
+        });
+        const uploadData = await uploadResponse.json();
+        if (!uploadResponse.ok || !uploadData.success) {
+          throw new Error(uploadData.error?.message || 'Failed to upload video');
+        }
+        videoUrl = uploadData.data.video_url;
+      }
+
+      const response = await authFetch(`/units/lessons/${lessonId}/metadata`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          video_url: videoUrl || null,
+          app_name: mediaAppName.trim() || null,
+          app_link: mediaAppLink.trim() || null,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error?.message || 'Failed to save lesson media');
+      }
+
+      setLesson({ ...lesson, videoUrl, appName: mediaAppName.trim(), appLink: mediaAppLink.trim() });
+      setMediaVideoFile(null);
+      setEditingMedia(false);
+      toast.success('Lesson media updated');
+    } catch (saveError: any) {
+      toast.error(saveError?.message || 'Failed to save lesson media');
+    } finally {
+      setSavingMedia(false);
+    }
+  };
 
   const loadLesson = async () => {
     try {
@@ -107,6 +176,8 @@ export function ViewLesson() {
                 graphicUrl: found.graphicUrl || found.graphic_url || '',
                 pdfUrl: found.pdfUrl || found.pdf_url || '',
                 originalFormat: 'pdf',
+                appLink: found.appLink || found.app_link || '',
+                appName: found.appName || found.app_name || '',
               });
               setError('');
               setLoading(false);
@@ -128,6 +199,8 @@ export function ViewLesson() {
                 graphicUrl: found.graphicUrl || found.graphic_url || '',
                 pdfUrl: found.pdfUrl || found.pdf_url || '',
                 originalFormat: found.originalFormat || found.original_format || (found.pdfUrl || found.pdf_url ? 'pdf' : 'slides'),
+                appLink: found.appLink || found.app_link || '',
+                appName: found.appName || found.app_name || '',
               });
               setError('');
               setLoading(false);
@@ -195,6 +268,8 @@ export function ViewLesson() {
           graphicUrl: lessonData.graphicUrl || lessonData.graphic_url || '',
           pdfUrl: lessonData.pdfUrl || lessonData.pdf_url || '',
           originalFormat: lessonData.originalFormat || lessonData.original_format || (lessonData.pdfUrl || lessonData.pdf_url ? 'pdf' : 'slides'),
+          appLink: lessonData.appLink || lessonData.app_link || '',
+          appName: lessonData.appName || lessonData.app_name || '',
         };
 
         console.log('✅ Final lesson object:', lesson);
@@ -216,6 +291,8 @@ export function ViewLesson() {
           graphicUrl: lessonData.graphicUrl || lessonData.graphic_url || '',
           pdfUrl: lessonData.pdfUrl || lessonData.pdf_url || '',
           originalFormat: lessonData.originalFormat || lessonData.original_format || (lessonData.pdfUrl || lessonData.pdf_url ? 'pdf' : 'slides'),
+          appLink: lessonData.appLink || lessonData.app_link || '',
+          appName: lessonData.appName || lessonData.app_name || '',
         };
         setLesson(lesson);
         setError('⚠️ Could not load slides');
@@ -236,6 +313,8 @@ export function ViewLesson() {
         graphicUrl: lessonData.graphicUrl || lessonData.graphic_url || '',
         pdfUrl: lessonData.pdfUrl || lessonData.pdf_url || '',
         originalFormat: lessonData.originalFormat || lessonData.original_format || (lessonData.pdfUrl || lessonData.pdf_url ? 'pdf' : 'slides'),
+        appLink: lessonData.appLink || lessonData.app_link || '',
+        appName: lessonData.appName || lessonData.app_name || '',
       };
       setLesson(fallbackLesson);
       setError('Failed to load lesson slides, but showing lesson info');
@@ -351,6 +430,7 @@ export function ViewLesson() {
 
       if (isPdfLesson) {
         const pdfViewerUrl = resolveBackendAssetUrl(lesson.pdfUrl || '');
+        const lessonVideoUrl = resolveBackendAssetUrl(lesson.videoUrl || '');
         console.log('📄 PDF Lesson Rendering:', {
           originalPdfUrl: lesson.pdfUrl,
           resolvedPdfUrl: pdfViewerUrl,
@@ -358,23 +438,63 @@ export function ViewLesson() {
         });
         
         return (
-          <div className={pageClass}>
-            <div className="w-full max-w-6xl min-w-0 mx-auto space-y-6">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <button
-                    onClick={() => navigate(-1)}
-                    className="flex items-center gap-2 text-violet-400 hover:text-violet-300 mb-4 transition-colors"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                    Back to Lessons
-                  </button>
-                  <h1 className={`responsive-page-title font-bold ${headingClass}`}>{lesson.title}</h1>
-                  <p className={`${mutedTextClass} mt-2`}>PDF Document</p>
-                </div>
-              </div>  
-
+          <div className={`${pageClass} !p-2 sm:!p-3`}>
+            <div className="w-full min-w-0">
               <PDFViewer url={pdfViewerUrl} title={lesson.title} onDownload={handleDownloadPDF} />
+
+              <section className="mt-4 rounded-xl border border-slate-800 bg-slate-900/70 p-4 shadow-lg">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-sm font-semibold text-white">Lesson media</h2>
+                    <p className="mt-1 text-xs text-slate-500">Optional video and class tool resources</p>
+                  </div>
+                  <Button
+                    onClick={() => setEditingMedia((current) => !current)}
+                    variant="outline"
+                    size="sm"
+                    className="border-slate-600 text-slate-300 hover:bg-slate-800"
+                  >
+                    {editingMedia ? <X className="mr-2 h-4 w-4" /> : <Edit2 className="mr-2 h-4 w-4" />}
+                    {editingMedia ? 'Close editor' : 'Edit media'}
+                  </Button>
+                </div>
+
+                {lessonVideoUrl && !editingMedia && (
+                  <video src={lessonVideoUrl} controls className="mt-4 max-h-[360px] w-full rounded-lg bg-black object-contain" />
+                )}
+
+                {lesson.appLink && !editingMedia && (
+                  <a href={lesson.appLink} target="_blank" rel="noreferrer" className="mt-3 flex items-center gap-2 text-sm text-violet-300 hover:text-violet-200">
+                    <LinkIcon className="h-4 w-4" />
+                    {lesson.appName || 'Open class tool'}
+                  </a>
+                )}
+
+                {editingMedia && (
+                  <div className="mt-4 grid gap-4 border-t border-slate-800 pt-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <label htmlFor="lesson-video-url" className="text-xs font-medium text-slate-300">Video URL</label>
+                      <input id="lesson-video-url" value={mediaVideoUrl} onChange={(event) => setMediaVideoUrl(event.target.value)} placeholder="https://example.com/video.mp4" className="h-9 w-full rounded-md border border-slate-700 bg-slate-950 px-3 text-sm text-white outline-none focus:border-violet-400" />
+                      <label htmlFor="lesson-video-file" className="flex cursor-pointer items-center gap-2 text-xs text-slate-400 hover:text-slate-200">
+                        <Upload className="h-4 w-4" />
+                        {mediaVideoFile ? mediaVideoFile.name : 'Upload a video file'}
+                      </label>
+                      <input id="lesson-video-file" type="file" accept="video/*" onChange={(event) => setMediaVideoFile(event.target.files?.[0] || null)} className="sr-only" />
+                    </div>
+                    <div className="space-y-2">
+                      <label htmlFor="lesson-app-name" className="text-xs font-medium text-slate-300">App or tool</label>
+                      <input id="lesson-app-name" value={mediaAppName} onChange={(event) => setMediaAppName(event.target.value)} placeholder="Canva, Figma, Photoshop" className="h-9 w-full rounded-md border border-slate-700 bg-slate-950 px-3 text-sm text-white outline-none focus:border-violet-400" />
+                      <input id="lesson-app-link" value={mediaAppLink} onChange={(event) => setMediaAppLink(event.target.value)} placeholder="https://app.example.com" className="h-9 w-full rounded-md border border-slate-700 bg-slate-950 px-3 text-sm text-white outline-none focus:border-violet-400" />
+                    </div>
+                    <div className="flex justify-end md:col-span-2">
+                      <Button onClick={saveMedia} disabled={savingMedia} className="bg-violet-600 hover:bg-violet-700">
+                        <Save className="mr-2 h-4 w-4" />
+                        {savingMedia ? 'Saving...' : 'Save media'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </section>
             </div>
           </div>
         );

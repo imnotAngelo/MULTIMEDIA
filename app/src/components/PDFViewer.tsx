@@ -17,13 +17,13 @@ interface PDFViewerProps {
 export function PDFViewer({ url, title = 'PDF Document', onDownload }: PDFViewerProps) {
   const [numPages, setNumPages] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [zoom, setZoom] = useState(100); // Start at 100% so full content is visible
+  const [zoom, setZoom] = useState(110); // Fill the available screen area while preserving the page ratio
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<string>('');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const pdfRef = useRef<pdfjsLib.PDFDocument | null>(null);
+  const pdfRef = useRef<Awaited<ReturnType<typeof pdfjsLib.getDocument>['promise']> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Load PDF document
@@ -102,6 +102,7 @@ export function PDFViewer({ url, title = 'PDF Document', onDownload }: PDFViewer
         canvas.height = viewport.height;
 
         await page.render({
+          canvas,
           canvasContext: context,
           viewport: viewport,
         }).promise;
@@ -130,12 +131,12 @@ export function PDFViewer({ url, title = 'PDF Document', onDownload }: PDFViewer
   };
 
   const handleZoomOut = () => {
-    setZoom(Math.max(zoom - 25, 75)); // Minimum 75% zoom
+    setZoom(Math.max(zoom - 15, 50)); // Minimum 50% zoom
   };
 
   const handleFitToScreen = () => {
     // Set zoom to fit the PDF to the visible area with all content visible
-    setZoom(100); // 100% ensures full content is visible
+    setZoom(80);
   };
 
   const handleFullscreen = async () => {
@@ -152,9 +153,9 @@ export function PDFViewer({ url, title = 'PDF Document', onDownload }: PDFViewer
           await (containerRef.current as any).mozRequestFullScreen();
         }
         setIsFullscreen(true);
-        // Keep at 100% so full content is visible
+        // Keep fullscreen readable without filling the entire viewport.
         setTimeout(() => {
-          setZoom(100); // Keep at 100% to show everything
+          setZoom(80);
         }, 100);
       } else {
         // Exit fullscreen
@@ -166,7 +167,7 @@ export function PDFViewer({ url, title = 'PDF Document', onDownload }: PDFViewer
           await (document as any).mozCancelFullScreen();
         }
         setIsFullscreen(false);
-        setZoom(100); // Keep at 100% to show everything
+        setZoom(80);
       }
     } catch (err) {
       console.error('Fullscreen error:', err);
@@ -325,18 +326,15 @@ export function PDFViewer({ url, title = 'PDF Document', onDownload }: PDFViewer
       </div>
 
       {/* Canvas - PDF Rendering */}
-      <div className={`flex-1 overflow-auto flex items-center justify-center ${
+      <div className={`flex h-[calc(100vh-9rem)] min-h-[520px] max-h-[900px] w-full overflow-auto items-center justify-center ${
         isFullscreen
-          ? 'bg-[#06151d] p-4'
-          : 'glass-panel rounded-lg p-4 m-4 mt-0'
+          ? 'h-full bg-[#06151d] p-4'
+          : 'glass-panel rounded-lg p-3 m-3 mt-0'
       }`}>
           <canvas
           ref={canvasRef}
-            className="max-w-full bg-white shadow-lg rounded"
+            className="h-auto max-h-full w-auto max-w-full rounded bg-white object-contain shadow-lg"
           style={{
-            width: '100%',
-            maxWidth: '100%',
-            height: 'auto',
             display: 'block',
           }}
         />

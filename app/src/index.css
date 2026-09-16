@@ -195,15 +195,30 @@
 
   html.light .aether-sidebar .sidebar-nav-link,
   html.light .aether-sidebar .sidebar-subnav-link,
+  html.light .aether-sidebar .sidebar-lesson-link,
   html.light .aether-sidebar button,
   html.light .aether-header button {
     font-weight: 600;
   }
 
+  html.light .aether-sidebar .sidebar-nav-link,
+  html.light .aether-sidebar .sidebar-subnav-link,
+  html.light .aether-sidebar .sidebar-lesson-link {
+    color: #1e293b;
+    text-shadow: none;
+  }
+
   html.light .aether-sidebar .sidebar-nav-link--active,
-  html.light .aether-sidebar .sidebar-subnav-link[aria-current="page"] {
+  html.light .aether-sidebar .sidebar-subnav-link[aria-current="page"],
+  html.light .aether-sidebar .sidebar-lesson-link[aria-current="page"] {
     color: #1e40af;
     font-weight: 700;
+  }
+
+  html.light .aether-sidebar .sidebar-nav-link:hover,
+  html.light .aether-sidebar .sidebar-subnav-link:hover,
+  html.light .aether-sidebar .sidebar-lesson-link:hover {
+    color: #0f172a;
   }
 
   html.light .border-slate-700,
@@ -682,8 +697,8 @@
   }
 
   .aether-sidebar nav > div > div > .aether-orbit {
-    opacity: 0;
-    animation: sidebar-item-in 520ms cubic-bezier(.22, 1, .36, 1) forwards;
+    opacity: 1;
+    animation: none;
   }
 
   .aether-sidebar nav > div > div > .aether-orbit:nth-child(1) { animation-delay: 80ms; }
@@ -694,7 +709,7 @@
   .aether-sidebar nav > div > div > .aether-orbit:nth-child(6) { animation-delay: 330ms; }
 
   .aether-sidebar .sidebar-subnav-link {
-    animation: sidebar-subitem-in 360ms ease-out both;
+    animation: none;
   }
 
   .aether-sidebar .sidebar-profile {

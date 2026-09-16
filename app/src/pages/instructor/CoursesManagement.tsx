@@ -7,6 +7,7 @@ import {
   ChevronDown,
   RefreshCw,
   Upload,
+  UploadCloud,
   Plus,
   Eye,
   Clock,
@@ -35,6 +36,7 @@ import { notificationService } from '@/services/notificationService';
 import { cn } from '@/lib/utils';
 import { AetherLoader } from '@/components/AetherLoader';
 import { SectionYearTargetPicker } from '@/components/SectionYearTargetPicker';
+import { ViewLesson } from './ViewLesson';
 
 interface Unit {
   id: string;
@@ -304,6 +306,7 @@ export function CoursesManagement() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const requestedUnitId = searchParams.get('unit');
+  const requestedLessonId = searchParams.get('lesson');
   const [units, setUnits] = useState<Unit[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [expandedUnits, setExpandedUnits] = useState<string[]>([]);
@@ -314,6 +317,7 @@ export function CoursesManagement() {
   const [selectedUnitForUpload, setSelectedUnitForUpload] = useState<string | null>(null);
   const [lessonTitle, setLessonTitle] = useState('');
   const [lessonFile, setLessonFile] = useState<File | null>(null);
+  const [isLessonFileDragging, setIsLessonFileDragging] = useState(false);
   const [uploadingLesson, setUploadingLesson] = useState(false);
 
   const [showCreateUnitDialog, setShowCreateUnitDialog] = useState(false);
@@ -351,9 +355,10 @@ export function CoursesManagement() {
   useEffect(() => {
     if (!requestedUnitId || !units.some((unit) => unit.id === requestedUnitId)) return;
     setExpandedUnits([requestedUnitId]);
+    const requestedLesson = lessons.find((lesson) => lesson.id === requestedLessonId && lesson.unitId === requestedUnitId);
     const firstLesson = lessons.find((lesson) => lesson.unitId === requestedUnitId);
-    if (firstLesson) setActiveLessonId(firstLesson.id);
-  }, [requestedUnitId, units, lessons]);
+    if (requestedLesson || firstLesson) setActiveLessonId((requestedLesson || firstLesson)!.id);
+  }, [requestedUnitId, requestedLessonId, units, lessons]);
 
   const loadData = async () => {
     try {
@@ -735,6 +740,32 @@ export function CoursesManagement() {
     }
   };
 
+  const selectLessonFile = (candidate?: File) => {
+    if (!candidate) return;
+    if (candidate.type !== 'application/pdf' && !candidate.name.toLowerCase().endsWith('.pdf')) {
+      toast.error('Only PDF files are supported');
+      return;
+    }
+    if (candidate.size > 50 * 1024 * 1024) {
+      toast.error('PDF files must be smaller than 50MB');
+      return;
+    }
+    setLessonFile(candidate);
+  };
+
+  const selectedLesson = lessons.find(l => l.id === activeLessonId);
+
+  if (activeLessonId && Boolean(selectedLesson)) {
+    const viewerLesson = selectedLesson as Lesson;
+    return (
+      <ViewLesson
+        unitId={viewerLesson.unitId}
+        lessonId={viewerLesson.id}
+        embedded
+      />
+    );
+  }
+
   const activeLesson = lessons.find(l => l.id === activeLessonId);
 
   if (loading) {
@@ -749,8 +780,7 @@ export function CoursesManagement() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-white">UNIT MANAGEMENT</h1>
-          <p className="text-slate-400 mt-2">Manage your units and lessons</p>
+          <h1 className="text-2xl font-semibold text-white">Units & lessons</h1>
         </div>
         <div className="flex gap-2">
           <Button
@@ -835,11 +865,14 @@ export function CoursesManagement() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1 space-y-4">
-          <h2 className="text-lg font-semibold text-slate-200">Units ({units.length})</h2>
+      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(250px,300px)_minmax(0,1fr)]">
+        <aside className="space-y-3 lg:sticky lg:top-20">
+          <div className="flex items-center justify-between px-1">
+            <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-300">Course outline</h2>
+            <span className="text-xs text-slate-500">{units.length} units</span>
+          </div>
           {units.length === 0 ? (
-            <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 text-center space-y-3">
+            <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-6 text-center">
               <BookOpen className="w-8 h-8 text-slate-600 mx-auto" />
               <div>
                 <p className="text-slate-400 font-medium">No units yet</p>
@@ -847,7 +880,7 @@ export function CoursesManagement() {
               </div>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="max-h-[calc(100vh-12rem)] space-y-2 overflow-y-auto pr-1">
               {units.map(unit => (
                 <UnitSection
                   key={unit.id}
@@ -869,9 +902,9 @@ export function CoursesManagement() {
               ))}
             </div>
           )}
-        </div>
+        </aside>
 
-        <div className="lg:col-span-2">
+        <section className="min-w-0">
           {activeLesson ? (
             <div className="bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden">
               <div className="p-6 border-b border-slate-800">
@@ -1211,7 +1244,7 @@ export function CoursesManagement() {
               </div>
             </div>
           )}
-        </div>
+        </section>
       </div>
 
       <Dialog open={!!editingUnitId} onOpenChange={(open) => {
@@ -1286,13 +1319,42 @@ export function CoursesManagement() {
             </div>
             <div>
               <Label htmlFor="lessonFile" className="text-slate-300">PDF File</Label>
-              <Input
-                id="lessonFile"
-                type="file"
-                accept=".pdf"
-                onChange={(e) => setLessonFile(e.currentTarget.files?.[0] || null)}
-                className="bg-slate-800 border-slate-700 text-slate-100"
-              />
+              <label
+                htmlFor="lessonFile"
+                onDragEnter={(event) => {
+                  event.preventDefault();
+                  setIsLessonFileDragging(true);
+                }}
+                onDragOver={(event) => event.preventDefault()}
+                onDragLeave={(event) => {
+                  event.preventDefault();
+                  setIsLessonFileDragging(false);
+                }}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  setIsLessonFileDragging(false);
+                  selectLessonFile(event.dataTransfer.files?.[0]);
+                }}
+                className={cn(
+                  'mt-2 flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 text-center transition-colors',
+                  isLessonFileDragging
+                    ? 'border-violet-400 bg-violet-500/10'
+                    : 'border-slate-700 bg-slate-950/40 hover:border-violet-500/60 hover:bg-slate-800/40'
+                )}
+              >
+                <UploadCloud className={cn('mb-2 h-7 w-7', isLessonFileDragging ? 'text-violet-300' : 'text-slate-500')} />
+                <span className="text-sm font-medium text-slate-300">
+                  {lessonFile ? lessonFile.name : 'Drop a PDF here or click to browse'}
+                </span>
+                <span className="mt-1 text-xs text-slate-500">PDF only, up to 50MB</span>
+                <Input
+                  id="lessonFile"
+                  type="file"
+                  accept=".pdf,application/pdf"
+                  onChange={(e) => selectLessonFile(e.currentTarget.files?.[0])}
+                  className="sr-only"
+                />
+              </label>
             </div>
             <SectionYearTargetPicker
               yearLevels={[]}

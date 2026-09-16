@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/stores/authStore';
-import { BookOpen, Users, FileText, ClipboardList, ArrowRight, Layers, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { BookOpen, Users, FileText, ClipboardList, ArrowRight, Layers, Beaker, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { authFetch } from '@/lib/authFetch';
@@ -43,9 +43,10 @@ export function InstructorDashboard() {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     totalUnits: 0,
+    totalLaboratories: 0,
     activeStudents: 0,
     totalStudents: 0,
-    lessonsCreated: 0,
+    totalQuizzes: 0,
     lessonsCompleted: 0,
     totalSubmissions: 0,
   });
@@ -68,6 +69,17 @@ export function InstructorDashboard() {
       
       const activeUnits: Unit[] = unitsData.success ? (unitsData.data || []) : [];
       setUnits(activeUnits);
+
+      let laboratoriesCreated = 0;
+      try {
+        const laboratoriesResponse = await authFetch('/laboratories/metadata', { cache: 'no-store' });
+        const laboratoriesData = await laboratoriesResponse.json();
+        if (laboratoriesResponse.ok && laboratoriesData?.success && Array.isArray(laboratoriesData.data)) {
+          laboratoriesCreated = laboratoriesData.data.length;
+        }
+      } catch (err) {
+        console.error('❌ Failed to load laboratory count:', err);
+      }
 
       // Fetch lessons from ALL units IN PARALLEL (not sequentially)
       console.log(`📚 Loading lessons for ${activeUnits.length} units in parallel...`);
@@ -130,6 +142,19 @@ export function InstructorDashboard() {
         console.error('❌ Failed to load submission stats:', err);
       }
 
+      // Fetch quiz totals from instructor assessments
+      let totalQuizzes = 0;
+      try {
+        const quizzesResponse = await authFetch('/assessments/instructor/all?filter=quiz&limit=100');
+        const quizzesData = await quizzesResponse.json();
+        if (quizzesResponse.ok && quizzesData?.success && Array.isArray(quizzesData.data)) {
+          totalQuizzes = quizzesData.data.filter((assessment: any) => assessment?.type === 'quiz').length;
+          console.log(`✅ Total quizzes: ${totalQuizzes}`);
+        }
+      } catch (err) {
+        console.error('❌ Failed to load quiz count:', err);
+      }
+
       // Fetch lesson completion stats from backend (real student-side completions)
       let lessonsCompletedTotal: number | null = null;
       try {
@@ -149,9 +174,10 @@ export function InstructorDashboard() {
       ).length;
       setStats({
         totalUnits: activeUnits.length,
+        totalLaboratories: laboratoriesCreated,
         activeStudents: activeCount,
         totalStudents: handledStudentTotal,
-        lessonsCreated: allLessons.length,
+        totalQuizzes,
         lessonsCompleted: lessonsCompletedTotal ?? fallbackCompleted,
         totalSubmissions: submissionsTotal,
       });
@@ -187,16 +213,16 @@ export function InstructorDashboard() {
       {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <button
-          onClick={() => navigate('/instructor/courses')}
+          onClick={() => navigate('/instructor/laboratories')}
           className="bg-slate-900/60 border border-slate-800/60 rounded-xl p-5 hover:border-violet-500/30 hover:bg-slate-900/80 transition-all cursor-pointer group"
         >
           <div className="flex items-center gap-3 mb-3">
             <div className="w-9 h-9 rounded-lg bg-violet-500/10 flex items-center justify-center group-hover:bg-violet-500/20 transition-colors">
-              <Layers className="w-4 h-4 text-violet-400" />
+              <Beaker className="w-4 h-4 text-violet-400" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-white">{stats.totalUnits}</div>
-          <p className="text-slate-500 text-xs mt-1">Total Units</p>
+          <div className="text-2xl font-bold text-white">{stats.totalLaboratories}</div>
+          <p className="text-slate-500 text-xs mt-1">Laboratories Created</p>
         </button>
         <button
           onClick={() => navigate('/instructor/student-performance')}
@@ -211,7 +237,7 @@ export function InstructorDashboard() {
           <p className="text-slate-500 text-xs mt-1">Students I Handle</p>
         </button>
         <button
-          onClick={() => navigate('/instructor/courses')}
+          onClick={() => navigate('/instructor/quizzes')}
           className="bg-slate-900/60 border border-slate-800/60 rounded-xl p-5 hover:border-blue-500/30 hover:bg-slate-900/80 transition-all cursor-pointer group"
         >
           <div className="flex items-center gap-3 mb-3">
@@ -219,8 +245,8 @@ export function InstructorDashboard() {
               <FileText className="w-4 h-4 text-blue-400" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-white">{stats.lessonsCreated}</div>
-          <p className="text-slate-500 text-xs mt-1">Lessons Created</p>
+          <div className="text-2xl font-bold text-white">{stats.totalQuizzes}</div>
+          <p className="text-slate-500 text-xs mt-1">Total Quizzes</p>
         </button>
         <button
           onClick={() => navigate('/instructor/laboratory-submissions')}
@@ -238,68 +264,7 @@ export function InstructorDashboard() {
 
       {loading ? (
         <AetherLoader label="Mapping your instructor workspace" />
-      ) : (
-        <>
-          {/* Units Overview */}
-          {units.length > 0 && (
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <BookOpen className="w-5 h-5 text-violet-400" />
-                  <h2 className="text-lg font-semibold text-white">Your Units</h2>
-                </div>
-                <span className="text-xs text-slate-500 bg-slate-800/60 px-2.5 py-1 rounded-full">
-                  {units.length} unit{units.length !== 1 ? 's' : ''} • {lessons.length} lesson{lessons.length !== 1 ? 's' : ''} • {stats.lessonsCompleted} completed • {stats.activeStudents} active handled student{stats.activeStudents !== 1 ? 's' : ''}
-                </span>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {units.map(unit => {
-                  const unitLessons = lessons.filter(l => l.unitId === unit.id);
-                  const unitCompleted = unitLessons.filter(
-                    l => (l.slides && l.slides.length > 0) || (l.slideCount && l.slideCount > 0)
-                  ).length;
-                  const allDone = unitLessons.length > 0 && unitCompleted === unitLessons.length;
-                  return (
-                    <button
-                      key={unit.id}
-                      onClick={() => navigate('/instructor/courses')}
-                      className="group bg-slate-900/50 border border-slate-800/60 hover:border-violet-500/40 rounded-xl p-5 text-left transition-all duration-200"
-                    >
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="w-10 h-10 rounded-lg bg-violet-500/10 flex items-center justify-center group-hover:bg-violet-500/15 transition-colors">
-                          <BookOpen className="w-5 h-5 text-violet-400" />
-                        </div>
-                        {allDone ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-green-400 bg-green-500/10 border border-green-500/20 px-2 py-0.5 rounded-full">
-                            <CheckCircle2 className="w-3 h-3" /> Completed
-                          </span>
-                        ) : (
-                          <ArrowRight className="w-4 h-4 text-slate-600 group-hover:text-violet-400 transition-colors" />
-                        )}
-                      </div>
-                      <h3 className="font-medium text-white mb-1 group-hover:text-violet-300 transition-colors">
-                        {unit.title}
-                      </h3>
-                      <p className="text-slate-500 text-sm mb-3 line-clamp-2">
-                        {unit.description || 'No description available'}
-                      </p>
-                      <div className="flex items-center gap-2 text-xs text-slate-500">
-                        <span>{unitLessons.length} lesson{unitLessons.length !== 1 ? 's' : ''}</span>
-                        {unitLessons.length > 0 && (
-                          <span className="inline-flex items-center gap-1 text-green-400">
-                            <CheckCircle2 className="w-3 h-3" />
-                            {unitCompleted} completed
-                          </span>
-                        )}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </>
-      )}
+      ) : null}
     </div>
   );
 }
