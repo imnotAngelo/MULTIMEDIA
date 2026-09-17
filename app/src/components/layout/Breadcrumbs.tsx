@@ -20,7 +20,7 @@ const ROUTE_LABELS: Record<string, string> = {
   messages: 'Messages',
   settings: 'Settings',
   'student-approvals': 'Student Approvals',
-  'student-performance': 'Student Performance',
+  'student-performance': 'All Students & Records',
   'create-auto': 'AI Auto-Generate Quiz',
   'create-manual': 'Create Quiz Manually',
   create: 'Create',

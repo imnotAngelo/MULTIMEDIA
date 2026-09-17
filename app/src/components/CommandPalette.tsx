@@ -23,6 +23,7 @@ import {
   MessageSquare,
   FileText,
   UserCheck,
+  Users,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useThemeStore } from '@/stores/themeStore';
@@ -128,9 +129,9 @@ export function CommandPalette({ open: controlledOpen, onOpenChange: setControll
                 <span>Create Quiz Manually</span>
               </CommandItem>
 
-              <CommandItem onSelect={() => runCommand(() => navigate('/instructor/laboratory-submissions'))}>
-                <FileCheck className="mr-2.5 h-4 w-4 text-teal-400" />
-                <span>Review Student Submissions</span>
+              <CommandItem onSelect={() => runCommand(() => navigate('/instructor/student-performance'))}>
+                <Users className="mr-2.5 h-4 w-4 text-teal-400" />
+                <span>View All Students (Quiz & Lab Records)</span>
               </CommandItem>
 
               <CommandItem onSelect={() => runCommand(() => navigate('/instructor/student-approvals'))}>

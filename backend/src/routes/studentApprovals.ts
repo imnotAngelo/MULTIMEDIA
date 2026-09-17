@@ -123,6 +123,49 @@ router.get('/student-requests', async (req: AuthRequest, res: Response) => {
   }
 });
 
+// List all students handled by this instructor (approved or enrolled in their sections)
+router.get('/handled-students', async (req: AuthRequest, res: Response) => {
+  try {
+    const scope = await getInstructorScope(req.user!.id);
+    if (!scope) return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Instructor account not found' } });
+    const { sections: teachingSections, yearLevels: teachingYearLevels } = scope;
+
+    if (!supabase) {
+      return res.status(503).json({
+        success: false,
+        error: { code: 'DB_UNAVAILABLE', message: 'Database is unavailable.' },
+      });
+    }
+
+    let query = supabase
+      .from('users')
+      .select('id, email, full_name, avatar_url, created_at, year_level, section, student_approved, approved_by_instructor_id')
+      .eq('role', 'student')
+      .order('full_name', { ascending: true });
+
+    if (teachingYearLevels.length > 0) {
+      query = query.in('year_level', teachingYearLevels);
+    }
+
+    const { data: students, error } = await query;
+    if (error) throw error;
+
+    // Filter to students in this instructor's sections OR approved by this instructor
+    const filtered = (students || []).filter((student) =>
+      belongsToInstructorSection(student.section, teachingSections) ||
+      student.approved_by_instructor_id === req.user!.id
+    );
+
+    return res.json({ success: true, data: filtered });
+  } catch (error: any) {
+    console.error('Get handled students error:', error);
+    return res.status(500).json({
+      success: false,
+      error: { code: 'FETCH_FAILED', message: error.message },
+    });
+  }
+});
+
 // Approve a single student, scoped to the instructor's own sections + teaching year levels
 router.patch('/student-requests/:id/approve', async (req: AuthRequest, res: Response) => {
   try {

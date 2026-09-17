@@ -16,6 +16,7 @@ import {
   Layers,
   Image,
   UserCheck,
+  Users,
   ChevronDown,
   ChevronRight,
   PanelLeftClose,
@@ -236,7 +237,7 @@ export function Sidebar({
         {
           title: 'Evaluation & Quizzes',
           items: [
-            { label: 'Lab Submissions', href: '/instructor/laboratory-submissions', icon: Palette },
+            { label: 'View All Students', href: '/instructor/student-performance', icon: Users },
             {
               label: 'Quizzes',
               href: '/instructor/quizzes',

@@ -410,7 +410,7 @@ export function InstructorDashboard() {
           </button>
 
           <button
-            onClick={() => navigate('/instructor/laboratory-submissions')}
+            onClick={() => navigate('/instructor/student-performance')}
             className="flex items-start gap-3.5 p-4 rounded-2xl border border-slate-800 bg-slate-900/70 hover:border-amber-500/50 hover:bg-amber-950/20 transition-all text-left group"
           >
             <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-amber-600/20 text-amber-400 border border-amber-500/30">
@@ -418,10 +418,10 @@ export function InstructorDashboard() {
             </div>
             <div>
               <h4 className="text-sm font-semibold text-white group-hover:text-amber-300 transition-colors">
-                Grade Submissions
+                View All Students
               </h4>
               <p className="text-xs text-slate-400 mt-1">
-                Review student portfolio work and assign scores with feedback.
+                Complete student records: quiz scores, lab submissions, and grades.
               </p>
             </div>
           </button>
@@ -589,11 +589,11 @@ export function InstructorDashboard() {
           )}
 
           <Button
-            onClick={() => navigate('/instructor/laboratory-submissions')}
+            onClick={() => navigate('/instructor/student-performance')}
             variant="outline"
             className="w-full border-slate-800 text-slate-300 hover:bg-slate-800 text-xs"
           >
-            Review Student Lab Work
+            View All Students (Quiz & Lab Records)
             <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
           </Button>
         </div>
