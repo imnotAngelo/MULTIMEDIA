@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { authMiddleware } from '../middleware/auth.js';
 import { getCourses, getCourseById, getLessons } from '../controllers/courseController.js';
 
-const router = Router();
+const router: ReturnType<typeof Router> = Router();
 
 router.get('/', getCourses);
 router.get('/:id', authMiddleware, getCourseById);

@@ -3,7 +3,7 @@ import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { instructorMiddleware } from '../middleware/admin.js';
 import { supabase } from '../config/supabase.js';
 
-const router = Router();
+const router: ReturnType<typeof Router> = Router();
 
 router.use(authMiddleware, instructorMiddleware);
 

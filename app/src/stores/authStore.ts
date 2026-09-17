@@ -34,6 +34,13 @@ interface AuthState {
   verifySession: () => Promise<boolean>;
 }
 
+const clearPersistedAuth = () => {
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('refresh_token');
+  localStorage.removeItem('auth-storage');
+  sessionStorage.removeItem('aether-course-quick-action');
+};
+
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
@@ -53,27 +60,29 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true, error: null });
 
         try {
+          clearPersistedAuth();
+          set({ user: null, isAuthenticated: false });
 
           const response = await api.login(email, password, adminSecret);
-          
-          // Debug: Log raw response
 
           if (!response) {
-            throw new Error("No response from server");
+            throw new Error('No response from server');
           }
 
           if (response.success && response.data) {
             const { user, access_token, refresh_token } = response.data as any;
 
             if (!access_token || !refresh_token) {
+              clearPersistedAuth();
               set({ 
                 error: 'Login failed: Missing authentication tokens',
-                isLoading: false 
+                isLoading: false,
+                user: null,
+                isAuthenticated: false,
               });
               return false;
             }
 
-            // Save tokens
             localStorage.setItem('access_token', access_token);
             localStorage.setItem('refresh_token', refresh_token);
 
@@ -81,18 +90,21 @@ export const useAuthStore = create<AuthState>()(
               user: user as User,
               isAuthenticated: true,
               isLoading: false,
-              error: null
+              error: null,
+              isHydrated: true,
             });
 
             return true;
           } else {
+            clearPersistedAuth();
             const errorMsg = response.error?.message || response.message || 'Invalid email or password';
-            set({ error: errorMsg, isLoading: false });
+            set({ error: errorMsg, isLoading: false, user: null, isAuthenticated: false });
             return false;
           }
         } catch (err: any) {
+          clearPersistedAuth();
           const errorMsg = err.message || 'Login failed. Please try again.';
-          set({ error: errorMsg, isLoading: false });
+          set({ error: errorMsg, isLoading: false, user: null, isAuthenticated: false });
           return false;
         }
       },
@@ -110,19 +122,22 @@ export const useAuthStore = create<AuthState>()(
       ) => {
         set({ isLoading: true, error: null });
         try {
+          clearPersistedAuth();
+          set({ user: null, isAuthenticated: false });
+
           const response = await api.register(email, password, fullName, role, yearLevel, section, teachingYearLevels, teachingSections, adminSecret);
           
           if (response.success) {
-            set({ isLoading: false, error: null });
+            set({ isLoading: false, error: null, user: null, isAuthenticated: false, isHydrated: true });
             return true;
           } else {
             const errorMsg = response.error?.message || 'Registration failed';
-            set({ error: errorMsg, isLoading: false });
+            set({ error: errorMsg, isLoading: false, user: null, isAuthenticated: false });
             return false;
           }
         } catch (err: any) {
           const errorMsg = err.message || 'Registration failed';
-          set({ error: errorMsg, isLoading: false });
+          set({ error: errorMsg, isLoading: false, user: null, isAuthenticated: false });
           return false;
         }
       },
@@ -130,8 +145,7 @@ export const useAuthStore = create<AuthState>()(
       login: (user) => set({ user, isAuthenticated: true, error: null }),
       
       logout: () => {
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
+        clearPersistedAuth();
         set({ 
           user: null, 
           isAuthenticated: false, 
@@ -146,34 +160,49 @@ export const useAuthStore = create<AuthState>()(
       verifySession: async () => {
         const accessToken = localStorage.getItem('access_token');
         const refreshToken = localStorage.getItem('refresh_token');
-        
-        const state = get();
 
-        if (state.isAuthenticated && state.user && accessToken) {
-          try {
-            const profileResponse: any = await api.getProfile();
-            if (profileResponse?.success && profileResponse.data) {
-              set({ user: { ...state.user, ...profileResponse.data }, isHydrated: true });
-            } else {
-              set({ isHydrated: true });
-            }
-          } catch {
-            set({ isHydrated: true });
+        if (!accessToken || !refreshToken) {
+          clearPersistedAuth();
+          set({ 
+            user: null, 
+            isAuthenticated: false, 
+            isHydrated: true 
+          });
+          return false;
+        }
+
+        try {
+          const profileResponse: any = await api.getProfile();
+
+          if (profileResponse?.success && profileResponse.data) {
+            const serverUser = profileResponse.data?.user ?? profileResponse.data;
+            set({
+              user: serverUser as User,
+              isAuthenticated: true,
+              isHydrated: true,
+              error: null,
+            });
+            return true;
           }
-          return true;
-        }
 
-        if (accessToken && refreshToken) {
-          set({ isHydrated: true, isAuthenticated: true });
-          return true;
+          clearPersistedAuth();
+          set({
+            user: null,
+            isAuthenticated: false,
+            isHydrated: true,
+            error: null,
+          });
+          return false;
+        } catch {
+          clearPersistedAuth();
+          set({
+            user: null,
+            isAuthenticated: false,
+            isHydrated: true,
+            error: null,
+          });
+          return false;
         }
-
-        set({ 
-          user: null, 
-          isAuthenticated: false, 
-          isHydrated: true 
-        });
-        return false;
       },
     }),
     {
@@ -183,6 +212,16 @@ export const useAuthStore = create<AuthState>()(
         isAuthenticated: state.isAuthenticated 
       }),
       onRehydrateStorage: () => (state) => {
+        const hasTokens = !!localStorage.getItem('access_token') && !!localStorage.getItem('refresh_token');
+
+        if (!hasTokens) {
+          localStorage.removeItem('auth-storage');
+          if (state) {
+            state.setUser(null);
+            state.setAuthenticated(false);
+          }
+        }
+
         if (state) state.setHydrated(true);
       },
     }

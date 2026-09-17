@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 interface LocalUnit {
   id: string;
   courseId: string;
+  instructorId?: string;
   title: string;
   description?: string;
   status?: string;
@@ -42,19 +43,38 @@ function writeUnitsStore(units: LocalUnit[]) {
   fs.writeFileSync(unitsStoreFilePath, JSON.stringify(units, null, 2));
 }
 
+function sanitizeLocalUnits(units: LocalUnit[]): LocalUnit[] {
+  return units.filter((unit) => {
+    const hasOwner = typeof unit?.instructorId === 'string' && unit.instructorId.trim() !== '' && unit.instructorId !== 'anonymous';
+    return Boolean(unit?.id) && Boolean(unit?.title) && hasOwner;
+  });
+}
+
 export function createLocalUnit(unit: LocalUnit): LocalUnit {
-  const units = readUnitsStore();
+  const units = sanitizeLocalUnits(readUnitsStore());
   const nextUnit = {
     ...unit,
+    instructorId: typeof unit.instructorId === 'string' && unit.instructorId.trim() !== '' && unit.instructorId !== 'anonymous'
+      ? unit.instructorId
+      : undefined,
     createdAt: unit.createdAt || new Date().toISOString(),
   };
+
+  if (!nextUnit.instructorId) {
+    return nextUnit;
+  }
+
   units.push(nextUnit);
   writeUnitsStore(units);
   return nextUnit;
 }
 
 export function listLocalUnits(): LocalUnit[] {
-  return readUnitsStore();
+  return sanitizeLocalUnits(readUnitsStore());
+}
+
+export function listLocalUnitsForInstructor(instructorId: string): LocalUnit[] {
+  return sanitizeLocalUnits(readUnitsStore()).filter((unit) => unit.instructorId === instructorId);
 }
 
 export function getLocalUnitById(id: string): LocalUnit | undefined {

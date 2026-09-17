@@ -38,7 +38,7 @@ const videoUpload = multer({
   },
 });
 
-const router = Router();
+const router: ReturnType<typeof Router> = Router();
 
 // Upload lesson video file
 router.post('/lessons/:lessonId/upload-video', authMiddleware, instructorMiddleware, (req, res, next) => {

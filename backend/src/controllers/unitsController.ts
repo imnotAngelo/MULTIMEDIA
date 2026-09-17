@@ -4,8 +4,13 @@ import { supabase } from '../config/supabase.js';
 import { v4 as uuidv4 } from 'uuid';
 import { findUserById } from '../lib/userStore.js';
 import { matchesContentTarget } from '../lib/contentTargeting.js';
-import { listLocalLessons, listLocalLessonsByModuleId } from '../lib/lessonStore.js';
-import { listLocalUnits } from '../lib/unitStore.js';
+import {
+  listLocalLessons,
+  listLocalLessonsByModuleId,
+  listLocalLessonsForInstructor,
+  listLocalLessonsByModuleIdForInstructor,
+} from '../lib/lessonStore.js';
+import { listLocalUnits, listLocalUnitsForInstructor } from '../lib/unitStore.js';
 
 // Use a consistent default instructor ID for unauthenticated requests (proper UUID)
 const DEFAULT_INSTRUCTOR_ID = '12345678-1234-4234-8234-123456789012';
@@ -320,31 +325,33 @@ export const getUnits = async (req: AuthRequest, res: Response) => {
       }) as Array<{ id: string; title: string; description: string; created_at: string; status: string; target_sections: string[]; target_year_levels: number[]; owner_sections: string[]; owner_year_levels: number[] }>;
     }, null as any);
 
-    const localUnitsFromStore = listLocalUnits().map((unit: any) => ({
-      id: unit.id,
-      title: unit.title,
-      description: unit.description || '',
-      created_at: unit.createdAt || new Date().toISOString(),
-      status: unit.status || 'active',
-      target_sections: [],
-      target_year_levels: Array.isArray(unit.yearLevels) ? unit.yearLevels : [],
-      owner_sections: [],
-      owner_year_levels: [],
-    }));
+    const localUnitsFromStore = listLocalUnitsForInstructor(requester.id)
+      .map((unit: any) => ({
+        id: unit.id,
+        title: unit.title,
+        description: unit.description || '',
+        created_at: unit.createdAt || new Date().toISOString(),
+        status: unit.status || 'active',
+        target_sections: [],
+        target_year_levels: Array.isArray(unit.yearLevels) ? unit.yearLevels : [],
+        owner_sections: [],
+        owner_year_levels: [],
+      }));
 
     const localUnitsFromLessons = Array.from(
       new Map(
-        listLocalLessons().map((lesson: any) => [lesson.moduleId, {
-          id: lesson.moduleId,
-          title: `Local Unit ${lesson.moduleId.slice(0, 8)}`,
-          description: 'Local unit created from persisted lesson data.',
-          created_at: lesson.createdAt || new Date().toISOString(),
-          status: 'active',
-          target_sections: [],
-          target_year_levels: [],
-          owner_sections: [],
-          owner_year_levels: [],
-        }])
+        listLocalLessonsForInstructor(requester.id)
+          .map((lesson: any) => [lesson.moduleId, {
+            id: lesson.moduleId,
+            title: `Local Unit ${lesson.moduleId.slice(0, 8)}`,
+            description: 'Local unit created from persisted lesson data.',
+            created_at: lesson.createdAt || new Date().toISOString(),
+            status: 'active',
+            target_sections: [],
+            target_year_levels: [],
+            owner_sections: [],
+            owner_year_levels: [],
+          }])
       ).values()
     );
 
@@ -353,7 +360,7 @@ export const getUnits = async (req: AuthRequest, res: Response) => {
     const dbUnits = Array.isArray(unitsFromDb) ? unitsFromDb : [];
     const mergedUnits = Array.from(
       new Map(
-        [...dbUnits, ...localUnits].map((unit) => [unit.id, unit])
+        [...localUnits, ...dbUnits].map((unit) => [unit.id, unit])
       ).values()
     );
 
@@ -477,23 +484,24 @@ export const getUnitLessons = async (req: AuthRequest, res: Response) => {
     }
 
     const hasSupabase = !!supabase;
-    const localLessons = listLocalLessonsByModuleId(unitId).map((l) => ({
-      id: l.id,
-      title: l.title,
-      content: l.content || '',
-      slides: Array.isArray(l.slides) ? l.slides : [],
-      slide_count: l.slideCount || 0,
-      created_at: l.createdAt || new Date().toISOString(),
-      target_sections: [],
-      target_year_levels: [],
-      status: l.status || 'published',
-      pdf_url: l.pdfUrl || '',
-      original_format: l.originalFormat || (l.pdfUrl ? 'pdf' : 'slides'),
-      video_url: l.videoUrl || '',
-      graphic_url: l.graphicUrl || '',
-      pdfUrl: l.pdfUrl || '',
-      originalFormat: l.originalFormat || (l.pdfUrl ? 'pdf' : 'slides'),
-    }));
+    const localLessons = listLocalLessonsByModuleIdForInstructor(unitId, requester.id)
+      .map((l) => ({
+        id: l.id,
+        title: l.title,
+        content: l.content || '',
+        slides: Array.isArray(l.slides) ? l.slides : [],
+        slide_count: l.slideCount || 0,
+        created_at: l.createdAt || new Date().toISOString(),
+        target_sections: [],
+        target_year_levels: [],
+        status: l.status || 'published',
+        pdf_url: l.pdfUrl || '',
+        original_format: l.originalFormat || (l.pdfUrl ? 'pdf' : 'slides'),
+        video_url: l.videoUrl || '',
+        graphic_url: l.graphicUrl || '',
+        pdfUrl: l.pdfUrl || '',
+        originalFormat: l.originalFormat || (l.pdfUrl ? 'pdf' : 'slides'),
+      }));
 
     let allDbLessons: any[] = [];
     if (hasSupabase && isValidUuid) {
@@ -513,8 +521,8 @@ export const getUnitLessons = async (req: AuthRequest, res: Response) => {
       }, [] as Array<any>);
     }
 
-    // Combine local and DB lessons, then separate by status
-    const allLessons = [...(allDbLessons || []), ...localLessons];
+    // Prefer database lesson records when both the live DB and a local fallback copy exist.
+    const allLessons = [...localLessons, ...(allDbLessons || [])];
     
     // Filter based on role and visibility
     const filteredLessons = allLessons.filter((l: any) =>

@@ -15,7 +15,7 @@ import {
 } from '../controllers/userController.js';
 import { supabase } from '../config/supabase.js';
 
-const router = Router();
+const router: ReturnType<typeof Router> = Router();
 
 // Specific routes first (must be BEFORE parameterized :id routes)
 router.get('/profile', authMiddleware, getProfile);

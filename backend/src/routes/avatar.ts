@@ -5,7 +5,7 @@ import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { supabase } from '../config/supabase.js';
 import { buildAvatarStoragePath, extractStorageObjectPath } from '../lib/avatarStorage.js';
 
-const router = Router();
+const router: ReturnType<typeof Router> = Router();
 
 const ALLOWED_MIME = new Set([
   'image/jpeg',

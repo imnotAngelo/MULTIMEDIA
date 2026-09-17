@@ -3,7 +3,7 @@ import { supabase } from "../config/supabase.js";
 import { authMiddleware, type AuthRequest } from "../middleware/auth.js";
 import { matchesContentTarget } from "../lib/contentTargeting.js";
 
-const router = Router();
+const router: ReturnType<typeof Router> = Router();
 
 /**
  * GET /api/canva-submissions/:laboratoryId

@@ -13,7 +13,7 @@ import {
   getMyAssessmentSubmission,
 } from '../controllers/assessmentController.js';
 
-const router = Router();
+const router: ReturnType<typeof Router> = Router();
 
 // Instructor routes - get all assessments created by instructor (requires auth)
 // MUST be defined before /:id route to avoid route collision

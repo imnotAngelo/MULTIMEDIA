@@ -1,0 +1,18 @@
+[
+  {
+    "id": "L1",
+    "moduleId": "U1",
+    "instructorId": "A",
+    "title": "A lesson",
+    "content": "A",
+    "createdAt": "2026-09-17T04:08:53.807Z"
+  },
+  {
+    "id": "L2",
+    "moduleId": "U1",
+    "instructorId": "B",
+    "title": "B lesson",
+    "content": "B",
+    "createdAt": "2026-09-17T04:08:53.810Z"
+  }
+]

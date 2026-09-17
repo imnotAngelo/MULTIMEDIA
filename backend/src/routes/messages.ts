@@ -3,7 +3,7 @@ import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { supabase } from '../config/supabase.js';
 import { findUserById } from '../lib/userStore.js';
 
-const router = Router();
+const router: ReturnType<typeof Router> = Router();
 
 interface MessageRow {
   id: string;

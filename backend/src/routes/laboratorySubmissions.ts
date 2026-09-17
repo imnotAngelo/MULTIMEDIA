@@ -33,7 +33,7 @@ const labUpload = multer({
   },
 });
 
-const router = Router();
+const router: ReturnType<typeof Router> = Router();
 const backendRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
 function getStudentSection(user: any): string {

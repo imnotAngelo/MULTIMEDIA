@@ -99,7 +99,7 @@ export function Sidebar({
   const [expandedCourseUnits, setExpandedCourseUnits] = useState<string[]>([]);
   const location = useLocation();
   const navigate = useNavigate();
-  const { logout } = useAuthStore();
+  const { logout, user: authUser } = useAuthStore();
 
   const navItems = userRole === 'student'
     ? studentNavItems
@@ -108,10 +108,17 @@ export function Sidebar({
       : instructorNavItems;
 
   useEffect(() => {
-    if (userRole !== 'instructor') return;
+    if (userRole !== 'instructor') {
+      setCourseOutline([]);
+      setExpandedCourseUnits([]);
+      return;
+    }
 
     let cancelled = false;
     const loadCourseOutline = async () => {
+      setCourseOutline([]);
+      setExpandedCourseUnits([]);
+
       try {
         const response = await authFetch('/units', { cache: 'no-store' });
         const payload = await response.json();
@@ -151,13 +158,16 @@ export function Sidebar({
           setExpandedCourseUnits(outline.map((unit) => unit.href));
         }
       } catch {
-        if (!cancelled) setCourseOutline([]);
+        if (!cancelled) {
+          setCourseOutline([]);
+          setExpandedCourseUnits([]);
+        }
       }
     };
 
     loadCourseOutline();
     return () => { cancelled = true; };
-  }, [userRole]);
+  }, [userRole, authUser?.id]);
 
   const resolvedNavItems = navItems.map((item) => (
     item.label === 'Units & Lessons' && userRole === 'instructor'

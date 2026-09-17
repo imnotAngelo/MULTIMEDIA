@@ -4,7 +4,7 @@ import { adminMiddleware } from '../middleware/admin.js';
 import { supabase } from '../config/supabase.js';
 import { listUsersByRole } from '../lib/userStore.js';
 
-const router = Router();
+const router: ReturnType<typeof Router> = Router();
 
 function isTransientDatabaseError(error: any) {
   const message = `${error?.message || ''} ${error?.details || ''}`.toLowerCase();

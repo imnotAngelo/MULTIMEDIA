@@ -1,0 +1,32 @@
+[
+  {
+    "id": "L1",
+    "moduleId": "U1",
+    "instructorId": "A",
+    "title": "A",
+    "content": "A",
+    "createdAt": "2026-09-17T04:08:35.239Z"
+  },
+  {
+    "id": "L2",
+    "moduleId": "U1",
+    "instructorId": "B",
+    "title": "B",
+    "content": "B",
+    "createdAt": "2026-09-17T04:08:35.256Z"
+  },
+  {
+    "id": "U1",
+    "courseId": "C1",
+    "instructorId": "A",
+    "title": "Unit A",
+    "createdAt": "2026-09-17T04:08:35.260Z"
+  },
+  {
+    "id": "U2",
+    "courseId": "C2",
+    "instructorId": "B",
+    "title": "Unit B",
+    "createdAt": "2026-09-17T04:08:35.268Z"
+  }
+]

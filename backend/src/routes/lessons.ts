@@ -8,7 +8,11 @@ import fs from 'fs';
 import { fileURLToPath } from 'node:url';
 import pdfParser from 'pdf-parse';
 import { v4 as uuidv4 } from 'uuid';
-import { createLocalLesson, getLocalLessonById, listLocalLessonsByModuleId } from '../lib/lessonStore.js';
+import {
+  createLocalLesson,
+  getLocalLessonById,
+  listLocalLessonsByModuleIdForInstructor,
+} from '../lib/lessonStore.js';
 import { clipQuizSource, extractTextFromLessonFile, isThinLessonContent, removeCoverPage } from '../lib/lessonDocumentText.js';
 import { matchesContentTarget } from '../lib/contentTargeting.js';
 
@@ -886,6 +890,7 @@ router.post(
             const localLesson = createLocalLesson({
               id: lessonId,
               moduleId: lessonModuleId,
+              instructorId: userId,
               title,
               content: lessonData.content,
               slides: [],
@@ -955,6 +960,7 @@ router.post(
               const localLesson = createLocalLesson({
                 id: lessonId,
                 moduleId: lessonModuleId,
+                instructorId: userId,
                 title,
                 content: lessonData.content,
                 slides: [],
@@ -983,6 +989,7 @@ router.post(
           const localLesson = createLocalLesson({
             id: lessonId,
             moduleId: lessonModuleId,
+            instructorId: userId,
             title,
             content: lessonData.content,
             slides: [],
@@ -1009,6 +1016,7 @@ router.post(
         const localLesson = createLocalLesson({
           id: lessonId,
           moduleId: lessonModuleId,
+          instructorId: userId,
           title,
           content: lessonData.content,
           slides: [],
@@ -1099,6 +1107,7 @@ router.get('/unit/:unitId', optionalAuthMiddleware, async (req: Request, res: Re
     }
 
     let lessons: any[] = [];
+    const requester = (req as any).user;
 
     if (supabase) {
       const { data, error } = await supabase
@@ -1115,21 +1124,23 @@ router.get('/unit/:unitId', optionalAuthMiddleware, async (req: Request, res: Re
       }
     }
 
-    const localLessons = listLocalLessonsByModuleId(unitId).map((lesson: any) => ({
-      id: lesson.id,
-      title: lesson.title,
-      content: lesson.content || '',
-      slides: Array.isArray(lesson.slides) ? lesson.slides : [],
-      slide_count: lesson.slideCount || 0,
-      created_at: lesson.createdAt || new Date().toISOString(),
-      status: lesson.status || 'published',
-      video_url: lesson.videoUrl || '',
-      graphic_url: lesson.graphicUrl || '',
-      pdf_url: lesson.pdfUrl || '',
-      original_format: lesson.originalFormat || (lesson.pdfUrl ? 'pdf' : 'slides'),
-    }));
+    const localLessons = requester && requester.id
+      ? listLocalLessonsByModuleIdForInstructor(unitId, requester.id).map((lesson: any) => ({
+          id: lesson.id,
+          title: lesson.title,
+          content: lesson.content || '',
+          slides: Array.isArray(lesson.slides) ? lesson.slides : [],
+          slide_count: lesson.slideCount || 0,
+          created_at: lesson.createdAt || new Date().toISOString(),
+          status: lesson.status || 'published',
+          video_url: lesson.videoUrl || '',
+          graphic_url: lesson.graphicUrl || '',
+          pdf_url: lesson.pdfUrl || '',
+          original_format: lesson.originalFormat || (lesson.pdfUrl ? 'pdf' : 'slides'),
+        }))
+      : [];
 
-    const mergedLessons = [...(lessons || []), ...localLessons];
+    const mergedLessons = [...localLessons, ...(lessons || [])];
 
     return res.json({
       success: true,

@@ -5,7 +5,7 @@ import fs from 'fs';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { supabase } from '../config/supabase.js';
 
-const router = Router();
+const router: ReturnType<typeof Router> = Router();
 
 function isSupabaseUnavailableError(error: any): boolean {
   return !error || !supabase || error?.code === 'PGRST116' || error?.message?.includes('does not exist') || error?.message?.includes('relation') || error?.message?.includes('not found');

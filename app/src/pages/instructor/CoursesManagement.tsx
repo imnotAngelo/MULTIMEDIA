@@ -307,6 +307,7 @@ export function CoursesManagement() {
   const [searchParams] = useSearchParams();
   const requestedUnitId = searchParams.get('unit');
   const requestedLessonId = searchParams.get('lesson');
+  const requestedView = searchParams.get('view');
   const [units, setUnits] = useState<Unit[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [expandedUnits, setExpandedUnits] = useState<string[]>([]);
@@ -413,12 +414,28 @@ export function CoursesManagement() {
   }, [requestedUnitId, units]);
 
   useEffect(() => {
+    if (requestedView === 'units') {
+      const firstLesson = lessons[0];
+      if (firstLesson) {
+        navigate(`/instructor/lesson/${firstLesson.unitId}/${firstLesson.id}`, { replace: true });
+        return;
+      }
+    }
+
     if (!requestedUnitId || !units.some((unit) => unit.id === requestedUnitId)) return;
     setExpandedUnits([requestedUnitId]);
+
     const requestedLesson = lessons.find((lesson) => lesson.id === requestedLessonId && lesson.unitId === requestedUnitId);
+    if (requestedLesson) {
+      navigate(`/instructor/lesson/${requestedLesson.unitId}/${requestedLesson.id}`, { replace: true });
+      return;
+    }
+
     const firstLesson = lessons.find((lesson) => lesson.unitId === requestedUnitId);
-    if (requestedLesson || firstLesson) setActiveLessonId((requestedLesson || firstLesson)!.id);
-  }, [requestedUnitId, requestedLessonId, units, lessons]);
+    if (firstLesson) {
+      navigate(`/instructor/lesson/${firstLesson.unitId}/${firstLesson.id}`, { replace: true });
+    }
+  }, [requestedUnitId, requestedLessonId, requestedView, units, lessons, navigate]);
 
   const loadData = async () => {
     try {
@@ -469,7 +486,9 @@ export function CoursesManagement() {
 
       if (unitList.length > 0) {
         setExpandedUnits([unitList[0].id]);
-        if (allLessons.length > 0) {
+        if (requestedView === 'units' || requestedUnitId || requestedLessonId) {
+          setActiveLessonId(null);
+        } else if (allLessons.length > 0) {
           setActiveLessonId(allLessons[0].id);
         }
       }
@@ -813,20 +832,6 @@ export function CoursesManagement() {
     setLessonFile(candidate);
   };
 
-  const selectedLesson = lessons.find(l => l.id === activeLessonId);
-  const hasCourseModalOpen = showCreateUnitDialog || showUploadDialog;
-
-  if (activeLessonId && Boolean(selectedLesson) && !hasCourseModalOpen) {
-    const viewerLesson = selectedLesson as Lesson;
-    return (
-      <ViewLesson
-        unitId={viewerLesson.unitId}
-        lessonId={viewerLesson.id}
-        embedded
-      />
-    );
-  }
-
   const activeLesson = lessons.find(l => l.id === activeLessonId);
 
   if (loading) {
@@ -950,7 +955,12 @@ export function CoursesManagement() {
                   isExpanded={expandedUnits.includes(unit.id)}
                   activeLessonId={activeLessonId || undefined}
                   onToggle={() => toggleUnit(unit.id)}
-                  onLessonClick={setActiveLessonId}
+                  onLessonClick={(lessonId) => {
+                    const lesson = lessons.find((item) => item.id === lessonId);
+                    if (lesson) {
+                      navigate(`/instructor/lesson/${lesson.unitId}/${lesson.id}`);
+                    }
+                  }}
                   onUploadClick={(unitId) => {
                     setSelectedUnitForUpload(unitId);
                     setShowUploadDialog(true);

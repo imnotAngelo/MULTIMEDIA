@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { forgotPassword, register, login, refresh, logout, resetPassword, verifyEmail, verifyEmailCode, resendVerification, getSectionSemester } from '../controllers/authController.js';
 
-const router = Router();
+const router: ReturnType<typeof Router> = Router();
 
 router.post('/register', register);
 router.get('/section-semester', getSectionSemester);
