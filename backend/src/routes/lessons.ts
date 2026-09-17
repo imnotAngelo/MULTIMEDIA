@@ -1725,10 +1725,13 @@ router.post(
       const requestedTypes = (Array.isArray(quizTypes) ? quizTypes : [quizType])
         .filter((type: unknown, index: number, types: unknown[]) => allowedTypes.includes(String(type)) && types.indexOf(type) === index);
       const normalizedTypes = requestedTypes.length > 0 ? requestedTypes : ['multiple-choice'];
-      const configuredModel = process.env.GEMINI_MODEL?.trim();
-      const model = configuredModel || 'gemini-3.6-flash';
-      const fallbackModel = 'gemini-3.6-flash';
-      const modelsToTry = [...new Set([model, fallbackModel])];
+      const configuredModel = (process.env.GEMINI_MODEL || '').trim();
+      const fallbackModels = [
+        'gemini-3.6-flash',
+        'gemini-2.5-flash',
+        'gemini-2.5-flash-lite',
+      ];
+      const modelsToTry = [...new Set([configuredModel, ...fallbackModels].filter((value): value is string => Boolean(value && value.trim())))];
       const prompt = `You are a senior instructional designer and professional assessment specialist with extensive experience writing high-quality examinations for universities and professional certifications.
 
     Your task is to generate high-quality quiz questions based strictly and only on the provided lesson content.
@@ -1874,9 +1877,11 @@ LESSON CONTENT END.`;
           const error: any = new Error(message);
           error.code = responseBody?.error?.status || responseBody?.error?.code;
           error.httpStatus = response.status;
+          error.model = candidateModel;
           throw error;
         }
         lastBusyError = new Error(message);
+        lastBusyError.model = candidateModel;
       }
 
       if (!response?.ok) throw lastBusyError || new Error('Gemini request failed');
@@ -1921,11 +1926,12 @@ LESSON CONTENT END.`;
       }
 
       if (error.code === 'NOT_FOUND' || error.message?.includes('not found') || error.message?.includes('not supported')) {
+        const unavailableModel = error.model || process.env.GEMINI_MODEL || 'gemini-3.6-flash';
         return res.status(502).json({
           success: false,
           error: {
             code: 'AI_MODEL_UNAVAILABLE',
-            message: `The configured Gemini model is unavailable: ${process.env.GEMINI_MODEL || 'gemini-3.6-flash'}. Update GEMINI_MODEL to a supported model.`,
+            message: `The configured Gemini model is unavailable: ${unavailableModel}. Update GEMINI_MODEL to a supported model.`,
           },
         });
       }
