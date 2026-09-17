@@ -61,7 +61,7 @@ app.use(
   })
 );
 app.use(securityHeaders);
-app.use('/api/auth/login', createRateLimiter(15 * 60 * 1000, 60));
+app.use('/api/auth/login', createRateLimiter(15 * 60 * 1000, 120));
 app.use('/api/auth/forgot-password', createRateLimiter(15 * 60 * 1000, 20));
 app.use('/api/auth/reset-password', createRateLimiter(15 * 60 * 1000, 40));
 
