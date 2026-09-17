@@ -1,10 +1,7 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { 
   BookOpen, 
-  Play, 
-  FileText,
-  ChevronDown,
-  ArrowLeft,
   RefreshCw,
   Video,
   Link as LinkIcon,
@@ -13,17 +10,16 @@ import {
 import { Button } from '@/components/ui/button';
 import { authFetch } from '@/lib/authFetch';
 import { SlideViewer } from './SlideViewer';
-import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
+import { useCourseTreeStore } from '@/stores/courseTreeStore';
 import { AetherLoader } from '@/components/AetherLoader';
-import { useSearchParams } from 'react-router-dom';
 
 interface Unit {
   id: string;
   title: string;
   description: string;
-  lessonCount: number;
-  createdAt: string;
+  lessonCount?: number;
+  createdAt?: string;
   yearLevel?: number;
   section?: string;
 }
@@ -51,165 +47,75 @@ function getVideoMimeType(url: string): string {
   
   if (lowerUrl.endsWith('.webm')) return 'video/webm';
   if (lowerUrl.endsWith('.mp4') || lowerUrl.includes('mp4')) return 'video/mp4';
-  if (lowerUrl.endsWith('.webm')) return 'video/webm';
   if (lowerUrl.endsWith('.ogg')) return 'video/ogg';
   if (lowerUrl.endsWith('.mov')) return 'video/quicktime';
   if (lowerUrl.endsWith('.avi')) return 'video/x-msvideo';
   if (lowerUrl.endsWith('.mkv')) return 'video/x-matroska';
   
-  // Default to mp4
   return 'video/mp4';
-}
-
-function LessonItem({ lesson, isActive, onClick }: {
-  lesson: Lesson;
-  isActive?: boolean;
-  onClick?: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        'w-full flex items-center gap-3 p-3 rounded-lg transition-all duration-200 text-left',
-        isActive
-          ? 'bg-violet-500/10 border border-violet-500/30'
-          : 'hover:bg-slate-800/50 border border-transparent'
-      )}
-    >
-      <div
-        className={cn(
-          'w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0',
-          isActive
-            ? 'bg-violet-500/20 text-violet-400'
-            : 'bg-slate-800 text-slate-500'
-        )}
-      >
-        <FileText className="w-4 h-4" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p
-          className={cn(
-            'text-sm font-medium truncate',
-            isActive ? 'text-violet-400' : 'text-slate-300'
-          )}
-        >
-          {lesson.title}
-        </p>
-      </div>
-    </button>
-  );
-}
-
-function UnitSection({
-  unit,
-  lessons,
-  isExpanded,
-  activeLessonId,
-  onToggle,
-  onLessonClick,
-}: {
-  unit: Unit;
-  lessons: Lesson[];
-  isExpanded: boolean;
-  activeLessonId?: string;
-  onToggle: () => void;
-  onLessonClick: (lessonId: string) => void;
-}) {
-  const unitLessons = lessons.filter(l => l.unitId === unit.id);
-  const completedCount = 0; // Can be enhanced with progress tracking
-
-  return (
-    <div className="border border-slate-800 rounded-xl overflow-hidden">
-      {/* Unit Header */}
-      <button
-        onClick={onToggle}
-        className={cn(
-          'w-full flex items-center gap-4 p-4 transition-colors',
-          'bg-slate-900/60 hover:bg-slate-800/50'
-        )}
-      >
-        <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-violet-500/10 text-violet-400">
-          <BookOpen className="w-5 h-5" />
-        </div>
-
-        <div className="flex-1 text-left">
-          <h3 className="font-semibold text-slate-200">{unit.title}</h3>
-          <p className="text-sm text-slate-500">{unit.description}</p>
-        </div>
-
-        <div className="flex items-center gap-4">
-          <div className="text-right">
-            <span className="text-sm font-medium text-slate-400">
-              {completedCount}/{unitLessons.length}
-            </span>
-            <p className="text-xs text-slate-500">lessons</p>
-          </div>
-          <ChevronDown
-            className={cn(
-              'w-5 h-5 text-slate-500 transition-transform',
-              isExpanded && 'rotate-180'
-            )}
-          />
-        </div>
-      </button>
-
-      {/* Unit Content */}
-      {isExpanded && (
-        <div className="border-t border-slate-800">
-          {unitLessons.length === 0 ? (
-            <div className="p-4 text-center text-slate-400">
-              <p className="text-sm">No lessons yet</p>
-            </div>
-          ) : (
-            <div className="p-2 space-y-1">
-              {unitLessons.map(lesson => (
-                <LessonItem
-                  key={lesson.id}
-                  lesson={lesson}
-                  isActive={lesson.id === activeLessonId}
-                  onClick={() => onLessonClick(lesson.id)}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
 }
 
 export function Lessons() {
   const { user } = useAuthStore();
+  const { setUserCourseTree } = useCourseTreeStore();
   const [searchParams] = useSearchParams();
   const requestedUnitId = searchParams.get('unit');
+  const requestedLessonId = searchParams.get('lesson');
+
   const [units, setUnits] = useState<Unit[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
-  const [expandedUnits, setExpandedUnits] = useState<string[]>([]);
   const [activeLessonId, setActiveLessonId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<'list' | 'viewer'>('list');
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
-    if (!requestedUnitId || !units.some((unit) => unit.id === requestedUnitId)) return;
-    setExpandedUnits([requestedUnitId]);
-    const firstLesson = lessons.find((lesson) => lesson.unitId === requestedUnitId);
-    if (firstLesson) setActiveLessonId(firstLesson.id);
-  }, [requestedUnitId, units, lessons]);
+    if (loading) return;
+
+    // 1. If a specific lesson was requested
+    if (requestedLessonId) {
+      const found = lessons.find((l) => l.id === requestedLessonId);
+      if (found) {
+        setActiveLessonId(found.id);
+        return;
+      }
+    }
+
+    // 2. If a specific unit was requested
+    if (requestedUnitId) {
+      const unitLessons = lessons.filter((l) => l.unitId === requestedUnitId);
+      if (unitLessons.length > 0) {
+        // Proceed to the latest uploaded lesson in this unit
+        const latestLesson = [...unitLessons].sort(
+          (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+        )[0] || unitLessons[unitLessons.length - 1];
+        setActiveLessonId(latestLesson.id);
+      } else {
+        // Unit has no lessons
+        setActiveLessonId(null);
+      }
+      return;
+    }
+
+    // 3. General /lessons - select latest uploaded lesson
+    if (lessons.length > 0) {
+      const latestLesson = [...lessons].sort(
+        (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+      )[0] || lessons[0];
+      setActiveLessonId(latestLesson.id);
+    } else {
+      setActiveLessonId(null);
+    }
+  }, [requestedUnitId, requestedLessonId, units, lessons, loading]);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      console.log('📚 Fetching units from API...');
       
-      // Fetch units from API
       const unitsResponse = await authFetch('/units');
-
       const unitsData = await unitsResponse.json();
-      console.log('✅ Units fetched:', unitsData.data || []);
 
       const allUnits: Unit[] = unitsData.success ? (unitsData.data || []) : [];
       const unitList = allUnits.filter((unit) =>
@@ -222,33 +128,21 @@ export function Lessons() {
         const lessonsResponse = await authFetch(`/units/${unit.id}/lessons`);
         const lessonsData = await lessonsResponse.json();
         const unitLessons = lessonsData.success ? lessonsData.data || [] : [];
-        console.log(`✅ Lessons for unit "${unit.title}": ${unitLessons.length}`);
         return unitLessons.map((lesson: any) => ({ ...lesson, unitId: unit.id }));
       }));
       const allLessons: Lesson[] = lessonResults.flat();
-
-      console.log('✅ Total lessons loaded:', allLessons.length);
-      
-      // 🎬 VIDEO DEBUGGING: Log which lessons have videos
-      const lessonsWithVideos = allLessons.filter(l => l.video_url);
-      console.log(`🎬 Lessons WITH videos: ${lessonsWithVideos.length}`, lessonsWithVideos);
-      
-      allLessons.forEach((lesson) => {
-        if (lesson.video_url) {
-          console.log(`  ✅ "${lesson.title}" has video: ${lesson.video_url.substring(0, 80)}...`);
-        } else {
-          console.log(`  ❌ "${lesson.title}" has NO video`);
-        }
-      });
-      
       setLessons(allLessons);
 
-      // Auto-expand first unit and set first lesson as active
-      if (unitList.length > 0) {
-        setExpandedUnits([unitList[0].id]);
-        if (allLessons.length > 0) {
-          setActiveLessonId(allLessons[0].id);
-        }
+      // Sync with global course tree store and refresh sidebar
+      if (user?.id) {
+        setUserCourseTree(user.id, {
+          units: unitList,
+          lessons: allLessons as any,
+          loadedAt: Date.now(),
+        });
+        window.dispatchEvent(new CustomEvent('aether-course-outline-refresh', {
+          detail: { userId: user.id },
+        }));
       }
     } catch (error) {
       console.error('❌ Failed to load lessons:', error);
@@ -257,218 +151,177 @@ export function Lessons() {
     }
   };
 
-  const toggleUnit = (unitId: string) => {
-    setExpandedUnits(prev =>
-      prev.includes(unitId)
-        ? prev.filter(id => id !== unitId)
-        : [...prev, unitId]
-    );
-  };
-
-  const activeLesson = lessons.find(l => l.id === activeLessonId);
-
   if (loading) {
     return (
-      <AetherLoader label="Arranging your lessons" />
-    );
-  }
-
-  if (viewMode === 'viewer' && activeLesson) {
-    return (
-      <div className="space-y-4">
-        <Button
-          onClick={() => setViewMode('list')}
-          variant="outline"
-          className="border-slate-700 text-slate-300 hover:bg-slate-800/50"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Lessons
-        </Button>
-        <SlideViewer lessonId={activeLesson.id} lessonTitle={activeLesson.title} lesson={activeLesson} />
+      <div className="flex items-center justify-center p-12">
+        <AetherLoader label="Arranging your lessons" />
       </div>
     );
   }
+
+  const activeLesson = lessons.find(l => l.id === activeLessonId);
+  const currentUnit = units.find(u => u.id === (activeLesson?.unitId || requestedUnitId));
+  const currentUnitLessons = currentUnit ? lessons.filter(l => l.unitId === currentUnit.id) : [];
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white">Lessons</h1>
-          <p className="text-slate-400 mt-2">Explore and learn from your unit lessons</p>
+          <div className="flex items-center gap-2">
+            {currentUnit && (
+              <span className="text-xs font-semibold uppercase tracking-wider text-violet-400 bg-violet-500/10 border border-violet-500/20 px-2.5 py-0.5 rounded-full">
+                {currentUnit.title}
+              </span>
+            )}
+            {activeLesson?.createdAt && (
+              <span className="text-xs text-slate-500">
+                Added {new Date(activeLesson.createdAt).toLocaleDateString()}
+              </span>
+            )}
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white mt-1.5">
+            {activeLesson ? activeLesson.title : 'Lessons'}
+          </h1>
           {user?.year_level && user.section && (
-            <p className="text-violet-300 text-sm mt-2">
-              Showing learning materials for Year {user.year_level}, Section {user.section}
+            <p className="text-slate-400 text-xs mt-1">
+              Year {user.year_level} • Section {user.section}
             </p>
           )}
         </div>
-        <Button
-          onClick={loadData}
-          variant="outline"
-          className="border-slate-700 text-slate-300 hover:bg-slate-800/50"
-          title="Refresh to see newly added units and lessons"
-        >
-          <RefreshCw className="w-4 h-4 mr-2" />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={loadData}
+            variant="outline"
+            className="border-slate-700 text-slate-300 hover:bg-slate-800/50"
+            title="Refresh learning materials"
+          >
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
-      {/* Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Units & Lessons List */}
-        <div className="lg:col-span-1 space-y-4">
-          <h2 className="text-lg font-semibold text-slate-200">Units ({units.length})</h2>
-          {units.length === 0 ? (
-            <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 text-center space-y-3">
-              <BookOpen className="w-8 h-8 text-slate-600 mx-auto" />
-              <div>
-                <p className="text-slate-400 font-medium">No units available yet</p>
-                <p className="text-slate-500 text-xs mt-1">Units will appear here once your instructor creates them</p>
-              </div>
-              <p className="text-slate-600 text-xs">💡 Tip: Click "Refresh" to reload if your instructor just added content</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {units.map(unit => (
-                <UnitSection
-                  key={unit.id}
-                  unit={unit}
-                  lessons={lessons}
-                  isExpanded={expandedUnits.includes(unit.id)}
-                  activeLessonId={activeLessonId || undefined}
-                  onToggle={() => toggleUnit(unit.id)}
-                  onLessonClick={(lessonId) => {
-                    setActiveLessonId(lessonId);
-                    setViewMode('viewer');
-                  }}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+      {/* Main Content Area */}
+      {activeLesson ? (
+        <div className="space-y-6">
+          {/* Media & Interactive Resources (Video & App link if attached) */}
+          {(activeLesson.video_url || activeLesson.app_link) && (
+            <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 space-y-6 shadow-sm">
+              <h3 className="text-base font-semibold text-slate-100 flex items-center gap-2">
+                <div className="w-1 h-5 bg-gradient-to-b from-violet-500 to-violet-600 rounded"></div>
+                Media & Learning Resources
+              </h3>
 
-        {/* Lesson Preview */}
-        <div className="lg:col-span-2">
-          {activeLesson ? (
-            <div className="bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden">
-              {/* Preview Header */}
-              <div className="p-6 border-b border-slate-800">
-                <h2 className="text-2xl font-bold text-white">{activeLesson.title}</h2>
-                <div className="flex items-center gap-4 mt-3 text-sm text-slate-400">
-                  <span>
-                    Created {new Date(activeLesson.createdAt).toLocaleDateString()}
-                  </span>
-                </div>
-              </div>
-
-              {/* Lesson Info */}
-              <div className="p-6 space-y-6">
-                {/* Media & Tools Section */}
-                {(activeLesson.video_url || activeLesson.app_link) && (
-                  <div className="space-y-6 border-t border-slate-700/50 pt-8">
-                    <h3 className="text-lg font-semibold text-slate-100 flex items-center gap-2">
-                      <div className="w-1 h-6 bg-gradient-to-b from-violet-500 to-violet-600 rounded"></div>
-                      Media & Learning Resources
-                    </h3>
-                    
-                    {/* Video Player - Professional Design */}
-                    {activeLesson.video_url && (
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500/20 to-violet-600/20 flex items-center justify-center border border-violet-500/30">
-                            <Video className="w-4 h-4 text-violet-400" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold text-slate-200">Lesson Video</p>
-                            <p className="text-xs text-slate-500">Click play to watch the lesson</p>
-                          </div>
-                        </div>
-                        
-                        {/* Professional Video Container */}
-                        <div className="relative group">
-                          <div className="absolute inset-0 bg-gradient-to-r from-violet-600/20 to-purple-600/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                          <div className="relative rounded-2xl overflow-hidden border border-slate-700/50 bg-gradient-to-b from-slate-900/50 to-slate-950 shadow-2xl">
-                            {/* Aspect Ratio Container */}
-                            <div className="relative w-full bg-black" style={{ paddingBottom: '56.25%' }}>
-                              <video
-                                controls
-                                className="absolute inset-0 w-full h-full"
-                                controlsList="nodownload"
-                                preload="metadata"
-                              >
-                                <source src={activeLesson.video_url} type={getVideoMimeType(activeLesson.video_url)} />
-                                Your browser does not support the video tag.
-                              </video>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        {/* Video Info */}
-                        <div className="flex items-center gap-4 px-1 text-xs text-slate-400">
-                          <span className="flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 bg-violet-500 rounded-full"></span>
-                            HD Ready
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 bg-violet-500 rounded-full"></span>
-                            Full Screen Support
-                          </span>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* App Link - Enhanced Design */}
-                    {activeLesson.app_link && (
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500/20 to-emerald-600/20 flex items-center justify-center border border-emerald-500/30">
-                            <LinkIcon className="w-4 h-4 text-emerald-400" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold text-slate-200">Interactive Tool</p>
-                            <p className="text-xs text-slate-500">Practice with this tool</p>
-                          </div>
-                        </div>
-                        
-                        <a
-                          href={activeLesson.app_link}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center justify-between p-4 rounded-xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 to-emerald-500/5 hover:from-emerald-500/20 hover:to-emerald-500/10 hover:border-emerald-500/50 transition-all duration-300 group shadow-lg hover:shadow-emerald-500/10"
-                        >
-                          <span className="text-sm font-semibold text-emerald-300 group-hover:text-emerald-200 transition-colors">
-                            {activeLesson.app_name || 'Open Interactive Tool'}
-                          </span>
-                          <ExternalLink className="w-5 h-5 text-emerald-400 group-hover:text-emerald-300 group-hover:translate-x-1 transition-all" />
-                        </a>
-                      </div>
-                    )}
+              {/* Video Player */}
+              {activeLesson.video_url && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500/20 to-violet-600/20 flex items-center justify-center border border-violet-500/30">
+                      <Video className="w-4 h-4 text-violet-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-200">Lesson Video</p>
+                      <p className="text-xs text-slate-500">Watch and follow along with the lesson</p>
+                    </div>
                   </div>
-                )}
+                  
+                  <div className="relative rounded-2xl overflow-hidden border border-slate-700/50 bg-black shadow-2xl">
+                    <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+                      <video
+                        controls
+                        className="absolute inset-0 w-full h-full"
+                        controlsList="nodownload"
+                        preload="metadata"
+                      >
+                        <source src={activeLesson.video_url} type={getVideoMimeType(activeLesson.video_url)} />
+                        Your browser does not support the video tag.
+                      </video>
+                    </div>
+                  </div>
+                </div>
+              )}
 
-                {/* Action Button */}
-                <Button
-                  onClick={() => setViewMode('viewer')}
-                  className="w-full bg-violet-600 hover:bg-violet-700 text-white"
-                >
-                  <Play className="w-4 h-4 mr-2" />
-                  {activeLesson.originalFormat === 'pdf' || activeLesson.pdfUrl ? 'View PDF' : 'View Slides & Learn'}
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-12 text-center">
-              <FileText className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-              <p className="text-slate-400">Select a lesson to view details</p>
-              {lessons.length === 0 && (
-                <p className="text-slate-500 text-sm mt-2">
-                  No lessons available in any unit yet
-                </p>
+              {/* App / Tool Link */}
+              {activeLesson.app_link && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500/20 to-emerald-600/20 flex items-center justify-center border border-emerald-500/30">
+                      <LinkIcon className="w-4 h-4 text-emerald-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-200">Interactive Tool</p>
+                      <p className="text-xs text-slate-500">Practice hands-on with this application</p>
+                    </div>
+                  </div>
+                  
+                  <a
+                    href={activeLesson.app_link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between p-4 rounded-xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 to-emerald-500/5 hover:from-emerald-500/20 hover:to-emerald-500/10 hover:border-emerald-500/50 transition-all duration-300 group shadow-lg hover:shadow-emerald-500/10"
+                  >
+                    <span className="text-sm font-semibold text-emerald-300 group-hover:text-emerald-200 transition-colors">
+                      {activeLesson.app_name || 'Open Interactive Tool'}
+                    </span>
+                    <ExternalLink className="w-5 h-5 text-emerald-400 group-hover:text-emerald-300 group-hover:translate-x-1 transition-all" />
+                  </a>
+                </div>
               )}
             </div>
           )}
+
+          {/* Slide & Document Viewer with Comments and Completion */}
+          <SlideViewer lessonId={activeLesson.id} lessonTitle={activeLesson.title} lesson={activeLesson} />
         </div>
-      </div>
+      ) : (() => {
+        // When no active lesson is selected:
+        if (currentUnit && currentUnitLessons.length === 0) {
+          return (
+            <div className="rounded-2xl border border-dashed border-slate-800 bg-slate-900/40 p-12 text-center space-y-4 shadow-sm">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                <BookOpen className="h-7 w-7" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-white">No lessons available in {currentUnit.title}</h3>
+                <p className="text-slate-400 text-sm mt-2 max-w-sm mx-auto">
+                  There are no lessons uploaded for this unit yet. Please check back later.
+                </p>
+              </div>
+            </div>
+          );
+        }
+
+        if (lessons.length === 0 && units.length > 0) {
+          return (
+            <div className="rounded-2xl border border-dashed border-slate-800 bg-slate-900/40 p-12 text-center space-y-4 shadow-sm">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-500/10 text-violet-400 border border-violet-500/20">
+                <BookOpen className="h-7 w-7" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-white">No lessons available yet</h3>
+                <p className="text-slate-400 text-sm mt-2 max-w-sm mx-auto">
+                  Learning materials will appear here once your instructor uploads them.
+                </p>
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <div className="rounded-2xl border border-dashed border-slate-800 bg-slate-900/40 p-12 text-center space-y-4 shadow-sm">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-500/10 text-violet-400 border border-violet-500/20">
+              <BookOpen className="h-7 w-7" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-white">No units and lessons available</h2>
+              <p className="mx-auto mt-2 max-w-md text-sm text-slate-400">
+                There are currently no units and lessons available. Please check back later.
+              </p>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

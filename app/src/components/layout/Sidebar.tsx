@@ -95,7 +95,7 @@ export function Sidebar({
   section,
 }: SidebarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [expandedItems, setExpandedItems] = useState<string[]>(['Laboratories', 'Units & Lessons']);
+  const [expandedItems, setExpandedItems] = useState<string[]>(['Laboratories', 'Units & Lessons', 'Lessons']);
   const [courseOutline, setCourseOutline] = useState<NavItem[]>([]);
   const [expandedCourseUnits, setExpandedCourseUnits] = useState<string[]>([]);
   const location = useLocation();
@@ -111,7 +111,7 @@ export function Sidebar({
       : instructorNavItems;
 
   useEffect(() => {
-    if (userRole !== 'instructor') {
+    if (userRole !== 'instructor' && userRole !== 'student') {
       setCourseOutline([]);
       setExpandedCourseUnits([]);
       return;
@@ -131,23 +131,32 @@ export function Sidebar({
       return;
     }
 
+    const isInstructor = userRole === 'instructor';
     const outline = tree.units.map((unit) => {
       const unitLessons = tree.lessons.filter((lesson: any) => lesson.unitId === unit.id);
       const latestLesson = [...unitLessons].sort(
         (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
       )[0] || unitLessons[unitLessons.length - 1];
 
+      const unitHref = isInstructor
+        ? (latestLesson
+            ? `/instructor/lesson/${encodeURIComponent(unit.id)}/${encodeURIComponent(latestLesson.id)}`
+            : `/instructor/courses?unit=${encodeURIComponent(unit.id)}`)
+        : (latestLesson
+            ? `/lessons?unit=${encodeURIComponent(unit.id)}&lesson=${encodeURIComponent(latestLesson.id)}`
+            : `/lessons?unit=${encodeURIComponent(unit.id)}`);
+
       return {
         label: unit.title,
         unitId: unit.id,
-        href: latestLesson
-          ? `/instructor/lesson/${encodeURIComponent(unit.id)}/${encodeURIComponent(latestLesson.id)}`
-          : `/instructor/courses?unit=${encodeURIComponent(unit.id)}`,
+        href: unitHref,
         icon: Layers,
         subItems: unitLessons.map((lesson: any) => ({
           label: lesson.title,
           unitId: unit.id,
-          href: `/instructor/lesson/${encodeURIComponent(unit.id)}/${encodeURIComponent(lesson.id)}`,
+          href: isInstructor
+            ? `/instructor/lesson/${encodeURIComponent(unit.id)}/${encodeURIComponent(lesson.id)}`
+            : `/lessons?unit=${encodeURIComponent(unit.id)}&lesson=${encodeURIComponent(lesson.id)}`,
           icon: FileText,
         })),
       };
@@ -160,11 +169,13 @@ export function Sidebar({
   useEffect(() => {
     if (userRole === 'instructor') {
       setExpandedItems((prev) => (prev.includes('Units & Lessons') ? prev : [...prev, 'Units & Lessons']));
+    } else if (userRole === 'student') {
+      setExpandedItems((prev) => (prev.includes('Lessons') ? prev : [...prev, 'Lessons']));
     }
   }, [userRole, authUser?.id]);
 
   useEffect(() => {
-    if (userRole !== 'instructor') return;
+    if (userRole !== 'instructor' && userRole !== 'student') return;
 
     const handleRefresh = (e: Event) => {
       const customEvent = e as CustomEvent<{ userId?: string | null }>;
@@ -178,11 +189,15 @@ export function Sidebar({
     return () => window.removeEventListener('aether-course-outline-refresh', handleRefresh);
   }, [userRole, authUser?.id, loadUserCourseTree]);
 
-  const resolvedNavItems = navItems.map((item) => (
-    item.label === 'Units & Lessons' && userRole === 'instructor'
-      ? { ...item, subItems: courseOutline }
-      : item
-  ));
+  const resolvedNavItems = navItems.map((item) => {
+    if (userRole === 'instructor' && item.label === 'Units & Lessons') {
+      return { ...item, subItems: courseOutline };
+    }
+    if (userRole === 'student' && item.label === 'Lessons') {
+      return { ...item, subItems: courseOutline };
+    }
+    return item;
+  });
 
   const handleLogout = () => {
     logout();
@@ -230,8 +245,9 @@ export function Sidebar({
         <div className="space-y-1">
           {resolvedNavItems.map((item) => {
             const isExpanded = expandedItems.includes(item.label);
-            const isUnitsAndLessons = item.label === 'Units & Lessons' && userRole === 'instructor';
-            const hasSubItems = Boolean((item.subItems && item.subItems.length > 0) || isUnitsAndLessons);
+            const isCourseOutlineItem = (item.label === 'Units & Lessons' && userRole === 'instructor') ||
+              (item.label === 'Lessons' && userRole === 'student');
+            const hasSubItems = Boolean((item.subItems && item.subItems.length > 0) || isCourseOutlineItem);
             const isActive = location.pathname === item.href.split('?')[0] ||
               item.subItems?.some(sub => `${location.pathname}${location.search}` === sub.href);
 
@@ -288,7 +304,7 @@ export function Sidebar({
                 {/* Sub Items */}
                 {hasSubItems && isExpanded && (
                   <div className="mt-1 ml-4 border-l border-slate-800 space-y-1">
-                    {item.label === 'Units & Lessons' && (
+                    {item.label === 'Units & Lessons' && userRole === 'instructor' && (
                       <button
                         type="button"
                         onClick={() => handleQuickAdd('unit')}
@@ -371,20 +387,22 @@ export function Sidebar({
                                   <p className="px-3 py-1 text-[11px] text-slate-400">No lessons yet</p>
                                 )}
 
-                                <button
-                                  type="button"
-                                  onClick={() => handleQuickAdd('lesson', unitId)}
-                                  className="sidebar-quick-action sidebar-quick-action--lesson flex w-full items-center gap-2 rounded-md border px-3 py-1.5 text-left text-[11px] font-semibold transition-colors"
-                                >
-                                  <Plus className="h-3.5 w-3.5" />
-                                  Add Lesson
-                                </button>
+                                {userRole === 'instructor' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleQuickAdd('lesson', unitId)}
+                                    className="sidebar-quick-action sidebar-quick-action--lesson flex w-full items-center gap-2 rounded-md border px-3 py-1.5 text-left text-[11px] font-semibold transition-colors"
+                                  >
+                                    <Plus className="h-3.5 w-3.5" />
+                                    Add Lesson
+                                  </button>
+                                )}
                               </div>
                             )}
                           </div>
                         );
                       })
-                    ) : isUnitsAndLessons ? (
+                    ) : isCourseOutlineItem ? (
                       <p className="px-3 py-1.5 text-[11px] text-slate-400">No units yet</p>
                     ) : null}
                   </div>

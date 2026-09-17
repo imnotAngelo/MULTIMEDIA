@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { User } from '@/types';
 import { api } from '@/services/api';
+import { useCourseTreeStore } from '@/stores/courseTreeStore';
 
 interface AuthState {
   user: User | null;
@@ -58,6 +59,12 @@ const clearPersistedAuth = () => {
     sessionStorage.clear();
   } catch {
     // ignore storage access issues during hard reset
+  }
+
+  try {
+    useCourseTreeStore.getState().clearAll();
+  } catch {
+    // ignore
   }
 };
 
