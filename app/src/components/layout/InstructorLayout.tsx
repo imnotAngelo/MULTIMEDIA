@@ -3,9 +3,12 @@ import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { Breadcrumbs } from './Breadcrumbs';
 import { useAuthStore } from '@/stores/authStore';
+import { useSidebarStore } from '@/stores/sidebarStore';
+import { cn } from '@/lib/utils';
 
 export function InstructorLayout() {
   const { user } = useAuthStore();
+  const isCollapsed = useSidebarStore((s) => s.isCollapsed);
 
   if (!user) return null;
 
@@ -18,7 +21,7 @@ export function InstructorLayout() {
         yearLevel={user.year_level}
         section={user.section}
       />
-      <div className="lg:ml-64 min-w-0 min-h-screen flex flex-col">
+      <div className={cn('min-w-0 min-h-screen flex flex-col transition-all duration-300 ease-in-out', isCollapsed ? 'lg:ml-20' : 'lg:ml-64')}>
         <Header
           title="Instructor Dashboard"
         />
