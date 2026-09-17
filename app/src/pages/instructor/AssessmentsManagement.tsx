@@ -17,6 +17,17 @@ import {
   Layers,
 } from 'lucide-react';
 import { AetherLoader } from '@/components/AetherLoader';
+import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface Assessment {
   id: string;
@@ -58,6 +69,8 @@ export function InstructorAssessments() {
   const [error, setError] = useState('');
   const [filter, setFilter] = useState<'assignment' | 'quiz' | 'laboratory'>('assignment');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [assessmentToDelete, setAssessmentToDelete] = useState<Assessment | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleTokenExpiration = () => {
     localStorage.removeItem('access_token');
@@ -134,35 +147,41 @@ export function InstructorAssessments() {
     navigate('/instructor/assessments/create');
   };
 
-  const handleDeleteAssessment = async (id: string) => {
-    if (confirm('Are you sure you want to delete this assessment?')) {
-      try {
-        const response = await authFetch(`/assessments/${id}`, {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
+  const handleConfirmDelete = async () => {
+    if (!assessmentToDelete) return;
 
-        if (response.status === 401) {
-          handleTokenExpiration();
-          return;
-        }
+    try {
+      setIsDeleting(true);
+      const response = await authFetch(`/assessments/${assessmentToDelete.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
-        if (!response.ok) {
-          throw new Error(`Delete failed with status ${response.status}`);
-        }
-
-        const data = await response.json();
-        if (data.success) {
-          setAssessments(assessments.filter(a => a.id !== id));
-          calculateStats(assessments.filter(a => a.id !== id));
-        } else {
-          alert('Failed to delete assessment: ' + (data.message || 'Unknown error'));
-        }
-      } catch (error) {
-        alert('Error deleting assessment: ' + String(error));
+      if (response.status === 401) {
+        handleTokenExpiration();
+        return;
       }
+
+      if (!response.ok) {
+        throw new Error(`Delete failed with status ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        const next = assessments.filter(a => a.id !== assessmentToDelete.id);
+        setAssessments(next);
+        calculateStats(next);
+        toast.success(`"${assessmentToDelete.title}" deleted successfully`);
+        setAssessmentToDelete(null);
+      } else {
+        toast.error('Failed to delete assessment: ' + (data.message || 'Unknown error'));
+      }
+    } catch (error) {
+      toast.error('Error deleting assessment: ' + String(error));
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -443,7 +462,7 @@ export function InstructorAssessments() {
                         View Submissions
                       </Button>
                       <Button
-                        onClick={() => handleDeleteAssessment(assessment.id)}
+                        onClick={() => setAssessmentToDelete(assessment)}
                         variant="outline"
                         className="flex items-center gap-2 border-red-700/50 text-red-400 hover:bg-red-900/20"
                       >
@@ -458,6 +477,31 @@ export function InstructorAssessments() {
           })}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={Boolean(assessmentToDelete)} onOpenChange={(open) => !open && setAssessmentToDelete(null)}>
+        <AlertDialogContent className="bg-slate-900 border-slate-800 text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Assessment</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              Are you sure you want to delete <span className="font-semibold text-slate-200">"{assessmentToDelete?.title}"</span>? This will remove the assessment and any student records associated with it. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting} className="bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isDeleting}
+              onClick={(e) => {
+                e.preventDefault();
+                handleConfirmDelete();
+              }}
+              className="bg-rose-600 hover:bg-rose-700 text-white"
+            >
+              {isDeleting ? 'Deleting...' : 'Delete Assessment'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

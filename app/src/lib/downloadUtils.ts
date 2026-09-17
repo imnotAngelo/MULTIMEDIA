@@ -1,4 +1,5 @@
 import { jsPDF } from 'jspdf';
+import { toast } from 'sonner';
 
 /**
  * Download lesson slides as JSON
@@ -288,7 +289,7 @@ export async function downloadLessonAsPDF(lesson: any, filename?: string) {
   } catch (err) {
     console.error('PDF generation error:', err);
     const errorMsg = err instanceof Error ? err.message : 'Unknown error';
-    alert(`Failed to generate PDF: ${errorMsg}`);
+    toast.error(`Failed to generate PDF: ${errorMsg}`);
     throw err;
   }
 }

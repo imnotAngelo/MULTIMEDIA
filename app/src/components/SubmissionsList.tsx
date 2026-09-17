@@ -1,5 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { getSubmissions, deleteSubmission } from "@/lib/laboratorySubmissionService";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import "./SubmissionsList.css";
 
 interface SubmissionsListProps {
@@ -33,6 +44,8 @@ export const SubmissionsList: React.FC<SubmissionsListProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "submitted" | "reviewed" | "approved" | "rejected">("all");
+  const [submissionToDelete, setSubmissionToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     loadSubmissions();
@@ -50,16 +63,18 @@ export const SubmissionsList: React.FC<SubmissionsListProps> = ({
     }
   };
 
-  const handleDelete = async (submissionId: string) => {
-    if (!confirm("Are you sure you want to delete this submission?")) {
-      return;
-    }
-
+  const handleConfirmDelete = async () => {
+    if (!submissionToDelete) return;
+    setIsDeleting(true);
     try {
-      await deleteSubmission(submissionId);
-      setSubmissions(submissions.filter((s) => s.id !== submissionId));
+      await deleteSubmission(submissionToDelete);
+      setSubmissions(submissions.filter((s) => s.id !== submissionToDelete));
+      toast.success("Submission deleted successfully");
+      setSubmissionToDelete(null);
     } catch (err: any) {
-      alert(err.message || "Failed to delete submission");
+      toast.error(err.message || "Failed to delete submission");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -191,7 +206,7 @@ export const SubmissionsList: React.FC<SubmissionsListProps> = ({
                   {submission.status === "submitted" && (
                     <button
                       className="btn-action btn-delete"
-                      onClick={() => handleDelete(submission.id)}
+                      onClick={() => setSubmissionToDelete(submission.id)}
                     >
                       Delete
                     </button>
@@ -212,7 +227,7 @@ export const SubmissionsList: React.FC<SubmissionsListProps> = ({
                   {submission.status === "submitted" && (
                     <button
                       className="btn-action btn-delete"
-                      onClick={() => handleDelete(submission.id)}
+                      onClick={() => setSubmissionToDelete(submission.id)}
                     >
                       Delete
                     </button>
@@ -230,6 +245,30 @@ export const SubmissionsList: React.FC<SubmissionsListProps> = ({
           </div>
         ))}
       </div>
+
+      <AlertDialog open={Boolean(submissionToDelete)} onOpenChange={(open) => !open && setSubmissionToDelete(null)}>
+        <AlertDialogContent className="bg-slate-900 border-slate-800 text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Submission</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              Are you sure you want to delete this submission? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting} className="bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isDeleting}
+              onClick={(e) => {
+                e.preventDefault();
+                handleConfirmDelete();
+              }}
+              className="bg-rose-600 hover:bg-rose-700 text-white"
+            >
+              {isDeleting ? 'Deleting...' : 'Delete Submission'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

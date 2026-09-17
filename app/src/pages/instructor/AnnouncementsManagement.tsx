@@ -6,6 +6,17 @@ import { notificationService } from '@/services/notificationService';
 import { authFetch } from '@/lib/authFetch';
 import { resolveBackendAssetUrl } from '@/lib/apiConfig';
 import { useAuthStore } from '@/stores/authStore';
+import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface Announcement {
   id: string;
@@ -39,6 +50,7 @@ export function AnnouncementsManagement() {
   const [file, setFile] = useState<File | null>(null);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<Announcement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -120,19 +132,24 @@ export function AnnouncementsManagement() {
       setTitle('');
       setMessage('');
       setFile(null);
+      toast.success('Announcement published successfully');
       if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (err: any) {
-      setError(err?.message ?? 'Failed to post announcement.');
+      const msg = err?.message ?? 'Failed to post announcement.';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setSending(false);
     }
   };
 
-  const handleDelete = (id: string) => {
-    if (!confirm('Delete this announcement from your history? Students who already received it will keep theirs.')) return;
-    const next = announcements.filter((a) => a.id !== id);
+  const handleConfirmDelete = () => {
+    if (!itemToDelete) return;
+    const next = announcements.filter((a) => a.id !== itemToDelete.id);
     setAnnouncements(next);
     saveAnnouncements(next);
+    toast.success('Announcement removed from your history');
+    setItemToDelete(null);
   };
 
   return (
@@ -296,7 +313,7 @@ export function AnnouncementsManagement() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => handleDelete(a.id)}
+                    onClick={() => setItemToDelete(a)}
                     className="text-slate-400 hover:text-red-400 hover:bg-red-500/10 shrink-0"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -307,6 +324,23 @@ export function AnnouncementsManagement() {
           </div>
         )}
       </div>
+
+      <AlertDialog open={Boolean(itemToDelete)} onOpenChange={(open) => !open && setItemToDelete(null)}>
+        <AlertDialogContent className="bg-slate-900 border-slate-800 text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Announcement History</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              Are you sure you want to delete <span className="font-semibold text-slate-200">"{itemToDelete?.title}"</span> from your history? Students who have already received this notification will retain their copy.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete} className="bg-rose-600 hover:bg-rose-700 text-white">
+              Delete Announcement
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

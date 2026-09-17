@@ -13,6 +13,7 @@ import { API_BASE_URL } from '@/lib/apiConfig';
 import { notificationService } from '@/services/notificationService';
 import { useAuthStore } from '@/stores/authStore';
 import { useThemeStore } from '@/stores/themeStore';
+import { toast } from 'sonner';
 
 interface Question {
   id: string;
@@ -319,8 +320,24 @@ export function CreateQuiz() {
     const allocationMatches = formData.quizCategory === 'short'
       ? questions.length >= categoryRange.min && questions.length <= categoryRange.max
       : configuredTotal >= categoryRange.min && configuredTotal <= categoryRange.max && formData.quizTypes.every(type => (actualCounts[type] || 0) === (formData.questionCountsByType[type] || 0));
-    if (!formData.title.trim() || !formData.unitId || formData.lessonIds.length === 0 || questions.length === 0 || formData.quizTypes.length !== requiredTypeCount || !allocationMatches) {
-      alert('Please fill in all required fields');
+    if (!formData.title.trim()) {
+      toast.error('Please enter a quiz title');
+      return;
+    }
+    if (!formData.unitId) {
+      toast.error('Please select a unit');
+      return;
+    }
+    if (formData.lessonIds.length === 0) {
+      toast.error('Please select at least one lesson');
+      return;
+    }
+    if (questions.length === 0) {
+      toast.error('Please add at least one question');
+      return;
+    }
+    if (formData.quizTypes.length !== requiredTypeCount || !allocationMatches) {
+      toast.error(`Please configure questions matching the requirements for this ${formData.quizCategory} quiz (${categoryRange.min}-${categoryRange.max} questions)`);
       return;
     }
 
@@ -350,10 +367,11 @@ export function CreateQuiz() {
       if (!response.ok) {
         throw new Error(data.error?.message || 'Failed to create quiz');
       }
+      toast.success('Quiz created successfully!');
       notificationService.notifyQuizAdded(formData.title);
       navigate('/instructor/quizzes');
     } catch (err: any) {
-      alert('Failed to create quiz: ' + err.message);
+      toast.error('Failed to create quiz: ' + err.message);
     } finally {
       setSubmitting(false);
     }

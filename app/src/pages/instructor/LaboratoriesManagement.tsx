@@ -22,6 +22,17 @@ import {
 } from 'lucide-react';
 import { AetherLoader } from '@/components/AetherLoader';
 import { authFetch } from '@/lib/authFetch';
+import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface Laboratory {
   id: string;
@@ -121,6 +132,8 @@ export function LaboratoriesManagement() {
   const [formData, setFormData] = useState<FormData>(EMPTY_FORM);
   const [formError, setFormError] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [labToDelete, setLabToDelete] = useState<Laboratory | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -305,15 +318,22 @@ export function LaboratoriesManagement() {
     handleCloseForm();
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete this laboratory? This cannot be undone.')) return;
+  const handleConfirmDelete = async () => {
+    if (!labToDelete) return;
     try {
-      const response = await authFetch(`/laboratories/${id}`, { method: 'DELETE' });
+      setIsDeleting(true);
+      const response = await authFetch(`/laboratories/${labToDelete.id}`, { method: 'DELETE' });
       const json = await response.json();
       if (!response.ok || !json.success) throw new Error(json.error?.message || 'Failed to delete laboratory');
-      setLaboratories(current => current.filter(lab => lab.id !== id));
+      setLaboratories(current => current.filter(lab => lab.id !== labToDelete.id));
+      toast.success(`"${labToDelete.title}" deleted successfully`);
+      setLabToDelete(null);
     } catch (error) {
-      setFormError(error instanceof Error ? error.message : 'Failed to delete laboratory');
+      const msg = error instanceof Error ? error.message : 'Failed to delete laboratory';
+      setFormError(msg);
+      toast.error(msg);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -730,7 +750,7 @@ export function LaboratoriesManagement() {
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => handleDelete(lab.id)}
+                      onClick={() => setLabToDelete(lab)}
                       className="p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -777,6 +797,33 @@ export function LaboratoriesManagement() {
           })}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={Boolean(labToDelete)} onOpenChange={(open) => !open && setLabToDelete(null)}>
+        <AlertDialogContent className="bg-slate-900 border-slate-800 text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Laboratory</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              Are you sure you want to delete <span className="font-semibold text-slate-200">"{labToDelete?.title}"</span>? This will permanently remove the laboratory activity. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting} className="bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isDeleting}
+              onClick={(e) => {
+                e.preventDefault();
+                handleConfirmDelete();
+              }}
+              className="bg-rose-600 hover:bg-rose-700 text-white"
+            >
+              {isDeleting ? 'Deleting...' : 'Delete Laboratory'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

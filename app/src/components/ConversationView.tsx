@@ -3,6 +3,7 @@ import { MessageSquare, Send, Search, RefreshCw } from 'lucide-react';
 import { AetherSpinner } from './AetherSpinner';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/stores/authStore';
+import { useThemeStore } from '@/stores/themeStore';
 import {
   messageService,
   type Contact,
@@ -55,8 +56,8 @@ function RoleBadge({ role, size = 'sm' }: { role?: string; size?: 'xs' | 'sm' })
   if (!isInstructor && !isStudent) return null;
   const label = isInstructor ? 'Instructor' : 'Student';
   const tone = isInstructor
-    ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
-    : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30';
+    ? 'bg-amber-500/15 text-amber-600 dark:text-amber-300 border-amber-500/30'
+    : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border-emerald-500/30';
   const pad = size === 'xs' ? 'px-1.5 py-[1px] text-[10px]' : 'px-2 py-0.5 text-[11px]';
   return (
     <span className={`inline-flex items-center font-medium uppercase tracking-wide rounded-full border ${tone} ${pad}`}>
@@ -72,6 +73,8 @@ export function ConversationView({
   pollMs = 6000,
 }: ConversationViewProps) {
   const { user } = useAuthStore();
+  const theme = useThemeStore((state) => state.theme);
+  const isLight = theme === 'light';
   const myId = user?.id ?? '';
   const myRole = user?.role ?? '';
   // A student may only chat with instructors; an instructor may only chat with students.
@@ -260,8 +263,8 @@ export function ConversationView({
             <MessageSquare className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h1 className="text-white text-xl font-semibold leading-tight">{title}</h1>
-            <p className="text-slate-400 text-sm">{subtitle}</p>
+            <h1 className={`text-xl font-semibold leading-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>{title}</h1>
+            <p className={`text-sm ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>{subtitle}</p>
           </div>
         </div>
         <Button
@@ -271,7 +274,7 @@ export function ConversationView({
             loadContacts();
             if (activeId) loadThread(activeId);
           }}
-          className="text-slate-400 hover:text-slate-100"
+          className={isLight ? 'text-slate-600 hover:text-slate-900' : 'text-slate-400 hover:text-slate-100'}
         >
           <RefreshCw className="w-4 h-4 mr-2" />
           Refresh
@@ -280,29 +283,35 @@ export function ConversationView({
 
       <div className="grid grid-cols-1 md:grid-cols-[300px_1fr] gap-4 h-[calc(100vh-200px)] min-h-[500px]">
         {/* Contacts column */}
-        <aside className="bg-slate-900/60 border border-slate-800 rounded-2xl flex flex-col overflow-hidden">
-          <div className="p-3 border-b border-slate-800">
+        <aside className={`rounded-2xl flex flex-col overflow-hidden border transition-colors ${
+          isLight ? 'bg-white border-slate-200 shadow-sm' : 'bg-slate-900/60 border-slate-800'
+        }`}>
+          <div className={`p-3 border-b ${isLight ? 'border-slate-200' : 'border-slate-800'}`}>
             <div className="relative">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+              <Search className={`w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 ${isLight ? 'text-slate-400' : 'text-slate-500'}`} />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search..."
-                className="w-full bg-slate-800/60 border border-slate-700 rounded-lg pl-9 pr-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500/40"
+                className={`w-full rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/40 transition-colors ${
+                  isLight
+                    ? 'bg-slate-50 border border-slate-200 text-slate-900 placeholder:text-slate-400'
+                    : 'bg-slate-800/60 border border-slate-700 text-slate-100 placeholder:text-slate-500'
+                }`}
               />
             </div>
           </div>
           <div className="flex-1 overflow-y-auto">
             {contactsLoading ? (
-              <div className="flex items-center justify-center h-32 text-slate-400 text-sm">
+              <div className={`flex items-center justify-center h-32 text-sm ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
                 <AetherSpinner className="w-4 h-4 mr-2" /> Loading...
               </div>
             ) : contactsError ? (
-              <div className="p-4 text-rose-300 text-sm">{contactsError}</div>
+              <div className="p-4 text-rose-500 text-sm">{contactsError}</div>
             ) : filteredContacts.length === 0 ? (
-              <div className="p-4 text-slate-400 text-sm">{emptyContactsLabel}</div>
+              <div className={`p-4 text-sm ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>{emptyContactsLabel}</div>
             ) : (
-              <ul className="divide-y divide-slate-800">
+              <ul className={`divide-y ${isLight ? 'divide-slate-200' : 'divide-slate-800'}`}>
                 {filteredContacts.map((c) => {
                   const isActive = c.id === activeId;
                   const preview = c.last_message?.body ?? 'No messages yet';
@@ -313,32 +322,36 @@ export function ConversationView({
                         onClick={() => setActiveId(c.id)}
                         className={`w-full text-left px-3 py-3 transition-colors ${
                           isActive
-                            ? 'bg-violet-500/10 border-l-2 border-violet-500'
+                            ? isLight
+                              ? 'bg-violet-50 border-l-2 border-violet-600'
+                              : 'bg-violet-500/10 border-l-2 border-violet-500'
+                            : isLight
+                            ? 'hover:bg-slate-50 border-l-2 border-transparent'
                             : 'hover:bg-slate-800/50 border-l-2 border-transparent'
                         }`}
                       >
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-white text-sm font-semibold shrink-0">
+                          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-white text-sm font-semibold shrink-0 shadow-sm">
                             {c.full_name.charAt(0).toUpperCase()}
                           </div>
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center justify-between gap-2">
                               <div className="flex items-center gap-2 min-w-0">
-                                <span className="text-sm font-medium text-white truncate">
+                                <span className={`text-sm font-medium truncate ${isLight ? 'text-slate-900' : 'text-white'}`}>
                                   {c.full_name}
                                 </span>
                                 <RoleBadge role={c.role} size="xs" />
                               </div>
-                              <span className="text-[11px] text-slate-500 shrink-0">
+                              <span className={`text-[11px] shrink-0 ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
                                 {relativeShort(c.last_message?.created_at)}
                               </span>
                             </div>
                             <div className="flex items-center justify-between gap-2 mt-0.5">
-                              <span className="text-xs text-slate-400 truncate">
+                              <span className={`text-xs truncate ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
                                 {preview}
                               </span>
                               {c.unread_count > 0 && (
-                                <span className="bg-violet-500 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0">
+                                <span className="bg-violet-600 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0">
                                   {c.unread_count}
                                 </span>
                               )}
@@ -355,37 +368,39 @@ export function ConversationView({
         </aside>
 
         {/* Thread column */}
-        <section className="bg-slate-900/60 border border-slate-800 rounded-2xl flex flex-col overflow-hidden">
+        <section className={`rounded-2xl flex flex-col overflow-hidden border transition-colors ${
+          isLight ? 'bg-white border-slate-200 shadow-sm' : 'bg-slate-900/60 border-slate-800'
+        }`}>
           {!activeContact ? (
-            <div className="flex-1 flex items-center justify-center text-slate-400 text-sm">
+            <div className={`flex-1 flex items-center justify-center text-sm ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
               {contacts.length === 0 ? emptyContactsLabel : 'Select a conversation to start chatting.'}
             </div>
           ) : (
             <>
-              <header className="px-4 py-3 border-b border-slate-800 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-white text-sm font-semibold">
+              <header className={`px-4 py-3 border-b flex items-center gap-3 ${isLight ? 'border-slate-200 bg-slate-50/50' : 'border-slate-800 bg-slate-900/30'}`}>
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-white text-sm font-semibold shadow-sm">
                   {activeContact.full_name.charAt(0).toUpperCase()}
                 </div>
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-white text-sm font-medium leading-tight">
+                    <p className={`text-sm font-medium leading-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
                       {activeContact.full_name}
                     </p>
                     <RoleBadge role={activeContact.role} />
                   </div>
-                  <p className="text-slate-500 text-xs capitalize">{activeContact.role}</p>
+                  <p className={`text-xs capitalize ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>{activeContact.role}</p>
                 </div>
               </header>
 
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
                 {threadLoading ? (
-                  <div className="flex items-center justify-center h-24 text-slate-400 text-sm">
+                  <div className={`flex items-center justify-center h-24 text-sm ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
                     <AetherSpinner className="w-4 h-4 mr-2" /> Loading messages...
                   </div>
                 ) : threadError ? (
-                  <div className="text-rose-300 text-sm">{threadError}</div>
+                  <div className="text-rose-500 text-sm">{threadError}</div>
                 ) : messages.length === 0 ? (
-                  <div className="text-slate-400 text-sm text-center mt-8">
+                  <div className={`text-sm text-center mt-8 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
                     No messages yet — send the first one below.
                   </div>
                 ) : (
@@ -400,16 +415,20 @@ export function ConversationView({
                           <div
                             className={`rounded-2xl px-3.5 py-2 text-sm leading-relaxed whitespace-pre-wrap break-words ${
                               mine
-                                ? 'bg-violet-500/15 text-violet-50 border border-violet-500/30'
+                                ? isLight
+                                  ? 'bg-violet-600 text-white shadow-sm'
+                                  : 'bg-violet-500/20 text-violet-100 border border-violet-500/40'
+                                : isLight
+                                ? 'bg-slate-100 text-slate-900 border border-slate-200'
                                 : 'bg-slate-800/70 text-slate-100 border border-slate-700'
                             }`}
                           >
                             {m.body}
                           </div>
                           <div
-                            className={`text-[11px] text-slate-500 mt-1 px-1 ${
+                            className={`text-[11px] mt-1 px-1 ${
                               mine ? 'text-right' : 'text-left'
-                            }`}
+                            } ${isLight ? 'text-slate-400' : 'text-slate-500'}`}
                           >
                             {formatTime(m.created_at)}
                           </div>
@@ -423,7 +442,7 @@ export function ConversationView({
 
               <form
                 onSubmit={handleSend}
-                className="p-3 border-t border-slate-800 flex items-end gap-2"
+                className={`p-3 border-t flex items-end gap-2 ${isLight ? 'border-slate-200 bg-slate-50/50' : 'border-slate-800'}`}
               >
                 <textarea
                   value={draft}
@@ -437,12 +456,16 @@ export function ConversationView({
                   placeholder="Type a message... (Enter to send, Shift+Enter for newline)"
                   rows={2}
                   disabled={sending}
-                  className="flex-1 resize-none bg-slate-800/60 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500/40 focus:border-violet-500/50 disabled:opacity-60"
+                  className={`flex-1 resize-none rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/40 focus:border-violet-500/50 disabled:opacity-60 transition-colors ${
+                    isLight
+                      ? 'bg-white border border-slate-200 text-slate-900 placeholder:text-slate-400'
+                      : 'bg-slate-800/60 border border-slate-700 text-slate-100 placeholder:text-slate-500'
+                  }`}
                 />
                 <Button
                   type="submit"
                   disabled={!draft.trim() || sending}
-                  className="bg-gradient-to-br from-violet-500 to-fuchsia-500 hover:from-violet-600 hover:to-fuchsia-600 text-white"
+                  className="bg-gradient-to-br from-violet-500 to-fuchsia-500 hover:from-violet-600 hover:to-fuchsia-600 text-white shadow-sm"
                 >
                   {sending ? (
                     <AetherSpinner className="w-4 h-4 mr-1" />

@@ -4,6 +4,16 @@ import { GraduationCap, Save, User as UserIcon, Calendar, Image as ImageIcon, Up
 import { AetherSpinner } from '@/components/AetherSpinner';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useAuthStore } from '@/stores/authStore';
 import { api } from '@/services/api';
 import { authFetch } from '@/lib/authFetch';
@@ -106,6 +116,7 @@ export function InstructorSettings() {
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [updatingSemester, setUpdatingSemester] = useState(false);
+  const [showSemesterConfirm, setShowSemesterConfirm] = useState(false);
   const [newSemester, setNewSemester] = useState<1 | 2 | 3>(user?.year_level as 1 | 2 | 3 ?? 1);
   const [teachingSections, setTeachingSections] = useState<string[]>(user?.teaching_sections ?? []);
   const [newSection, setNewSection] = useState('');
@@ -388,19 +399,7 @@ export function InstructorSettings() {
 
   const handleUpdateSemester = async () => {
     if (newSemester === user?.year_level || updatingSemester) return;
-    
-    const semesterLabel = ACADEMIC_YEAR_OPTIONS.find(o => o.value === newSemester)?.label;
-    const confirmUpdate = window.confirm(
-      `Are you sure you want to change to ${semesterLabel}?\n\n` +
-      `This will:\n` +
-      `✓ Update your teaching semester\n` +
-      `✓ Reset lesson progress and quiz submissions\n` +
-      `✓ Archive your previous semester's content for review\n\n` +
-      `Archived content can be restored from Archives. Previous laboratory submissions will remain available as archived records.`
-    );
-    
-    if (!confirmUpdate) return;
-    
+    setShowSemesterConfirm(false);
     setUpdatingSemester(true);
     console.log(`🔄 [SEMESTER UPDATE] Starting semester change from ${user?.year_level} to ${newSemester}`);
     try {
@@ -526,7 +525,7 @@ export function InstructorSettings() {
             </select>
           </div>
           <Button
-            onClick={handleUpdateSemester}
+            onClick={() => setShowSemesterConfirm(true)}
             disabled={newSemester === user?.year_level || updatingSemester}
             className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white"
           >
@@ -818,6 +817,39 @@ export function InstructorSettings() {
           </Button>
         </div>
       </div>
+
+      {/* Semester Change Confirmation Dialog */}
+      <AlertDialog open={showSemesterConfirm} onOpenChange={setShowSemesterConfirm}>
+        <AlertDialogContent className="bg-slate-900 border-slate-800 text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Change Teaching Semester</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400 space-y-2">
+              <p>
+                Are you sure you want to change your teaching semester to{' '}
+                <span className="font-semibold text-amber-300">
+                  {ACADEMIC_YEAR_OPTIONS.find((o) => o.value === newSemester)?.label}
+                </span>?
+              </p>
+              <ul className="text-xs text-slate-400 list-disc list-inside space-y-1">
+                <li>Updates your active teaching semester</li>
+                <li>Archives your previous semester's curriculum content</li>
+                <li>Archived units, lessons, and submissions remain safe in the Archives section</li>
+              </ul>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleUpdateSemester}
+              className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white"
+            >
+              Confirm Semester Change
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

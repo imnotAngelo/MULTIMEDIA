@@ -99,21 +99,7 @@ export function StudentQuizzes() {
             };
           });
 
-        // Verify completion for APIs that do not include submissions in the list response.
-        const quizzesWithSubmissions = await Promise.all(quizList.map(async (quiz: Quiz) => {
-          if (quiz.completed) return quiz;
-          try {
-            const submissionResponse = await authFetch(`/assessments/${quiz.id}/my-submission`);
-            if (!submissionResponse.ok) return quiz;
-            const submissionData = await submissionResponse.json();
-            const submission = submissionData?.data || null;
-            return submission ? { ...quiz, completed: true, submission } : quiz;
-          } catch {
-            return quiz;
-          }
-        }));
-
-        setQuizzes(quizzesWithSubmissions);
+        setQuizzes(quizList);
       } else {
         setQuizzes([]);
       }

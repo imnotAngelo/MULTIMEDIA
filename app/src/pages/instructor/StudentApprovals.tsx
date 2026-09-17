@@ -1,10 +1,22 @@
 import { useEffect, useState } from 'react';
-import { Check, RefreshCw, Trash2, UserCheck, Users } from 'lucide-react';
+import { Check, RefreshCw, Trash2, UserCheck, Users, Search } from 'lucide-react';
 import { AetherSpinner } from '@/components/AetherSpinner';
 import { authFetch } from '@/lib/authFetch';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AetherLoader } from '@/components/AetherLoader';
+import { toast } from 'sonner';
+import { useThemeStore } from '@/stores/themeStore';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface StudentRequest {
   student_approved: boolean;
@@ -18,13 +30,18 @@ interface StudentRequest {
 }
 
 export function StudentApprovals() {
+  const theme = useThemeStore((state) => state.theme);
+  const isLight = theme === 'light';
+
   const [requests, setRequests] = useState<StudentRequest[]>([]);
   const [students, setStudents] = useState<StudentRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [approvingId, setApprovingId] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [studentToDelete, setStudentToDelete] = useState<StudentRequest | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [sectionFilter, setSectionFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const loadRequests = async () => {
     setLoading(true);
@@ -45,7 +62,9 @@ export function StudentApprovals() {
       setRequests(payload.data || []);
       setStudents(studentsPayload.data || []);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'Could not load student requests');
+      const msg = requestError instanceof Error ? requestError.message : 'Could not load student requests';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -56,8 +75,17 @@ export function StudentApprovals() {
   }, []);
 
   const sections = Array.from(new Set([...requests, ...students].map((s) => s.section).filter(Boolean))).sort();
-  const matchesFilters = (student: StudentRequest) =>
-    sectionFilter === 'all' || student.section === sectionFilter;
+
+  const matchesFilters = (student: StudentRequest) => {
+    const matchesSection = sectionFilter === 'all' || student.section === sectionFilter;
+    const query = searchQuery.toLowerCase().trim();
+    const matchesSearch =
+      !query ||
+      student.full_name?.toLowerCase().includes(query) ||
+      student.email?.toLowerCase().includes(query);
+    return matchesSection && matchesSearch;
+  };
+
   const filteredRequests = requests.filter(matchesFilters);
   const filteredStudents = students.filter(matchesFilters);
 
@@ -72,109 +100,185 @@ export function StudentApprovals() {
       if (!response.ok || !payload.success) {
         throw new Error(payload.error?.message || 'Could not approve student');
       }
+      const approvedStudent = requests.find((r) => r.id === id);
       setRequests((current) => current.filter((request) => request.id !== id));
+      if (approvedStudent) {
+        setStudents((current) => [{ ...approvedStudent, student_approved: true }, ...current]);
+        toast.success(`${approvedStudent.full_name || 'Student'} approved successfully`);
+      } else {
+        toast.success('Student approved successfully');
+      }
     } catch (approveError) {
-      setError(approveError instanceof Error ? approveError.message : 'Could not approve student');
+      const msg = approveError instanceof Error ? approveError.message : 'Could not approve student';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setApprovingId(null);
     }
   };
 
-  const deleteStudent = async (id: string) => {
-    const studentToDelete = [...requests, ...students].find((student) => student.id === id);
-    const studentName = studentToDelete?.full_name || 'this student';
-
-    const confirmed = window.confirm(`Are you sure you want to permanently delete ${studentName}? This student will no longer belong to the classroom.`);
-    if (!confirmed) return;
-
-    setDeletingId(id);
+  const handleConfirmDelete = async () => {
+    if (!studentToDelete) return;
+    setIsDeleting(true);
     try {
-      const response = await authFetch(`/instructor/student-requests/${id}`, { method: 'DELETE' });
+      const response = await authFetch(`/instructor/student-requests/${studentToDelete.id}`, { method: 'DELETE' });
       const payload = await response.json();
       if (!response.ok || !payload.success) {
         throw new Error(payload.error?.message || 'Could not delete student');
       }
-      setRequests((current) => current.filter((request) => request.id !== id));
-      setStudents((current) => current.filter((student) => student.id !== id));
+      setRequests((current) => current.filter((request) => request.id !== studentToDelete.id));
+      setStudents((current) => current.filter((student) => student.id !== studentToDelete.id));
+      toast.success(`${studentToDelete.full_name} has been removed from the classroom`);
+      setStudentToDelete(null);
     } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : 'Could not delete student');
+      const msg = deleteError instanceof Error ? deleteError.message : 'Could not delete student';
+      setError(msg);
+      toast.error(msg);
     } finally {
-      setDeletingId(null);
+      setIsDeleting(false);
     }
   };
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <p className="text-sm font-medium text-violet-400">Access control</p>
-          <h1 className="mt-1 text-3xl font-bold text-white">Student approvals</h1>
-          <p className="mt-2 text-slate-400">Review students registered for your assigned sections before they can sign in.</p>
+          <p className="text-sm font-semibold tracking-wide text-violet-500 uppercase">Access control</p>
+          <h1 className={`mt-1 text-3xl font-bold tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
+            Student Approvals
+          </h1>
+          <p className={`mt-1 text-sm ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+            Review and manage student registrations for your assigned sections.
+          </p>
         </div>
-        <Button variant="outline" onClick={loadRequests} disabled={loading} className="border-slate-700 text-slate-200">
+        <Button
+          variant="outline"
+          onClick={loadRequests}
+          disabled={loading}
+          className={isLight ? 'border-slate-200 text-slate-700 hover:bg-slate-100 shadow-sm' : 'border-slate-700 text-slate-200 hover:bg-slate-800'}
+        >
           <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           Refresh
         </Button>
       </div>
 
-      {sections.length > 0 && (
-        <div className="flex flex-wrap items-center gap-3">
-          <label htmlFor="sectionFilter" className="text-sm text-slate-400">Filter students</label>
-          <select
-            id="sectionFilter"
-            value={sectionFilter}
-            onChange={(e) => setSectionFilter(e.target.value)}
-            className="h-9 rounded-md border border-slate-700 bg-slate-800/60 px-3 text-sm text-white focus:border-violet-500/50 focus:outline-none focus:ring-2 focus:ring-violet-500/30"
-          >
-            <option value="all">All sections</option>
-            {sections.map((s) => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
+      {/* Filter and Search Bar */}
+      <div className="flex flex-col sm:flex-row items-center gap-3">
+        <div className="relative flex-1 w-full">
+          <Search className={`w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 ${isLight ? 'text-slate-400' : 'text-slate-500'}`} />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search by student name or email..."
+            className={`w-full rounded-xl pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/40 transition-colors ${
+              isLight
+                ? 'bg-white border border-slate-200 text-slate-900 placeholder:text-slate-400 shadow-sm'
+                : 'bg-slate-800/60 border border-slate-700 text-white placeholder:text-slate-500'
+            }`}
+          />
         </div>
+        {sections.length > 0 && (
+          <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+            <select
+              id="sectionFilter"
+              value={sectionFilter}
+              onChange={(e) => setSectionFilter(e.target.value)}
+              className={`h-9.5 rounded-xl border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/30 transition-colors w-full sm:w-auto ${
+                isLight
+                  ? 'border-slate-200 bg-white text-slate-800 shadow-sm'
+                  : 'border-slate-700 bg-slate-800/60 text-white'
+              }`}
+            >
+              <option value="all">All sections ({sections.length})</option>
+              {sections.map((s) => (
+                <option key={s} value={s}>Section {s}</option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
+
+      {error && (
+        <p className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400">{error}</p>
       )}
 
-      {error && <p className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">{error}</p>}
-
-      <Card className="border-slate-800 bg-slate-900/70">
-        <CardHeader className="border-b border-slate-800">
-          <CardTitle className="flex items-center gap-3 text-white">
-            <Users className="h-5 w-5 text-violet-400" />
-            Pending requests
-            <span className="rounded-full bg-violet-500/15 px-2.5 py-0.5 text-sm text-violet-300">{filteredRequests.length}</span>
+      {/* Pending Requests Card */}
+      <Card className={`transition-colors overflow-hidden ${
+        isLight ? 'border-slate-200 bg-white shadow-sm' : 'border-slate-800 bg-slate-900/70'
+      }`}>
+        <CardHeader className={`border-b ${isLight ? 'border-slate-100 bg-slate-50/50' : 'border-slate-800'}`}>
+          <CardTitle className={`flex items-center gap-3 text-base font-semibold ${isLight ? 'text-slate-900' : 'text-white'}`}>
+            <div className="w-8 h-8 rounded-lg bg-violet-500/15 flex items-center justify-center">
+              <Users className="h-4 w-4 text-violet-500" />
+            </div>
+            Pending Approval Requests
+            <span className="rounded-full bg-violet-500/15 px-2.5 py-0.5 text-xs font-semibold text-violet-500">
+              {filteredRequests.length}
+            </span>
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           {loading ? (
             <AetherLoader compact label="Scanning student requests" />
           ) : filteredRequests.length === 0 ? (
-            <div className="flex flex-col items-center justify-center p-14 text-center">
-              <UserCheck className="h-10 w-10 text-emerald-400" />
-              <h2 className="mt-4 text-lg font-semibold text-white">All caught up</h2>
-              <p className="mt-1 text-sm text-slate-400">There are no students waiting for approval in your section.</p>
+            <div className="flex flex-col items-center justify-center p-12 text-center">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 mb-3">
+                <UserCheck className="h-6 w-6" />
+              </div>
+              <h2 className={`text-base font-semibold ${isLight ? 'text-slate-900' : 'text-white'}`}>All caught up</h2>
+              <p className={`mt-1 text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                {searchQuery ? 'No pending requests match your search.' : 'There are no students waiting for approval.'}
+              </p>
             </div>
           ) : (
-            <div className="divide-y divide-slate-800">
+            <div className={`divide-y ${isLight ? 'divide-slate-100' : 'divide-slate-800'}`}>
               {filteredRequests.map((request) => (
                 <div key={request.id} className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-4">
-                    <img src={getAvatarUrl(request)} alt={`${request.full_name} profile`} className="h-12 w-12 shrink-0 rounded-full border border-slate-700 bg-slate-800 object-cover" />
+                    <img
+                      src={getAvatarUrl(request)}
+                      alt={`${request.full_name} profile`}
+                      className={`h-11 w-11 shrink-0 rounded-full border object-cover shadow-sm ${
+                        isLight ? 'border-slate-200 bg-slate-100' : 'border-slate-700 bg-slate-800'
+                      }`}
+                    />
                     <div>
-                      <h2 className="font-semibold text-white">{request.full_name}</h2>
-                      <p className="text-sm text-slate-400">{request.email}</p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      Year {request.year_level} · Section {request.section} · Requested {new Date(request.created_at).toLocaleDateString()}
-                    </p>
+                      <h3 className={`font-medium ${isLight ? 'text-slate-900' : 'text-white'}`}>{request.full_name}</h3>
+                      <p className={`text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>{request.email}</p>
+                      <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+                        <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium border ${
+                          isLight ? 'bg-violet-50 text-violet-700 border-violet-200' : 'bg-violet-500/15 text-violet-300 border-violet-500/30'
+                        }`}>
+                          Year {request.year_level}
+                        </span>
+                        <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium border ${
+                          isLight ? 'bg-slate-100 text-slate-700 border-slate-200' : 'bg-slate-800 text-slate-300 border-slate-700'
+                        }`}>
+                          Section {request.section}
+                        </span>
+                        <span className={`text-[11px] ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
+                          Requested {new Date(request.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button onClick={() => approveRequest(request.id)} disabled={approvingId === request.id} className="bg-emerald-600 text-white hover:bg-emerald-500">
+                    <Button
+                      onClick={() => approveRequest(request.id)}
+                      disabled={approvingId === request.id}
+                      className="bg-emerald-600 text-white hover:bg-emerald-500 shadow-sm"
+                    >
                       {approvingId === request.id ? <AetherSpinner className="mr-2 h-4 w-4" /> : <Check className="mr-2 h-4 w-4" />}
-                      Approve student
+                      Approve
                     </Button>
-                    <Button onClick={() => deleteStudent(request.id)} disabled={deletingId === request.id} variant="destructive" className="bg-red-600 text-white hover:bg-red-500">
-                      {deletingId === request.id ? <AetherSpinner className="mr-2 h-4 w-4" /> : <Trash2 className="mr-2 h-4 w-4" />}
-                      Delete
+                    <Button
+                      onClick={() => setStudentToDelete(request)}
+                      variant="outline"
+                      className="border-rose-500/30 text-rose-500 hover:bg-rose-500/10 hover:text-rose-600"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Reject
                     </Button>
                   </div>
                 </div>
@@ -184,38 +288,74 @@ export function StudentApprovals() {
         </CardContent>
       </Card>
 
-      <Card className="border-slate-800 bg-slate-900/70">
-        <CardHeader className="border-b border-slate-800">
-          <CardTitle className="flex items-center gap-3 text-white">
-            <Users className="h-5 w-5 text-emerald-400" />
-            All students in your section
-            <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-sm text-emerald-300">{filteredStudents.length}</span>
+      {/* Enrolled Students Card */}
+      <Card className={`transition-colors overflow-hidden ${
+        isLight ? 'border-slate-200 bg-white shadow-sm' : 'border-slate-800 bg-slate-900/70'
+      }`}>
+        <CardHeader className={`border-b ${isLight ? 'border-slate-100 bg-slate-50/50' : 'border-slate-800'}`}>
+          <CardTitle className={`flex items-center gap-3 text-base font-semibold ${isLight ? 'text-slate-900' : 'text-white'}`}>
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center">
+              <Users className="h-4 w-4 text-emerald-500" />
+            </div>
+            Active Classroom Students
+            <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-semibold text-emerald-500">
+              {filteredStudents.length}
+            </span>
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           {filteredStudents.length === 0 ? (
-            <p className="p-8 text-center text-sm text-slate-400">No students found in your assigned section.</p>
+            <p className={`p-8 text-center text-sm ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+              {searchQuery ? 'No enrolled students match your search.' : 'No students enrolled in your assigned section.'}
+            </p>
           ) : (
-            <div className="divide-y divide-slate-800">
+            <div className={`divide-y ${isLight ? 'divide-slate-100' : 'divide-slate-800'}`}>
               {filteredStudents.map((student) => (
                 <div key={student.id} className="flex flex-col gap-2 p-5 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-4">
-                    <img src={getAvatarUrl(student)} alt={`${student.full_name} profile`} className="h-12 w-12 shrink-0 rounded-full border border-slate-700 bg-slate-800 object-cover" />
+                    <img
+                      src={getAvatarUrl(student)}
+                      alt={`${student.full_name} profile`}
+                      className={`h-11 w-11 shrink-0 rounded-full border object-cover shadow-sm ${
+                        isLight ? 'border-slate-200 bg-slate-100' : 'border-slate-700 bg-slate-800'
+                      }`}
+                    />
                     <div>
-                      <h2 className="font-semibold text-white">{student.full_name}</h2>
-                      <p className="text-sm text-slate-400">{student.email}</p>
-                      <p className="mt-1 text-xs text-slate-500">
-                        Year {student.year_level} · Section {student.section} · Joined {new Date(student.created_at).toLocaleDateString()}
-                      </p>
+                      <h3 className={`font-medium ${isLight ? 'text-slate-900' : 'text-white'}`}>{student.full_name}</h3>
+                      <p className={`text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>{student.email}</p>
+                      <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+                        <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium border ${
+                          isLight ? 'bg-violet-50 text-violet-700 border-violet-200' : 'bg-violet-500/15 text-violet-300 border-violet-500/30'
+                        }`}>
+                          Year {student.year_level}
+                        </span>
+                        <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium border ${
+                          isLight ? 'bg-slate-100 text-slate-700 border-slate-200' : 'bg-slate-800 text-slate-300 border-slate-700'
+                        }`}>
+                          Section {student.section}
+                        </span>
+                        <span className={`text-[11px] ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
+                          Joined {new Date(student.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className={`w-fit rounded-full border px-2.5 py-1 text-xs ${student.student_approved === false ? 'border-amber-500/30 bg-amber-500/10 text-amber-300' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'}`}>
-                      {student.student_approved === false ? 'Pending approval' : 'Approved'}
+                    <span className={`w-fit rounded-full border px-2.5 py-1 text-xs font-medium ${
+                      student.student_approved === false
+                        ? 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-300'
+                        : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300'
+                    }`}>
+                      {student.student_approved === false ? 'Pending approval' : 'Active'}
                     </span>
-                    <Button onClick={() => deleteStudent(student.id)} disabled={deletingId === student.id} variant="destructive" className="bg-red-600 text-white hover:bg-red-500">
-                      {deletingId === student.id ? <AetherSpinner className="mr-2 h-4 w-4" /> : <Trash2 className="mr-2 h-4 w-4" />}
-                      Delete
+                    <Button
+                      onClick={() => setStudentToDelete(student)}
+                      variant="ghost"
+                      size="icon"
+                      className="text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
+                      title="Remove student"
+                    >
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
@@ -224,6 +364,35 @@ export function StudentApprovals() {
           )}
         </CardContent>
       </Card>
+
+      {/* Delete / Reject Student Confirmation Modal */}
+      <AlertDialog open={Boolean(studentToDelete)} onOpenChange={(open) => !open && setStudentToDelete(null)}>
+        <AlertDialogContent className="bg-slate-900 border-slate-800 text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Student</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              Are you sure you want to permanently remove <span className="font-semibold text-slate-200">{studentToDelete?.full_name}</span>? This student will no longer have access to this classroom and their enrollment will be revoked.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting} className="bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isDeleting}
+              onClick={(e) => {
+                e.preventDefault();
+                handleConfirmDelete();
+              }}
+              className="bg-rose-600 hover:bg-rose-700 text-white"
+            >
+              {isDeleting ? 'Removing...' : 'Confirm Remove'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
+
+export default StudentApprovals;

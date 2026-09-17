@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { authFetch } from '@/lib/authFetch';
 import { notificationService } from '@/services/notificationService';
 import { SectionYearTargetPicker } from '@/components/SectionYearTargetPicker';
+import { toast } from 'sonner';
 
 interface Unit {
   id: string;
@@ -53,7 +54,7 @@ export function CreateAssessment() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title.trim() || !formData.unitId) {
-      alert('Please fill in all required fields');
+      toast.error('Please fill in all required fields');
       return;
     }
     try {
@@ -75,10 +76,11 @@ export function CreateAssessment() {
       if (!response.ok) {
         throw new Error(data.error?.message || 'Failed to create assessment');
       }
+      toast.success('Assessment created successfully');
       notificationService.notifyAssignmentAdded(formData.title);
       navigate('/instructor/assessments');
     } catch (err: any) {
-      alert('Failed to create assessment: ' + err.message);
+      toast.error('Failed to create assessment: ' + err.message);
     } finally {
       setSubmitting(false);
     }

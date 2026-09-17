@@ -30,6 +30,16 @@ import {
   DialogTitle,
   DialogTrigger
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { authFetch } from '@/lib/authFetch';
 import { notificationService } from '@/services/notificationService';
 import { cn } from '@/lib/utils';
@@ -352,6 +362,10 @@ export function CoursesManagement() {
   const [editAppName, setEditAppName] = useState('');
 
   const [editingUnitId, setEditingUnitId] = useState<string | null>(null);
+  const [unitToDelete, setUnitToDelete] = useState<Unit | null>(null);
+  const [lessonToDeleteId, setLessonToDeleteId] = useState<string | null>(null);
+  const [isDeletingUnit, setIsDeletingUnit] = useState(false);
+  const [isDeletingLesson, setIsDeletingLesson] = useState(false);
   const [editUnitTitle, setEditUnitTitle] = useState('');
   const [editUnitDescription, setEditUnitDescription] = useState('');
   const [savingUnit, setSavingUnit] = useState(false);
@@ -684,13 +698,16 @@ export function CoursesManagement() {
     setEditAppName(lesson.app_name || '');
   };
 
-  const handleDeleteUnit = async (unit: Unit) => {
-    if (!window.confirm(`Are you sure you want to delete "${unit.title}"? This will archive the unit and all its lessons.`)) {
-      return;
-    }
+  const handleDeleteUnit = (unit: Unit) => {
+    setUnitToDelete(unit);
+  };
+
+  const handleConfirmDeleteUnit = async () => {
+    if (!unitToDelete) return;
 
     try {
-      const response = await authFetch(`/units/${unit.id}`, {
+      setIsDeletingUnit(true);
+      const response = await authFetch(`/units/${unitToDelete.id}`, {
         method: 'DELETE',
       });
 
@@ -699,13 +716,16 @@ export function CoursesManagement() {
         throw new Error(data.error?.message || 'Failed to delete unit');
       }
 
-      toast.success('Unit deleted successfully');
+      toast.success(`"${unitToDelete.title}" deleted successfully`);
+      setUnitToDelete(null);
       await loadData();
       refreshSidebarCourseOutline();
       setActiveLessonId(null);
     } catch (error) {
       console.error('❌ Failed to delete unit:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to delete unit');
+    } finally {
+      setIsDeletingUnit(false);
     }
   };
 
@@ -751,13 +771,16 @@ export function CoursesManagement() {
     }
   };
 
-  const handleDeleteLesson = async (lessonId: string) => {
-    if (!window.confirm('Are you sure you want to delete this lesson?')) {
-      return;
-    }
+  const handleDeleteLesson = (lessonId: string) => {
+    setLessonToDeleteId(lessonId);
+  };
+
+  const handleConfirmDeleteLesson = async () => {
+    if (!lessonToDeleteId) return;
 
     try {
-      const response = await authFetch(`/units/lessons/${lessonId}`, {
+      setIsDeletingLesson(true);
+      const response = await authFetch(`/units/lessons/${lessonToDeleteId}`, {
         method: 'DELETE',
       });
 
@@ -767,14 +790,18 @@ export function CoursesManagement() {
       }
 
       toast.success('Lesson deleted successfully');
+      const deletedId = lessonToDeleteId;
+      setLessonToDeleteId(null);
       await loadData();
       refreshSidebarCourseOutline();
-      if (activeLessonId === lessonId) {
+      if (activeLessonId === deletedId) {
         setActiveLessonId(null);
       }
     } catch (error) {
       console.error('❌ Failed to delete lesson:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to delete lesson');
+    } finally {
+      setIsDeletingLesson(false);
     }
   };
 
@@ -1342,6 +1369,56 @@ export function CoursesManagement() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Unit Confirmation Dialog */}
+      <AlertDialog open={Boolean(unitToDelete)} onOpenChange={(open) => !open && setUnitToDelete(null)}>
+        <AlertDialogContent className="bg-slate-900 border-slate-800 text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Unit</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              Are you sure you want to delete <span className="font-semibold text-slate-200">"{unitToDelete?.title}"</span>? This will archive the unit and all its lessons.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeletingUnit} className="bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isDeletingUnit}
+              onClick={(e) => {
+                e.preventDefault();
+                handleConfirmDeleteUnit();
+              }}
+              className="bg-rose-600 hover:bg-rose-700 text-white"
+            >
+              {isDeletingUnit ? 'Deleting...' : 'Delete Unit'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Lesson Confirmation Dialog */}
+      <AlertDialog open={Boolean(lessonToDeleteId)} onOpenChange={(open) => !open && setLessonToDeleteId(null)}>
+        <AlertDialogContent className="bg-slate-900 border-slate-800 text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Lesson</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              Are you sure you want to delete this lesson? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeletingLesson} className="bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isDeletingLesson}
+              onClick={(e) => {
+                e.preventDefault();
+                handleConfirmDeleteLesson();
+              }}
+              className="bg-rose-600 hover:bg-rose-700 text-white"
+            >
+              {isDeletingLesson ? 'Deleting...' : 'Delete Lesson'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

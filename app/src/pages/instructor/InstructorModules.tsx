@@ -3,6 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import { BookOpen, Plus, Upload, Trash2, Eye, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { UploadLesson } from './UploadLesson';
 import { notificationService } from '@/services/notificationService';
 import { authFetch } from '@/lib/authFetch';
@@ -34,6 +45,7 @@ export function InstructorModules() {
   const [showUpload, setShowUpload] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [lessonToDelete, setLessonToDelete] = useState<Lesson | null>(null);
 
   useEffect(() => {
     loadUnits();
@@ -90,22 +102,22 @@ export function InstructorModules() {
     notificationService.notifyLessonAdded(newLesson.title, selectedUnit.title);
   };
 
-  const handleDeleteLesson = (lessonId: string) => {
-    if (!confirm('Are you sure you want to delete this lesson?')) return;
+  const handleConfirmDeleteLesson = () => {
+    if (!lessonToDelete || !selectedUnit) return;
 
-    if (selectedUnit) {
-      const updatedLessons = lessons.filter(lesson => lesson.id !== lessonId);
-      setLessons(updatedLessons);
+    const updatedLessons = lessons.filter(lesson => lesson.id !== lessonToDelete.id);
+    setLessons(updatedLessons);
 
-      // Update unit lesson count
-      const updatedUnits = units.map(unit =>
-        unit.id === selectedUnit.id
-          ? { ...unit, lessonCount: Math.max(0, unit.lessonCount - 1) }
-          : unit
-      );
-      setUnits(updatedUnits);
-      setSelectedUnit(updatedUnits.find(u => u.id === selectedUnit.id) || null);
-    }
+    // Update unit lesson count
+    const updatedUnits = units.map(unit =>
+      unit.id === selectedUnit.id
+        ? { ...unit, lessonCount: Math.max(0, unit.lessonCount - 1) }
+        : unit
+    );
+    setUnits(updatedUnits);
+    setSelectedUnit(updatedUnits.find(u => u.id === selectedUnit.id) || null);
+    toast.success(`"${lessonToDelete.title}" deleted`);
+    setLessonToDelete(null);
   };
 
   const handleViewLesson = (lesson: Lesson) => {
@@ -267,7 +279,7 @@ export function InstructorModules() {
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleDeleteLesson(lesson.id);
+                                    setLessonToDelete(lesson);
                                   }}
                                   title="Delete lesson"
                                   className="p-2 hover:bg-red-500/20 rounded-lg transition-colors text-red-400 hover:text-red-300"
@@ -295,6 +307,24 @@ export function InstructorModules() {
           )}
         </div>
       </div>
+
+      {/* Delete Lesson Confirmation Dialog */}
+      <AlertDialog open={Boolean(lessonToDelete)} onOpenChange={(open) => !open && setLessonToDelete(null)}>
+        <AlertDialogContent className="bg-slate-900 border-slate-800 text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Lesson</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              Are you sure you want to delete <span className="font-semibold text-slate-200">"{lessonToDelete?.title}"</span>? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDeleteLesson} className="bg-rose-600 hover:bg-rose-700 text-white">
+              Delete Lesson
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

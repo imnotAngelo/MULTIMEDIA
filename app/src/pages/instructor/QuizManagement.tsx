@@ -16,6 +16,17 @@ import {
   KeyRound,
 } from 'lucide-react';
 import { AetherLoader } from '@/components/AetherLoader';
+import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface Quiz {
   id: string;
@@ -63,6 +74,8 @@ export function QuizManagement() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [submissions, setSubmissions] = useState<Record<string, QuizSubmission[]>>({});
   const [submissionsLoading, setSubmissionsLoading] = useState<string | null>(null);
+  const [quizToDelete, setQuizToDelete] = useState<Quiz | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     // Check if user has valid token before loading
@@ -136,11 +149,12 @@ export function QuizManagement() {
     navigate('/instructor/quiz/create');
   };
 
-  const handleDeleteQuiz = async (quizId: string) => {
-    if (!confirm('Are you sure you want to delete this quiz?')) return;
+  const handleConfirmDelete = async () => {
+    if (!quizToDelete) return;
 
     try {
-      const response = await authFetch(`/assessments/${quizId}`, {
+      setIsDeleting(true);
+      const response = await authFetch(`/assessments/${quizToDelete.id}`, {
         method: 'DELETE',
       });
 
@@ -153,13 +167,16 @@ export function QuizManagement() {
       }
 
       if (response.ok) {
-        alert('Quiz deleted successfully!');
+        toast.success(`"${quizToDelete.title}" deleted successfully`);
+        setQuizToDelete(null);
         loadQuizzes();
       } else {
-        alert('Failed to delete quiz');
+        toast.error('Failed to delete quiz');
       }
     } catch {
-      alert('Error deleting quiz');
+      toast.error('Error deleting quiz');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -182,7 +199,7 @@ export function QuizManagement() {
       }
       setSubmissions((current) => ({ ...current, [quizId]: data.data || [] }));
     } catch (submissionError: any) {
-      alert(submissionError?.message || 'Could not load submissions');
+      toast.error(submissionError?.message || 'Could not load submissions');
     } finally {
       setSubmissionsLoading(null);
     }
@@ -493,7 +510,7 @@ export function QuizManagement() {
                         </>
                       )}
                       <Button
-                        onClick={() => handleDeleteQuiz(quiz.id)}
+                        onClick={() => setQuizToDelete(quiz)}
                         className="flex-1 bg-red-600 hover:bg-red-700 text-white"
                       >
                         <Trash2 className="w-4 h-4 mr-2" />
@@ -507,6 +524,30 @@ export function QuizManagement() {
           })}
         </div>
       )}
+
+      <AlertDialog open={Boolean(quizToDelete)} onOpenChange={(open) => !open && setQuizToDelete(null)}>
+        <AlertDialogContent className="bg-slate-900 border-slate-800 text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Quiz</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              Are you sure you want to delete <span className="font-semibold text-slate-200">"{quizToDelete?.title}"</span>? This will permanently remove the quiz and all associated student submissions. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting} className="bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isDeleting}
+              onClick={(e) => {
+                e.preventDefault();
+                handleConfirmDelete();
+              }}
+              className="bg-rose-600 hover:bg-rose-700 text-white"
+            >
+              {isDeleting ? 'Deleting...' : 'Delete Quiz'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
