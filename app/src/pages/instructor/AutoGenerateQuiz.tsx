@@ -23,6 +23,7 @@ import {
   Calendar,
   Eye,
   Check,
+  Lightbulb,
 } from 'lucide-react';
 import {
   Dialog,
@@ -33,6 +34,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import { Skeleton } from '@/components/ui/skeleton';
 import { AetherSpinner } from '@/components/AetherSpinner';
 import { SectionYearTargetPicker } from '@/components/SectionYearTargetPicker';
 import { useAuthStore } from '@/stores/authStore';
@@ -64,6 +66,7 @@ interface Question {
   points: number;
   options: QuestionOption[];
   correctAnswer?: string;
+  explanation?: string;
 }
 
 const QUESTION_TYPE_LABELS: Record<QuizType, string> = {
@@ -121,7 +124,6 @@ export function AutoGenerateQuiz() {
   const [lessonScope, setLessonScope] = useState<'all' | 'selected'>('selected');
   const [generatedQuestions, setGeneratedQuestions] = useState<Question[]>([]);
   const [targetSections, setTargetSections] = useState<string[]>([]);
-  const [targetYearLevels, setTargetYearLevels] = useState<number[]>([]);
   const [targetSectionInput, setTargetSectionInput] = useState('');
 
   // Duplicate Assessment Dialog
@@ -394,6 +396,7 @@ export function AutoGenerateQuiz() {
             points: Number(item.points) || formData.pointsByType[qType as QuizType] || 1,
             options,
             correctAnswer: item.correctAnswer || (options.find((o) => o.isCorrect)?.text ?? ''),
+            explanation: item.explanation || '',
           };
         });
 
@@ -456,6 +459,7 @@ export function AutoGenerateQuiz() {
         points: targetQ.points,
         options,
         correctAnswer: item.correctAnswer || (options.find((o) => o.isCorrect)?.text ?? ''),
+        explanation: item.explanation || '',
       };
 
       setGeneratedQuestions((prev) => {
@@ -486,6 +490,7 @@ export function AutoGenerateQuiz() {
         { id: `opt-4-${Date.now()}`, text: 'Option D', isCorrect: false },
       ],
       correctAnswer: 'Option A',
+      explanation: '',
     };
     setGeneratedQuestions((prev) => [...prev, newQ]);
     toast.success('Added new manual question at the end.');
@@ -520,6 +525,7 @@ export function AutoGenerateQuiz() {
           q.type === 'multiple-choice'
             ? q.options.find((o) => o.isCorrect)?.text || q.options[0]?.text
             : q.correctAnswer || undefined,
+        explanation: q.explanation || undefined,
       }));
 
       const payload = {
@@ -542,7 +548,6 @@ export function AutoGenerateQuiz() {
         questionCountsByType: formData.questionCountsByType,
         pointsByType: formData.pointsByType,
         targetSections,
-        targetYearLevels,
         allowDuplicate,
       };
 
@@ -667,9 +672,16 @@ export function AutoGenerateQuiz() {
             </div>
 
             {loadingUnits ? (
-              <div className="flex items-center justify-center py-12 gap-3">
-                <AetherSpinner className="w-6 h-6 text-violet-500" />
-                <span className={mutedTextClass}>Loading curriculum units...</span>
+              <div className="space-y-4 py-4">
+                <div className="flex items-center gap-2">
+                  <AetherSpinner className="w-4 h-4 text-violet-500" />
+                  <span className={`text-xs ${mutedTextClass}`}>Loading curriculum units...</span>
+                </div>
+                <Skeleton className="h-11 w-full rounded-lg" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <Skeleton className="h-20 rounded-lg" />
+                  <Skeleton className="h-20 rounded-lg" />
+                </div>
               </div>
             ) : units.length === 0 ? (
               <div className={nestedCardClass + ' text-center py-8 space-y-3'}>
@@ -762,14 +774,16 @@ export function AutoGenerateQuiz() {
 
                 {/* Target Audience */}
                 <div>
-                  <label className={`block text-sm mb-2 ${labelTextClass}`}>Target Sections & Year Levels</label>
+                  <label className={`block text-sm mb-2 ${labelTextClass}`}>Target Sections (Optional)</label>
                   <SectionYearTargetPicker
                     sections={targetSections}
-                    yearLevels={targetYearLevels}
+                    yearLevels={[]}
                     onSectionsChange={setTargetSections}
-                    onYearLevelsChange={setTargetYearLevels}
+                    onYearLevelsChange={() => {}}
                     sectionInput={targetSectionInput}
                     onSectionInputChange={setTargetSectionInput}
+                    showYearLevels={false}
+                    sectionOptions={user?.teaching_sections || []}
                   />
                 </div>
 
@@ -812,9 +826,9 @@ export function AutoGenerateQuiz() {
                 <div className="flex justify-end pt-4 border-t border-slate-200 dark:border-slate-800">
                   <Button
                     onClick={handleProceedToStep2}
-                    className="bg-violet-600 hover:bg-violet-700 text-white flex items-center gap-2 px-6"
+                    className="bg-violet-600 hover:bg-violet-700 text-white flex items-center gap-2 px-8 py-2.5 rounded-xl font-semibold shadow-md shadow-violet-600/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
                   >
-                    Next: Blueprint & Rules
+                    Next
                     <ChevronRight className="w-4 h-4" />
                   </Button>
                 </div>
@@ -1023,29 +1037,29 @@ export function AutoGenerateQuiz() {
             </div>
 
             {/* Navigation Buttons */}
-            <div className="flex justify-between pt-4 border-t border-slate-200 dark:border-slate-800">
+            <div className="flex items-center justify-between pt-4 border-t border-slate-200 dark:border-slate-800">
               <Button
                 variant="outline"
                 onClick={() => setCurrentStep(1)}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 px-6 py-2.5 rounded-xl font-medium"
               >
                 <ArrowLeft className="w-4 h-4" />
-                Back to Scope
+                Back
               </Button>
               <Button
                 onClick={handleGenerateQuestions}
                 disabled={generating}
-                className="bg-violet-600 hover:bg-violet-700 text-white flex items-center gap-2 px-6 shadow-lg shadow-violet-600/30"
+                className="bg-violet-600 hover:bg-violet-700 text-white flex items-center gap-2 px-8 py-2.5 rounded-xl font-semibold shadow-md shadow-violet-600/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
               >
                 {generating ? (
                   <>
                     <AetherSpinner className="w-4 h-4 text-white" />
-                    Generating Assessment...
+                    Generating...
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-4 h-4" />
-                    Generate Assessment with AI
+                    Next
+                    <ChevronRight className="w-4 h-4" />
                   </>
                 )}
               </Button>
@@ -1090,10 +1104,10 @@ export function AutoGenerateQuiz() {
                   variant="outline"
                   size="sm"
                   onClick={() => setCurrentStep(2)}
-                  className="flex items-center gap-1.5"
+                  className="flex items-center gap-1.5 rounded-lg"
                 >
                   <ArrowLeft className="w-4 h-4" />
-                  Edit Blueprint
+                  Back
                 </Button>
                 <Button
                   variant="outline"
@@ -1333,6 +1347,28 @@ export function AutoGenerateQuiz() {
                         />
                       </div>
                     )}
+
+                    {/* Pedagogical Explanation / Rationale */}
+                    <div className="space-y-1.5 pt-2 border-t border-slate-200 dark:border-slate-800">
+                      <div className="flex items-center gap-1.5 text-xs text-amber-500 font-semibold">
+                        <Lightbulb className="w-3.5 h-3.5" />
+                        <span>Pedagogical Rationale / Explanation:</span>
+                      </div>
+                      <textarea
+                        rows={2}
+                        value={q.explanation || ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setGeneratedQuestions((prev) => {
+                            const copy = [...prev];
+                            copy[qIndex].explanation = val;
+                            return copy;
+                          });
+                        }}
+                        className={fieldClass}
+                        placeholder="Why is this answer correct? Explanation provided to students upon quiz review..."
+                      />
+                    </div>
                   </div>
                 );
               })}

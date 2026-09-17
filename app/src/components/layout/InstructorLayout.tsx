@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
+import { Breadcrumbs } from './Breadcrumbs';
 import { useAuthStore } from '@/stores/authStore';
 
 export function InstructorLayout() {
@@ -22,6 +23,7 @@ export function InstructorLayout() {
           title="Instructor Dashboard"
         />
         <main className="min-w-0 flex-1 p-4 sm:p-6">
+          <Breadcrumbs />
           <Outlet />
         </main>
       </div>

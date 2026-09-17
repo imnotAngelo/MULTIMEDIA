@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
+import { Breadcrumbs } from './Breadcrumbs';
 import { useAuthStore } from '@/stores/authStore';
 
 export function StudentLayout() {
@@ -20,6 +21,7 @@ export function StudentLayout() {
       <div className="lg:ml-64 min-h-screen flex flex-col">
         <Header />
         <main className="flex-1 p-6">
+          <Breadcrumbs />
           <Outlet />
         </main>
       </div>

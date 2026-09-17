@@ -533,6 +533,7 @@ export function normalizeGeneratedQuestions(rawQuestions: any[], targetCount = 5
         points,
         options: shuffledOptions,
         correctAnswer,
+        explanation: String(item.explanation || '').trim(),
       });
     } else {
       const questionText = type === 'true-false'
@@ -546,6 +547,7 @@ export function normalizeGeneratedQuestions(rawQuestions: any[], targetCount = 5
         points,
         options: type === 'true-false' ? ['True', 'False'] : [],
         correctAnswer: answerValue,
+        explanation: String(item.explanation || '').trim(),
       });
     }
 
@@ -1846,10 +1848,12 @@ Do not use lesson titles, slide headings, navigation instructions, screenshot la
     "text": "Clear and professional question stem here?",
     "type": "multiple-choice | true-false | identification | enumeration | essay",
     "correctAnswer": "The correct answer or model answer",
-    "options": ["Option A", "Option B", "Option C", "Option D"]
+    "options": ["Option A", "Option B", "Option C", "Option D"],
+    "explanation": "A concise 1-2 sentence pedagogical rationale explaining why this answer is correct based on the lesson."
   }
 - For all non-multiple-choice questions, do not include an options array.
 - For multiple-choice, include exactly four options and the correctAnswer must match one option exactly.
+- Always provide a meaningful pedagogical explanation for every question.
 - Return only questions that meet these rules. Do not invent or recycle questions to reach the requested count.
 - The response must contain only the JSON array and nothing else.
 
