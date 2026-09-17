@@ -37,6 +37,7 @@ import { cn } from '@/lib/utils';
 import { AetherLoader } from '@/components/AetherLoader';
 import { SectionYearTargetPicker } from '@/components/SectionYearTargetPicker';
 import { ViewLesson } from './ViewLesson';
+import { useCourseTreeStore } from '@/stores/courseTreeStore';
 
 interface Unit {
   id: string;
@@ -303,6 +304,7 @@ function UnitSection({
 
 export function CoursesManagement() {
   const { user, isAuthenticated, isHydrated } = useAuthStore();
+  const { loadUserCourseTree, setUserCourseTree } = useCourseTreeStore();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const requestedUnitId = searchParams.get('unit');
@@ -347,15 +349,36 @@ export function CoursesManagement() {
   const [savingMetadata, setSavingMetadata] = useState(false);
   const [uploadingVideo, setUploadingVideo] = useState(false);
 
+  const refreshSidebarCourseOutline = () => {
+    window.dispatchEvent(new CustomEvent('aether-course-outline-refresh', {
+      detail: { userId: user?.id ?? null },
+    }));
+  };
+
   useEffect(() => {
-    if (isHydrated && isAuthenticated && user?.id) {
-      loadData();
+    if (!isHydrated) return;
+
+    if (!isAuthenticated || !user?.id) {
+      setUnits([]);
+      setLessons([]);
+      setExpandedUnits([]);
+      setActiveLessonId(null);
+      setLoading(false);
+      return;
     }
+
+    setUnits([]);
+    setLessons([]);
+    setExpandedUnits([]);
+    setActiveLessonId(null);
+    setLoading(true);
+    loadData();
   }, [isHydrated, isAuthenticated, user?.id]);
 
   useEffect(() => {
     const triggerQuickAction = () => {
-      const rawAction = sessionStorage.getItem('aether-course-quick-action');
+      const quickActionKey = user?.id ? `aether-course-quick-action:${user.id}` : 'aether-course-quick-action';
+      const rawAction = sessionStorage.getItem(quickActionKey) ?? sessionStorage.getItem('aether-course-quick-action');
       if (!rawAction) return;
 
       try {
@@ -366,12 +389,14 @@ export function CoursesManagement() {
           setActiveLessonId(null);
           setShowCreateUnitDialog(true);
           setShowUploadDialog(false);
+          sessionStorage.removeItem(quickActionKey);
           sessionStorage.removeItem('aether-course-quick-action');
           return;
         }
 
         const targetUnitId = quickAction.unitId || requestedUnitId || units[0]?.id || null;
         if (!targetUnitId) {
+          sessionStorage.removeItem(quickActionKey);
           sessionStorage.removeItem('aether-course-quick-action');
           return;
         }
@@ -380,8 +405,10 @@ export function CoursesManagement() {
         setSelectedUnitForUpload(targetUnitId);
         setShowUploadDialog(true);
         setShowCreateUnitDialog(false);
+        sessionStorage.removeItem(quickActionKey);
         sessionStorage.removeItem('aether-course-quick-action');
       } catch {
+        sessionStorage.removeItem(quickActionKey);
         sessionStorage.removeItem('aether-course-quick-action');
       }
     };
@@ -411,7 +438,7 @@ export function CoursesManagement() {
 
     window.addEventListener('aether-course-quick-action', onQuickAction);
     return () => window.removeEventListener('aether-course-quick-action', onQuickAction);
-  }, [requestedUnitId, units]);
+  }, [requestedUnitId, units, user?.id]);
 
   useEffect(() => {
     if (requestedView === 'units') {
@@ -440,49 +467,14 @@ export function CoursesManagement() {
   const loadData = async () => {
     try {
       setLoading(true);
-      console.log('📚 Fetching units from API...');
-      
-      const unitsResponse = await authFetch('/units', { cache: 'no-store' });
-      const unitsData = await unitsResponse.json();
-      if (!unitsResponse.ok || !unitsData.success) {
-        throw new Error(unitsData.error?.message || 'Could not load courses');
-      }
-      console.log('✅ Units fetched:', unitsData.data || []);
+      const tree = await loadUserCourseTree(user?.id ?? null);
+      const unitList: Unit[] = tree.units as Unit[];
+      const allLessons: Lesson[] = tree.lessons as Lesson[];
 
-      const unitList: Unit[] = unitsData.success ? (unitsData.data || []) : [];
-      
       setUnits(unitList);
-
-      const lessonResults = await Promise.all(unitList.map(async (unit) => {
-        const lessonsResponse = await authFetch(`/units/${unit.id}/lessons`);
-        const lessonsData = await lessonsResponse.json();
-        if (!lessonsResponse.ok || !lessonsData.success) {
-          throw new Error(lessonsData.error?.message || `Could not load lessons for ${unit.title}`);
-        }
-        const unitLessons = lessonsData.success ? lessonsData.data || [] : [];
-        console.log(`✅ Lessons for unit "${unit.title}": ${unitLessons.length}`);
-        return unitLessons.map((lesson: any) => ({
-          ...lesson,
-          unitId: unit.id,
-          pdfUrl: lesson.pdfUrl || lesson.pdf_url || '',
-          originalFormat: lesson.originalFormat || lesson.original_format || '',
-        }));
-      }));
-      const allLessons: Lesson[] = lessonResults.flat();
-
-      console.log('✅ Total lessons loaded:', allLessons.length);
-      
-      // 🎬 VIDEO DEBUGGING: Log which lessons have videos
-      const lessonsWithVideos = allLessons.filter(l => l.video_url);
-      console.log(`🎬 Instructor view - Lessons WITH videos: ${lessonsWithVideos.length}`, lessonsWithVideos);
-      
-      allLessons.forEach((lesson) => {
-        if (lesson.video_url) {
-          console.log(`  ✅ "${lesson.title}" has video: ${lesson.video_url.substring(0, 80)}...`);
-        }
-      });
-      
       setLessons(allLessons);
+      setUserCourseTree(user?.id ?? null, tree);
+      refreshSidebarCourseOutline();
 
       if (unitList.length > 0) {
         setExpandedUnits([unitList[0].id]);
@@ -604,7 +596,8 @@ export function CoursesManagement() {
 
       if (response.ok && data.success) {
         toast.success('Lesson updated successfully');
-        
+      refreshSidebarCourseOutline();
+
         // Update the lesson in state
         setLessons(prev =>
           prev.map(lesson =>
@@ -664,6 +657,7 @@ export function CoursesManagement() {
 
       toast.success('Unit deleted successfully');
       await loadData();
+      refreshSidebarCourseOutline();
       setActiveLessonId(null);
     } catch (error) {
       console.error('❌ Failed to delete unit:', error);
@@ -704,6 +698,7 @@ export function CoursesManagement() {
       setEditUnitTitle('');
       setEditUnitDescription('');
       await loadData();
+      refreshSidebarCourseOutline();
     } catch (error) {
       console.error('❌ Failed to update unit:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to update unit');
@@ -729,6 +724,7 @@ export function CoursesManagement() {
 
       toast.success('Lesson deleted successfully');
       await loadData();
+      refreshSidebarCourseOutline();
       if (activeLessonId === lessonId) {
         setActiveLessonId(null);
       }
@@ -806,6 +802,7 @@ export function CoursesManagement() {
 
         console.log('[RELOAD_START] Reloading course data...');
         await loadData();
+        refreshSidebarCourseOutline();
         console.log('[RELOAD_COMPLETE] Course data reloaded');
       } else {
         console.error('❌ Upload failed:', response.status, JSON.stringify(data.error || data));

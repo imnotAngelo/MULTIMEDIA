@@ -1,0 +1,18 @@
+[
+  {
+    "id": "unit-1",
+    "courseId": "course-a",
+    "instructorId": "real-user-a",
+    "title": "Unit A",
+    "description": "Owned by A",
+    "createdAt": "2026-09-17T06:15:15.928Z"
+  },
+  {
+    "id": "unit-2",
+    "courseId": "course-b",
+    "instructorId": "real-user-b",
+    "title": "Unit B",
+    "description": "Owned by B",
+    "createdAt": "2026-09-17T06:15:15.932Z"
+  }
+]

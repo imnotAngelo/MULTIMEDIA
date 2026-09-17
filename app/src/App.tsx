@@ -25,12 +25,30 @@ export function App() {
   const { isAuthenticated, user, isHydrated, verifySession } = useAuthStore();
   const { theme, setTheme } = useThemeStore();
 
-  // Verify session and apply theme on app load
+  // Verify session and clear stale persisted user identity before the UI renders the old account
   useEffect(() => {
+    const persistedUserId = (() => {
+      try {
+        const raw = localStorage.getItem('auth-storage');
+        if (!raw) return null;
+        return JSON.parse(raw)?.state?.user?.id ?? null;
+      } catch {
+        return null;
+      }
+    })();
+
+    if (persistedUserId && user && user.id && persistedUserId !== user.id) {
+      localStorage.removeItem('auth-storage');
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      window.location.reload();
+      return;
+    }
+
     verifySession();
     // Apply theme from store
     setTheme(theme);
-  }, [theme, setTheme]);
+  }, [theme, setTheme, user?.id, verifySession]);
 
   // Wait for auth state to hydrate from localStorage
   if (!isHydrated) {

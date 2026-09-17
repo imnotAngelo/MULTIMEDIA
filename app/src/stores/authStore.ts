@@ -35,10 +35,41 @@ interface AuthState {
 }
 
 const clearPersistedAuth = () => {
-  localStorage.removeItem('access_token');
-  localStorage.removeItem('refresh_token');
-  localStorage.removeItem('auth-storage');
-  sessionStorage.removeItem('aether-course-quick-action');
+  const localKeys = [
+    'access_token',
+    'refresh_token',
+    'auth-storage',
+    'notifications',
+    'theme-storage',
+    'aether-course-quick-action',
+  ];
+
+  localKeys.forEach((key) => {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // ignore storage access issues during hard reset
+    }
+  });
+
+  try {
+    const sessionKeys = [...Array(sessionStorage.length).keys()].map((index) => sessionStorage.key(index) || '').filter(Boolean);
+    sessionKeys.forEach((key) => sessionStorage.removeItem(key));
+    sessionStorage.clear();
+  } catch {
+    // ignore storage access issues during hard reset
+  }
+};
+
+const getPersistedUserId = () => {
+  try {
+    const raw = localStorage.getItem('auth-storage');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed?.state?.user?.id ?? null;
+  } catch {
+    return null;
+  }
 };
 
 export const useAuthStore = create<AuthState>()(
@@ -61,6 +92,11 @@ export const useAuthStore = create<AuthState>()(
 
         try {
           clearPersistedAuth();
+          try {
+            useAuthStore.persist?.clearStorage?.();
+          } catch {
+            // ignore persisted-state cleanup issues during login
+          }
           set({ user: null, isAuthenticated: false });
 
           const response = await api.login(email, password, adminSecret);
@@ -142,10 +178,22 @@ export const useAuthStore = create<AuthState>()(
         }
       },
       
-      login: (user) => set({ user, isAuthenticated: true, error: null }),
+      login: (user) => {
+        const persistedUserId = getPersistedUserId();
+        const activeUserId = user?.id ?? null;
+        if (persistedUserId && persistedUserId !== activeUserId) {
+          clearPersistedAuth();
+        }
+        set({ user, isAuthenticated: true, error: null });
+      },
       
       logout: () => {
         clearPersistedAuth();
+        try {
+          useAuthStore.persist?.clearStorage?.();
+        } catch {
+          // ignore persisted-state cleanup issues during logout
+        }
         set({ 
           user: null, 
           isAuthenticated: false, 
@@ -176,6 +224,20 @@ export const useAuthStore = create<AuthState>()(
 
           if (profileResponse?.success && profileResponse.data) {
             const serverUser = profileResponse.data?.user ?? profileResponse.data;
+            const persistedUserId = getPersistedUserId();
+            const currentUserId = (get().user as User | null)?.id ?? persistedUserId ?? null;
+
+            if (currentUserId && serverUser?.id && currentUserId !== serverUser.id) {
+              clearPersistedAuth();
+              set({
+                user: null,
+                isAuthenticated: false,
+                isHydrated: true,
+                error: null,
+              });
+              return false;
+            }
+
             set({
               user: serverUser as User,
               isAuthenticated: true,

@@ -1,0 +1,18 @@
+[
+  {
+    "id": "lesson-1",
+    "moduleId": "unit-1",
+    "instructorId": "real-user-a",
+    "title": "Lesson A",
+    "content": "A",
+    "createdAt": "2026-09-17T06:15:15.936Z"
+  },
+  {
+    "id": "lesson-2",
+    "moduleId": "unit-2",
+    "instructorId": "real-user-b",
+    "title": "Lesson B",
+    "content": "B",
+    "createdAt": "2026-09-17T06:15:15.938Z"
+  }
+]

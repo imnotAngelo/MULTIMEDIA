@@ -18,6 +18,17 @@ interface LocalLesson {
   graphicUrl?: string;
 }
 
+const LEGACY_DEFAULT_INSTRUCTOR_ID = '12345678-1234-4234-8234-123456789012';
+
+export function normalizeInstructorId(instructorId?: string | null): string | null {
+  if (typeof instructorId !== 'string') return null;
+  const normalized = instructorId.trim();
+  if (!normalized || normalized === 'anonymous' || normalized === LEGACY_DEFAULT_INSTRUCTOR_ID) {
+    return null;
+  }
+  return normalized;
+}
+
 const moduleDir = path.dirname(fileURLToPath(import.meta.url));
 const backendRoot = path.resolve(moduleDir, '..', '..');
 let lessonsStoreFilePath = path.join(backendRoot, 'data', 'lessons.json');
@@ -49,18 +60,17 @@ function writeLessonsStore(lessons: LocalLesson[]) {
 
 function sanitizeLocalLessons(lessons: LocalLesson[]): LocalLesson[] {
   return lessons.filter((lesson) => {
-    const hasOwner = typeof lesson?.instructorId === 'string' && lesson.instructorId.trim() !== '' && lesson.instructorId !== 'anonymous';
-    return Boolean(lesson?.id) && Boolean(lesson?.moduleId) && Boolean(lesson?.title) && hasOwner;
+    const ownerId = normalizeInstructorId(lesson?.instructorId);
+    return Boolean(lesson?.id) && Boolean(lesson?.moduleId) && Boolean(lesson?.title) && Boolean(ownerId);
   });
 }
 
 export function createLocalLesson(lesson: LocalLesson): LocalLesson {
   const lessons = sanitizeLocalLessons(readLessonsStore());
+  const normalizedInstructorId = normalizeInstructorId(lesson.instructorId);
   const nextLesson = {
     ...lesson,
-    instructorId: typeof lesson.instructorId === 'string' && lesson.instructorId.trim() !== '' && lesson.instructorId !== 'anonymous'
-      ? lesson.instructorId
-      : undefined,
+    instructorId: normalizedInstructorId ?? undefined,
     createdAt: lesson.createdAt || new Date().toISOString(),
   };
 
@@ -78,7 +88,11 @@ export function listLocalLessons(): LocalLesson[] {
 }
 
 export function listLocalLessonsForInstructor(instructorId: string): LocalLesson[] {
-  return sanitizeLocalLessons(readLessonsStore()).filter((lesson) => lesson.instructorId === instructorId);
+  const normalizedInstructorId = normalizeInstructorId(instructorId);
+  if (!normalizedInstructorId) return [];
+  return sanitizeLocalLessons(readLessonsStore()).filter(
+    (lesson) => normalizeInstructorId(lesson.instructorId) === normalizedInstructorId,
+  );
 }
 
 export function listLocalLessonsByModuleId(moduleId: string): LocalLesson[] {
@@ -86,8 +100,10 @@ export function listLocalLessonsByModuleId(moduleId: string): LocalLesson[] {
 }
 
 export function listLocalLessonsByModuleIdForInstructor(moduleId: string, instructorId: string): LocalLesson[] {
+  const normalizedInstructorId = normalizeInstructorId(instructorId);
+  if (!normalizedInstructorId) return [];
   return listLocalLessonsByModuleId(moduleId).filter(
-    (lesson) => lesson.instructorId === instructorId,
+    (lesson) => normalizeInstructorId(lesson.instructorId) === normalizedInstructorId,
   );
 }
 

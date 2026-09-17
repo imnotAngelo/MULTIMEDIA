@@ -14,6 +14,17 @@ interface LocalUnit {
   createdAt?: string;
 }
 
+const LEGACY_DEFAULT_INSTRUCTOR_ID = '12345678-1234-4234-8234-123456789012';
+
+export function normalizeInstructorId(instructorId?: string | null): string | null {
+  if (typeof instructorId !== 'string') return null;
+  const normalized = instructorId.trim();
+  if (!normalized || normalized === 'anonymous' || normalized === LEGACY_DEFAULT_INSTRUCTOR_ID) {
+    return null;
+  }
+  return normalized;
+}
+
 const moduleDir = path.dirname(fileURLToPath(import.meta.url));
 const backendRoot = path.resolve(moduleDir, '..', '..');
 let unitsStoreFilePath = path.join(backendRoot, 'data', 'units.json');
@@ -45,18 +56,17 @@ function writeUnitsStore(units: LocalUnit[]) {
 
 function sanitizeLocalUnits(units: LocalUnit[]): LocalUnit[] {
   return units.filter((unit) => {
-    const hasOwner = typeof unit?.instructorId === 'string' && unit.instructorId.trim() !== '' && unit.instructorId !== 'anonymous';
-    return Boolean(unit?.id) && Boolean(unit?.title) && hasOwner;
+    const ownerId = normalizeInstructorId(unit?.instructorId);
+    return Boolean(unit?.id) && Boolean(unit?.title) && Boolean(ownerId);
   });
 }
 
 export function createLocalUnit(unit: LocalUnit): LocalUnit {
   const units = sanitizeLocalUnits(readUnitsStore());
+  const normalizedInstructorId = normalizeInstructorId(unit.instructorId);
   const nextUnit = {
     ...unit,
-    instructorId: typeof unit.instructorId === 'string' && unit.instructorId.trim() !== '' && unit.instructorId !== 'anonymous'
-      ? unit.instructorId
-      : undefined,
+    instructorId: normalizedInstructorId ?? undefined,
     createdAt: unit.createdAt || new Date().toISOString(),
   };
 
@@ -74,7 +84,9 @@ export function listLocalUnits(): LocalUnit[] {
 }
 
 export function listLocalUnitsForInstructor(instructorId: string): LocalUnit[] {
-  return sanitizeLocalUnits(readUnitsStore()).filter((unit) => unit.instructorId === instructorId);
+  const normalizedInstructorId = normalizeInstructorId(instructorId);
+  if (!normalizedInstructorId) return [];
+  return sanitizeLocalUnits(readUnitsStore()).filter((unit) => normalizeInstructorId(unit.instructorId) === normalizedInstructorId);
 }
 
 export function getLocalUnitById(id: string): LocalUnit | undefined {

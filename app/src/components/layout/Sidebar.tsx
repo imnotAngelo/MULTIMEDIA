@@ -22,7 +22,7 @@ import { Button } from '@/components/ui/button';
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import { AetherLogo } from '@/components/AetherLogo';
-import { authFetch } from '@/lib/authFetch';
+import { useCourseTreeStore } from '@/stores/courseTreeStore';
 
 interface NavItem {
   label: string;
@@ -100,6 +100,8 @@ export function Sidebar({
   const location = useLocation();
   const navigate = useNavigate();
   const { logout, user: authUser } = useAuthStore();
+  const { cache, loadUserCourseTree } = useCourseTreeStore();
+  const quickActionStorageKey = authUser?.id ? `aether-course-quick-action:${authUser.id}` : 'aether-course-quick-action';
 
   const navItems = userRole === 'student'
     ? studentNavItems
@@ -114,60 +116,58 @@ export function Sidebar({
       return;
     }
 
-    let cancelled = false;
-    const loadCourseOutline = async () => {
+    if (!authUser?.id) {
       setCourseOutline([]);
       setExpandedCourseUnits([]);
+      return;
+    }
 
-      try {
-        const response = await authFetch('/units', { cache: 'no-store' });
-        const payload = await response.json();
-        if (!response.ok || !payload.success) return;
+    const tree = cache[authUser.id];
+    if (!tree) {
+      void loadUserCourseTree(authUser.id);
+      setCourseOutline([]);
+      setExpandedCourseUnits([]);
+      return;
+    }
 
-        const units = Array.isArray(payload.data) ? payload.data : [];
-        const outline = await Promise.all(units.map(async (unit: any) => {
-          try {
-            const lessonsResponse = await authFetch(`/units/${unit.id}/lessons`, { cache: 'no-store' });
-            const lessonsPayload = await lessonsResponse.json();
-            const lessons = lessonsResponse.ok && lessonsPayload.success && Array.isArray(lessonsPayload.data)
-              ? lessonsPayload.data
-              : [];
+    const outline = tree.units.map((unit) => {
+      const unitLessons = tree.lessons.filter((lesson: any) => lesson.unitId === unit.id);
+      return {
+        label: unit.title,
+        href: `/instructor/courses?unit=${encodeURIComponent(unit.id)}`,
+        icon: Layers,
+        subItems: unitLessons.map((lesson: any) => ({
+          label: lesson.title,
+          href: `/instructor/courses?unit=${encodeURIComponent(unit.id)}&lesson=${encodeURIComponent(lesson.id)}`,
+          icon: FileText,
+        })),
+      };
+    });
 
-            return {
-              label: unit.title,
-              href: `/instructor/courses?unit=${encodeURIComponent(unit.id)}`,
-              icon: Layers,
-              subItems: lessons.map((lesson: any) => ({
-                label: lesson.title,
-                href: `/instructor/courses?unit=${encodeURIComponent(unit.id)}&lesson=${encodeURIComponent(lesson.id)}`,
-                icon: FileText,
-              })),
-            };
-          } catch {
-            return {
-              label: unit.title,
-              href: `/instructor/courses?unit=${encodeURIComponent(unit.id)}`,
-              icon: Layers,
-              subItems: [],
-            };
-          }
-        }));
+    setCourseOutline(outline);
+    setExpandedCourseUnits(outline.map((unit) => unit.href));
+  }, [userRole, authUser?.id, cache]);
 
-        if (!cancelled) {
-          setCourseOutline(outline);
-          setExpandedCourseUnits(outline.map((unit) => unit.href));
-        }
-      } catch {
-        if (!cancelled) {
-          setCourseOutline([]);
-          setExpandedCourseUnits([]);
-        }
+  useEffect(() => {
+    if (userRole === 'instructor') {
+      setExpandedItems((prev) => (prev.includes('Units & Lessons') ? prev : [...prev, 'Units & Lessons']));
+    }
+  }, [userRole, authUser?.id]);
+
+  useEffect(() => {
+    if (userRole !== 'instructor') return;
+
+    const handleRefresh = (e: Event) => {
+      const customEvent = e as CustomEvent<{ userId?: string | null }>;
+      const targetUserId = customEvent.detail?.userId ?? authUser?.id;
+      if (targetUserId) {
+        void loadUserCourseTree(targetUserId);
       }
     };
 
-    loadCourseOutline();
-    return () => { cancelled = true; };
-  }, [userRole, authUser?.id]);
+    window.addEventListener('aether-course-outline-refresh', handleRefresh);
+    return () => window.removeEventListener('aether-course-outline-refresh', handleRefresh);
+  }, [userRole, authUser?.id, loadUserCourseTree]);
 
   const resolvedNavItems = navItems.map((item) => (
     item.label === 'Units & Lessons' && userRole === 'instructor'
@@ -183,7 +183,8 @@ export function Sidebar({
 
   const handleQuickAdd = (mode: 'unit' | 'lesson', unitId?: string) => {
     const quickAction = { mode, unitId: unitId ?? null };
-    sessionStorage.setItem('aether-course-quick-action', JSON.stringify(quickAction));
+    sessionStorage.setItem(quickActionStorageKey, JSON.stringify(quickAction));
+    sessionStorage.removeItem('aether-course-quick-action');
 
     setIsMobileMenuOpen(false);
 
@@ -221,7 +222,8 @@ export function Sidebar({
         <div className="space-y-1">
           {resolvedNavItems.map((item) => {
             const isExpanded = expandedItems.includes(item.label);
-            const hasSubItems = item.subItems && item.subItems.length > 0;
+            const isUnitsAndLessons = item.label === 'Units & Lessons' && userRole === 'instructor';
+            const hasSubItems = Boolean((item.subItems && item.subItems.length > 0) || isUnitsAndLessons);
             const isActive = location.pathname === item.href.split('?')[0] ||
               item.subItems?.some(sub => `${location.pathname}${location.search}` === sub.href);
 
@@ -255,6 +257,8 @@ export function Sidebar({
                   </NavLink>
                   {hasSubItems && (
                     <button
+                      type="button"
+                      aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${item.label}`}
                       onClick={() => toggleExpanded(item.label)}
                       className="rounded-md px-2 py-2.5 text-slate-300 hover:bg-slate-800/60 hover:text-teal-200"
                     >
@@ -287,90 +291,94 @@ export function Sidebar({
                       </button>
                     )}
 
-                    {item.subItems!.map((subItem) => {
-                      const unitId = new URLSearchParams((subItem.href.split('?')[1] ?? '')).get('unit') ?? undefined;
-                      const hasLessonItems = Boolean(subItem.subItems?.length);
+                    {item.subItems && item.subItems.length > 0 ? (
+                      item.subItems.map((subItem) => {
+                        const unitId = new URLSearchParams((subItem.href.split('?')[1] ?? '')).get('unit') ?? undefined;
+                        const hasLessonItems = Boolean(subItem.subItems?.length);
 
-                      return (
-                        <div key={subItem.href}>
-                          <div className="flex items-center">
-                            <NavLink
-                              to={subItem.href}
-                              onClick={() => {
-                                if (!expandedCourseUnits.includes(subItem.href)) {
-                                  setExpandedCourseUnits((current) => [...current, subItem.href]);
+                        return (
+                          <div key={subItem.href}>
+                            <div className="flex items-center">
+                              <NavLink
+                                to={subItem.href}
+                                onClick={() => {
+                                  if (!expandedCourseUnits.includes(subItem.href)) {
+                                    setExpandedCourseUnits((current) => [...current, subItem.href]);
+                                  }
+                                  setIsMobileMenuOpen(false);
+                                }}
+                                className={({ isActive: subActive }) =>
+                                  cn(
+                                    'sidebar-subnav-link flex min-w-0 flex-1 items-center gap-3 rounded-lg px-3 py-2 pl-4 text-[12px] font-medium transition-all duration-200',
+                                    subActive
+                                      ? 'border-l-2 border-teal-300 bg-teal-400/10 text-teal-200'
+                                      : 'border-l-2 border-transparent text-slate-300 hover:bg-slate-800/60 hover:text-white'
+                                  )
                                 }
-                                setIsMobileMenuOpen(false);
-                              }}
-                              className={({ isActive: subActive }) =>
-                                cn(
-                                  'sidebar-subnav-link flex min-w-0 flex-1 items-center gap-3 rounded-lg px-3 py-2 pl-4 text-[12px] font-medium transition-all duration-200',
-                                  subActive
-                                    ? 'border-l-2 border-teal-300 bg-teal-400/10 text-teal-200'
-                                    : 'border-l-2 border-transparent text-slate-300 hover:bg-slate-800/60 hover:text-white'
-                                )
-                              }
-                            >
-                              <subItem.icon className="h-4 w-4 shrink-0" />
-                              <span className="truncate">{subItem.label}</span>
-                            </NavLink>
-                            <button
-                              type="button"
-                              aria-label={`${expandedCourseUnits.includes(subItem.href) ? 'Hide' : 'Show'} lessons for ${subItem.label}`}
-                              aria-expanded={expandedCourseUnits.includes(subItem.href)}
-                              onClick={() => setExpandedCourseUnits((current) => (
-                                current.includes(subItem.href)
-                                  ? current.filter((href) => href !== subItem.href)
-                                  : [...current, subItem.href]
-                              ))}
-                              className="mr-1 rounded p-1.5 text-slate-300 hover:bg-slate-800 hover:text-teal-200"
-                            >
-                              <svg
-                                className={cn('h-3.5 w-3.5 transition-transform', expandedCourseUnits.includes(subItem.href) && 'rotate-180')}
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
                               >
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                              </svg>
-                            </button>
-                          </div>
-                          {expandedCourseUnits.includes(subItem.href) && (
-                            <div className="ml-4 border-l border-slate-800/80 pl-2 space-y-1">
-                              {hasLessonItems && subItem.subItems!.map((lessonItem) => (
-                                <NavLink
-                                  key={lessonItem.href}
-                                  to={lessonItem.href}
-                                  onClick={() => setIsMobileMenuOpen(false)}
-                                  className={({ isActive: lessonActive }) => cn(
-                                    'sidebar-lesson-link flex items-center gap-2 rounded-md px-3 py-1.5 text-[11px] transition-colors',
-                                    lessonActive
-                                      ? 'bg-teal-400/10 text-teal-200'
-                                      : 'text-slate-300 hover:bg-slate-800/60 hover:text-white'
-                                  )}
-                                >
-                                  <FileText className="h-3 w-3 shrink-0" />
-                                  <span className="truncate">{lessonItem.label}</span>
-                                </NavLink>
-                              ))}
-
-                              {!hasLessonItems && (
-                                <p className="px-3 py-1 text-[11px] text-slate-400">No lessons yet</p>
-                              )}
-
+                                <subItem.icon className="h-4 w-4 shrink-0" />
+                                <span className="truncate">{subItem.label}</span>
+                              </NavLink>
                               <button
                                 type="button"
-                                onClick={() => handleQuickAdd('lesson', unitId)}
-                                className="sidebar-quick-action sidebar-quick-action--lesson flex w-full items-center gap-2 rounded-md border px-3 py-1.5 text-left text-[11px] font-semibold transition-colors"
+                                aria-label={`${expandedCourseUnits.includes(subItem.href) ? 'Hide' : 'Show'} lessons for ${subItem.label}`}
+                                aria-expanded={expandedCourseUnits.includes(subItem.href)}
+                                onClick={() => setExpandedCourseUnits((current) => (
+                                  current.includes(subItem.href)
+                                    ? current.filter((href) => href !== subItem.href)
+                                    : [...current, subItem.href]
+                                ))}
+                                className="mr-1 rounded p-1.5 text-slate-300 hover:bg-slate-800 hover:text-teal-200"
                               >
-                                <Plus className="h-3.5 w-3.5" />
-                                Add Lesson
+                                <svg
+                                  className={cn('h-3.5 w-3.5 transition-transform', expandedCourseUnits.includes(subItem.href) && 'rotate-180')}
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
                               </button>
                             </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                            {expandedCourseUnits.includes(subItem.href) && (
+                              <div className="ml-4 border-l border-slate-800/80 pl-2 space-y-1">
+                                {hasLessonItems && subItem.subItems!.map((lessonItem) => (
+                                  <NavLink
+                                    key={lessonItem.href}
+                                    to={lessonItem.href}
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                    className={({ isActive: lessonActive }) => cn(
+                                      'sidebar-lesson-link flex items-center gap-2 rounded-md px-3 py-1.5 text-[11px] transition-colors',
+                                      lessonActive
+                                        ? 'bg-teal-400/10 text-teal-200'
+                                        : 'text-slate-300 hover:bg-slate-800/60 hover:text-white'
+                                    )}
+                                  >
+                                    <FileText className="h-3 w-3 shrink-0" />
+                                    <span className="truncate">{lessonItem.label}</span>
+                                  </NavLink>
+                                ))}
+
+                                {!hasLessonItems && (
+                                  <p className="px-3 py-1 text-[11px] text-slate-400">No lessons yet</p>
+                                )}
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleQuickAdd('lesson', unitId)}
+                                  className="sidebar-quick-action sidebar-quick-action--lesson flex w-full items-center gap-2 rounded-md border px-3 py-1.5 text-left text-[11px] font-semibold transition-colors"
+                                >
+                                  <Plus className="h-3.5 w-3.5" />
+                                  Add Lesson
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })
+                    ) : isUnitsAndLessons ? (
+                      <p className="px-3 py-1.5 text-[11px] text-slate-400">No units yet</p>
+                    ) : null}
                   </div>
                 )}
               </div>

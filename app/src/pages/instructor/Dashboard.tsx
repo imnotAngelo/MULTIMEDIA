@@ -52,8 +52,19 @@ export function InstructorDashboard() {
   });
 
   useEffect(() => {
+    if (!user?.id) {
+      setUnits([]);
+      setLessons([]);
+      setStudents([]);
+      setLoading(false);
+      return;
+    }
+
+    setUnits([]);
+    setLessons([]);
+    setStudents([]);
     loadUnitsAndLessons();
-  }, []);
+  }, [user?.id]);
 
 
 

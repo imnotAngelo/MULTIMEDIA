@@ -166,8 +166,18 @@ export function AutoGenerateQuiz() {
     : Object.values(formData.questionCountsByType).reduce((sum, count) => sum + (count || 0), 0);
 
   useEffect(() => {
+    if (!user?.id) {
+      setUnits([]);
+      setLessons([]);
+      setSelectedUnit('');
+      setSelectedLessons([]);
+      return;
+    }
+
+    setSelectedUnit('');
+    setSelectedLessons([]);
     fetchUnits();
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
     if (selectedUnit) {
@@ -182,7 +192,7 @@ export function AutoGenerateQuiz() {
   const fetchUnits = async () => {
     try {
       setLoadingUnits(true);
-      const response = await authFetch('/units');
+      const response = await authFetch('/units', { cache: 'no-store' });
 
       if (response.ok) {
         const data = await response.json();
