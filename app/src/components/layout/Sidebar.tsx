@@ -279,6 +279,7 @@ export function Sidebar({
 
                     {item.subItems!.map((subItem) => {
                       const unitId = new URLSearchParams((subItem.href.split('?')[1] ?? '')).get('unit') ?? undefined;
+                      const hasLessonItems = Boolean(subItem.subItems?.length);
 
                       return (
                         <div key={subItem.href}>
@@ -286,7 +287,7 @@ export function Sidebar({
                             <NavLink
                               to={subItem.href}
                               onClick={() => {
-                                if (subItem.subItems && subItem.subItems.length > 0 && !expandedCourseUnits.includes(subItem.href)) {
+                                if (!expandedCourseUnits.includes(subItem.href)) {
                                   setExpandedCourseUnits((current) => [...current, subItem.href]);
                                 }
                                 setIsMobileMenuOpen(false);
@@ -303,32 +304,30 @@ export function Sidebar({
                               <subItem.icon className="h-4 w-4 shrink-0" />
                               <span className="truncate">{subItem.label}</span>
                             </NavLink>
-                            {subItem.subItems && subItem.subItems.length > 0 && (
-                              <button
-                                type="button"
-                                aria-label={`${expandedCourseUnits.includes(subItem.href) ? 'Hide' : 'Show'} lessons for ${subItem.label}`}
-                                aria-expanded={expandedCourseUnits.includes(subItem.href)}
-                                onClick={() => setExpandedCourseUnits((current) => (
-                                  current.includes(subItem.href)
-                                    ? current.filter((href) => href !== subItem.href)
-                                    : [...current, subItem.href]
-                                ))}
-                                className="mr-1 rounded p-1.5 text-slate-300 hover:bg-slate-800 hover:text-teal-200"
+                            <button
+                              type="button"
+                              aria-label={`${expandedCourseUnits.includes(subItem.href) ? 'Hide' : 'Show'} lessons for ${subItem.label}`}
+                              aria-expanded={expandedCourseUnits.includes(subItem.href)}
+                              onClick={() => setExpandedCourseUnits((current) => (
+                                current.includes(subItem.href)
+                                  ? current.filter((href) => href !== subItem.href)
+                                  : [...current, subItem.href]
+                              ))}
+                              className="mr-1 rounded p-1.5 text-slate-300 hover:bg-slate-800 hover:text-teal-200"
+                            >
+                              <svg
+                                className={cn('h-3.5 w-3.5 transition-transform', expandedCourseUnits.includes(subItem.href) && 'rotate-180')}
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
                               >
-                                <svg
-                                  className={cn('h-3.5 w-3.5 transition-transform', expandedCourseUnits.includes(subItem.href) && 'rotate-180')}
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                </svg>
-                              </button>
-                            )}
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
                           </div>
-                          {subItem.subItems && subItem.subItems.length > 0 && expandedCourseUnits.includes(subItem.href) && (
+                          {expandedCourseUnits.includes(subItem.href) && (
                             <div className="ml-4 border-l border-slate-800/80 pl-2 space-y-1">
-                              {subItem.subItems.map((lessonItem) => (
+                              {hasLessonItems && subItem.subItems!.map((lessonItem) => (
                                 <NavLink
                                   key={lessonItem.href}
                                   to={lessonItem.href}
@@ -344,6 +343,10 @@ export function Sidebar({
                                   <span className="truncate">{lessonItem.label}</span>
                                 </NavLink>
                               ))}
+
+                              {!hasLessonItems && (
+                                <p className="px-3 py-1 text-[11px] text-slate-400">No lessons yet</p>
+                              )}
 
                               <button
                                 type="button"
