@@ -1,6 +1,7 @@
-import { Bell, Sparkles, LogOut as LogOutIcon, CheckCheck } from 'lucide-react';
+import { Bell, Sparkles, LogOut as LogOutIcon, CheckCheck, Search } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Button } from '@/components/ui/button';
+import { CommandPalette } from '@/components/CommandPalette';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,7 +14,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { authFetch } from '@/lib/authFetch';
 import { useNavigate } from 'react-router-dom';
-import { useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 interface HeaderProps {
   title?: string;
@@ -169,6 +170,8 @@ export function Header({ title, subtitle }: HeaderProps) {
     return `${days} day${days > 1 ? 's' : ''} ago`;
   };
 
+  const [commandOpen, setCommandOpen] = useState(false);
+
   return (
     <header className="h-14 border-b border-teal-400/20 bg-slate-950/65 backdrop-blur-xl flex items-center justify-between px-6 sticky top-0 z-30 aether-header">
       {/* Left Section */}
@@ -180,6 +183,25 @@ export function Header({ title, subtitle }: HeaderProps) {
           </div>
         )}
       </div>
+
+      {/* Center Search / Command Palette Shortcut */}
+      <div className="flex-1 max-w-sm mx-4 hidden md:block">
+        <button
+          type="button"
+          onClick={() => setCommandOpen(true)}
+          className="w-full flex items-center justify-between px-3 py-1.5 rounded-lg border border-slate-700/60 bg-slate-900/50 hover:bg-slate-900 hover:border-violet-500/50 text-xs text-slate-400 transition-all shadow-sm group"
+        >
+          <div className="flex items-center gap-2">
+            <Search className="w-3.5 h-3.5 text-slate-400 group-hover:text-violet-400 transition-colors" />
+            <span className="group-hover:text-slate-300">Quick search or jump to...</span>
+          </div>
+          <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-0.5 rounded border border-slate-700 bg-slate-800 px-1.5 font-mono text-[10px] font-medium text-slate-400">
+            <span>Ctrl</span>K
+          </kbd>
+        </button>
+      </div>
+
+      <CommandPalette open={commandOpen} onOpenChange={setCommandOpen} />
 
       {/* Right Section */}
       <div className="flex items-center gap-4">

@@ -319,6 +319,14 @@ export function Sidebar({
                       item.subItems.map((subItem) => {
                         const unitId = subItem.unitId || (new URLSearchParams(subItem.href.split('?')[1] || '').get('unit') || undefined);
                         const hasLessonItems = Boolean(subItem.subItems?.length);
+                        const currentSearchParams = new URLSearchParams(location.search);
+                        const activeUnitId = currentSearchParams.get('unit');
+                        const activeLessonId = currentSearchParams.get('lesson');
+
+                        // Check exact active state for unit
+                        const isThisUnitActive = location.pathname.startsWith('/lessons')
+                          ? (activeUnitId ? activeUnitId === unitId : false)
+                          : location.pathname.includes(`/instructor/courses`) && activeUnitId === unitId;
 
                         return (
                           <div key={subItem.href}>
@@ -331,16 +339,14 @@ export function Sidebar({
                                   }
                                   setIsMobileMenuOpen(false);
                                 }}
-                                className={({ isActive: subActive }) =>
-                                  cn(
-                                    'sidebar-subnav-link flex min-w-0 flex-1 items-center gap-3 rounded-lg px-3 py-2 pl-4 text-[12px] font-medium transition-all duration-200',
-                                    subActive
-                                      ? 'border-l-2 border-teal-300 bg-teal-400/10 text-teal-200'
-                                      : 'border-l-2 border-transparent text-slate-300 hover:bg-slate-800/60 hover:text-white'
-                                  )
-                                }
+                                className={cn(
+                                  'sidebar-subnav-link flex min-w-0 flex-1 items-center gap-2.5 rounded-xl px-3 py-2 text-[12px] font-semibold transition-all duration-200',
+                                  isThisUnitActive
+                                    ? '!bg-violet-500/15 !text-violet-700 dark:!text-violet-300 border-l-2 !border-violet-500 shadow-sm'
+                                    : 'border-l-2 border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-200'
+                                )}
                               >
-                                <subItem.icon className="h-4 w-4 shrink-0" />
+                                <subItem.icon className={cn('h-4 w-4 shrink-0', isThisUnitActive ? 'text-violet-600 dark:text-violet-400' : 'text-slate-400')} />
                                 <span className="truncate">{subItem.label}</span>
                               </NavLink>
                               <button
@@ -352,10 +358,10 @@ export function Sidebar({
                                     ? current.filter((href) => href !== subItem.href)
                                     : [...current, subItem.href]
                                 ))}
-                                className="mr-1 rounded p-1.5 text-slate-300 hover:bg-slate-800 hover:text-teal-200"
+                                className="mr-1 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-violet-500 transition-colors"
                               >
                                 <svg
-                                  className={cn('h-3.5 w-3.5 transition-transform', expandedCourseUnits.includes(subItem.href) && 'rotate-180')}
+                                  className={cn('h-3.5 w-3.5 transition-transform duration-200', expandedCourseUnits.includes(subItem.href) && 'rotate-180')}
                                   fill="none"
                                   stroke="currentColor"
                                   viewBox="0 0 24 24"
@@ -365,23 +371,31 @@ export function Sidebar({
                               </button>
                             </div>
                             {expandedCourseUnits.includes(subItem.href) && (
-                              <div className="ml-4 border-l border-slate-800/80 pl-2 space-y-1">
-                                {hasLessonItems && subItem.subItems!.map((lessonItem) => (
-                                  <NavLink
-                                    key={lessonItem.href}
-                                    to={lessonItem.href}
-                                    onClick={() => setIsMobileMenuOpen(false)}
-                                    className={({ isActive: lessonActive }) => cn(
-                                      'sidebar-lesson-link flex items-center gap-2 rounded-md px-3 py-1.5 text-[11px] transition-colors',
-                                      lessonActive
-                                        ? 'bg-teal-400/10 text-teal-200'
-                                        : 'text-slate-300 hover:bg-slate-800/60 hover:text-white'
-                                    )}
-                                  >
-                                    <FileText className="h-3 w-3 shrink-0" />
-                                    <span className="truncate">{lessonItem.label}</span>
-                                  </NavLink>
-                                ))}
+                              <div className="ml-4 border-l border-slate-200 dark:border-slate-800/80 pl-2 space-y-1 my-1">
+                                {hasLessonItems && subItem.subItems!.map((lessonItem) => {
+                                  const lessonUrlParams = new URLSearchParams(lessonItem.href.split('?')[1] || '');
+                                  const lessonTargetId = lessonUrlParams.get('lesson');
+                                  const isThisLessonActive = location.pathname.startsWith('/lessons')
+                                    ? activeLessonId === lessonTargetId
+                                    : location.pathname.includes(`/instructor/lesson/`);
+
+                                  return (
+                                    <NavLink
+                                      key={lessonItem.href}
+                                      to={lessonItem.href}
+                                      onClick={() => setIsMobileMenuOpen(false)}
+                                      className={cn(
+                                        'sidebar-lesson-link flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition-all',
+                                        isThisLessonActive
+                                          ? '!bg-violet-600/15 !text-violet-700 dark:!text-violet-300 font-bold border-l-2 !border-violet-500'
+                                          : 'border-l-2 border-transparent text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200'
+                                      )}
+                                    >
+                                      <FileText className={cn('h-3 w-3 shrink-0', isThisLessonActive ? 'text-violet-500' : 'text-slate-400')} />
+                                      <span className="truncate">{lessonItem.label}</span>
+                                    </NavLink>
+                                  );
+                                })}
 
                                 {!hasLessonItems && (
                                   <p className="px-3 py-1 text-[11px] text-slate-400">No lessons yet</p>

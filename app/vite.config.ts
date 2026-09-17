@@ -39,8 +39,7 @@ export default defineConfig({
             if (id.includes('pdfjs-dist') || id.includes('jspdf') || id.includes('@cyntler')) return 'vendor-pdf';
             if (id.includes('framer-motion')) return 'vendor-motion';
             if (id.includes('lucide-react')) return 'vendor-icons';
-            if (id.includes('@radix-ui')) return 'vendor-ui';
-            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) return 'vendor-react';
+            if (id.includes('@radix-ui') || id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) return 'vendor-react';
           }
         },
       },

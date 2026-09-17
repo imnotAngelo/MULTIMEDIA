@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { 
   BookOpen, 
   RefreshCw,
   Video,
   Link as LinkIcon,
-  ExternalLink
+  ExternalLink,
+  Zap,
+  Layers,
+  Sparkles,
+  FileText
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { authFetch } from '@/lib/authFetch';
@@ -56,6 +60,7 @@ function getVideoMimeType(url: string): string {
 }
 
 export function Lessons() {
+  const navigate = useNavigate();
   const { user } = useAuthStore();
   const { setUserCourseTree } = useCourseTreeStore();
   const [searchParams] = useSearchParams();
@@ -164,114 +169,77 @@ export function Lessons() {
   const currentUnitLessons = currentUnit ? lessons.filter(l => l.unitId === currentUnit.id) : [];
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
+    <div className="space-y-5">
+      {/* Aesthetic Hero Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 sm:p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800/80 bg-white/95 dark:bg-slate-900/75 backdrop-blur-xl shadow-sm">
+        <div className="space-y-1.5">
+          <div className="flex flex-wrap items-center gap-2">
             {currentUnit && (
-              <span className="text-xs font-semibold uppercase tracking-wider text-violet-400 bg-violet-500/10 border border-violet-500/20 px-2.5 py-0.5 rounded-full">
+              <span className="text-xs font-bold uppercase tracking-wider text-violet-700 dark:text-violet-300 bg-violet-500/10 border border-violet-500/20 px-2.5 py-0.5 rounded-full">
                 {currentUnit.title}
               </span>
             )}
+            {activeLesson && (
+              <span className="text-xs font-medium text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 px-2.5 py-0.5 rounded-full">
+                {activeLesson.pdf_url || activeLesson.pdfUrl ? 'PDF Document' : 'Interactive Presentation'}
+              </span>
+            )}
             {activeLesson?.createdAt && (
-              <span className="text-xs text-slate-500">
-                Added {new Date(activeLesson.createdAt).toLocaleDateString()}
+              <span className="text-xs text-slate-500 dark:text-slate-400">
+                • Added {new Date(activeLesson.createdAt).toLocaleDateString()}
               </span>
             )}
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white mt-1.5">
-            {activeLesson ? activeLesson.title : 'Lessons'}
+
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+            {activeLesson ? activeLesson.title : 'Course Lessons'}
           </h1>
+
           {user?.year_level && user.section && (
-            <p className="text-slate-400 text-xs mt-1">
+            <p className="text-slate-500 dark:text-slate-400 text-xs font-medium">
               Year {user.year_level} • Section {user.section}
             </p>
           )}
         </div>
-        <div className="flex items-center gap-2">
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            onClick={() => navigate('/quizzes')}
+            variant="outline"
+            size="sm"
+            className="border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs h-9 rounded-xl"
+          >
+            <Zap className="w-3.5 h-3.5 mr-1.5 text-amber-500" />
+            <span>Quizzes</span>
+          </Button>
+
+          <Button
+            onClick={() => navigate('/laboratories')}
+            variant="outline"
+            size="sm"
+            className="border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs h-9 rounded-xl"
+          >
+            <Layers className="w-3.5 h-3.5 mr-1.5 text-emerald-500" />
+            <span>Laboratories</span>
+          </Button>
+
           <Button
             onClick={loadData}
             variant="outline"
-            className="border-slate-700 text-slate-300 hover:bg-slate-800/50"
+            size="sm"
+            className="border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs h-9 rounded-xl"
             title="Refresh learning materials"
           >
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Refresh
+            <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+            <span>Refresh</span>
           </Button>
         </div>
       </div>
 
       {/* Main Content Area */}
       {activeLesson ? (
-        <div className="space-y-6">
-          {/* Media & Interactive Resources (Video & App link if attached) */}
-          {(activeLesson.video_url || activeLesson.app_link) && (
-            <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 space-y-6 shadow-sm">
-              <h3 className="text-base font-semibold text-slate-100 flex items-center gap-2">
-                <div className="w-1 h-5 bg-gradient-to-b from-violet-500 to-violet-600 rounded"></div>
-                Media & Learning Resources
-              </h3>
-
-              {/* Video Player */}
-              {activeLesson.video_url && (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500/20 to-violet-600/20 flex items-center justify-center border border-violet-500/30">
-                      <Video className="w-4 h-4 text-violet-400" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-slate-200">Lesson Video</p>
-                      <p className="text-xs text-slate-500">Watch and follow along with the lesson</p>
-                    </div>
-                  </div>
-                  
-                  <div className="relative rounded-2xl overflow-hidden border border-slate-700/50 bg-black shadow-2xl">
-                    <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
-                      <video
-                        controls
-                        className="absolute inset-0 w-full h-full"
-                        controlsList="nodownload"
-                        preload="metadata"
-                      >
-                        <source src={activeLesson.video_url} type={getVideoMimeType(activeLesson.video_url)} />
-                        Your browser does not support the video tag.
-                      </video>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* App / Tool Link */}
-              {activeLesson.app_link && (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500/20 to-emerald-600/20 flex items-center justify-center border border-emerald-500/30">
-                      <LinkIcon className="w-4 h-4 text-emerald-400" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-slate-200">Interactive Tool</p>
-                      <p className="text-xs text-slate-500">Practice hands-on with this application</p>
-                    </div>
-                  </div>
-                  
-                  <a
-                    href={activeLesson.app_link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-between p-4 rounded-xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 to-emerald-500/5 hover:from-emerald-500/20 hover:to-emerald-500/10 hover:border-emerald-500/50 transition-all duration-300 group shadow-lg hover:shadow-emerald-500/10"
-                  >
-                    <span className="text-sm font-semibold text-emerald-300 group-hover:text-emerald-200 transition-colors">
-                      {activeLesson.app_name || 'Open Interactive Tool'}
-                    </span>
-                    <ExternalLink className="w-5 h-5 text-emerald-400 group-hover:text-emerald-300 group-hover:translate-x-1 transition-all" />
-                  </a>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Slide & Document Viewer with Comments and Completion */}
+        <div className="space-y-4">
+          {/* Slide & Document Viewer with Media Tabs, Comments and Completion */}
           <SlideViewer lessonId={activeLesson.id} lessonTitle={activeLesson.title} lesson={activeLesson} />
         </div>
       ) : (() => {

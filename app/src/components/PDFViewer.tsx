@@ -1,9 +1,22 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Download, AlertCircle, Maximize2, Minimize2, Eye } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  ZoomIn,
+  ZoomOut,
+  Download,
+  AlertCircle,
+  Maximize2,
+  Minimize2,
+  Eye,
+  FileText,
+  RotateCw,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { resolveBackendAssetUrl } from '@/lib/apiConfig';
 import { authFetch } from '@/lib/authFetch';
+import { AetherLoader } from '@/components/AetherLoader';
 
 // Set up the worker - use the file served from public directory
 pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
@@ -14,10 +27,10 @@ interface PDFViewerProps {
   onDownload?: () => void;
 }
 
-export function PDFViewer({ url, title = 'PDF Document', onDownload }: PDFViewerProps) {
+export function PDFViewer({ url, title, onDownload }: PDFViewerProps) {
   const [numPages, setNumPages] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [zoom, setZoom] = useState(110); // Fill the available screen area while preserving the page ratio
+  const [zoom, setZoom] = useState(110);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<string>('');
@@ -28,23 +41,19 @@ export function PDFViewer({ url, title = 'PDF Document', onDownload }: PDFViewer
 
   // Load PDF document
   useEffect(() => {
+    let isCancelled = false;
     const loadPdf = async () => {
       try {
         setLoading(true);
         setError(null);
-        
-        console.log('📄 PDFViewer - Loading PDF from URL:', url);
-        
+
         if (!url || url.trim() === '') {
           setError('No PDF URL provided');
           setLoading(false);
           return;
         }
 
-        // Normalize relative and legacy localhost URLs to the configured API.
         const absoluteUrl = resolveBackendAssetUrl(url);
-
-        console.log('📄 Resolved PDF URL:', absoluteUrl);
         setDebugInfo(`Loading from: ${absoluteUrl}`);
 
         const response = await authFetch(absoluteUrl, {
@@ -65,26 +74,35 @@ export function PDFViewer({ url, title = 'PDF Document', onDownload }: PDFViewer
           data: new Uint8Array(pdfBytes),
         }).promise;
 
-        console.log('✅ PDF loaded successfully, pages:', pdf.numPages);
-        pdfRef.current = pdf;
-        setNumPages(pdf.numPages);
-        setCurrentPage(1);
-        setDebugInfo(`PDF loaded: ${pdf.numPages} pages`);
+        if (!isCancelled) {
+          pdfRef.current = pdf;
+          setNumPages(pdf.numPages);
+          setCurrentPage(1);
+          setDebugInfo(`PDF loaded: ${pdf.numPages} pages`);
+        }
       } catch (err) {
-        console.error('❌ Error loading PDF:', err);
+        console.error('Error loading PDF:', err);
         const errorMsg = err instanceof Error ? err.message : 'Failed to load PDF file';
-        setError(errorMsg);
-        setDebugInfo(`Error: ${errorMsg}`);
+        if (!isCancelled) {
+          setError(errorMsg);
+          setDebugInfo(`Error: ${errorMsg}`);
+        }
       } finally {
-        setLoading(false);
+        if (!isCancelled) {
+          setLoading(false);
+        }
       }
     };
 
     loadPdf();
+    return () => {
+      isCancelled = true;
+    };
   }, [url]);
 
   // Render current page
   useEffect(() => {
+    let renderTask: any = null;
     const renderPage = async () => {
       if (!pdfRef.current || !canvasRef.current) return;
 
@@ -101,243 +119,271 @@ export function PDFViewer({ url, title = 'PDF Document', onDownload }: PDFViewer
         canvas.width = viewport.width;
         canvas.height = viewport.height;
 
-        await page.render({
-          canvas,
+        renderTask = page.render({
           canvasContext: context,
           viewport: viewport,
-        }).promise;
-      } catch (err) {
-        console.error('❌ Error rendering page:', err);
+        });
+
+        await renderTask.promise;
+      } catch (err: any) {
+        if (err?.name !== 'RenderingCancelledException') {
+          console.error('Error rendering PDF page:', err);
+        }
       }
     };
 
     renderPage();
+    return () => {
+      if (renderTask) {
+        try {
+          renderTask.cancel();
+        } catch {
+          // ignore cancel error
+        }
+      }
+    };
   }, [currentPage, numPages, zoom]);
 
-  const handlePrevPage = () => {
+  const handlePrevPage = useCallback(() => {
     if (currentPage > 1) {
-      setCurrentPage(currentPage - 1);
+      setCurrentPage((prev) => prev - 1);
     }
-  };
+  }, [currentPage]);
 
-  const handleNextPage = () => {
+  const handleNextPage = useCallback(() => {
     if (numPages && currentPage < numPages) {
-      setCurrentPage(currentPage + 1);
+      setCurrentPage((prev) => prev + 1);
     }
-  };
+  }, [numPages, currentPage]);
 
   const handleZoomIn = () => {
-    setZoom(Math.min(zoom + 25, 300)); // Allow up to 300% zoom
+    setZoom((prev) => Math.min(prev + 20, 250));
   };
 
   const handleZoomOut = () => {
-    setZoom(Math.max(zoom - 15, 50)); // Minimum 50% zoom
+    setZoom((prev) => Math.max(prev - 20, 60));
   };
 
   const handleFitToScreen = () => {
-    // Set zoom to fit the PDF to the visible area with all content visible
-    setZoom(80);
+    setZoom(100);
   };
+
+  // Keyboard navigation
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return;
+
+      if (e.key === 'ArrowRight' || e.key === 'PageDown') {
+        handleNextPage();
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        handlePrevPage();
+      } else if (e.key === '+' || e.key === '=') {
+        handleZoomIn();
+      } else if (e.key === '-' || e.key === '_') {
+        handleZoomOut();
+      }
+    },
+    [handleNextPage, handlePrevPage]
+  );
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
 
   const handleFullscreen = async () => {
     if (!containerRef.current) return;
 
     try {
       if (!isFullscreen) {
-        // Request fullscreen
         if (containerRef.current.requestFullscreen) {
           await containerRef.current.requestFullscreen();
         } else if ((containerRef.current as any).webkitRequestFullscreen) {
           await (containerRef.current as any).webkitRequestFullscreen();
-        } else if ((containerRef.current as any).mozRequestFullScreen) {
-          await (containerRef.current as any).mozRequestFullScreen();
         }
         setIsFullscreen(true);
-        // Keep fullscreen readable without filling the entire viewport.
-        setTimeout(() => {
-          setZoom(80);
-        }, 100);
       } else {
-        // Exit fullscreen
         if (document.fullscreenElement) {
           await document.exitFullscreen();
         } else if ((document as any).webkitFullscreenElement) {
           await (document as any).webkitExitFullscreen();
-        } else if ((document as any).mozFullScreenElement) {
-          await (document as any).mozCancelFullScreen();
         }
         setIsFullscreen(false);
-        setZoom(80);
       }
     } catch (err) {
       console.error('Fullscreen error:', err);
     }
   };
 
-  // Handle fullscreen change events
   useEffect(() => {
     const handleFullscreenChange = () => {
-      const isCurrentlyFullscreen = !!(
-        document.fullscreenElement ||
-        (document as any).webkitFullscreenElement ||
-        (document as any).mozFullScreenElement
-      );
-      setIsFullscreen(isCurrentlyFullscreen);
+      setIsFullscreen(Boolean(document.fullscreenElement || (document as any).webkitFullscreenElement));
     };
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
-    (document as any).addEventListener('webkitfullscreenchange', handleFullscreenChange);
-    (document as any).addEventListener('mozfullscreenchange', handleFullscreenChange);
-
-    return () => {
-      document.removeEventListener('fullscreenchange', handleFullscreenChange);
-      (document as any).removeEventListener('webkitfullscreenchange', handleFullscreenChange);
-      (document as any).removeEventListener('mozfullscreenchange', handleFullscreenChange);
-    };
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
   if (loading) {
     return (
-      <div className="glass-panel flex items-center justify-center h-96 rounded-lg">
-        <div className="text-center">
-          <p className="text-slate-400 mb-2">Loading PDF...</p>
-          <p className="text-slate-500 text-xs">{debugInfo}</p>
-        </div>
+      <div className="flex h-96 w-full items-center justify-center rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/40">
+        <AetherLoader label="Rendering course document..." />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="glass-panel flex items-center justify-center h-96 rounded-lg">
-        <div className="text-center max-w-md">
-          <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
-          <p className="text-red-400 mb-2 font-semibold">Failed to Load PDF</p>
-          <p className="text-red-300 text-sm mb-4">{error}</p>
-          <p className="text-slate-400 text-xs mb-3">Debug Info:</p>
-          <p className="text-slate-500 text-xs bg-slate-800/50 p-2 rounded break-all">{debugInfo}</p>
-          <p className="text-slate-400 text-xs mt-3">Check browser console for more details</p>
-        </div>
+      <div className="flex h-96 w-full flex-col items-center justify-center rounded-2xl border border-red-500/20 bg-red-500/5 p-6 text-center">
+        <AlertCircle className="mb-3 h-10 w-10 text-red-400" />
+        <h4 className="text-base font-semibold text-red-400">Failed to load document</h4>
+        <p className="mt-1 text-xs text-slate-400 max-w-sm">{error}</p>
+        <p className="mt-2 text-[11px] text-slate-500 font-mono">{debugInfo}</p>
       </div>
     );
   }
 
   return (
-    <div 
+    <div
       ref={containerRef}
-      className={`flex flex-col gap-0 ${
+      className={`flex flex-col gap-3 transition-all ${
         isFullscreen
-          ? 'glass-panel fixed inset-0 z-50'
+          ? 'fixed inset-0 z-50 bg-[#070d14] p-4 sm:p-6 overflow-hidden'
           : 'w-full'
       }`}
     >
-      {/* Header */}
-      <div className="glass-panel flex flex-wrap items-center justify-between gap-4 rounded-lg p-4 flex-shrink-0">
-        <div>
-          <h3 className="text-lg font-semibold text-white">{title}</h3>
-          {numPages && (
-            <p className="text-sm text-slate-400">
-              Page {currentPage} of {numPages}
-            </p>
-          )}
+      {/* Sleek, Single-Bar Aesthetic Reader Toolbar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white/95 dark:bg-slate-900/90 px-4 py-2.5 shadow-sm backdrop-blur-md">
+        {/* Left: Page Navigation */}
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handlePrevPage}
+            disabled={currentPage === 1}
+            className="h-8 w-8 p-0 rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-25 transition-all"
+            title="Previous Page (←)"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+
+          <div className="flex items-center gap-1 px-3 py-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 text-xs font-semibold text-slate-700 dark:text-slate-200 border border-slate-200/60 dark:border-slate-700/60 shadow-inner">
+            <span className="text-slate-500 dark:text-slate-400 text-[11px]">Page</span>
+            <span className="text-violet-600 dark:text-violet-400 font-bold">{currentPage}</span>
+            <span className="text-slate-400 dark:text-slate-500">/</span>
+            <span>{numPages || 1}</span>
+          </div>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleNextPage}
+            disabled={!numPages || currentPage === numPages}
+            className="h-8 w-8 p-0 rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-25 transition-all"
+            title="Next Page (→)"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
         </div>
-        <div className="flex flex-wrap gap-2">
+
+        {/* Center: Zoom Controls */}
+        <div className="flex items-center gap-1 sm:gap-1.5">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleZoomOut}
+            disabled={zoom <= 60}
+            className="h-8 w-8 p-0 rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-25"
+            title="Zoom Out (-)"
+          >
+            <ZoomOut className="h-3.5 w-3.5" />
+          </Button>
+
+          <button
+            onClick={() => setZoom(100)}
+            className="rounded-lg px-2 py-1 font-mono text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            title="Reset to 100%"
+          >
+            {zoom}%
+          </button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleZoomIn}
+            disabled={zoom >= 250}
+            className="h-8 w-8 p-0 rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-25"
+            title="Zoom In (+)"
+          >
+            <ZoomIn className="h-3.5 w-3.5" />
+          </Button>
+
+          <div className="h-4 w-px bg-slate-200 dark:bg-slate-800 mx-1 hidden sm:block" />
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleFitToScreen}
+            className="h-8 px-2.5 rounded-xl text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hidden sm:inline-flex items-center gap-1.5"
+            title="Reset to standard view"
+          >
+            <Eye className="h-3.5 w-3.5 text-violet-500" />
+            <span>Fit</span>
+          </Button>
+        </div>
+
+        {/* Right: Actions */}
+        <div className="flex items-center gap-1.5">
           {onDownload && (
             <Button
-              onClick={onDownload}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
+              variant="ghost"
               size="sm"
+              onClick={onDownload}
+              className="h-8 rounded-xl px-2.5 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 inline-flex items-center gap-1.5"
+              title="Download PDF"
             >
-              <Download className="w-4 h-4" />
-              Download
+              <Download className="h-3.5 w-3.5 text-emerald-500" />
+              <span className="hidden sm:inline">Download</span>
             </Button>
           )}
+
           <Button
-            onClick={handleFullscreen}
-            className="bg-violet-600 hover:bg-violet-700 text-white gap-2"
+            variant="ghost"
             size="sm"
+            onClick={handleFullscreen}
+            className="h-8 rounded-xl px-2.5 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 inline-flex items-center gap-1.5"
+            title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
           >
             {isFullscreen ? (
               <>
-                <Minimize2 className="w-4 h-4" />
-                Exit
+                <Minimize2 className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Exit</span>
               </>
             ) : (
               <>
-                <Maximize2 className="w-4 h-4" />
-                Fullscreen
+                <Maximize2 className="h-3.5 w-3.5 text-violet-500" />
+                <span className="hidden sm:inline">Fullscreen</span>
               </>
             )}
           </Button>
         </div>
       </div>
 
-      {/* Toolbar */}
-      <div className="glass-panel flex flex-wrap items-center justify-between gap-2 rounded-lg p-3 flex-shrink-0 m-4 mt-0">
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            onClick={handlePrevPage}
-            disabled={currentPage === 1}
-            className="bg-cyan-700 hover:bg-cyan-600 disabled:bg-slate-700 disabled:text-slate-400 text-white"
-            size="sm"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </Button>
-          <span className="px-3 text-sm text-slate-300">
-            {currentPage} / {numPages}
-          </span>
-          <Button
-            onClick={handleNextPage}
-            disabled={!numPages || currentPage === numPages}
-            className="bg-cyan-700 hover:bg-cyan-600 disabled:bg-slate-700 disabled:text-slate-400 text-white"
-            size="sm"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </Button>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm text-slate-400">{zoom}%</span>
-          <Button
-            onClick={handleZoomOut}
-            className="bg-cyan-700 hover:bg-cyan-600 text-white"
-            size="sm"
-            title="Zoom Out"
-          >
-            <ZoomOut className="w-4 h-4" />
-          </Button>
-          <Button
-            onClick={handleFitToScreen}
-            className="bg-cyan-700 hover:bg-cyan-600 text-white"
-            size="sm"
-            title="Fit to Screen"
-          >
-            <Eye className="w-4 h-4" />
-          </Button>
-          <Button
-            onClick={handleZoomIn}
-            className="bg-cyan-700 hover:bg-cyan-600 text-white"
-            size="sm"
-            title="Zoom In"
-          >
-            <ZoomIn className="w-4 h-4" />
-          </Button>
-        </div>
-      </div>
-
-      {/* Canvas - PDF Rendering */}
-      <div className={`flex h-[calc(100vh-9rem)] min-h-[520px] max-h-[900px] w-full overflow-auto items-center justify-center ${
-        isFullscreen
-          ? 'h-full bg-[#06151d] p-4'
-          : 'glass-panel rounded-lg p-3 m-3 mt-0'
-      }`}>
+      {/* Aesthetic Document Canvas Container */}
+      <div
+        className={`flex w-full overflow-auto items-start justify-center rounded-2xl transition-all ${
+          isFullscreen
+            ? 'flex-1 bg-[#060b11] p-4 sm:p-8'
+            : 'min-h-[580px] max-h-[82vh] border border-slate-200/80 dark:border-slate-800/80 bg-slate-100/60 dark:bg-slate-950/60 p-4 sm:p-8 shadow-inner'
+        }`}
+      >
+        <div className="mx-auto flex items-center justify-center">
           <canvas
-          ref={canvasRef}
-            className="h-auto max-h-full w-auto max-w-full rounded bg-white object-contain shadow-lg"
-          style={{
-            display: 'block',
-          }}
-        />
+            ref={canvasRef}
+            className="rounded-xl bg-white shadow-[0_16px_48px_rgba(0,0,0,0.18)] ring-1 ring-slate-900/10 dark:ring-white/10 transition-all"
+            style={{ display: 'block' }}
+          />
+        </div>
       </div>
     </div>
   );
