@@ -7,6 +7,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'node:url';
 import pdfParser from 'pdf-parse';
+import dotenv from 'dotenv';
 import { v4 as uuidv4 } from 'uuid';
 import {
   createLocalLesson,
@@ -1736,11 +1737,12 @@ router.post(
       const requestedTypes = (Array.isArray(quizTypes) ? quizTypes : [quizType])
         .filter((type: unknown, index: number, types: unknown[]) => allowedTypes.includes(String(type)) && types.indexOf(type) === index);
       const normalizedTypes = requestedTypes.length > 0 ? requestedTypes : ['multiple-choice'];
-      const configuredModel = (process.env.GEMINI_MODEL || '').trim();
+      dotenv.config();
+      const configuredModel = (process.env.GEMINI_MODEL || 'gemini-3.6-flash').trim();
       const fallbackModels = [
         'gemini-3.6-flash',
-        'gemini-2.5-flash',
-        'gemini-2.5-flash-lite',
+        'gemini-3.5-flash',
+        'gemini-3.5-flash-lite',
       ];
       const modelsToTry = [...new Set([configuredModel, ...fallbackModels].filter((value): value is string => Boolean(value && value.trim())))];
       const prompt = `You are a senior instructional designer and professional assessment specialist with extensive experience writing high-quality examinations for universities and professional certifications.
@@ -1942,7 +1944,7 @@ LESSON CONTENT END.`;
           success: false,
           error: {
             code: 'AI_MODEL_UNAVAILABLE',
-            message: `The configured Gemini model is unavailable: ${unavailableModel}. Update GEMINI_MODEL to a supported model.`,
+            message: `The configured Gemini model is unavailable: ${unavailableModel}. Supported models include gemini-3.6-flash, gemini-3.5-flash, and gemini-3.5-flash-lite.`,
           },
         });
       }

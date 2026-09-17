@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { BookOpen, ChevronLeft, ChevronRight, Download, Edit2, Link as LinkIcon, Save, Upload, Video, X } from 'lucide-react';
+import { BookOpen, ChevronLeft, ChevronRight, Edit2, Link as LinkIcon, Save, Upload, Video, X } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { Button } from '@/components/ui/button';
 import { authFetch } from '@/lib/authFetch';
 import { API_BASE_URL, resolveBackendAssetUrl } from '@/lib/apiConfig';
-import { downloadLessonAsPDF } from '@/lib/downloadUtils';
 import { DocumentViewer } from '@/components/DocumentViewer';
 import { PDFViewer } from '@/components/PDFViewer';
 import { useThemeStore } from '@/stores/themeStore';
@@ -375,12 +374,6 @@ export function ViewLesson({ unitId: providedUnitId, lessonId: providedLessonId,
     setCurrentSlide(index);
   };
 
-  const handleDownloadPDF = async () => {
-    if (lesson) {
-      await downloadLessonAsPDF(lesson);
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -455,13 +448,6 @@ export function ViewLesson({ unitId: providedUnitId, lessonId: providedLessonId,
                   >
                     Open presentation
                   </Button>
-                  <Button
-                    onClick={handleDownloadPDF}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    Download PPTX
-                  </Button>
                 </div>
               </div>
 
@@ -486,7 +472,7 @@ export function ViewLesson({ unitId: providedUnitId, lessonId: providedLessonId,
           <div className={`${pageClass}`}>
             <div className="mx-auto w-full max-w-7xl min-w-0 space-y-5">
               <div className="w-full min-w-0 overflow-hidden rounded-2xl border border-slate-200/10 bg-slate-950/20 shadow-2xl shadow-slate-950/10">
-                <PDFViewer url={pdfViewerUrl} title={lesson.title} onDownload={handleDownloadPDF} />
+                <PDFViewer url={pdfViewerUrl} title={lesson.title} />
               </div>
 
               <section className={`${panelClass} space-y-4`}>
@@ -562,13 +548,6 @@ export function ViewLesson({ unitId: providedUnitId, lessonId: providedLessonId,
                 <div className={`rounded-full border px-3 py-1.5 text-xs font-medium ${isLightMode ? 'border-slate-200 bg-slate-100 text-slate-700' : 'border-slate-700 bg-slate-800 text-slate-300'}`}>
                   {new Date(lesson.createdAt).toLocaleDateString()}
                 </div>
-                <Button
-                  onClick={handleDownloadPDF}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
-                >
-                  <Download className="w-4 h-4" />
-                  Download PDF
-                </Button>
               </div>
             </div>
 

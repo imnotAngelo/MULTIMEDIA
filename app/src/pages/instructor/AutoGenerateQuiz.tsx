@@ -1,8 +1,38 @@
-    import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authFetch } from '@/lib/authFetch';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Trash2, Sparkles, Settings2, BookOpen, Wand2, CheckCircle2 } from 'lucide-react';
+import {
+  ArrowLeft,
+  Trash2,
+  Sparkles,
+  Settings2,
+  BookOpen,
+  Wand2,
+  CheckCircle2,
+  Clock,
+  Award,
+  Layers,
+  HelpCircle,
+  PlusCircle,
+  RotateCcw,
+  AlertTriangle,
+  ChevronRight,
+  ListOrdered,
+  FileText,
+  Calendar,
+  Eye,
+  Check,
+} from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { toast } from 'sonner';
 import { AetherSpinner } from '@/components/AetherSpinner';
 import { SectionYearTargetPicker } from '@/components/SectionYearTargetPicker';
 import { useAuthStore } from '@/stores/authStore';
@@ -36,37 +66,53 @@ interface Question {
   correctAnswer?: string;
 }
 
+const QUESTION_TYPE_LABELS: Record<QuizType, string> = {
+  'multiple-choice': 'Multiple Choice',
+  'true-false': 'True or False',
+  identification: 'Identification',
+  enumeration: 'Enumeration',
+  essay: 'Essay / Analysis',
+};
+
+const QUESTION_TYPE_COLORS: Record<QuizType, { bg: string; text: string; border: string }> = {
+  'multiple-choice': { bg: 'bg-violet-500/10', text: 'text-violet-500', border: 'border-violet-500/30' },
+  'true-false': { bg: 'bg-sky-500/10', text: 'text-sky-500', border: 'border-sky-500/30' },
+  identification: { bg: 'bg-amber-500/10', text: 'text-amber-500', border: 'border-amber-500/30' },
+  enumeration: { bg: 'bg-emerald-500/10', text: 'text-emerald-500', border: 'border-emerald-500/30' },
+  essay: { bg: 'bg-rose-500/10', text: 'text-rose-500', border: 'border-rose-500/30' },
+};
+
 export function AutoGenerateQuiz() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const theme = useThemeStore((state) => state.theme);
   const isLightMode = theme === 'light';
 
+  // Step state: 1 = Curriculum Scope, 2 = Blueprint & Rules, 3 = Review & Finalize
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
+
+  // Styles
   const shellClass = isLightMode
-    ? 'min-h-screen bg-gradient-to-br from-slate-100 via-slate-200 to-slate-300 p-6'
-    : 'min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-6';
-  const headingTextClass = isLightMode ? 'text-slate-900' : 'text-white';
-  const secondaryTextClass = isLightMode ? 'text-slate-600' : 'text-slate-400';
+    ? 'min-h-screen bg-slate-100 text-slate-900 p-6'
+    : 'min-h-screen bg-slate-950 text-white p-6';
   const panelClass = isLightMode
-    ? 'bg-white/80 border border-slate-200 rounded-xl p-6 space-y-5 shadow-sm'
-    : 'bg-slate-900/60 border border-slate-800/60 rounded-xl p-6 space-y-5';
-  const generatedPanelClass = isLightMode
-    ? 'bg-white/80 border border-slate-200 rounded-xl p-6 space-y-4 shadow-sm'
-    : 'bg-slate-900/60 border border-slate-800/60 rounded-xl p-6 space-y-4';
+    ? 'bg-white border border-slate-200 rounded-xl p-6 space-y-6 shadow-sm'
+    : 'bg-slate-900/70 border border-slate-800 rounded-xl p-6 space-y-6';
   const nestedCardClass = isLightMode
-    ? 'bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3'
-    : 'bg-slate-800/40 border border-slate-700/50 rounded-lg p-4 space-y-3';
+    ? 'bg-slate-50 border border-slate-200 rounded-lg p-4'
+    : 'bg-slate-800/50 border border-slate-700/60 rounded-lg p-4';
   const fieldClass = isLightMode
-    ? 'w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 placeholder:text-slate-500 focus:border-violet-500 focus:outline-none'
-    : 'w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder:text-slate-600 focus:border-violet-500 focus:outline-none';
-  const compactFieldClass = isLightMode
-    ? 'w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded text-slate-900 placeholder:text-slate-500 focus:border-violet-500 focus:outline-none'
-    : 'w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white placeholder:text-slate-600 focus:border-violet-500 focus:outline-none';
-  const labelTextClass = isLightMode ? 'text-slate-700' : 'text-slate-300';
+    ? 'w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:border-violet-500 focus:ring-1 focus:ring-violet-500 focus:outline-none transition-all'
+    : 'w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder:text-slate-500 focus:border-violet-500 focus:ring-1 focus:ring-violet-500 focus:outline-none transition-all';
+  const labelTextClass = isLightMode ? 'text-slate-700 font-medium' : 'text-slate-300 font-medium';
   const mutedTextClass = isLightMode ? 'text-slate-500' : 'text-slate-400';
 
+  // Form State
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [generatingPhase, setGeneratingPhase] = useState<string>('');
+  const [regeneratingIndex, setRegeneratingIndex] = useState<number | null>(null);
+
   const [units, setUnits] = useState<Unit[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [loadingUnits, setLoadingUnits] = useState(true);
@@ -74,10 +120,13 @@ export function AutoGenerateQuiz() {
   const [selectedLessons, setSelectedLessons] = useState<string[]>([]);
   const [lessonScope, setLessonScope] = useState<'all' | 'selected'>('selected');
   const [generatedQuestions, setGeneratedQuestions] = useState<Question[]>([]);
-  const [questionsGenerated, setQuestionsGenerated] = useState(false);
   const [targetSections, setTargetSections] = useState<string[]>([]);
-  const [sectionInput, setSectionInput] = useState('');
-  const [generationError, setGenerationError] = useState('');
+  const [targetYearLevels, setTargetYearLevels] = useState<number[]>([]);
+  const [targetSectionInput, setTargetSectionInput] = useState('');
+
+  // Duplicate Assessment Dialog
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [duplicateTitle, setDuplicateTitle] = useState('');
 
   const [formData, setFormData] = useState({
     title: '',
@@ -85,6 +134,7 @@ export function AutoGenerateQuiz() {
     dueDate: '',
     allowLateSubmissions: false,
     timeLimit: 30,
+    passingPercentage: 75,
     shuffleQuestions: true,
     showCorrectAnswers: false,
     visibility: 'public' as 'public' | 'private',
@@ -93,95 +143,106 @@ export function AutoGenerateQuiz() {
     pointsByType: {
       'multiple-choice': 1,
       enumeration: 2,
-      'true-false': 2,
+      'true-false': 1,
       identification: 2,
       essay: 5,
     } as PointsByType,
     questionCountsByType: {
-      'multiple-choice': 10,
-      'true-false': 10,
+      'multiple-choice': 5,
+      'true-false': 0,
+      identification: 0,
+      enumeration: 0,
+      essay: 0,
     } as Partial<Record<QuizType, number>>,
     numberOfQuestions: 5,
   });
 
   const getQuizCategoryRange = (category: 'short' | 'long' | 'exam') => ({
-    short: { min: 5, max: 10 },
-    long: { min: 20, max: 30 },
-    exam: { min: 70, max: 100 },
+    short: { min: 5, max: 10, defaultCount: 5 },
+    long: { min: 20, max: 30, defaultCount: 20 },
+    exam: { min: 70, max: 100, defaultCount: 70 },
   }[category]);
 
-  const updateCategory = (quizCategory: 'short' | 'long' | 'exam') => {
-    const range = getQuizCategoryRange(quizCategory);
-    const allTypes: QuizType[] = ['multiple-choice', 'enumeration', 'true-false', 'identification', 'essay'];
+  const updateCategory = (category: 'short' | 'long' | 'exam') => {
+    const range = getQuizCategoryRange(category);
+    let nextTypes: QuizType[] = ['multiple-choice'];
+    if (category === 'long') nextTypes = ['multiple-choice', 'true-false'];
+    if (category === 'exam') nextTypes = ['multiple-choice', 'true-false', 'identification', 'enumeration', 'essay'];
 
-    const quizTypes: QuizType[] = quizCategory === 'short'
-      ? [formData.quizTypes[0] || 'multiple-choice']
-      : quizCategory === 'long'
-        ? (formData.quizTypes.length > 0 ? formData.quizTypes.slice(0, 2) : ['multiple-choice', 'true-false'])
-        : allTypes;
+    const perTypeCount = Math.floor(range.defaultCount / nextTypes.length);
+    const newCounts: Partial<Record<QuizType, number>> = {};
+    nextTypes.forEach((t, i) => {
+      newCounts[t] = i === 0 ? range.defaultCount - (perTypeCount * (nextTypes.length - 1)) : perTypeCount;
+    });
 
-    const questionCountsByType: Partial<Record<QuizType, number>> = quizCategory === 'short'
-      ? { [quizTypes[0]]: 5 }
-      : quizCategory === 'long'
-        ? Object.fromEntries(quizTypes.map(type => [type, 10]))
-        : Object.fromEntries(quizTypes.map(type => [type, 20]));
-
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      quizCategory,
-      quizTypes,
-      questionCountsByType,
-      numberOfQuestions: Math.min(Math.max(prev.numberOfQuestions, range.min), range.max),
+      quizCategory: category,
+      quizTypes: nextTypes,
+      questionCountsByType: newCounts,
+      numberOfQuestions: range.defaultCount,
+      timeLimit: category === 'short' ? 20 : category === 'long' ? 45 : 90,
     }));
-    if (quizCategory === 'exam') {
+
+    if (category === 'exam') {
       setLessonScope('all');
-      setSelectedLessons(lessons.map(lesson => lesson.id));
+      setSelectedLessons(lessons.map((l) => l.id));
     }
   };
 
   const toggleQuizType = (type: QuizType) => {
-    const maxTypes = formData.quizCategory === 'short' ? 1 : formData.quizCategory === 'long' ? 2 : 5;
-    const selectedTypes = formData.quizTypes.includes(type)
-      ? formData.quizTypes.filter(item => item !== type)
-      : [...formData.quizTypes, type];
+    const isSelected = formData.quizTypes.includes(type);
+    let nextTypes: QuizType[] = [];
 
-    const nextTypes = selectedTypes.length > maxTypes
-      ? selectedTypes.slice(selectedTypes.length - maxTypes)
-      : selectedTypes;
+    if (isSelected) {
+      if (formData.quizTypes.length === 1) {
+        toast.warning('At least one question type must be selected.');
+        return;
+      }
+      nextTypes = formData.quizTypes.filter((t) => t !== type);
+    } else {
+      nextTypes = [...formData.quizTypes, type];
+    }
 
-    if (nextTypes.length === 0) return;
+    const currentTotal = configuredQuestionTotal();
+    const perTypeCount = Math.max(1, Math.floor(currentTotal / nextTypes.length));
+    const newCounts: Partial<Record<QuizType, number>> = {};
+    nextTypes.forEach((t) => {
+      newCounts[t] = formData.questionCountsByType[t] || perTypeCount;
+    });
 
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       quizTypes: nextTypes,
-      questionCountsByType: nextTypes.reduce((counts, selectedType) => ({
-        ...counts,
-        [selectedType]: prev.questionCountsByType[selectedType] || (formData.quizCategory === 'exam' ? 20 : 10),
-      }), {}),
+      questionCountsByType: newCounts,
     }));
   };
 
-  const configuredQuestionTotal = () => formData.quizCategory === 'short'
-    ? formData.numberOfQuestions
-    : Object.values(formData.questionCountsByType).reduce((sum, count) => sum + (count || 0), 0);
+  const configuredQuestionTotal = () =>
+    Object.entries(formData.questionCountsByType).reduce(
+      (sum, [type, count]) => (formData.quizTypes.includes(type as QuizType) ? sum + (Number(count) || 0) : sum),
+      0
+    );
 
-  useEffect(() => {
-    if (!user?.id) {
-      setUnits([]);
-      setLessons([]);
-      setSelectedUnit('');
-      setSelectedLessons([]);
-      return;
+  const calculatedTotalPoints = () => {
+    if (generatedQuestions.length > 0) {
+      return generatedQuestions.reduce((sum, q) => sum + (Number(q.points) || 1), 0);
     }
+    return Object.entries(formData.questionCountsByType).reduce((sum, [type, count]) => {
+      if (!formData.quizTypes.includes(type as QuizType)) return sum;
+      const pts = formData.pointsByType[type as QuizType] || 1;
+      return sum + (Number(count) || 0) * pts;
+    }, 0);
+  };
 
-    setSelectedUnit('');
-    setSelectedLessons([]);
+  // Load Units for Instructor
+  useEffect(() => {
     fetchUnits();
   }, [user?.id]);
 
+  // Load Lessons when selectedUnit changes
   useEffect(() => {
     if (selectedUnit) {
-      setSelectedLessons([]);
       fetchLessons(selectedUnit);
     } else {
       setLessons([]);
@@ -193,14 +254,13 @@ export function AutoGenerateQuiz() {
     try {
       setLoadingUnits(true);
       const response = await authFetch('/units', { cache: 'no-store' });
-
       if (response.ok) {
         const data = await response.json();
         const unitsList = Array.isArray(data.data) ? data.data : [];
         setUnits(unitsList);
       }
     } catch {
-      // silently fail — units will remain empty
+      toast.error('Could not load course units. Please check connection.');
     } finally {
       setLoadingUnits(false);
     }
@@ -208,264 +268,258 @@ export function AutoGenerateQuiz() {
 
   const fetchLessons = async (unitId: string) => {
     try {
-      const response = await authFetch(`/units/${unitId}/lessons`, {
-        cache: 'no-store',
-      });
-
+      const response = await authFetch(`/units/${unitId}/lessons`, { cache: 'no-store' });
       if (response.ok) {
         const data = await response.json();
         if (data.success && Array.isArray(data.data)) {
           const loadedLessons = data.data as Lesson[];
           setLessons(loadedLessons);
-          setSelectedLessons((prev) => prev.filter((lessonId) => loadedLessons.some((lesson) => lesson.id === lessonId)));
-          if (lessonScope === 'all' && formData.quizCategory === 'exam') {
-            setSelectedLessons(loadedLessons.map((lesson: Lesson) => lesson.id));
+          if (lessonScope === 'all') {
+            setSelectedLessons(loadedLessons.map((l) => l.id));
           }
         }
       }
     } catch {
-      // silently fail — lessons will remain empty
+      toast.error('Failed to load lessons for selected unit.');
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    const isNumericField = ['timeLimit', 'numberOfQuestions'].includes(name);
-    const numericValue = value === '' ? 1 : Number.parseInt(value, 10);
-    setFormData(prev => ({
-      ...prev,
-      [name]: isNumericField && Number.isFinite(numericValue) ? numericValue : value,
-    }));
+  const autoSuggestTitle = () => {
+    const unitObj = units.find((u) => u.id === selectedUnit);
+    const categoryLabel =
+      formData.quizCategory === 'short'
+        ? 'Short Quiz'
+        : formData.quizCategory === 'long'
+        ? 'Comprehensive Quiz'
+        : 'Major Examination';
+
+    if (unitObj) {
+      setFormData((prev) => ({
+        ...prev,
+        title: `${unitObj.title} - ${categoryLabel}`,
+        description: `Assessment covering curriculum concepts from ${unitObj.title}.`,
+      }));
+      toast.success('Title auto-suggested based on curriculum scope.');
+    } else {
+      toast.info('Select a Unit first to generate an contextual title.');
+    }
   };
 
-  const generateQuestions = async () => {
-    const validSelectedLessons = selectedLessons.filter((lessonId) => lessons.some((lesson) => lesson.id === lessonId));
-
-    if (!selectedUnit || validSelectedLessons.length === 0 || !formData.title || formData.quizTypes.length === 0) {
-      alert('Please fill in all required fields');
+  // Step 1 Validation
+  const handleProceedToStep2 = () => {
+    if (!selectedUnit) {
+      toast.error('Please select an instructional unit.');
       return;
     }
-
-    if (validSelectedLessons.length !== selectedLessons.length) {
-      setSelectedLessons(validSelectedLessons);
+    if (selectedLessons.length === 0) {
+      toast.error('Please select at least one lesson to source questions from.');
+      return;
     }
+    if (!formData.title.trim()) {
+      toast.error('Please provide a title for the assessment.');
+      return;
+    }
+    setCurrentStep(2);
+  };
 
+  // Step 2 Validation & AI Generation Trigger
+  const handleGenerateQuestions = async () => {
     const categoryRange = getQuizCategoryRange(formData.quizCategory);
-    const requestedQuestionTotal = configuredQuestionTotal();
-    if (requestedQuestionTotal < categoryRange.min || requestedQuestionTotal > categoryRange.max) {
-      alert(`This category requires ${categoryRange.min}-${categoryRange.max} questions.`);
+    const totalCount = configuredQuestionTotal();
+
+    if (totalCount < categoryRange.min || totalCount > categoryRange.max) {
+      toast.error(
+        `${formData.quizCategory.toUpperCase()} category requires between ${categoryRange.min} and ${categoryRange.max} questions (current: ${totalCount}).`
+      );
       return;
     }
 
     try {
       setGenerating(true);
-      setGenerationError('');
+      setGeneratingPhase('Analyzing instructional documents and extracting core concepts...');
 
-      // Generate in small quota-aware batches so long exams do not get truncated
-      // by one oversized AI response.
-      const generatedData: any[] = [];
-      const seenGeneratedQuestions = new Set<string>();
-      const allocation = formData.quizTypes.flatMap(type => Array.from({ length: formData.questionCountsByType[type] || 0 }, () => type));
-      let batchStart = 0;
-      let attempts = 0;
+      const primaryLessonId = selectedLessons[0];
+      const batchSize = Math.min(totalCount, 15);
+      const batchesNeeded = Math.ceil(totalCount / batchSize);
+      let accumulatedQuestions: Question[] = [];
 
-      while (batchStart < requestedQuestionTotal && attempts < 12) {
-        const batchTypes = allocation.slice(batchStart, Math.min(batchStart + 10, requestedQuestionTotal));
-        const batchCounts = batchTypes.reduce((counts, type) => ({ ...counts, [type]: (counts[type] || 0) + 1 }), {} as Record<string, number>);
-        const response = await authFetch(`/lessons/${validSelectedLessons[0]}/generate-questions`, {
+      for (let batch = 0; batch < batchesNeeded; batch++) {
+        setGeneratingPhase(`Synthesizing assessment items (Batch ${batch + 1} of ${batchesNeeded})...`);
+
+        const questionsForThisBatch = Math.min(batchSize, totalCount - accumulatedQuestions.length);
+        const batchQuestionCounts: Partial<Record<QuizType, number>> = {};
+
+        formData.quizTypes.forEach((type) => {
+          const totalForType = formData.questionCountsByType[type] || 0;
+          batchQuestionCounts[type] = Math.max(1, Math.ceil(totalForType / batchesNeeded));
+        });
+
+        const res = await authFetch(`/lessons/${primaryLessonId}/generate-questions`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            lessonIds: validSelectedLessons,
-            numberOfQuestions: batchTypes.length,
-            quizTypes: formData.quizTypes,
-            pointsByType: formData.pointsByType,
-            questionCountsByType: batchCounts,
+            lessonIds: selectedLessons,
+            numberOfQuestions: questionsForThisBatch,
             quizCategory: formData.quizCategory,
-            generationAttempt: attempts,
+            quizTypes: formData.quizTypes,
+            questionCountsByType: batchQuestionCounts,
+            pointsByType: formData.pointsByType,
+            generationAttempt: batch,
           }),
         });
 
-        let responseData: any = null;
-        try {
-          responseData = await response.json();
-        } catch {
-          responseData = null;
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          const errMsg = errData?.error?.message || errData?.message || `HTTP ${res.status}`;
+          throw new Error(errMsg);
         }
 
-        if (!response.ok || responseData?.success === false) {
-          const backendMessage = responseData?.error?.message || responseData?.message || `Request failed (${response.status})`;
-          throw new Error(backendMessage);
-        }
+        const data = await res.json();
+        const batchItems: any[] = Array.isArray(data.data) ? data.data : [];
 
-        const batchQuestions = Array.isArray(responseData?.data) ? responseData.data : [];
-
-        for (const question of batchQuestions) {
-          const key = String(question.text || question.title || '').replace(/\s+/g, ' ').trim().toLowerCase();
-          if (key && !seenGeneratedQuestions.has(key)) {
-            seenGeneratedQuestions.add(key);
-            generatedData.push(question);
-          }
-        }
-
-        batchStart = generatedData.length;
-        attempts += 1;
-        if (batchQuestions.length === 0) break;
-      }
-
-      if (generatedData.length === 0) throw new Error('No questions were generated');
-
-      const aiQuestions: Question[] = generatedData
-        .map((q: any, idx: number): Question | null => {
-          const supportedType: QuizType[] = ['multiple-choice', 'essay', 'true-false', 'enumeration', 'identification'];
-          const type = supportedType.includes(q.type) ? q.type as QuizType : '';
-          if (!type) return null;
-          const title = (q.text || q.title || '').trim();
-          const answer = String(q.correctAnswer || q.answer || '').trim();
-          const sourceOptions: string[] = Array.isArray(q.options)
-            ? q.options.map((option: any) => String(typeof option === 'string' ? option : option?.text || '').trim()).filter(Boolean)
+        const normalizedBatch: Question[] = batchItems.map((item, idx) => {
+          const qType: Question['type'] = item.type || 'multiple-choice';
+          const options: QuestionOption[] = Array.isArray(item.options)
+            ? item.options.map((opt: any, optIdx: number) => ({
+                id: `opt-${batch}-${idx}-${optIdx}`,
+                text: typeof opt === 'string' ? opt : opt.text || '',
+                isCorrect: typeof opt === 'object' ? Boolean(opt.isCorrect) : String(opt) === String(item.correctAnswer),
+              }))
             : [];
-          const options = type === 'multiple-choice'
-            ? Array.from(new Set<string>(sourceOptions.map((option: string) => option.replace(/\s+/g, ' ').trim()).filter(Boolean))).slice(0, 4)
-                .map((text) => ({
-                  id: String(Math.random().toString(36).slice(2, 9)),
-                  text,
-                  isCorrect: text.toLowerCase() === answer.toLowerCase(),
-                }))
-            : type === 'true-false'
-              ? ['True', 'False'].map((text, optionIndex) => ({ id: String(optionIndex + 1), text, isCorrect: text.toLowerCase() === answer.toLowerCase() }))
-              : [];
-
-          if ((type === 'multiple-choice' && (options.length !== 4 || !options.some(option => option.isCorrect)))
-            || (type === 'true-false' && !/^(true|false)$/i.test(answer))
-            || (!['multiple-choice', 'true-false'].includes(type) && !answer)) {
-            return null;
-          }
 
           return {
-            id: String(idx + 1),
-            title,
-            type,
-            points: formData.pointsByType[type],
-            correctAnswer: type === 'multiple-choice' ? options.find(option => option.isCorrect)?.text || options[0]?.text : type === 'true-false' ? (answer.toLowerCase() === 'false' ? 'False' : 'True') : answer,
+            id: `gen-${Date.now()}-${batch}-${idx}`,
+            title: item.text || item.title || 'Untitled Question',
+            type: qType,
+            points: Number(item.points) || formData.pointsByType[qType as QuizType] || 1,
             options,
+            correctAnswer: item.correctAnswer || (options.find((o) => o.isCorrect)?.text ?? ''),
           };
-        })
-        .filter((q): q is Question => q !== null && q.title.length > 0)
-        .slice(0, requestedQuestionTotal);
+        });
 
-      const cleanedQuestions = normalizeQuestionSet(aiQuestions);
-      if (cleanedQuestions.length === 0) {
-        throw new Error('The generated content did not produce valid unique questions. Please regenerate.');
-      }
-      if (cleanedQuestions.length < requestedQuestionTotal) {
-        throw new Error(`Only ${cleanedQuestions.length} of ${requestedQuestionTotal} questions were generated. Please try again or select more lessons.`);
+        accumulatedQuestions = [...accumulatedQuestions, ...normalizedBatch];
       }
 
-      setGeneratedQuestions(cleanedQuestions);
-      setQuestionsGenerated(true);
-    } catch (error: any) {
-      const message = error?.name === 'AbortError'
-        ? 'Quiz generation timed out. Please try again or reduce the number of questions.'
-        : error?.message || 'Unable to generate questions.';
-      if (/lesson not found/i.test(message) && selectedUnit) {
-        await fetchLessons(selectedUnit);
-        setSelectedLessons([]);
-        setQuestionsGenerated(false);
-        setGenerationError('The lesson list was outdated. Lessons were refreshed; please select a lesson and try again.');
-      } else {
-        setGenerationError(`Failed to generate questions: ${message}`);
-      }
+      setGeneratedQuestions(accumulatedQuestions);
+      setCurrentStep(3);
+      toast.success(`Successfully generated ${accumulatedQuestions.length} assessment questions!`);
+    } catch (err: any) {
+      toast.error(`Generation error: ${err.message || 'Failed to synthesize questions'}`);
     } finally {
       setGenerating(false);
+      setGeneratingPhase('');
     }
   };
 
-  const handleQuestionChange = (index: number, field: string, value: any) => {
-    const updated = [...generatedQuestions];
-    (updated[index] as any)[field] = value;
-    setGeneratedQuestions(updated);
+  // Single Question Re-Roll (Regenerate 1 Item)
+  const regenerateSingleQuestion = async (index: number) => {
+    const targetQ = generatedQuestions[index];
+    if (!targetQ) return;
+
+    try {
+      setRegeneratingIndex(index);
+      toast.info(`Regenerating question ${index + 1}...`);
+
+      const primaryLessonId = selectedLessons[0];
+      const res = await authFetch(`/lessons/${primaryLessonId}/generate-questions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lessonIds: selectedLessons,
+          numberOfQuestions: 1,
+          quizCategory: 'short',
+          quizTypes: [targetQ.type],
+          questionCountsByType: { [targetQ.type]: 1 },
+          pointsByType: { [targetQ.type]: targetQ.points },
+          generationAttempt: Date.now() % 10,
+        }),
+      });
+
+      if (!res.ok) throw new Error('Could not regenerate item');
+      const data = await res.json();
+      const newItems = Array.isArray(data.data) ? data.data : [];
+      if (newItems.length === 0) throw new Error('AI did not return a replacement item.');
+
+      const item = newItems[0];
+      const options: QuestionOption[] = Array.isArray(item.options)
+        ? item.options.map((opt: any, optIdx: number) => ({
+            id: `opt-reroll-${Date.now()}-${optIdx}`,
+            text: typeof opt === 'string' ? opt : opt.text || '',
+            isCorrect: typeof opt === 'object' ? Boolean(opt.isCorrect) : String(opt) === String(item.correctAnswer),
+          }))
+        : [];
+
+      const updatedQuestion: Question = {
+        id: `reroll-${Date.now()}`,
+        title: item.text || item.title || 'Untitled Question',
+        type: targetQ.type,
+        points: targetQ.points,
+        options,
+        correctAnswer: item.correctAnswer || (options.find((o) => o.isCorrect)?.text ?? ''),
+      };
+
+      setGeneratedQuestions((prev) => {
+        const copy = [...prev];
+        copy[index] = updatedQuestion;
+        return copy;
+      });
+
+      toast.success(`Question ${index + 1} updated with a fresh AI question!`);
+    } catch (err: any) {
+      toast.error(`Re-roll failed: ${err.message}`);
+    } finally {
+      setRegeneratingIndex(null);
+    }
   };
 
-  const handleOptionChange = (questionIndex: number, optionIndex: number, field: string, value: any) => {
-    const updated = [...generatedQuestions];
-    (updated[questionIndex].options[optionIndex] as any)[field] = value;
-    setGeneratedQuestions(updated);
+  // Add a manual question in Review
+  const addManualQuestion = () => {
+    const newQ: Question = {
+      id: `manual-${Date.now()}`,
+      title: 'Enter question text here...',
+      type: 'multiple-choice',
+      points: 1,
+      options: [
+        { id: `opt-1-${Date.now()}`, text: 'Option A', isCorrect: true },
+        { id: `opt-2-${Date.now()}`, text: 'Option B', isCorrect: false },
+        { id: `opt-3-${Date.now()}`, text: 'Option C', isCorrect: false },
+        { id: `opt-4-${Date.now()}`, text: 'Option D', isCorrect: false },
+      ],
+      correctAnswer: 'Option A',
+    };
+    setGeneratedQuestions((prev) => [...prev, newQ]);
+    toast.success('Added new manual question at the end.');
   };
 
   const removeQuestion = (index: number) => {
-    if (generatedQuestions.length > 1) {
-      setGeneratedQuestions(generatedQuestions.filter((_, i) => i !== index));
-    }
-  };
-
-  const normalizeQuestionSet = (questions: Question[], allowDuplicateQuestions = false) => {
-    const seen = new Set<string>();
-    return questions.filter((question) => {
-      const text = question.title.trim();
-      const key = text.toLowerCase();
-      if (!text || (!allowDuplicateQuestions && seen.has(key))) return false;
-      seen.add(key);
-      return true;
-    }).map((question) => {
-      const normalizedQuestion = { ...question, title: question.title.trim() };
-
-      if (normalizedQuestion.type === 'multiple-choice') {
-        const options = normalizedQuestion.options
-          .map((option) => ({ ...option, text: option.text.trim() }))
-          .filter((option) => option.text.length > 0)
-          .filter((option, idx, arr) => arr.findIndex((candidate) => candidate.text.toLowerCase() === option.text.toLowerCase()) === idx)
-          .slice(0, 4);
-
-        if (options.length < 4) {
-          return null;
-        }
-
-        const hasCorrectAnswer = options.some((option) => option.isCorrect);
-        const correctedOptions = options.map((option, idx) => ({
-          ...option,
-          isCorrect: hasCorrectAnswer ? option.isCorrect : idx === 0,
-        }));
-
-        return { ...normalizedQuestion, options: correctedOptions, correctAnswer: correctedOptions.find((option) => option.isCorrect)?.text || '' };
-      }
-
-      return normalizedQuestion;
-    }).filter(Boolean) as Question[];
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!formData.title || !formData.description || !formData.dueDate) {
-      alert('Please fill in all required fields');
+    if (generatedQuestions.length <= 1) {
+      toast.warning('Quiz must contain at least 1 question.');
       return;
     }
+    setGeneratedQuestions((prev) => prev.filter((_, i) => i !== index));
+    toast.info(`Question ${index + 1} removed.`);
+  };
 
+  // Final Submission to /assessments
+  const handlePublishAssessment = async (allowDuplicate = false) => {
     if (generatedQuestions.length === 0) {
-      alert('Please generate questions first');
-      return;
-    }
-
-    const cleanedQuestions = normalizeQuestionSet(generatedQuestions);
-    if (cleanedQuestions.length !== generatedQuestions.length) {
-      alert('Please remove duplicate or incomplete questions before creating the quiz.');
-      setGeneratedQuestions(cleanedQuestions);
+      toast.error('No questions available to publish.');
       return;
     }
 
     try {
       setLoading(true);
 
-      const transformedQuestions = cleanedQuestions.map(q => ({
+      const transformedQuestions = generatedQuestions.map((q) => ({
         id: q.id,
         text: q.title,
         type: q.type,
         points: q.points,
-        options: q.type === 'multiple-choice' ? q.options.map(o => o.text) : [],
-        correctAnswer: q.type === 'multiple-choice'
-          ? q.options.find(o => o.isCorrect)?.text
-          : q.correctAnswer || undefined,
+        options: q.type === 'multiple-choice' ? q.options.map((o) => o.text) : [],
+        correctAnswer:
+          q.type === 'multiple-choice'
+            ? q.options.find((o) => o.isCorrect)?.text || q.options[0]?.text
+            : q.correctAnswer || undefined,
       }));
 
       const payload = {
@@ -474,7 +528,7 @@ export function AutoGenerateQuiz() {
         type: 'quiz',
         unitId: selectedUnit,
         lessonIds: selectedLessons,
-        dueDate: formData.dueDate,
+        dueDate: formData.dueDate || undefined,
         allowLateSubmissions: formData.allowLateSubmissions,
         totalPoints: transformedQuestions.reduce((sum, q) => sum + q.points, 0),
         timeLimit: formData.timeLimit,
@@ -484,60 +538,37 @@ export function AutoGenerateQuiz() {
         generatedAutomatically: true,
         visibility: formData.visibility,
         quizCategory: formData.quizCategory,
-        quizType: formData.quizTypes.length === 1 ? formData.quizTypes[0] : undefined,
         quizTypes: formData.quizTypes,
         questionCountsByType: formData.questionCountsByType,
         pointsByType: formData.pointsByType,
         targetSections,
+        targetYearLevels,
+        allowDuplicate,
       };
 
-      const createQuiz = (allowDuplicate = false) => authFetch('/assessments', {
+      const res = await authFetch('/assessments', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ ...payload, allowDuplicate }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       });
 
-      let response = await createQuiz();
-
-      if (response.status === 409) {
-        const duplicateData = await response.json().catch(() => null);
-        const existingTitle = duplicateData?.error?.existingQuiz?.title || 'a quiz';
-        const addAnother = window.confirm(
-          `This lesson already has ${existingTitle}. Do you want to add another quiz?`
-        );
-
-        if (!addAnother) {
-          return;
-        }
-
-        response = await createQuiz(true);
+      if (res.status === 409) {
+        const dupData = await res.json().catch(() => ({}));
+        setDuplicateTitle(dupData?.error?.existingQuiz?.title || 'an existing assessment');
+        setDuplicateDialogOpen(true);
+        setLoading(false);
+        return;
       }
 
-      if (!response.ok) {
-        const errorText = await response.text();
-
-        if (response.status === 401) {
-          alert('Your session has expired. Please log in again.');
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
-          localStorage.removeItem('auth-storage');
-          navigate('/login');
-          return;
-        }
-
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || `Server error ${res.status}`);
       }
 
-      const data = await response.json();
-      if (data.success) {
-        navigate('/instructor/quizzes');
-      } else {
-        alert('Failed to create quiz: ' + data.message);
-      }
-    } catch (error) {
-      alert('Error creating quiz: ' + String(error));
+      toast.success('Assessment created and published successfully!');
+      navigate('/instructor/quizzes');
+    } catch (err: any) {
+      toast.error(`Failed to publish: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -545,457 +576,826 @@ export function AutoGenerateQuiz() {
 
   return (
     <div className={shellClass}>
-      <div className="max-w-5xl mx-auto">
-        {/* Header */}
-        <button
-          onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-violet-400 hover:text-violet-300 mb-6 transition-colors text-sm"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back
-        </button>
-
-        <div className="mb-8 flex items-center gap-4">
-          <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-violet-500/10 border border-violet-500/20">
-            <Wand2 className="w-6 h-6 text-violet-400" />
-          </div>
-          <div>
-            <h1 className={`text-3xl font-bold ${headingTextClass}`}>Auto-Generate Quiz</h1>
-            <p className={`mt-0.5 text-sm ${secondaryTextClass}`}>Create a quiz from lesson content using AI</p>
+      <div className="max-w-5xl mx-auto space-y-6">
+        {/* Navigation & Header */}
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-2 text-violet-500 hover:text-violet-400 transition-colors text-sm font-medium"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Assessments
+          </button>
+          <div className="text-xs px-2.5 py-1 rounded-full bg-violet-500/10 text-violet-500 font-medium border border-violet-500/20">
+            Instructional AI Assessment Studio
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Configuration Section */}
-          <div className={panelClass}>
-            <div className="flex items-center gap-2.5">
-              <Settings2 className={`w-5 h-5 ${mutedTextClass}`} />
-              <h2 className={`text-lg font-semibold ${headingTextClass}`}>Quiz Configuration</h2>
+        {/* Wizard Steps Indicator */}
+        <div className={panelClass + ' py-4'}>
+          <div className="flex items-center justify-between max-w-2xl mx-auto">
+            <div className="flex items-center gap-3">
+              <div
+                className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm ${
+                  currentStep >= 1
+                    ? 'bg-violet-600 text-white shadow-lg shadow-violet-600/30'
+                    : isLightMode
+                    ? 'bg-slate-200 text-slate-500'
+                    : 'bg-slate-800 text-slate-400'
+                }`}
+              >
+                1
+              </div>
+              <span className={`text-sm font-semibold ${currentStep === 1 ? 'text-violet-500' : mutedTextClass}`}>
+                Curriculum Scope
+              </span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${labelTextClass}`}>Quiz Title *</label>
-                <input
-                  type="text"
-                  name="title"
-                  value={formData.title}
-                  onChange={handleInputChange}
-                  placeholder="e.g., Chapter 5 Quiz"
-                  className={fieldClass}
-                />
-              </div>
+            <ChevronRight className={`w-5 h-5 ${mutedTextClass}`} />
 
+            <div className="flex items-center gap-3">
+              <div
+                className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm ${
+                  currentStep >= 2
+                    ? 'bg-violet-600 text-white shadow-lg shadow-violet-600/30'
+                    : isLightMode
+                    ? 'bg-slate-200 text-slate-500'
+                    : 'bg-slate-800 text-slate-400'
+                }`}
+              >
+                2
+              </div>
+              <span className={`text-sm font-semibold ${currentStep === 2 ? 'text-violet-500' : mutedTextClass}`}>
+                Blueprint & Rules
+              </span>
+            </div>
+
+            <ChevronRight className={`w-5 h-5 ${mutedTextClass}`} />
+
+            <div className="flex items-center gap-3">
+              <div
+                className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm ${
+                  currentStep >= 3
+                    ? 'bg-violet-600 text-white shadow-lg shadow-violet-600/30'
+                    : isLightMode
+                    ? 'bg-slate-200 text-slate-500'
+                    : 'bg-slate-800 text-slate-400'
+                }`}
+              >
+                3
+              </div>
+              <span className={`text-sm font-semibold ${currentStep === 3 ? 'text-violet-500' : mutedTextClass}`}>
+                Review & Finalize
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* STEP 1: CURRICULUM SCOPE */}
+        {currentStep === 1 && (
+          <div className={panelClass}>
+            <div className="flex items-center gap-3 border-b pb-4 border-slate-200 dark:border-slate-800">
+              <div className="p-2.5 rounded-lg bg-violet-500/10 text-violet-500">
+                <BookOpen className="w-6 h-6" />
+              </div>
               <div>
-                <label className={`block text-sm font-medium mb-2 ${labelTextClass}`}>Select Unit *</label>
-                {loadingUnits ? (
-                  <div className={`flex items-center gap-2 ${mutedTextClass} py-2`}>
-                    <AetherSpinner className="w-4 h-4" />
-                    <span className="text-sm">Loading units...</span>
-                  </div>
-                ) : (
+                <h2 className="text-xl font-bold">Step 1: Define Curriculum Scope</h2>
+                <p className={`text-xs ${mutedTextClass}`}>
+                  Select the course unit and specific lessons from which AI will synthesize questions.
+                </p>
+              </div>
+            </div>
+
+            {loadingUnits ? (
+              <div className="flex items-center justify-center py-12 gap-3">
+                <AetherSpinner className="w-6 h-6 text-violet-500" />
+                <span className={mutedTextClass}>Loading curriculum units...</span>
+              </div>
+            ) : units.length === 0 ? (
+              <div className={nestedCardClass + ' text-center py-8 space-y-3'}>
+                <AlertTriangle className="w-8 h-8 text-amber-500 mx-auto" />
+                <h3 className="font-semibold text-base">No Instructional Units Found</h3>
+                <p className={`text-sm max-w-md mx-auto ${mutedTextClass}`}>
+                  You don't have any units or uploaded learning materials yet. Please create a unit and upload lesson slides before generating an automated quiz.
+                </p>
+                <Button onClick={() => navigate('/instructor/courses')} className="bg-violet-600 hover:bg-violet-700 text-white">
+                  Go to Courses & Units
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-5">
+                {/* Unit Picker */}
+                <div>
+                  <label className={`block text-sm mb-2 ${labelTextClass}`}>Select Instructional Unit *</label>
                   <select
                     value={selectedUnit}
                     onChange={(e) => {
                       setSelectedUnit(e.target.value);
                       setSelectedLessons([]);
-                      setQuestionsGenerated(false);
                     }}
                     className={fieldClass}
                   >
-                    <option value="">-- Select Unit --</option>
-                    {units.map(unit => (
-                      <option key={unit.id} value={unit.id}>{unit.title}</option>
+                    <option value="">-- Choose Unit --</option>
+                    {units.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.title}
+                      </option>
                     ))}
                   </select>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <label className={`block text-sm font-medium mb-2 ${labelTextClass}`}>Description *</label>
-              <textarea
-                name="description"
-                value={formData.description}
-                onChange={handleInputChange}
-                placeholder="Describe the quiz purpose and content..."
-                rows={2}
-                className={fieldClass}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${labelTextClass}`}>Select Lessons *</label>
-                {formData.quizCategory === 'exam' && (
-                  <div className={`mb-2 flex gap-4 text-sm ${labelTextClass}`}>
-                    <label className="flex items-center gap-2">
-                      <input type="radio" checked={lessonScope === 'all'} onChange={() => { setLessonScope('all'); setSelectedLessons(lessons.map(lesson => lesson.id)); }} />
-                      All lessons in this unit
-                    </label>
-                    <label className="flex items-center gap-2">
-                      <input type="radio" checked={lessonScope === 'selected'} onChange={() => setLessonScope('selected')} />
-                      Choose lessons
-                    </label>
-                  </div>
-                )}
-                <div className={`rounded-lg border p-3 ${isLightMode ? 'border-slate-200 bg-slate-50' : 'border-slate-700 bg-slate-800'} max-h-52 overflow-y-auto`}>
-                  {!selectedUnit ? (
-                    <p className={`text-sm ${mutedTextClass}`}>Select a unit first to load lessons.</p>
-                  ) : lessons.length === 0 ? (
-                    <p className={`text-sm ${mutedTextClass}`}>No lessons available for this unit.</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {lessons.map((lesson) => {
-                        const isChecked = selectedLessons.includes(lesson.id);
-                        const isDisabled = formData.quizCategory === 'exam' && lessonScope === 'all';
-
-                        return (
-                          <label
-                            key={lesson.id}
-                            className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-sm ${isLightMode ? 'text-slate-700 hover:bg-slate-100' : 'text-slate-200 hover:bg-slate-700/50'} ${isDisabled ? 'opacity-75' : ''}`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              disabled={isDisabled}
-                              onChange={() => {
-                                setSelectedLessons((prev) => {
-                                  const next = prev.includes(lesson.id)
-                                    ? prev.filter((id) => id !== lesson.id)
-                                    : [...prev, lesson.id];
-                                  setQuestionsGenerated(false);
-                                  return next;
-                                });
-                              }}
-                            />
-                            <span>{lesson.title}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  )}
                 </div>
-              </div>
 
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${labelTextClass}`}>Number of Questions</label>
-                <input
-                  type="number"
-                  name="numberOfQuestions"
-                  value={formData.quizCategory === 'short' ? formData.numberOfQuestions : configuredQuestionTotal()}
-                  onChange={handleInputChange}
-                  min={getQuizCategoryRange(formData.quizCategory).min}
-                  max={getQuizCategoryRange(formData.quizCategory).max}
-                  disabled={formData.quizCategory !== 'short'}
-                  className={fieldClass}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${labelTextClass}`}>Quiz Category</label>
-                <select
-                  value={formData.quizCategory}
-                  onChange={(e) => updateCategory(e.target.value as 'short' | 'long' | 'exam')}
-                  className={fieldClass}
-                >
-                  <option value="short">Short Quiz (5-10 questions)</option>
-                  <option value="long">Long Quiz (20-30 questions)</option>
-                  <option value="exam">Exam (70-100 questions)</option>
-                </select>
-              </div>
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${labelTextClass}`}>Question Types</label>
-                <div className={`grid grid-cols-2 gap-2 rounded-md border p-3 ${isLightMode ? 'border-slate-200 bg-slate-50' : 'border-slate-700 bg-slate-800'}`}>
-                  {(['multiple-choice', 'enumeration', 'true-false', 'identification', 'essay'] as QuizType[]).map((type) => (
-                    <label key={type} className={`flex items-center gap-2 text-xs ${labelTextClass}`}>
-                      <input type="checkbox" checked={formData.quizTypes.includes(type)} onChange={() => toggleQuizType(type)} />
-                      {type === 'multiple-choice' ? 'Multiple Choice' : type === 'true-false' ? 'True or False' : type.charAt(0).toUpperCase() + type.slice(1)}
-                    </label>
-                  ))}
-                </div>
-                {formData.quizCategory !== 'short' && (
-                  <div className="mt-3 grid grid-cols-2 gap-2">
-                    {formData.quizTypes.map((type) => (
-                      <label key={`${type}-count`} className={`text-xs ${mutedTextClass}`}>
-                        {type === 'multiple-choice' ? 'Multiple Choice' : type === 'true-false' ? 'True or False' : type.charAt(0).toUpperCase() + type.slice(1)} questions
-                        <input
-                          type="number"
-                          min="1"
-                          value={formData.questionCountsByType[type] || 0}
-                          onChange={(e) => setFormData(prev => ({ ...prev, questionCountsByType: { ...prev.questionCountsByType, [type]: Math.max(1, parseInt(e.target.value) || 1) } }))}
-                          className={compactFieldClass}
-                        />
+                {/* Lessons Picker */}
+                {selectedUnit && (
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className={`text-sm ${labelTextClass}`}>
+                        Lessons in Scope ({selectedLessons.length} selected) *
                       </label>
-                    ))}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedLessons(lessons.map((l) => l.id))}
+                        className="text-xs text-violet-500 hover:underline font-medium"
+                      >
+                        Select All Lessons
+                      </button>
+                    </div>
+
+                    {lessons.length === 0 ? (
+                      <div className={nestedCardClass + ' text-sm text-center py-4 text-amber-500'}>
+                        This unit currently has no uploaded lessons. Please upload a lesson or select another unit.
+                      </div>
+                    ) : (
+                      <div className={`grid grid-cols-1 md:grid-cols-2 gap-2.5 max-h-56 overflow-y-auto p-2 rounded-lg border ${isLightMode ? 'border-slate-200 bg-slate-50/50' : 'border-slate-800 bg-slate-900/30'}`}>
+                        {lessons.map((lesson) => {
+                          const isChecked = selectedLessons.includes(lesson.id);
+                          return (
+                            <label
+                              key={lesson.id}
+                              className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+                                isChecked
+                                  ? 'border-violet-500 bg-violet-500/10 text-violet-600 dark:text-violet-300 font-medium'
+                                  : isLightMode
+                                  ? 'border-slate-200 bg-white hover:border-slate-300'
+                                  : 'border-slate-800 bg-slate-800/40 hover:border-slate-700'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedLessons((prev) => [...prev, lesson.id]);
+                                  } else {
+                                    setSelectedLessons((prev) => prev.filter((id) => id !== lesson.id));
+                                  }
+                                }}
+                                className="w-4 h-4 rounded text-violet-600 focus:ring-violet-500"
+                              />
+                              <span className="text-sm truncate">{lesson.title}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 )}
-                {formData.quizCategory !== 'short' && (
-                  <p className={`mt-2 text-xs ${mutedTextClass}`}>Total configured questions: {configuredQuestionTotal()}</p>
-                )}
-                <p className={`text-xs mt-1 ${mutedTextClass}`}>{formData.quizCategory === 'short' ? 'Choose 1 type.' : formData.quizCategory === 'long' ? 'Choose up to 2 types.' : 'Choose up to 5 types.'}</p>
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                  {formData.quizTypes.map((type) => (
-                    <label key={`${type}-points`} className={`text-xs ${mutedTextClass}`}>
-                      {type === 'multiple-choice' ? 'Multiple Choice' : type === 'true-false' ? 'True or False' : type.charAt(0).toUpperCase() + type.slice(1)} points
-                      <input
-                        type="number"
-                        min="1"
-                        value={formData.pointsByType[type]}
-                        onChange={(e) => setFormData(prev => ({ ...prev, pointsByType: { ...prev.pointsByType, [type]: Math.max(1, parseInt(e.target.value) || 1) } }))}
-                        className={`mt-1 ${compactFieldClass}`}
-                      />
-                    </label>
-                  ))}
-                </div>
-                {formData.quizCategory === 'exam' && (
-                  <div className="mt-4 rounded-md border border-amber-500/30 bg-amber-500/10 p-3">
-                    <label className="block text-xs font-medium text-amber-700 mb-1">Exam Visibility</label>
-                    <select
-                      value={formData.visibility}
-                      onChange={(e) => setFormData(prev => ({ ...prev, visibility: e.target.value as 'public' | 'private' }))}
-                      className={fieldClass}
-                    >
-                      <option value="public">Public - students can see it</option>
-                      <option value="private">Private - save as draft</option>
-                    </select>
-                  </div>
-                )}
-              </div>
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${labelTextClass}`}>Due Date *</label>
-                <input
-                  type="datetime-local"
-                  name="dueDate"
-                  value={formData.dueDate}
-                  onChange={handleInputChange}
-                  className={fieldClass}
-                />
-              </div>
-              <label className={`flex items-center gap-2 self-end pb-2 text-sm ${labelTextClass}`}>
-                <input
-                  type="checkbox"
-                  checked={formData.allowLateSubmissions}
-                  onChange={(e) => setFormData(prev => ({ ...prev, allowLateSubmissions: e.target.checked }))}
-                  className={isLightMode ? 'h-4 w-4 rounded border-slate-300 bg-white text-violet-500' : 'h-4 w-4 rounded border-slate-600 bg-slate-800 text-violet-500'}
-                />
-                Allow late submissions
-              </label>
-
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${labelTextClass}`}>Time Limit (minutes)</label>
-                <input
-                  type="number"
-                  name="timeLimit"
-                  value={formData.timeLimit}
-                  onChange={handleInputChange}
-                  min="1"
-                  className={fieldClass}
-                />
-              </div>
-
-              <div className="flex flex-col gap-4">
-                <label className={`flex items-center gap-2 cursor-pointer mt-7 ${labelTextClass}`}>
-                  <input
-                    type="checkbox"
-                    name="shuffleQuestions"
-                    checked={formData.shuffleQuestions}
-                    onChange={(e) => setFormData(prev => ({ ...prev, shuffleQuestions: e.target.checked }))}
-                    className={isLightMode ? 'w-4 h-4 rounded border-slate-300 bg-white text-violet-500' : 'w-4 h-4 rounded border-slate-600 bg-slate-800 text-violet-500'}
+                {/* Target Audience */}
+                <div>
+                  <label className={`block text-sm mb-2 ${labelTextClass}`}>Target Sections & Year Levels</label>
+                  <SectionYearTargetPicker
+                    sections={targetSections}
+                    yearLevels={targetYearLevels}
+                    onSectionsChange={setTargetSections}
+                    onYearLevelsChange={setTargetYearLevels}
+                    sectionInput={targetSectionInput}
+                    onSectionInputChange={setTargetSectionInput}
                   />
-                  <span className={`text-sm ${labelTextClass}`}>Shuffle questions</span>
-                </label>
-              </div>
-            </div>
+                </div>
 
-            <SectionYearTargetPicker
-              yearLevels={[]}
-              onYearLevelsChange={() => undefined}
-              sections={targetSections}
-              onSectionsChange={setTargetSections}
-              sectionInput={sectionInput}
-              onSectionInputChange={setSectionInput}
-              showYearLevels={false}
-              sectionOptions={user?.teaching_sections || []}
-            />
-
-            {/* Generate Button */}
-            {!questionsGenerated && (
-              <div className="pt-4">
-                {generationError && (
-                  <div role="alert" className="mb-3 rounded-md border border-red-400/30 bg-red-400/10 px-3 py-2 text-sm text-red-200">
-                    {generationError}
+                {/* Title & Description with Auto-Suggest */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className={`text-sm ${labelTextClass}`}>Assessment Title *</label>
+                      <button
+                        type="button"
+                        onClick={autoSuggestTitle}
+                        className="flex items-center gap-1 text-xs text-violet-500 hover:text-violet-400 font-medium"
+                      >
+                        <Sparkles className="w-3 h-3" />
+                        Auto-Suggest
+                      </button>
+                    </div>
+                    <input
+                      type="text"
+                      value={formData.title}
+                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                      placeholder="e.g. Unit 3: Database Architectures - Quiz"
+                      className={fieldClass}
+                    />
                   </div>
-                )}
-                <Button
-                  type="button"
-                  onClick={generateQuestions}
-                  disabled={generating || !selectedUnit || selectedLessons.length === 0 || !formData.title}
-                  className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white h-12 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-medium"
-                >
-                  {generating ? (
-                    <>
-                      <AetherSpinner className="w-4 h-4" />
-                      Generating Questions...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-4 h-4" />
-                      Generate Questions
-                    </>
-                  )}
-                </Button>
+
+                  <div className="space-y-2">
+                    <label className={`text-sm ${labelTextClass}`}>Description & Instructions</label>
+                    <input
+                      type="text"
+                      value={formData.description}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      placeholder="Brief instructions for students..."
+                      className={fieldClass}
+                    />
+                  </div>
+                </div>
+
+                {/* Next Button */}
+                <div className="flex justify-end pt-4 border-t border-slate-200 dark:border-slate-800">
+                  <Button
+                    onClick={handleProceedToStep2}
+                    className="bg-violet-600 hover:bg-violet-700 text-white flex items-center gap-2 px-6"
+                  >
+                    Next: Blueprint & Rules
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             )}
           </div>
+        )}
 
-          {/* Generated Questions Section */}
-          {questionsGenerated && (
-            <div className={generatedPanelClass}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <BookOpen className="w-5 h-5 text-emerald-400" />
-                  <h2 className={`text-lg font-semibold ${headingTextClass}`}>Generated Questions</h2>
-                  <span className={`text-xs font-medium ${isLightMode ? 'text-slate-600 bg-slate-200' : 'text-slate-400 bg-slate-800'} px-2 py-0.5 rounded-full`}>{generatedQuestions.length}</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setQuestionsGenerated(false);
-                    setGeneratedQuestions([]);
-                  }}
-                  className="text-sm text-violet-400 hover:text-violet-300 transition-colors"
-                >
-                  Regenerate
-                </button>
+        {/* STEP 2: BLUEPRINT & RULES */}
+        {currentStep === 2 && (
+          <div className={panelClass}>
+            <div className="flex items-center gap-3 border-b pb-4 border-slate-200 dark:border-slate-800">
+              <div className="p-2.5 rounded-lg bg-violet-500/10 text-violet-500">
+                <Settings2 className="w-6 h-6" />
               </div>
-
-              <div className="space-y-4">
-                {generatedQuestions.map((question, qIndex) => (
-                  <div key={question.id} className={nestedCardClass}>
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <label className={`block text-sm font-medium mb-1.5 ${labelTextClass}`}>Question {qIndex + 1}</label>
-                        <textarea
-                          value={question.title}
-                          onChange={(e) => handleQuestionChange(qIndex, 'title', e.target.value)}
-                          rows={2}
-                          className={compactFieldClass}
-                        />
-                      </div>
-                      {generatedQuestions.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => removeQuestion(qIndex)}
-                          className="text-red-400 hover:text-red-300 mt-8"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className={`block text-xs font-medium mb-1 ${mutedTextClass}`}>Points</label>
-                      <input
-                        type="number"
-                        value={question.points}
-                        onChange={(e) => handleQuestionChange(qIndex, 'points', parseInt(e.target.value))}
-                        min="1"
-                        max="20"
-                        className={compactFieldClass}
-                      />
-                    </div>
-
-                    <div className={`flex items-center gap-2 text-xs ${mutedTextClass}`}>
-                      <span>Question Type:</span>
-                      <span className={`font-medium ${isLightMode ? 'text-emerald-600' : 'text-emerald-300'}`}>
-                        {question.type === 'multiple-choice' ? 'Multiple Choice' : question.type === 'true-false' ? 'True or False' : question.type.charAt(0).toUpperCase() + question.type.slice(1)}
-                      </span>
-                    </div>
-
-                    {question.type === 'multiple-choice' && (
-                      <div className="space-y-2">
-                        <label className={`block text-xs font-medium ${mutedTextClass}`}>Options (Select Correct Answer)</label>
-                        {question.options.map((option, oIndex) => (
-                          <div key={option.id} className="flex gap-2 items-center">
-                            <input
-                              type="radio"
-                              name={`correct-${qIndex}`}
-                              checked={option.isCorrect}
-                              onChange={() => {
-                                question.options.forEach((o, i) => {
-                                  o.isCorrect = i === oIndex;
-                                });
-                                handleQuestionChange(qIndex, 'options', question.options);
-                                setGeneratedQuestions([...generatedQuestions]);
-                              }}
-                              className="w-4 h-4"
-                            />
-                            <input
-                              type="text"
-                              value={option.text}
-                              onChange={(e) => handleOptionChange(qIndex, oIndex, 'text', e.target.value)}
-                              placeholder={`Option ${oIndex + 1}`}
-                              className={`${compactFieldClass} flex-1`}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {question.type !== 'multiple-choice' && (
-                      <div>
-                        <label className={`block text-xs font-medium mb-1 ${mutedTextClass}`}>Model Answer</label>
-                        <input
-                          type="text"
-                          value={question.correctAnswer || ''}
-                          onChange={(e) => handleQuestionChange(qIndex, 'correctAnswer', e.target.value)}
-                          placeholder={question.type === 'essay' ? 'Enter a model answer for AI-assisted grading' : 'Enter the expected answer'}
-                          className={compactFieldClass}
-                        />
-                      </div>
-                    )}
-                  </div>
-                ))}
+              <div>
+                <h2 className="text-xl font-bold">Step 2: Assessment Blueprint & Rules</h2>
+                <p className={`text-xs ${mutedTextClass}`}>
+                  Configure test categories, question type distribution, point weighting, and timing.
+                </p>
               </div>
             </div>
-          )}
 
-          {/* Submit Buttons */}
-          {questionsGenerated && (
-            <div className="flex gap-4">
+            {/* Assessment Category Selector */}
+            <div>
+              <label className={`block text-sm mb-3 ${labelTextClass}`}>Assessment Category</label>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {(['short', 'long', 'exam'] as const).map((cat) => {
+                  const isSelected = formData.quizCategory === cat;
+                  const details = {
+                    short: { label: 'Short Quiz', range: '5 – 10 Items', time: '15–20 mins', desc: 'Quick formative check' },
+                    long: { label: 'Long Quiz', range: '20 – 30 Items', time: '30–45 mins', desc: 'Summative unit review' },
+                    exam: { label: 'Major Examination', range: '70 – 100 Items', time: '60–90 mins', desc: 'Comprehensive midterm/final' },
+                  }[cat];
+
+                  return (
+                    <div
+                      key={cat}
+                      onClick={() => updateCategory(cat)}
+                      className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                        isSelected
+                          ? 'border-violet-600 bg-violet-500/10'
+                          : isLightMode
+                          ? 'border-slate-200 bg-white hover:border-slate-300'
+                          : 'border-slate-800 bg-slate-900/40 hover:border-slate-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-bold text-base">{details.label}</span>
+                        {isSelected && <CheckCircle2 className="w-5 h-5 text-violet-500" />}
+                      </div>
+                      <p className="text-xs text-violet-500 font-semibold mb-2">{details.range}</p>
+                      <p className={`text-xs ${mutedTextClass}`}>{details.desc}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Time Limit & Passing Score */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className={`text-sm ${labelTextClass}`}>Time Limit (minutes)</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="5"
+                    max="180"
+                    value={formData.timeLimit}
+                    onChange={(e) => setFormData({ ...formData, timeLimit: Number(e.target.value) || 15 })}
+                    className={fieldClass}
+                  />
+                  {[15, 30, 45, 60].map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, timeLimit: t })}
+                      className={`px-3 py-2 text-xs rounded-lg border font-semibold ${
+                        formData.timeLimit === t
+                          ? 'bg-violet-600 text-white border-violet-600'
+                          : isLightMode
+                          ? 'border-slate-300 hover:bg-slate-100'
+                          : 'border-slate-700 hover:bg-slate-800'
+                      }`}
+                    >
+                      {t}m
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className={`text-sm ${labelTextClass}`}>Passing Threshold (%)</label>
+                <input
+                  type="number"
+                  min="50"
+                  max="100"
+                  value={formData.passingPercentage}
+                  onChange={(e) => setFormData({ ...formData, passingPercentage: Number(e.target.value) || 75 })}
+                  className={fieldClass}
+                />
+              </div>
+            </div>
+
+            {/* Question Types Distribution Matrix */}
+            <div className="space-y-3">
+              <label className={`block text-sm ${labelTextClass}`}>
+                Question Types & Distribution Matrix
+              </label>
+              <div className="space-y-2.5">
+                {(['multiple-choice', 'true-false', 'identification', 'enumeration', 'essay'] as QuizType[]).map(
+                  (type) => {
+                    const isSelected = formData.quizTypes.includes(type);
+                    const color = QUESTION_TYPE_COLORS[type];
+                    return (
+                      <div
+                        key={type}
+                        className={`flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-lg border gap-3 transition-all ${
+                          isSelected
+                            ? `${color.bg} ${color.border} border`
+                            : isLightMode
+                            ? 'bg-slate-50 border-slate-200 opacity-60'
+                            : 'bg-slate-800/30 border-slate-800 opacity-60'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleQuizType(type)}
+                            className="w-4 h-4 rounded text-violet-600 focus:ring-violet-500"
+                          />
+                          <span className={`font-semibold text-sm ${isSelected ? color.text : ''}`}>
+                            {QUESTION_TYPE_LABELS[type]}
+                          </span>
+                        </div>
+
+                        {isSelected && (
+                          <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2">
+                              <span className={`text-xs ${mutedTextClass}`}>Count:</span>
+                              <input
+                                type="number"
+                                min="1"
+                                max="100"
+                                value={formData.questionCountsByType[type] || 0}
+                                onChange={(e) => {
+                                  const val = Math.max(0, Number(e.target.value) || 0);
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    questionCountsByType: {
+                                      ...prev.questionCountsByType,
+                                      [type]: val,
+                                    },
+                                  }));
+                                }}
+                                className="w-16 px-2 py-1 text-xs text-center border rounded bg-white dark:bg-slate-800 font-bold"
+                              />
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <span className={`text-xs ${mutedTextClass}`}>Pts/item:</span>
+                              <input
+                                type="number"
+                                min="1"
+                                max="20"
+                                value={formData.pointsByType[type] || 1}
+                                onChange={(e) => {
+                                  const val = Math.max(1, Number(e.target.value) || 1);
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    pointsByType: {
+                                      ...prev.pointsByType,
+                                      [type]: val,
+                                    },
+                                  }));
+                                }}
+                                className="w-14 px-2 py-1 text-xs text-center border rounded bg-white dark:bg-slate-800 font-bold"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+                )}
+              </div>
+            </div>
+
+            {/* Live Blueprint Summary Bar */}
+            <div className={`p-4 rounded-xl flex items-center justify-around border ${isLightMode ? 'bg-violet-50 border-violet-200' : 'bg-violet-950/20 border-violet-900/40'}`}>
+              <div className="text-center">
+                <p className={`text-xs ${mutedTextClass}`}>Total Items</p>
+                <p className="text-xl font-bold text-violet-500">{configuredQuestionTotal()}</p>
+              </div>
+              <div className="h-8 w-px bg-violet-300 dark:bg-violet-800" />
+              <div className="text-center">
+                <p className={`text-xs ${mutedTextClass}`}>Total Points</p>
+                <p className="text-xl font-bold text-violet-500">{calculatedTotalPoints()}</p>
+              </div>
+              <div className="h-8 w-px bg-violet-300 dark:bg-violet-800" />
+              <div className="text-center">
+                <p className={`text-xs ${mutedTextClass}`}>Est. Time</p>
+                <p className="text-xl font-bold text-violet-500">{formData.timeLimit}m</p>
+              </div>
+            </div>
+
+            {/* Navigation Buttons */}
+            <div className="flex justify-between pt-4 border-t border-slate-200 dark:border-slate-800">
               <Button
-                type="button"
-                onClick={() => navigate(-1)}
-                className={isLightMode ? 'flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300' : 'flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'}
+                variant="outline"
+                onClick={() => setCurrentStep(1)}
+                className="flex items-center gap-2"
               >
-                Cancel
+                <ArrowLeft className="w-4 h-4" />
+                Back to Scope
               </Button>
               <Button
-                type="submit"
-                disabled={loading}
-                className="flex-1 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white font-medium flex items-center justify-center gap-2"
+                onClick={handleGenerateQuestions}
+                disabled={generating}
+                className="bg-violet-600 hover:bg-violet-700 text-white flex items-center gap-2 px-6 shadow-lg shadow-violet-600/30"
               >
-                {loading ? (
+                {generating ? (
                   <>
-                    <AetherSpinner className="w-4 h-4" />
-                    Creating Quiz...
+                    <AetherSpinner className="w-4 h-4 text-white" />
+                    Generating Assessment...
                   </>
                 ) : (
                   <>
-                    <CheckCircle2 className="w-4 h-4" />
-                    Create Quiz
+                    <Sparkles className="w-4 h-4" />
+                    Generate Assessment with AI
                   </>
                 )}
               </Button>
             </div>
-          )}
-        </form>
+          </div>
+        )}
+
+        {/* STEP 3: REVIEW, EDIT & FINALIZE */}
+        {currentStep === 3 && (
+          <div className="space-y-6">
+            {/* KPI Statistics Header */}
+            <div className={panelClass + ' py-4'}>
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-lg font-bold">{formData.title}</h2>
+                  <p className={`text-xs ${mutedTextClass}`}>
+                    Review and fine-tune questions. You can edit text, re-roll single questions, or add manual items.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <div className="text-center px-3 py-1 rounded bg-violet-500/10 border border-violet-500/20">
+                    <span className="text-xs text-violet-500 block">Total Items</span>
+                    <span className="text-lg font-bold">{generatedQuestions.length}</span>
+                  </div>
+                  <div className="text-center px-3 py-1 rounded bg-emerald-500/10 border border-emerald-500/20">
+                    <span className="text-xs text-emerald-500 block">Total Points</span>
+                    <span className="text-lg font-bold text-emerald-500">{calculatedTotalPoints()}</span>
+                  </div>
+                  <div className="text-center px-3 py-1 rounded bg-sky-500/10 border border-sky-500/20">
+                    <span className="text-xs text-sky-500 block">Time Limit</span>
+                    <span className="text-lg font-bold text-sky-500">{formData.timeLimit}m</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Actions Bar */}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentStep(2)}
+                  className="flex items-center gap-1.5"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Edit Blueprint
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleGenerateQuestions}
+                  disabled={generating}
+                  className="flex items-center gap-1.5"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  Regenerate All
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={addManualQuestion}
+                  className="flex items-center gap-1.5 text-violet-500 hover:text-violet-600"
+                >
+                  <PlusCircle className="w-4 h-4" />
+                  Add Manual Item
+                </Button>
+              </div>
+
+              <Button
+                onClick={() => handlePublishAssessment(false)}
+                disabled={loading}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2 px-6 shadow-lg shadow-emerald-600/30"
+              >
+                {loading ? <AetherSpinner className="w-4 h-4 text-white" /> : <Check className="w-4 h-4" />}
+                Publish Assessment
+              </Button>
+            </div>
+
+            {/* Generated Question Cards */}
+            <div className="space-y-4">
+              {generatedQuestions.map((q, qIndex) => {
+                const typeColor = QUESTION_TYPE_COLORS[q.type as QuizType] || {
+                  bg: 'bg-slate-500/10',
+                  text: 'text-slate-400',
+                  border: 'border-slate-500/20',
+                };
+
+                return (
+                  <div key={q.id || qIndex} className={panelClass + ' relative'}>
+                    {/* Header: Number, Type Badge, Points, Action buttons */}
+                    <div className="flex items-center justify-between border-b pb-3 border-slate-200 dark:border-slate-800">
+                      <div className="flex items-center gap-2.5">
+                        <span className="w-7 h-7 rounded-full bg-violet-600 text-white text-xs font-bold flex items-center justify-center">
+                          {qIndex + 1}
+                        </span>
+                        <span className={`text-xs px-2.5 py-1 rounded-full font-bold border ${typeColor.bg} ${typeColor.text} ${typeColor.border}`}>
+                          {QUESTION_TYPE_LABELS[q.type as QuizType] || q.type}
+                        </span>
+                        <div className="flex items-center gap-1 text-xs">
+                          <span className={mutedTextClass}>Points:</span>
+                          <input
+                            type="number"
+                            min="1"
+                            max="20"
+                            value={q.points}
+                            onChange={(e) => {
+                              const val = Math.max(1, Number(e.target.value) || 1);
+                              setGeneratedQuestions((prev) => {
+                                const copy = [...prev];
+                                copy[qIndex].points = val;
+                                return copy;
+                              });
+                            }}
+                            className="w-12 px-1.5 py-0.5 text-xs text-center border rounded bg-white dark:bg-slate-800 font-bold"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => regenerateSingleQuestion(qIndex)}
+                          disabled={regeneratingIndex === qIndex}
+                          className="text-xs text-violet-500 hover:bg-violet-500/10 flex items-center gap-1"
+                        >
+                          {regeneratingIndex === qIndex ? (
+                            <AetherSpinner className="w-3.5 h-3.5 text-violet-500" />
+                          ) : (
+                            <Sparkles className="w-3.5 h-3.5" />
+                          )}
+                          Re-roll Item
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeQuestion(qIndex)}
+                          className="text-xs text-rose-500 hover:bg-rose-500/10 hover:text-rose-600"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Question Stem */}
+                    <div className="space-y-2">
+                      <label className={`text-xs ${mutedTextClass}`}>Question Stem:</label>
+                      <textarea
+                        value={q.title}
+                        rows={2}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setGeneratedQuestions((prev) => {
+                            const copy = [...prev];
+                            copy[qIndex].title = val;
+                            return copy;
+                          });
+                        }}
+                        className={fieldClass}
+                      />
+                    </div>
+
+                    {/* Multiple Choice Options */}
+                    {q.type === 'multiple-choice' && (
+                      <div className="space-y-2 pt-2">
+                        <label className={`text-xs ${mutedTextClass}`}>
+                          Answer Options (Select the radio button to set the correct answer key):
+                        </label>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                          {q.options.map((opt, optIndex) => {
+                            const optionLetters = ['A', 'B', 'C', 'D', 'E'];
+                            return (
+                              <div
+                                key={opt.id || optIndex}
+                                className={`flex items-center gap-2.5 p-2.5 rounded-lg border transition-all ${
+                                  opt.isCorrect
+                                    ? 'border-emerald-500 bg-emerald-500/10'
+                                    : isLightMode
+                                    ? 'border-slate-200 bg-slate-50'
+                                    : 'border-slate-800 bg-slate-800/40'
+                                }`}
+                              >
+                                <input
+                                  type="radio"
+                                  name={`correct-${qIndex}`}
+                                  checked={opt.isCorrect}
+                                  onChange={() => {
+                                    setGeneratedQuestions((prev) => {
+                                      const copy = [...prev];
+                                      copy[qIndex].options = copy[qIndex].options.map((o, idx) => ({
+                                        ...o,
+                                        isCorrect: idx === optIndex,
+                                      }));
+                                      copy[qIndex].correctAnswer = opt.text;
+                                      return copy;
+                                    });
+                                  }}
+                                  className="text-emerald-600 focus:ring-emerald-500"
+                                />
+                                <span className="font-bold text-xs w-4 text-violet-500">
+                                  {optionLetters[optIndex]}.
+                                </span>
+                                <input
+                                  type="text"
+                                  value={opt.text}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setGeneratedQuestions((prev) => {
+                                      const copy = [...prev];
+                                      copy[qIndex].options[optIndex].text = val;
+                                      if (opt.isCorrect) copy[qIndex].correctAnswer = val;
+                                      return copy;
+                                    });
+                                  }}
+                                  className="w-full bg-transparent border-none text-xs focus:outline-none"
+                                />
+                                {opt.isCorrect && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500 text-white font-bold shrink-0">
+                                    CORRECT
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* True or False Options */}
+                    {q.type === 'true-false' && (
+                      <div className="space-y-2 pt-2">
+                        <label className={`text-xs ${mutedTextClass}`}>Correct Answer Key:</label>
+                        <div className="flex gap-4">
+                          {['True', 'False'].map((tf) => {
+                            const isSelected =
+                              String(q.correctAnswer).toLowerCase() === tf.toLowerCase();
+                            return (
+                              <button
+                                key={tf}
+                                type="button"
+                                onClick={() => {
+                                  setGeneratedQuestions((prev) => {
+                                    const copy = [...prev];
+                                    copy[qIndex].correctAnswer = tf;
+                                    return copy;
+                                  });
+                                }}
+                                className={`flex-1 py-2 px-4 rounded-lg font-bold text-sm border transition-all ${
+                                  isSelected
+                                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-600/30'
+                                    : isLightMode
+                                    ? 'bg-slate-100 border-slate-300 text-slate-700'
+                                    : 'bg-slate-800 border-slate-700 text-slate-300'
+                                }`}
+                              >
+                                {tf}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Identification / Enumeration / Essay Model Answer */}
+                    {['identification', 'enumeration', 'essay'].includes(q.type) && (
+                      <div className="space-y-2 pt-2">
+                        <label className={`text-xs ${mutedTextClass}`}>
+                          {q.type === 'essay' ? 'Evaluation Rubric / Model Answer:' : 'Expected Correct Answer:'}
+                        </label>
+                        <textarea
+                          rows={q.type === 'essay' ? 3 : 1}
+                          value={q.correctAnswer || ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setGeneratedQuestions((prev) => {
+                              const copy = [...prev];
+                              copy[qIndex].correctAnswer = val;
+                              return copy;
+                            });
+                          }}
+                          className={fieldClass}
+                          placeholder="Provide the exact expected response or scoring rubric..."
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Bottom Finalize CTA */}
+            <div className="flex justify-end pt-4">
+              <Button
+                onClick={() => handlePublishAssessment(false)}
+                disabled={loading}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2 px-8 py-3 text-base shadow-lg shadow-emerald-600/30"
+              >
+                {loading ? <AetherSpinner className="w-5 h-5 text-white" /> : <CheckCircle2 className="w-5 h-5" />}
+                Confirm & Publish Assessment
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* In-Progress AI Overlay */}
+        {generating && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 max-w-md w-full text-center space-y-4 shadow-2xl">
+              <div className="relative w-16 h-16 mx-auto flex items-center justify-center">
+                <div className="absolute inset-0 rounded-full border-4 border-violet-500/20 border-t-violet-500 animate-spin" />
+                <Sparkles className="w-8 h-8 text-violet-500 animate-pulse" />
+              </div>
+              <h3 className="text-xl font-bold">Instructional AI Synthesis</h3>
+              <p className={`text-sm ${mutedTextClass}`}>{generatingPhase}</p>
+              <div className="text-xs text-violet-500 bg-violet-500/10 py-1.5 px-3 rounded-full inline-block font-semibold">
+                Applying Bloom's Taxonomy & Anti-Recall Filters
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Duplicate Assessment Modal */}
+        <Dialog open={duplicateDialogOpen} onOpenChange={setDuplicateDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Assessment Already Exists</DialogTitle>
+              <DialogDescription>
+                An assessment titled &quot;{duplicateTitle}&quot; is already associated with the selected lesson. Would you like to create another quiz alongside it?
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="flex justify-end gap-2 pt-4">
+              <Button variant="outline" onClick={() => setDuplicateDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  setDuplicateDialogOpen(false);
+                  handlePublishAssessment(true);
+                }}
+                className="bg-violet-600 hover:bg-violet-700 text-white"
+              >
+                Create As Duplicate
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
 }
+export default AutoGenerateQuiz;
