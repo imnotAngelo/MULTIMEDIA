@@ -10,7 +10,6 @@ import {
   listLocalLessonsForInstructor,
   listLocalLessonsByModuleIdForInstructor,
 } from '../lib/lessonStore.js';
-import { listLocalUnits, listLocalUnitsForInstructor } from '../lib/unitStore.js';
 
 // Use a consistent default instructor ID for unauthenticated requests (proper UUID)
 const DEFAULT_INSTRUCTOR_ID = '12345678-1234-4234-8234-123456789012';
@@ -325,47 +324,10 @@ export const getUnits = async (req: AuthRequest, res: Response) => {
       }) as Array<{ id: string; title: string; description: string; created_at: string; status: string; target_sections: string[]; target_year_levels: number[]; owner_sections: string[]; owner_year_levels: number[] }>;
     }, null as any);
 
-    const localUnitsFromStore = listLocalUnitsForInstructor(requester.id)
-      .map((unit: any) => ({
-        id: unit.id,
-        title: unit.title,
-        description: unit.description || '',
-        created_at: unit.createdAt || new Date().toISOString(),
-        status: unit.status || 'active',
-        target_sections: [],
-        target_year_levels: Array.isArray(unit.yearLevels) ? unit.yearLevels : [],
-        owner_sections: [],
-        owner_year_levels: [],
-      }));
-
-    const localUnitsFromLessons = Array.from(
-      new Map(
-        listLocalLessonsForInstructor(requester.id)
-          .map((lesson: any) => [lesson.moduleId, {
-            id: lesson.moduleId,
-            title: `Local Unit ${lesson.moduleId.slice(0, 8)}`,
-            description: 'Local unit created from persisted lesson data.',
-            created_at: lesson.createdAt || new Date().toISOString(),
-            status: 'active',
-            target_sections: [],
-            target_year_levels: [],
-            owner_sections: [],
-            owner_year_levels: [],
-          }])
-      ).values()
-    );
-
-    const localUnits = [...localUnitsFromStore, ...localUnitsFromLessons];
-
-    const dbUnits = Array.isArray(unitsFromDb) ? unitsFromDb : [];
-    const mergedUnits = Array.from(
-      new Map(
-        [...localUnits, ...dbUnits].map((unit) => [unit.id, unit])
-      ).values()
-    );
+    const mergedUnits = Array.isArray(unitsFromDb) ? unitsFromDb : [];
 
     if (mergedUnits.length > 0 || unitsFromDb !== null) {
-      console.log('📚 Units fetched from merged sources:', mergedUnits.length);
+      console.log('📚 Units fetched from database:', mergedUnits.length);
       const activeUnits = mergedUnits.filter(u => u.status !== 'archived');
       const archivedUnits = mergedUnits.filter(u => u.status === 'archived');
 

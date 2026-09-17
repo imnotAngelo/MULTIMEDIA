@@ -30,6 +30,7 @@ interface NavItem {
   icon: React.ElementType;
   badge?: number;
   subItems?: NavItem[];
+  unitId?: string;
 }
 
 const studentNavItems: NavItem[] = [
@@ -45,7 +46,7 @@ const instructorNavItems: NavItem[] = [
   { label: 'Dashboard', href: '/instructor/dashboard', icon: LayoutDashboard },
   {
     label: 'Units & Lessons',
-    href: '/instructor/courses?view=units',
+    href: '/instructor/courses',
     icon: BookOpen,
     subItems: [],
   },
@@ -132,13 +133,21 @@ export function Sidebar({
 
     const outline = tree.units.map((unit) => {
       const unitLessons = tree.lessons.filter((lesson: any) => lesson.unitId === unit.id);
+      const latestLesson = [...unitLessons].sort(
+        (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+      )[0] || unitLessons[unitLessons.length - 1];
+
       return {
         label: unit.title,
-        href: `/instructor/courses?unit=${encodeURIComponent(unit.id)}`,
+        unitId: unit.id,
+        href: latestLesson
+          ? `/instructor/lesson/${encodeURIComponent(unit.id)}/${encodeURIComponent(latestLesson.id)}`
+          : `/instructor/courses?unit=${encodeURIComponent(unit.id)}`,
         icon: Layers,
         subItems: unitLessons.map((lesson: any) => ({
           label: lesson.title,
-          href: `/instructor/courses?unit=${encodeURIComponent(unit.id)}&lesson=${encodeURIComponent(lesson.id)}`,
+          unitId: unit.id,
+          href: `/instructor/lesson/${encodeURIComponent(unit.id)}/${encodeURIComponent(lesson.id)}`,
           icon: FileText,
         })),
       };
@@ -292,7 +301,7 @@ export function Sidebar({
 
                     {item.subItems && item.subItems.length > 0 ? (
                       item.subItems.map((subItem) => {
-                        const unitId = new URLSearchParams((subItem.href.split('?')[1] ?? '')).get('unit') ?? undefined;
+                        const unitId = subItem.unitId || (new URLSearchParams(subItem.href.split('?')[1] || '').get('unit') || undefined);
                         const hasLessonItems = Boolean(subItem.subItems?.length);
 
                         return (

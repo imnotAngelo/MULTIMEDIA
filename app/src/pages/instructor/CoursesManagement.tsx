@@ -35,7 +35,6 @@ import { notificationService } from '@/services/notificationService';
 import { cn } from '@/lib/utils';
 import { AetherLoader } from '@/components/AetherLoader';
 import { SectionYearTargetPicker } from '@/components/SectionYearTargetPicker';
-import { ViewLesson } from './ViewLesson';
 import { useCourseTreeStore } from '@/stores/courseTreeStore';
 
 interface Unit {
@@ -175,6 +174,7 @@ function UnitSection({
   isExpanded,
   activeLessonId,
   onToggle,
+  onUnitClick,
   onLessonClick,
   onUploadClick,
   onEditUnit,
@@ -187,6 +187,7 @@ function UnitSection({
   isExpanded: boolean;
   activeLessonId?: string;
   onToggle: () => void;
+  onUnitClick?: (unitId: string) => void;
   onLessonClick: (lessonId: string) => void;
   onUploadClick: (unitId: string) => void;
   onEditUnit?: (unit: Unit) => void;
@@ -200,52 +201,67 @@ function UnitSection({
     <div className="border border-slate-800 rounded-xl overflow-hidden">
       <div
         className={cn(
-          'w-full flex items-center gap-4 p-4 transition-colors',
+          'w-full flex items-center gap-2.5 p-3 transition-colors',
           'bg-slate-900/60 hover:bg-slate-800/50'
         )}
       >
         <button
           type="button"
-          onClick={onToggle}
-          className="flex flex-1 items-center gap-4 text-left min-w-0"
+          onClick={() => {
+            if (onUnitClick) {
+              onUnitClick(unit.id);
+            } else {
+              onToggle();
+            }
+          }}
+          className="flex flex-1 items-center gap-2.5 text-left min-w-0"
         >
-          <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-violet-500/10 text-violet-400">
-            <BookOpen className="w-5 h-5" />
+          <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 bg-violet-500/10 text-violet-400">
+            <BookOpen className="w-4 h-4" />
           </div>
 
           <div className="flex-1 text-left min-w-0">
-            <h3 className="font-semibold text-slate-200 truncate">{unit.title}</h3>
-            <p className="text-sm text-slate-500 truncate">{unit.description}</p>
+            <h3 className="font-semibold text-slate-200 text-sm truncate">{unit.title}</h3>
+            {unit.description && (
+              <p className="text-xs text-slate-500 truncate">{unit.description}</p>
+            )}
           </div>
 
-          <div className="flex items-center gap-4 flex-shrink-0">
-            <div className="text-right">
-              <span className="text-sm font-medium text-slate-400">
-                {unitLessons.length}
-              </span>
-              <p className="text-xs text-slate-500">lessons</p>
-            </div>
-            <ChevronDown
-              className={cn(
-                'w-5 h-5 text-slate-500 transition-transform',
-                isExpanded && 'rotate-180'
-              )}
-            />
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <span className="text-xs font-medium text-slate-400">
+              {unitLessons.length} {unitLessons.length === 1 ? 'lesson' : 'lessons'}
+            </span>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggle();
+              }}
+              className="p-1 hover:bg-slate-700/50 rounded text-slate-400"
+              title={isExpanded ? 'Collapse' : 'Expand'}
+            >
+              <ChevronDown
+                className={cn(
+                  'w-4 h-4 transition-transform',
+                  isExpanded && 'rotate-180'
+                )}
+              />
+            </button>
           </div>
         </button>
 
-        <div className="flex items-center gap-1 flex-shrink-0">
+        <div className="flex items-center gap-0.5 flex-shrink-0">
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
               onEditUnit?.(unit);
             }}
-            className="p-2 rounded-md text-slate-400 hover:bg-slate-700 hover:text-violet-300 transition-colors"
+            className="p-1.5 rounded-md text-slate-400 hover:bg-slate-700 hover:text-violet-300 transition-colors"
             title="Edit unit"
             aria-label={`Edit unit ${unit.title}`}
           >
-            <Edit2 className="w-4 h-4" />
+            <Edit2 className="w-3.5 h-3.5" />
           </button>
           <button
             type="button"
@@ -253,22 +269,18 @@ function UnitSection({
               e.stopPropagation();
               onDeleteUnit?.(unit);
             }}
-            className="p-2 rounded-md text-slate-400 hover:bg-red-500/20 hover:text-red-300 transition-colors"
+            className="p-1.5 rounded-md text-slate-400 hover:bg-red-500/20 hover:text-red-300 transition-colors"
             title="Delete unit"
             aria-label={`Delete unit ${unit.title}`}
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
 
       {isExpanded && (
         <div className="border-t border-slate-800">
-          {unitLessons.length === 0 ? (
-            <div className="p-4 text-center text-slate-400">
-              <p className="text-sm">No lessons yet</p>
-            </div>
-          ) : (
+          {unitLessons.length > 0 && (
             <div className="p-2 space-y-1">
               {unitLessons.map(lesson => (
                 <LessonItem
@@ -283,17 +295,15 @@ function UnitSection({
             </div>
           )}
 
-          <div className="border-t border-slate-800 p-2">
-            <div className="grid grid-cols-1 gap-2">
-              <Button
-                onClick={() => onUploadClick(unit.id)}
-                variant="outline"
-                className="w-full text-xs border-slate-700 text-slate-300 hover:bg-slate-800/50"
-              >
-                <Upload className="w-3 h-3 mr-1" />
-                Add Lesson
-              </Button>
-            </div>
+          <div className={cn("p-2", unitLessons.length > 0 && "border-t border-slate-800")}>
+            <Button
+              onClick={() => onUploadClick(unit.id)}
+              variant="outline"
+              className="w-full text-xs border-slate-700 text-slate-300 hover:bg-slate-800/50"
+            >
+              <Upload className="w-3 h-3 mr-1" />
+              Add Lesson
+            </Button>
           </div>
         </div>
       )}
@@ -461,32 +471,42 @@ export function CoursesManagement() {
   }, [requestedUnitId, units, user?.id]);
 
   useEffect(() => {
-    if (requestedView === 'units' && !requestedUnitId && !requestedLessonId) {
-      return;
-    }
+    if (loading || showCreateUnitDialog || showUploadDialog) return;
 
-    if (requestedView === 'units') {
-      const firstLesson = lessons[0];
-      if (firstLesson) {
-        navigate(`/instructor/lesson/${firstLesson.unitId}/${firstLesson.id}`, { replace: true });
+    // 1. If a specific intended lesson was requested in URL query
+    if (requestedLessonId && requestedUnitId) {
+      const intendedLesson = lessons.find((lesson) => lesson.id === requestedLessonId && lesson.unitId === requestedUnitId);
+      if (intendedLesson) {
+        navigate(`/instructor/lesson/${intendedLesson.unitId}/${intendedLesson.id}`, { replace: true });
         return;
       }
     }
 
-    if (!requestedUnitId || !units.some((unit) => unit.id === requestedUnitId)) return;
-    setExpandedUnits([requestedUnitId]);
-
-    const requestedLesson = lessons.find((lesson) => lesson.id === requestedLessonId && lesson.unitId === requestedUnitId);
-    if (requestedLesson) {
-      navigate(`/instructor/lesson/${requestedLesson.unitId}/${requestedLesson.id}`, { replace: true });
+    // 2. If a specific unit was requested in URL query
+    if (requestedUnitId) {
+      setExpandedUnits((prev) => (prev.includes(requestedUnitId) ? prev : [...prev, requestedUnitId]));
+      const unitLessons = lessons.filter((lesson) => lesson.unitId === requestedUnitId);
+      if (unitLessons.length > 0) {
+        // Proceed to the latest uploaded lesson in this unit
+        const latestLesson = [...unitLessons].sort(
+          (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+        )[0] || unitLessons[unitLessons.length - 1];
+        navigate(`/instructor/lesson/${latestLesson.unitId}/${latestLesson.id}`, { replace: true });
+        return;
+      }
+      // If the unit has no lessons, do not redirect to another unit! Stay to display the reminder.
       return;
     }
 
-    const firstLesson = lessons.find((lesson) => lesson.unitId === requestedUnitId);
-    if (firstLesson) {
-      navigate(`/instructor/lesson/${firstLesson.unitId}/${firstLesson.id}`, { replace: true });
+    // 3. Direct general /instructor/courses directly to view lesson (latest available lesson)
+    if (lessons.length > 0) {
+      const latestLesson = [...lessons].sort(
+        (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+      )[0] || lessons[0];
+      navigate(`/instructor/lesson/${latestLesson.unitId}/${latestLesson.id}`, { replace: true });
+      return;
     }
-  }, [requestedUnitId, requestedLessonId, requestedView, units, lessons, navigate]);
+  }, [loading, requestedUnitId, requestedLessonId, requestedView, units, lessons, navigate, showCreateUnitDialog, showUploadDialog]);
 
   const loadData = async () => {
     try {
@@ -854,12 +874,6 @@ export function CoursesManagement() {
   };
 
   const activeLesson = lessons.find(l => l.id === activeLessonId);
-  const isUnitsViewer = requestedView === 'units' && !requestedAction && !requestedUnitId && !requestedLessonId;
-
-  if (isUnitsViewer) {
-    return <ViewLesson embedded />;
-  }
-
   if (loading) {
     return (
       <div className="flex items-center justify-center p-12">
@@ -957,392 +971,117 @@ export function CoursesManagement() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(250px,300px)_minmax(0,1fr)]">
-        <aside className="space-y-3 lg:sticky lg:top-20">
-          <div className="flex items-center justify-between px-1">
-            <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-300">Course outline</h2>
-            <span className="text-xs text-slate-500">{units.length} units</span>
+      {units.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-slate-800 bg-slate-900/40 p-12 text-center space-y-4 shadow-sm">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-500/10 text-violet-400 border border-violet-500/20">
+            <BookOpen className="h-7 w-7" />
           </div>
-          {units.length === 0 ? (
-            <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-6 text-center">
-              <BookOpen className="w-8 h-8 text-slate-600 mx-auto" />
-              <div>
-                <p className="text-slate-400 font-medium">No units yet</p>
-                <p className="text-slate-500 text-xs mt-1">Create your first unit to get started</p>
+          <div>
+            <h2 className="text-xl font-bold text-white">No units and lessons available</h2>
+            <p className="mx-auto mt-2 max-w-md text-sm text-slate-400">
+              There are currently no units and lessons available. Create your first unit to get started.
+            </p>
+          </div>
+          <div className="mt-6 flex justify-center">
+            <Button
+              onClick={() => setShowCreateUnitDialog(true)}
+              className="bg-violet-600 hover:bg-violet-700 text-white font-medium"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Create Unit
+            </Button>
+          </div>
+        </div>
+      ) : (() => {
+        const currentSelectedUnit = units.find(u => u.id === requestedUnitId) || units[0];
+        const currentUnitLessons = currentSelectedUnit ? lessons.filter(l => l.unitId === currentSelectedUnit.id) : [];
+
+        if (currentSelectedUnit && currentUnitLessons.length === 0) {
+          return (
+            <div className="rounded-2xl border border-dashed border-slate-800 bg-slate-900/40 p-12 text-center space-y-4 shadow-sm">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                <BookOpen className="h-7 w-7" />
               </div>
-            </div>
-          ) : (
-            <div className="max-h-[calc(100vh-12rem)] space-y-2 overflow-y-auto pr-1">
-              {units.map(unit => (
-                <UnitSection
-                  key={unit.id}
-                  unit={unit}
-                  lessons={lessons}
-                  isExpanded={expandedUnits.includes(unit.id)}
-                  activeLessonId={activeLessonId || undefined}
-                  onToggle={() => toggleUnit(unit.id)}
-                  onLessonClick={(lessonId) => {
-                    const lesson = lessons.find((item) => item.id === lessonId);
-                    if (lesson) {
-                      navigate(`/instructor/lesson/${lesson.unitId}/${lesson.id}`);
-                    }
-                  }}
-                  onUploadClick={(unitId) => {
-                    setSelectedUnitForUpload(unitId);
+              <div>
+                <h3 className="text-xl font-bold text-white">No lessons available in {currentSelectedUnit.title}</h3>
+                <p className="text-slate-400 text-sm mt-2 max-w-sm mx-auto">
+                  There are no lessons uploaded for this unit yet. Upload a lesson to get started.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-3 pt-4">
+                <Button
+                  onClick={() => {
+                    setSelectedUnitForUpload(currentSelectedUnit.id);
                     setShowUploadDialog(true);
                   }}
-                  onEditUnit={handleEditUnit}
-                  onDeleteUnit={handleDeleteUnit}
-                  onEditLesson={handleEditLesson}
-                  onDeleteLesson={handleDeleteLesson}
-                />
-              ))}
-            </div>
-          )}
-        </aside>
-
-        <section className="min-w-0">
-          {activeLesson ? (
-            <div className="bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden">
-              <div className="p-6 border-b border-slate-800">
-                <h2 className="text-2xl font-bold text-white">{activeLesson.title}</h2>
-                <div className="flex items-center gap-4 mt-3 text-sm text-slate-400"> 
-                  <span>
-                    Created {new Date(activeLesson.createdAt).toLocaleDateString()}
-                  </span>
-                </div>
-              </div>
-
-              <div className="p-6">
-                {/* Current Video Preview */}
-                {activeLesson.video_url && (
-                  <div className="mb-6 rounded-lg overflow-hidden border border-slate-700/50 bg-gradient-to-b from-slate-900/50 to-slate-950">
-                    <div className="p-4 border-b border-slate-700/50 flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500/20 to-violet-600/20 flex items-center justify-center border border-violet-500/30">
-                        <Video className="w-4 h-4 text-violet-400" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-slate-200">Current Video</p>
-                        <p className="text-xs text-slate-500">Click play to preview</p>
-                      </div>
-                    </div>
-                    <div className="relative bg-black" style={{ paddingBottom: '56.25%' }}>
-                      <video
-                        controls
-                        className="absolute inset-0 w-full h-full"
-                        preload="metadata"
-                      >
-                        <source src={activeLesson.video_url} type="video/mp4" />
-                        Your browser does not support the video tag.
-                      </video>
-                    </div>
-                  </div>
-                )}
-
-                {editingLessonId === activeLesson.id ? (
-                  <div className="bg-slate-800/40 border border-slate-700 rounded-lg p-4 space-y-4 mb-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="text-sm font-semibold text-slate-300">Edit Lesson Media (Optional)</h4>
-                    </div>
-
-                    {/* Video Type Selection */}
-                    <div>
-                      <Label className="text-slate-400 text-xs mb-2 block">Video Source</Label>
-                      <div className="grid grid-cols-2 gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditVideoType('url');
-                            setEditVideoFile(null);
-                          }}
-                          className={`p-3 rounded-lg border text-xs font-medium transition-all ${
-                            editVideoType === 'url'
-                              ? 'border-violet-500/60 bg-violet-500/10 text-violet-300'
-                              : 'border-slate-600 bg-slate-700/50 text-slate-400 hover:bg-slate-700'
-                          }`}
-                        >
-                          <LinkIcon className="w-3 h-3 mb-1" />
-                          Video URL
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditVideoType('upload');
-                            setEditVideoUrl('');
-                          }}
-                          className={`p-3 rounded-lg border text-xs font-medium transition-all ${
-                            editVideoType === 'upload'
-                              ? 'border-cyan-500/60 bg-cyan-500/10 text-cyan-300'
-                              : 'border-slate-600 bg-slate-700/50 text-slate-400 hover:bg-slate-700'
-                          }`}
-                        >
-                          <Upload className="w-3 h-3 mb-1" />
-                          Upload File
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Video URL Input */}
-                    {editVideoType === 'url' && (
-                      <div>
-                        <Label htmlFor="videoUrl" className="text-slate-400 text-xs">Video URL (YouTube, Vimeo, etc.)</Label>
-                        <Input
-                          id="videoUrl"
-                          placeholder="https://youtube.com/watch?v=..."
-                          value={editVideoUrl}
-                          onChange={(e) => setEditVideoUrl(e.target.value)}
-                          className="bg-slate-700 border-slate-600 text-slate-100 text-sm mt-1"
-                        />
-                      </div>
-                    )}
-
-                    {/* Video File Upload */}
-                    {editVideoType === 'upload' && (
-                      <div className="space-y-3">
-                        <Label htmlFor="videoFile" className="text-slate-300 text-sm font-semibold">Upload Video File</Label>
-                        <p className="text-xs text-slate-400">Supported: MP4, WebM, OGG, MOV, AVI, MKV (Maximum 500MB)</p>
-                        
-                        <div className="mt-3">
-                          <input
-                            id="videoFile"
-                            type="file"
-                            accept="video/*"
-                            onChange={(e) => setEditVideoFile(e.target.files?.[0] || null)}
-                            className="block w-full text-sm text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-gradient-to-r file:from-violet-600 file:to-violet-700 file:text-white hover:file:from-violet-700 hover:file:to-violet-800 file:cursor-pointer transition-all"
-                          />
-                        </div>
-                        
-                        {editVideoFile && (
-                          <div className="mt-4 p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/30 space-y-3">
-                            <div className="flex items-start gap-3">
-                              <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center flex-shrink-0 border border-emerald-500/30">
-                                <Video className="w-5 h-5 text-emerald-400" />
-                              </div>
-                              <div className="flex-1">
-                                <p className="text-sm font-semibold text-emerald-300">✓ File Selected</p>
-                                <p className="text-xs text-emerald-200/70">{editVideoFile.name}</p>
-                                <p className="text-xs text-emerald-200/50 mt-1">{(editVideoFile.size / 1024 / 1024).toFixed(2)} MB</p>
-                              </div>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => setEditVideoFile(null)}
-                              className="text-xs text-emerald-400 hover:text-emerald-300 font-medium transition-colors"
-                            >
-                              Remove Selection
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* App Link Section */}
-                    <div className="space-y-2">
-                      <Label htmlFor="appName" className="text-slate-400 text-xs">App/Tool Used Name (Optional)</Label>
-                      <Input
-                        id="appName"
-                        placeholder="e.g., Adobe Photoshop, Figma, Blender"
-                        value={editAppName}
-                        onChange={(e) => setEditAppName(e.target.value)}
-                        className="bg-slate-700 border-slate-600 text-slate-100 text-sm"
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="appLink" className="text-slate-400 text-xs">App/Tool Link (Optional)</Label>
-                      <Input
-                        id="appLink"
-                        placeholder="https://www.adobe.com/products/photoshop"
-                        value={editAppLink}
-                        onChange={(e) => setEditAppLink(e.target.value)}
-                        className="bg-slate-700 border-slate-600 text-slate-100 text-sm mt-1"
-                      />
-                    </div>
-
-                    <div className="flex gap-2">
-                      <Button
-                        onClick={handleUpdateLessonMetadata}
-                        disabled={savingMetadata || uploadingVideo}
-                        className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-xs"
-                      >
-                        {uploadingVideo ? (
-                          <>
-                            <AetherSpinner className="w-3 h-3 mr-1" />
-                            Uploading video...
-                          </>
-                        ) : savingMetadata ? (
-                          <>
-                            <AetherSpinner className="w-3 h-3 mr-1" />
-                            Saving...
-                          </>
-                        ) : (
-                          <>
-                            <Check className="w-3 h-3 mr-1" />
-                            Save
-                          </>
-                        )}
-                      </Button>
-                      <Button
-                        onClick={handleCancelEdit}
-                        disabled={savingMetadata || uploadingVideo}
-                        variant="outline"
-                        className="flex-1 border-slate-600 text-slate-400 text-xs"
-                      >
-                        <X className="w-3 h-3 mr-1" />
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-3 mb-4">
-                    {/* Display Video - File Upload or URL */}
-                    {activeLesson.video_url && (
-                      (() => {
-                        const isFileUpload = activeLesson.video_url.includes('/lesson-videos/');
-                        
-                        // Function to get clean platform name
-                        const getPlatformName = () => {
-                          try {
-                            const videoUrl = activeLesson.video_url || '';
-                            const urlObj = new URL(videoUrl);
-                            const hostname = urlObj.hostname.replace('www.', '').toLowerCase();
-                            
-                            // Map common video platforms to clean names
-                            if (hostname.includes('youtube')) return 'YouTube';
-                            if (hostname.includes('vimeo')) return 'Vimeo';
-                            if (hostname.includes('youtu.be')) return 'YouTube';
-                            if (hostname.includes('loom')) return 'Loom';
-                            if (hostname.includes('wistia')) return 'Wistia';
-                            if (hostname.includes('cloudinary')) return 'Cloudinary';
-                            if (hostname.includes('bunny')) return 'Bunny CDN';
-                            if (hostname.includes('dropbox')) return 'Dropbox';
-                            if (hostname.includes('google')) return 'Google Drive';
-                            if (hostname.includes('onedrive')) return 'OneDrive';
-                            
-                            // Return clean domain for others
-                            return hostname.charAt(0).toUpperCase() + hostname.slice(1);
-                          } catch {
-                            return 'Video Link';
-                          }
-                        };
-                        
-                        return isFileUpload ? (
-                          // For uploaded files: Show video title, not URL
-                          <div className="bg-gradient-to-r from-violet-500/10 to-violet-600/10 border border-violet-500/30 rounded-lg p-4 hover:border-violet-500/50 transition-colors shadow-sm">
-                            <div className="flex items-center justify-between gap-3">
-                              <div className="flex items-center gap-3 flex-1 min-w-0">
-                                <div className="w-10 h-10 rounded-lg bg-violet-500/20 flex items-center justify-center flex-shrink-0 border border-violet-500/30">
-                                  <Video className="w-5 h-5 text-violet-400" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-xs text-slate-400 font-medium uppercase tracking-wide">Uploaded Video</p>
-                                  <p className="text-sm font-semibold text-violet-300 truncate">{activeLesson.title}</p>
-                                </div>
-                              </div>
-                              <a 
-                                href={activeLesson.video_url} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="px-3 py-1.5 bg-violet-600 hover:bg-violet-700 text-white text-xs font-medium rounded-lg transition-colors flex-shrink-0 whitespace-nowrap"
-                              >
-                                Open
-                              </a>
-                            </div>
-                          </div>
-                        ) : (
-                          // For URL links: Show clean platform name with better design
-                          <div className="bg-gradient-to-r from-blue-500/10 to-cyan-600/10 border border-blue-500/30 rounded-lg p-4 hover:border-blue-500/50 transition-colors shadow-sm">
-                            <div className="flex items-center justify-between gap-3">
-                              <div className="flex items-center gap-3 flex-1 min-w-0">
-                                <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center flex-shrink-0 border border-blue-500/30">
-                                  <LinkIcon className="w-5 h-5 text-blue-400" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-xs text-slate-400 font-medium uppercase tracking-wide">External Video</p>
-                                  <p className="text-sm font-semibold text-blue-300 truncate">{getPlatformName()}</p>
-                                </div>
-                              </div>
-                              <a 
-                                href={activeLesson.video_url} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors flex-shrink-0 whitespace-nowrap"
-                              >
-                                Visit
-                              </a>
-                            </div>
-                          </div>
-                        );
-                      })()
-                    )}
-
-                    {/* Display App Link */}
-                    {activeLesson.app_link && (
-                      <div className="bg-gradient-to-r from-emerald-500/10 to-teal-600/10 border border-emerald-500/30 rounded-lg p-4 hover:border-emerald-500/50 transition-colors">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-3 flex-1 min-w-0">
-                            <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center flex-shrink-0 border border-emerald-500/30">
-                              <LinkIcon className="w-5 h-5 text-emerald-400" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs text-slate-400 font-medium">{activeLesson.app_name || 'App/Tool'}</p>
-                              <p className="text-sm font-semibold text-emerald-300 truncate">{activeLesson.app_name || 'External Link'}</p>
-                            </div>
-                          </div>
-                          <a 
-                            href={activeLesson.app_link} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium rounded-lg transition-colors flex-shrink-0"
-                          >
-                            Visit
-                          </a>
-                        </div>
-                      </div>
-                    )}
-
-                    {!activeLesson.video_url && !activeLesson.app_link && (
-                      <div className="bg-slate-800/40 border border-dashed border-slate-700 rounded-lg p-4 text-center">
-                        <p className="text-xs text-slate-500">No video or app link added yet</p>
-                      </div>
-                    )}
-
-                    <Button
-                      onClick={() => handleEditLesson(activeLesson)}
-                      size="sm"
-                      variant="outline"
-                      className="w-full border-slate-600 text-slate-400 text-xs"
-                    >
-                      <Edit2 className="w-3 h-3 mr-1" />
-                      Edit Media & Tools
-                    </Button>
-                  </div>
-                )}
-
-                <Button 
-                  className="w-full bg-violet-600 hover:bg-violet-700"
-                  onClick={() => {
-                    if (activeLesson) {
-                      navigate(`/instructor/lesson/${activeLesson.unitId}/${activeLesson.id}`);
-                    }
-                  }}
+                  className="bg-violet-600 hover:bg-violet-700 text-white font-medium"
                 >
-                  <Eye className="w-4 h-4 mr-2" />
-                  View Slides
+                  <Upload className="w-4 h-4 mr-2" />
+                  Upload Lesson
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => handleEditUnit(currentSelectedUnit)}
+                  className="border-slate-700 text-slate-300 hover:bg-slate-800"
+                >
+                  <Edit2 className="w-4 h-4 mr-2" />
+                  Edit Unit
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => handleDeleteUnit(currentSelectedUnit)}
+                  className="border-red-900/40 text-red-400 hover:bg-red-950/40 hover:text-red-300"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete Unit
                 </Button>
               </div>
             </div>
-          ) : (
-            <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6 text-center space-y-3">
-              <FileText className="w-8 h-8 text-slate-600 mx-auto" />
+          );
+        }
+
+        if (lessons.length === 0) {
+          return (
+            <div className="rounded-2xl border border-dashed border-slate-800 bg-slate-900/40 p-12 text-center space-y-4 shadow-sm">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-500/10 text-violet-400 border border-violet-500/20">
+                <BookOpen className="h-7 w-7" />
+              </div>
               <div>
-                <p className="text-slate-400 font-medium">No lesson selected</p>
-                <p className="text-slate-500 text-xs mt-1">Select a lesson from the list to view details</p>
+                <h3 className="text-xl font-bold text-white">No lessons available</h3>
+                <p className="text-slate-400 text-sm mt-2 max-w-sm mx-auto">
+                  You have created units, but no lessons are available yet. Upload a lesson to get started.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-3 pt-4">
+                <Button
+                  onClick={() => {
+                    setSelectedUnitForUpload(units[0]?.id || null);
+                    setShowUploadDialog(true);
+                  }}
+                  className="bg-violet-600 hover:bg-violet-700 text-white font-medium"
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  Upload Lesson
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowCreateUnitDialog(true)}
+                  className="border-slate-700 text-slate-300 hover:bg-slate-800"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Unit
+                </Button>
               </div>
             </div>
-          )}
-        </section>
-      </div>
+          );
+        }
+
+        return (
+          <div className="flex items-center justify-center py-20">
+            <AetherSpinner className="w-8 h-8 text-violet-500" />
+          </div>
+        );
+      })()}
 
       <Dialog open={!!editingUnitId} onOpenChange={(open) => {
         if (!open) {
@@ -1396,6 +1135,139 @@ export function CoursesManagement() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={!!editingLessonId} onOpenChange={(open) => {
+        if (!open) handleCancelEdit();
+      }}>
+        <DialogContent className="bg-slate-900 border-slate-800 text-slate-100 max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Lesson Media & Links</DialogTitle>
+            <DialogDescription>Attach or update video and tool links for this lesson.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label className="text-slate-400 text-xs mb-2 block">Video Source</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditVideoType('url');
+                    setEditVideoFile(null);
+                  }}
+                  className={`p-3 rounded-lg border text-xs font-medium transition-all ${
+                    editVideoType === 'url'
+                      ? 'border-violet-500/60 bg-violet-500/10 text-violet-300'
+                      : 'border-slate-600 bg-slate-700/50 text-slate-400 hover:bg-slate-700'
+                  }`}
+                >
+                  <LinkIcon className="w-3 h-3 mb-1" />
+                  Video URL
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditVideoType('upload');
+                    setEditVideoUrl('');
+                  }}
+                  className={`p-3 rounded-lg border text-xs font-medium transition-all ${
+                    editVideoType === 'upload'
+                      ? 'border-cyan-500/60 bg-cyan-500/10 text-cyan-300'
+                      : 'border-slate-600 bg-slate-700/50 text-slate-400 hover:bg-slate-700'
+                  }`}
+                >
+                  <Upload className="w-3 h-3 mb-1" />
+                  Upload File
+                </button>
+              </div>
+            </div>
+
+            {editVideoType === 'url' && (
+              <div>
+                <Label htmlFor="dialogVideoUrl" className="text-slate-400 text-xs">Video URL (YouTube, Vimeo, etc.)</Label>
+                <Input
+                  id="dialogVideoUrl"
+                  placeholder="https://youtube.com/watch?v=..."
+                  value={editVideoUrl}
+                  onChange={(e) => setEditVideoUrl(e.target.value)}
+                  className="bg-slate-800 border-slate-700 text-slate-100 text-sm mt-1"
+                />
+              </div>
+            )}
+
+            {editVideoType === 'upload' && (
+              <div className="space-y-2">
+                <Label htmlFor="dialogVideoFile" className="text-slate-300 text-sm font-medium">Upload Video File</Label>
+                <p className="text-xs text-slate-400">Supported: MP4, WebM, OGG, MOV (Max 500MB)</p>
+                <input
+                  id="dialogVideoFile"
+                  type="file"
+                  accept="video/*"
+                  onChange={(e) => setEditVideoFile(e.target.files?.[0] || null)}
+                  className="block w-full text-sm text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-violet-600 file:text-white hover:file:bg-violet-700 file:cursor-pointer"
+                />
+                {editVideoFile && (
+                  <p className="text-xs text-emerald-400">Selected: {editVideoFile.name} ({(editVideoFile.size / 1024 / 1024).toFixed(1)} MB)</p>
+                )}
+              </div>
+            )}
+
+            <div>
+              <Label htmlFor="dialogAppName" className="text-slate-400 text-xs">App/Tool Name (Optional)</Label>
+              <Input
+                id="dialogAppName"
+                placeholder="e.g., Figma, Blender"
+                value={editAppName}
+                onChange={(e) => setEditAppName(e.target.value)}
+                className="bg-slate-800 border-slate-700 text-slate-100 text-sm mt-1"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="dialogAppLink" className="text-slate-400 text-xs">App/Tool Link (Optional)</Label>
+              <Input
+                id="dialogAppLink"
+                placeholder="https://..."
+                value={editAppLink}
+                onChange={(e) => setEditAppLink(e.target.value)}
+                className="bg-slate-800 border-slate-700 text-slate-100 text-sm mt-1"
+              />
+            </div>
+
+            <div className="flex gap-2 justify-end pt-2">
+              <Button
+                variant="outline"
+                onClick={handleCancelEdit}
+                disabled={savingMetadata || uploadingVideo}
+                className="border-slate-700 text-slate-300 hover:bg-slate-800/50"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleUpdateLessonMetadata}
+                disabled={savingMetadata || uploadingVideo}
+                className="bg-violet-600 hover:bg-violet-700 text-white"
+              >
+                {uploadingVideo ? (
+                  <>
+                    <AetherSpinner className="w-4 h-4 mr-2" />
+                    Uploading...
+                  </>
+                ) : savingMetadata ? (
+                  <>
+                    <AetherSpinner className="w-4 h-4 mr-2" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4 mr-2" />
+                    Save
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
         <DialogContent className="bg-white/95 border-slate-200 text-slate-900 shadow-[0_28px_90px_rgba(15,23,42,0.18)]">
           <DialogHeader>
@@ -1403,7 +1275,22 @@ export function CoursesManagement() {
             <DialogDescription>Upload a PDF to create a new lesson</DialogDescription>
           </DialogHeader>
           <div className="space-y-5">
-            <>
+            <div className="space-y-2">
+              <Label htmlFor="unitSelect" className="text-slate-700 font-medium">Target Unit</Label>
+              <select
+                id="unitSelect"
+                value={selectedUnitForUpload || ''}
+                onChange={(e) => setSelectedUnitForUpload(e.target.value)}
+                className="w-full rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-violet-500"
+              >
+                <option value="" disabled>Select a unit</option>
+                {units.map((unit) => (
+                  <option key={unit.id} value={unit.id}>
+                    {unit.title}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="lessonTitle" className="text-slate-700 font-medium">Lesson Title</Label>
               <Input
@@ -1452,7 +1339,6 @@ export function CoursesManagement() {
                 Upload Lesson
               </Button>
             </div>
-            </>
           </div>
         </DialogContent>
       </Dialog>

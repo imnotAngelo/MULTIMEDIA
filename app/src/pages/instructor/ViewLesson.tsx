@@ -391,16 +391,23 @@ export function ViewLesson({ unitId: providedUnitId, lessonId: providedLessonId,
 
   if (error || !lesson) {
     return (
-      <div className="flex items-center justify-center h-screen flex-col gap-4">
-        <p className="text-red-400">{error || 'Lesson not found'}</p>
-            <p className="text-slate-400 text-sm">Route params - unitId: {unitId}, lessonId: {lessonId}</p>
-            <Button onClick={() => navigate(-1)} className="bg-violet-600 hover:bg-violet-700">
-              <ChevronLeft className="w-4 h-4 mr-2" />
-              Go Back
-            </Button>
-          </div>
-        );
-      }
+      <div className="flex items-center justify-center min-h-[60vh] flex-col gap-4 p-6 text-center">
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+          <BookOpen className="h-8 w-8" />
+        </div>
+        <h2 className="text-xl font-semibold text-white">No lesson available</h2>
+        <p className="text-slate-400 text-sm max-w-sm">
+          There are no lessons available for this unit yet, or the requested lesson could not be found.
+        </p>
+        <div className="flex gap-3 mt-2">
+          <Button onClick={() => navigate('/instructor/courses')} className="bg-violet-600 hover:bg-violet-700 text-white">
+            <ChevronLeft className="w-4 h-4 mr-2" />
+            Go to Course Outline
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
       const currentSlideData = lesson.slides?.[currentSlide];
       const hasSlides = lesson.slides && lesson.slides.length > 0;
