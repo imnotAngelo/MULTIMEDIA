@@ -7,7 +7,6 @@ import {
   ChevronDown,
   RefreshCw,
   Upload,
-  UploadCloud,
   Plus,
   Eye,
   Clock,
@@ -310,6 +309,7 @@ export function CoursesManagement() {
   const requestedUnitId = searchParams.get('unit');
   const requestedLessonId = searchParams.get('lesson');
   const requestedView = searchParams.get('view');
+  const requestedAction = searchParams.get('action');
   const [units, setUnits] = useState<Unit[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [expandedUnits, setExpandedUnits] = useState<string[]>([]);
@@ -320,7 +320,6 @@ export function CoursesManagement() {
   const [selectedUnitForUpload, setSelectedUnitForUpload] = useState<string | null>(null);
   const [lessonTitle, setLessonTitle] = useState('');
   const [lessonFile, setLessonFile] = useState<File | null>(null);
-  const [isLessonFileDragging, setIsLessonFileDragging] = useState(false);
   const [uploadingLesson, setUploadingLesson] = useState(false);
 
   const [showCreateUnitDialog, setShowCreateUnitDialog] = useState(false);
@@ -374,6 +373,27 @@ export function CoursesManagement() {
     setLoading(true);
     loadData();
   }, [isHydrated, isAuthenticated, user?.id]);
+
+  useEffect(() => {
+    if (requestedAction === 'add-unit') {
+      setActiveLessonId(null);
+      setShowUploadDialog(false);
+      setShowCreateUnitDialog(true);
+      navigate('/instructor/courses', { replace: true });
+      return;
+    }
+
+    if (requestedAction === 'add-lesson') {
+      const targetUnitId = requestedUnitId || units[0]?.id || null;
+      if (!targetUnitId) return;
+
+      setActiveLessonId(null);
+      setSelectedUnitForUpload(targetUnitId);
+      setShowCreateUnitDialog(false);
+      setShowUploadDialog(true);
+      navigate(`/instructor/courses?view=units&unit=${encodeURIComponent(targetUnitId)}`, { replace: true });
+    }
+  }, [requestedAction, requestedUnitId, units, navigate]);
 
   useEffect(() => {
     const triggerQuickAction = () => {
@@ -441,6 +461,10 @@ export function CoursesManagement() {
   }, [requestedUnitId, units, user?.id]);
 
   useEffect(() => {
+    if (requestedView === 'units' && !requestedUnitId && !requestedLessonId) {
+      return;
+    }
+
     if (requestedView === 'units') {
       const firstLesson = lessons[0];
       if (firstLesson) {
@@ -830,6 +854,11 @@ export function CoursesManagement() {
   };
 
   const activeLesson = lessons.find(l => l.id === activeLessonId);
+  const isUnitsViewer = requestedView === 'units' && !requestedAction && !requestedUnitId && !requestedLessonId;
+
+  if (isUnitsViewer) {
+    return <ViewLesson embedded />;
+  }
 
   if (loading) {
     return (
@@ -1387,42 +1416,14 @@ export function CoursesManagement() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="lessonFile" className="text-slate-700 font-medium">PDF File</Label>
-              <label
-                htmlFor="lessonFile"
-                onDragEnter={(event) => {
-                  event.preventDefault();
-                  setIsLessonFileDragging(true);
-                }}
-                onDragOver={(event) => event.preventDefault()}
-                onDragLeave={(event) => {
-                  event.preventDefault();
-                  setIsLessonFileDragging(false);
-                }}
-                onDrop={(event) => {
-                  event.preventDefault();
-                  setIsLessonFileDragging(false);
-                  selectLessonFile(event.dataTransfer.files?.[0]);
-                }}
-                className={cn(
-                  'mt-2 flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 text-center transition-colors',
-                  isLessonFileDragging
-                    ? 'border-violet-400 bg-violet-500/10'
-                    : 'border-slate-700 bg-slate-950/40 hover:border-violet-500/60 hover:bg-slate-800/40'
-                )}
-              >
-                <UploadCloud className={cn('mb-2 h-7 w-7', isLessonFileDragging ? 'text-violet-300' : 'text-slate-500')} />
-                <span className="text-sm font-medium text-slate-300">
-                  {lessonFile ? lessonFile.name : 'Drop a PDF here or click to browse'}
-                </span>
-                <span className="mt-1 text-xs text-slate-500">PDF only, up to 50MB</span>
-                <Input
-                  id="lessonFile"
-                  type="file"
-                  accept=".pdf,application/pdf"
-                  onChange={(e) => selectLessonFile(e.currentTarget.files?.[0])}
-                  className="sr-only"
-                />
-              </label>
+              <Input
+                id="lessonFile"
+                type="file"
+                accept=".pdf,application/pdf"
+                onChange={(e) => selectLessonFile(e.currentTarget.files?.[0])}
+                className="bg-slate-50 border-slate-300 text-slate-700 file:mr-3 file:rounded-md file:border-0 file:bg-violet-600 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-violet-700"
+              />
+              {lessonFile && <p className="text-xs text-slate-500">Selected: {lessonFile.name}</p>}
             </div>
             <SectionYearTargetPicker
               yearLevels={[]}

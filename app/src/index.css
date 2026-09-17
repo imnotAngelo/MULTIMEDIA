@@ -16,25 +16,26 @@
 @layer base {
   :root {
     /* Brand identity */
-    --brand-cyan: 192 100% 72%;
-    --brand-violet: 261 86% 70%;
-    --brand-sand: 39 92% 72%;
-    --brand-emerald: 156 64% 62%;
+    --brand-cyan: 188 94% 66%;
+    --brand-violet: 268 88% 76%;
+    --brand-sand: 42 96% 70%;
+    --brand-emerald: 158 70% 60%;
+    --brand-coral: 12 92% 68%;
 
     /* Dark Mode Colors (Default) */
-    --background: 226 28% 10%;
+    --background: 228 30% 9%;
     --foreground: 210 40% 96%;
     --card: 228 27% 13%;
     --card-foreground: 210 40% 98%;
     --popover: 228 27% 13%;
     --popover-foreground: 210 40% 98%;
-    --primary: 192 100% 72%;
+    --primary: 188 94% 66%;
     --primary-foreground: 226 28% 10%;
     --secondary: 256 24% 18%;
     --secondary-foreground: 210 40% 98%;
     --muted: 225 20% 17%;
     --muted-foreground: 214 18% 68%;
-    --accent: 39 92% 72%;
+    --accent: 42 96% 70%;
     --accent-foreground: 226 28% 10%;
     --destructive: 0 78% 62%;
     --destructive-foreground: 210 40% 98%;
@@ -42,46 +43,46 @@
     --input: 220 18% 25%;
     --ring: 192 100% 72%;
     --radius: 0.875rem;
-    --sidebar-background: 240 21% 10%;
+    --sidebar-background: 228 32% 10%;
     --sidebar-foreground: 210 40% 96%;
-    --sidebar-primary: 192 100% 72%;
+    --sidebar-primary: 188 94% 66%;
     --sidebar-primary-foreground: 226 28% 10%;
-    --sidebar-accent: 256 20% 18%;
+    --sidebar-accent: 12 35% 19%;
     --sidebar-accent-foreground: 210 40% 98%;
     --sidebar-border: 228 22% 28%;
-    --sidebar-ring: 192 100% 72%;
+    --sidebar-ring: 188 94% 66%;
   }
 
   html.light {
     /* Light Mode Colors */
-    --background: 210 30% 97%;
+    --background: 42 35% 97%;
     --foreground: 224 71% 4%;
     --card: 0 0% 100%;
     --card-foreground: 224 71% 4%;
     --popover: 0 0% 100%;
     --popover-foreground: 224 71% 4%;
-    --primary: 220 90% 56%;
+    --primary: 188 82% 40%;
     --primary-foreground: 210 40% 98%;
     --secondary: 221 17% 95%;
     --secondary-foreground: 224 71% 4%;
     --muted: 220 16% 92%;
     --muted-foreground: 214 16% 46%;
-    --accent: 258 80% 60%;
+    --accent: 12 78% 56%;
     --accent-foreground: 210 40% 98%;
     --destructive: 0 78% 62%;
     --destructive-foreground: 210 40% 98%;
     --border: 220 14% 88%;
     --input: 220 15% 93%;
-    --ring: 220 90% 56%;
+    --ring: 188 82% 40%;
     --radius: 0.875rem;
     --sidebar-background: 210 17% 97%;
     --sidebar-foreground: 224 71% 4%;
-    --sidebar-primary: 220 90% 56%;
+    --sidebar-primary: 188 82% 40%;
     --sidebar-primary-foreground: 210 40% 98%;
-    --sidebar-accent: 220 17% 94%;
+    --sidebar-accent: 42 34% 93%;
     --sidebar-accent-foreground: 224 71% 4%;
     --sidebar-border: 220 14% 88%;
-    --sidebar-ring: 220 90% 56%;
+    --sidebar-ring: 188 82% 40%;
   }
 }
 
@@ -105,10 +106,10 @@
     min-height: 100vh;
     overflow-x: hidden;
     background:
-      radial-gradient(circle at 8% 0%, rgba(125, 211, 252, 0.12), transparent 24rem),
-      radial-gradient(circle at 92% 18%, rgba(196, 181, 253, 0.14), transparent 26rem),
-      radial-gradient(circle at 50% 100%, rgba(251, 191, 36, 0.07), transparent 17rem),
-      linear-gradient(135deg, #101827 0%, #111827 24%, #17142a 58%, #0f172a 100%);
+      radial-gradient(circle at 8% 0%, rgba(103, 232, 249, 0.16), transparent 24rem),
+      radial-gradient(circle at 92% 18%, rgba(251, 113, 133, 0.16), transparent 26rem),
+      radial-gradient(circle at 50% 100%, rgba(163, 230, 53, 0.1), transparent 17rem),
+      linear-gradient(135deg, #101827 0%, #111827 24%, #21152a 58%, #0f172a 100%);
     background-attachment: fixed;
     font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     font-size: clamp(0.9375rem, 0.18vw + 0.9rem, 1.0625rem);
@@ -121,10 +122,10 @@
   html.light body {
     @apply text-slate-900;
     background:
-      radial-gradient(circle at 8% 0%, rgba(59, 130, 246, 0.06), transparent 22rem),
-      radial-gradient(circle at 92% 18%, rgba(168, 85, 247, 0.06), transparent 24rem),
-      radial-gradient(circle at 50% 100%, rgba(251, 191, 36, 0.05), transparent 16rem),
-      linear-gradient(135deg, #f8fafc 0%, #f1f5f9 42%, #eef2ff 100%);
+      radial-gradient(circle at 8% 0%, rgba(34, 211, 238, 0.12), transparent 22rem),
+      radial-gradient(circle at 92% 18%, rgba(251, 113, 133, 0.1), transparent 24rem),
+      radial-gradient(circle at 50% 100%, rgba(132, 204, 22, 0.08), transparent 16rem),
+      linear-gradient(135deg, #fffdf5 0%, #f4f8f5 42%, #edf7f6 100%);
     background-attachment: fixed;
   }
 
@@ -588,9 +589,9 @@
     isolation: isolate;
     min-height: 100vh;
     background:
-      radial-gradient(circle at 12% 12%, rgba(244, 114, 82, 0.13), transparent 25rem),
-      radial-gradient(circle at 88% 78%, rgba(163, 230, 53, 0.1), transparent 28rem),
-      linear-gradient(145deg, #211837 0%, #120f20 48%, #1c132d 100%) !important;
+      radial-gradient(circle at 12% 12%, rgba(251, 113, 133, 0.17), transparent 25rem),
+      radial-gradient(circle at 88% 78%, rgba(163, 230, 53, 0.13), transparent 28rem),
+      linear-gradient(145deg, #17233b 0%, #101827 48%, #24152d 100%) !important;
   }
 
   .aether-shell::before {
@@ -664,9 +665,9 @@
   }
 
   .aether-sidebar {
-    background: linear-gradient(180deg, rgba(17, 24, 39, 0.98), rgba(10, 14, 26, 0.97));
-    border-color: rgba(125, 211, 252, 0.18) !important;
-    box-shadow: inset 0 1px rgba(255,255,255,0.04), 0 0 0 1px rgba(125, 211, 252, 0.04);
+    background: linear-gradient(180deg, rgba(18, 35, 55, 0.99), rgba(13, 20, 34, 0.98));
+    border-color: rgba(103, 232, 249, 0.25) !important;
+    box-shadow: inset 0 1px rgba(255,255,255,0.06), 0 0 0 1px rgba(251, 113, 133, 0.05), 0 0 28px rgba(34, 211, 238, 0.05);
   }
 
   .aether-sidebar .sidebar-nav-link,
@@ -697,8 +698,8 @@
   .aether-sidebar .sidebar-nav-link--active,
   .aether-sidebar .sidebar-subnav-link.active,
   .aether-sidebar .sidebar-lesson-link.active {
-    background: linear-gradient(90deg, rgba(125, 211, 252, 0.09), rgba(196, 181, 253, 0.08));
-    border-color: rgba(125, 211, 252, 0.32) !important;
+    background: linear-gradient(90deg, rgba(34, 211, 238, 0.15), rgba(251, 113, 133, 0.12));
+    border-color: rgba(103, 232, 249, 0.42) !important;
     color: #ecfeff !important;
     box-shadow: inset 0 1px rgba(255,255,255,0.06), 0 0 14px rgba(125, 211, 252, 0.06);
   }
@@ -711,8 +712,8 @@
     bottom: 14%;
     width: 3px;
     border-radius: 999px;
-    background: linear-gradient(180deg, #7dd3fc, #c4b5fd);
-    box-shadow: 0 0 12px rgba(125, 211, 252, 0.6);
+    background: linear-gradient(180deg, #67e8f9, #fb7185);
+    box-shadow: 0 0 12px rgba(251, 113, 133, 0.65);
   }
 
   .aether-sidebar a:focus:not(:focus-visible),
@@ -1435,6 +1436,42 @@
     opacity: 1;
     transform: scale(1);
   }
+}
+
+@keyframes slide-content-next {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slide-content-previous {
+  from {
+    opacity: 0;
+    transform: translateX(-28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.slide-content-transition {
+  animation-duration: 360ms;
+  animation-fill-mode: both;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.slide-content-transition--next {
+  animation-name: slide-content-next;
+}
+
+.slide-content-transition--previous {
+  animation-name: slide-content-previous;
 }
 
 /* Animation classes */

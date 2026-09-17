@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Download, Edit2, Link as LinkIcon, Save, Upload, Video, X } from 'lucide-react';
+import { BookOpen, ChevronLeft, ChevronRight, Download, Edit2, Link as LinkIcon, Save, Upload, Video, X } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { Button } from '@/components/ui/button';
 import { authFetch } from '@/lib/authFetch';
@@ -65,6 +65,7 @@ export function ViewLesson({ unitId: providedUnitId, lessonId: providedLessonId,
     : 'rounded-2xl border border-slate-800 bg-slate-900/75 p-4 sticky top-6 shadow-sm';
   const [lesson, setLesson] = useState<Lesson | null>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [slideDirection, setSlideDirection] = useState<'next' | 'previous'>('next');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [editingMedia, setEditingMedia] = useState(false);
@@ -75,6 +76,13 @@ export function ViewLesson({ unitId: providedUnitId, lessonId: providedLessonId,
   const [mediaAppLink, setMediaAppLink] = useState('');
 
   useEffect(() => {
+    if (!unitId || !lessonId) {
+      setLesson(null);
+      setError('');
+      setLoading(false);
+      return;
+    }
+
     loadLesson();
   }, [unitId, lessonId]);
 
@@ -84,6 +92,20 @@ export function ViewLesson({ unitId: providedUnitId, lessonId: providedLessonId,
     setMediaAppName(lesson.appName || '');
     setMediaAppLink(lesson.appLink || '');
   }, [lesson?.id]);
+
+  if (!unitId || !lessonId) {
+    return (
+      <div className={`flex min-h-[24rem] items-center justify-center ${softPanelClass}`}>
+        <BookOpen className="h-10 w-10 text-slate-500" />
+        <div>
+          <p className={`text-base font-semibold ${headingClass}`}>No lesson available</p>
+          <p className={`mt-2 text-sm ${mutedTextClass}`}>
+            Select a lesson from Units &amp; Lessons, or upload a lesson before viewing it here.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const saveMedia = async () => {
     if (!lessonId || !lesson) return;
@@ -335,17 +357,21 @@ export function ViewLesson({ unitId: providedUnitId, lessonId: providedLessonId,
 
   const handlePrevSlide = () => {
     if (currentSlide > 0) {
+      setSlideDirection('previous');
       setCurrentSlide(currentSlide - 1);
     }
   };
 
   const handleNextSlide = () => {
     if (lesson?.slides && currentSlide < lesson.slides.length - 1) {
+      setSlideDirection('next');
       setCurrentSlide(currentSlide + 1);
     }
   };
 
   const goToSlide = (index: number) => {
+    if (index === currentSlide) return;
+    setSlideDirection(index > currentSlide ? 'next' : 'previous');
     setCurrentSlide(index);
   };
 
@@ -452,27 +478,6 @@ export function ViewLesson({ unitId: providedUnitId, lessonId: providedLessonId,
         return (
           <div className={`${pageClass}`}>
             <div className="mx-auto w-full max-w-7xl min-w-0 space-y-5">
-              <div className={`${panelClass} flex flex-col gap-4 md:flex-row md:items-center md:justify-between`}>
-                <div className="space-y-2">
-                  <div>
-                    <h1 className={`text-2xl font-bold sm:text-3xl ${headingClass}`}>{lesson.title}</h1>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className={`rounded-full border px-3 py-1.5 text-xs font-medium ${isLightMode ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'}`}>
-                    PDF lesson
-                  </div>
-                  <Button
-                    onClick={handleDownloadPDF}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
-                  >
-                    <Download className="w-4 h-4" />
-                    Download
-                  </Button>
-                </div>
-              </div>
-
               <div className="w-full min-w-0 overflow-hidden rounded-2xl border border-slate-200/10 bg-slate-950/20 shadow-2xl shadow-slate-950/10">
                 <PDFViewer url={pdfViewerUrl} title={lesson.title} onDownload={handleDownloadPDF} />
               </div>
@@ -618,7 +623,10 @@ export function ViewLesson({ unitId: providedUnitId, lessonId: providedLessonId,
 
                 <main className="min-w-0">
                   <div className={slidePanelClass}>
-                    <div className="flex-1">
+                    <div
+                      key={currentSlide}
+                      className={`flex-1 slide-content-transition slide-content-transition--${slideDirection}`}
+                    >
                       <div className="mb-4 flex items-center justify-between gap-3">
                         <div className="text-sm font-semibold text-violet-400">
                           Slide {currentSlide + 1} of {lesson.slides?.length || 0}
@@ -662,11 +670,12 @@ export function ViewLesson({ unitId: providedUnitId, lessonId: providedLessonId,
                     <Button
                       onClick={handlePrevSlide}
                       disabled={currentSlide === 0}
-                      className={isLightMode
-                        ? 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 disabled:bg-slate-100 disabled:text-slate-400 gap-2'
-                        : 'bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-700 text-white gap-2'}
+                      aria-label="Go to previous slide"
+                      className={`group gap-2 border shadow-sm transition-all duration-200 hover:-translate-x-0.5 disabled:translate-x-0 disabled:opacity-45 ${isLightMode
+                        ? 'border-cyan-200 bg-white text-cyan-800 hover:border-cyan-400 hover:bg-cyan-50 hover:shadow-cyan-200/60 disabled:bg-slate-100 disabled:text-slate-400'
+                        : 'border-cyan-400/30 bg-cyan-950/60 text-cyan-100 hover:border-cyan-300/70 hover:bg-cyan-900/70 hover:shadow-lg hover:shadow-cyan-500/15 disabled:bg-slate-900 disabled:text-slate-700'}`}
                     >
-                      <ChevronLeft className="w-4 h-4" />
+                      <ChevronLeft className="w-4 h-4 transition-transform duration-200 group-hover:-translate-x-0.5" />
                       Previous
                     </Button>
 
@@ -688,12 +697,13 @@ export function ViewLesson({ unitId: providedUnitId, lessonId: providedLessonId,
                     <Button
                       onClick={handleNextSlide}
                       disabled={currentSlide === (lesson.slides?.length || 0) - 1}
-                      className={isLightMode
-                        ? 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 disabled:bg-slate-100 disabled:text-slate-400 gap-2'
-                        : 'bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-700 text-white gap-2'}
+                      aria-label="Go to next slide"
+                      className={`group gap-2 border shadow-sm transition-all duration-200 hover:translate-x-0.5 disabled:translate-x-0 disabled:opacity-45 ${isLightMode
+                        ? 'border-rose-200 bg-rose-500 text-white hover:border-rose-300 hover:bg-rose-600 hover:shadow-rose-200/70 disabled:bg-slate-100 disabled:text-slate-400'
+                        : 'border-rose-400/40 bg-rose-500/90 text-white hover:border-rose-300 hover:bg-rose-500 hover:shadow-lg hover:shadow-rose-500/20 disabled:bg-slate-900 disabled:text-slate-700'}`}
                     >
                       Next
-                      <ChevronRight className="w-4 h-4" />
+                      <ChevronRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-0.5" />
                     </Button>
                   </div>
 

@@ -188,12 +188,11 @@ export function Sidebar({
 
     setIsMobileMenuOpen(false);
 
-    if (location.pathname === '/instructor/courses') {
-      window.dispatchEvent(new CustomEvent('aether-course-quick-action', { detail: quickAction }));
-      return;
-    }
+    const action = mode === 'unit' ? 'add-unit' : 'add-lesson';
+    const params = new URLSearchParams({ view: 'units', action });
+    if (unitId) params.set('unit', unitId);
 
-    navigate('/instructor/courses?view=units');
+    navigate(`/instructor/courses?${params.toString()}`);
   };
 
   const toggleExpanded = (label: string) => {
