@@ -454,6 +454,8 @@ export function InstructorSettings() {
         assessmentSubmissionCount > 0 ? `${assessmentSubmissionCount} quiz submission${assessmentSubmissionCount !== 1 ? 's' : ''}` : null,
       ].filter(Boolean).join(', ') || 'no student data';
       
+      const semesterLabel = ACADEMIC_YEAR_OPTIONS.find((o) => o.value === newSemester)?.label || `Semester ${newSemester}`;
+
       toast.success(
         `✅ Semester updated to ${semesterLabel}!\n Archived: ${archiveDetails}\n🔄 Reset: ${clearDetails}\n📦 Previous laboratory submissions were retained in the archive.`
       );
@@ -823,18 +825,20 @@ export function InstructorSettings() {
         <AlertDialogContent className="bg-slate-900 border-slate-800 text-white">
           <AlertDialogHeader>
             <AlertDialogTitle>Change Teaching Semester</AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-400 space-y-2">
-              <p>
-                Are you sure you want to change your teaching semester to{' '}
-                <span className="font-semibold text-amber-300">
-                  {ACADEMIC_YEAR_OPTIONS.find((o) => o.value === newSemester)?.label}
-                </span>?
-              </p>
-              <ul className="text-xs text-slate-400 list-disc list-inside space-y-1">
-                <li>Updates your active teaching semester</li>
-                <li>Archives your previous semester's curriculum content</li>
-                <li>Archived units, lessons, and submissions remain safe in the Archives section</li>
-              </ul>
+            <AlertDialogDescription asChild>
+              <div className="text-sm text-slate-400 space-y-2">
+                <p>
+                  Are you sure you want to change your teaching semester to{' '}
+                  <span className="font-semibold text-amber-300">
+                    {ACADEMIC_YEAR_OPTIONS.find((o) => o.value === newSemester)?.label}
+                  </span>?
+                </p>
+                <ul className="text-xs text-slate-400 list-disc list-inside space-y-1">
+                  <li>Updates your active teaching semester</li>
+                  <li>Archives your previous semester's curriculum content</li>
+                  <li>Archived units, lessons, and submissions remain safe in the Archives section</li>
+                </ul>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

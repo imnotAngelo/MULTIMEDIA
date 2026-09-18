@@ -52,27 +52,31 @@ export function CheckEmailPage() {
   };
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background px-4 py-8 text-foreground transition-colors duration-300 sm:px-6">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.14),transparent_34%),radial-gradient(circle_at_bottom_right,hsl(var(--accent)/0.12),transparent_30%)]" />
-      <div className="w-full max-w-md">
-        <Card className="relative border-border/80 bg-card/85 shadow-2xl shadow-black/10 backdrop-blur-xl">
-          <CardHeader className="space-y-1 text-center pb-4">
-            <div className="flex justify-center mb-2">
-              <div className="rounded-2xl border border-primary/20 bg-primary/10 p-3">
-                <MailCheck className="h-10 w-10 text-primary" />
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-950 px-4 py-8 text-white sm:px-6">
+      {/* Ambient background glow */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(139,92,246,0.15),transparent_50%),radial-gradient(ellipse_at_bottom,rgba(14,165,233,0.10),transparent_50%)]" />
+      <div className="absolute -right-24 -top-24 h-96 w-96 rounded-full border border-violet-500/10 animate-pulse" />
+      <div className="absolute -left-24 -bottom-24 h-96 w-96 rounded-full border border-fuchsia-500/10" />
+
+      <div className="w-full max-w-md relative z-10 animate-fade-in">
+        <Card className="relative border border-slate-800/80 bg-slate-900/60 shadow-2xl shadow-black/40 backdrop-blur-xl rounded-2xl">
+          <CardHeader className="space-y-2 text-center pb-4 pt-6">
+            <div className="flex justify-center mb-1">
+              <div className="rounded-2xl border border-violet-500/30 bg-violet-500/15 p-3 text-violet-400 shadow-lg shadow-violet-500/20">
+                <MailCheck className="h-9 w-9" />
               </div>
             </div>
-            <CardTitle className="text-xl text-foreground">Check your email</CardTitle>
-            <CardDescription className="text-muted-foreground">
+            <CardTitle className="text-2xl font-bold tracking-tight text-white">Check your email</CardTitle>
+            <CardDescription className="text-slate-400 text-xs sm:text-sm">
               {email
-                ? `We sent a 6-digit code to ${email}. Enter it below, or click the link in the email.`
-                : 'We sent a 6-digit code to your email. Enter it below, or click the link in the email.'}
+                ? `We sent a 6-digit confirmation code to ${email}. Enter it below or click the link in your email.`
+                : 'We sent a 6-digit confirmation code to your email. Enter it below or click the link in your email.'}
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <form onSubmit={handleVerifyCode} className="space-y-3">
+          <CardContent className="space-y-4 p-6 pt-0">
+            <form onSubmit={handleVerifyCode} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="code" className="text-foreground text-sm">Verification code</Label>
+                <Label htmlFor="code" className="text-slate-300 text-sm font-medium">Verification Code</Label>
                 <Input
                   id="code"
                   type="text"
@@ -81,17 +85,17 @@ export function CheckEmailPage() {
                   value={code}
                   onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   maxLength={6}
-                  className="h-12 border-input bg-background/70 text-center text-lg tracking-[0.5em] text-foreground placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-primary/50"
+                  className="h-12 border-slate-800 bg-slate-950/70 text-center text-xl tracking-[0.5em] text-white placeholder:text-slate-600 focus-visible:ring-2 focus-visible:ring-violet-500/30 focus-visible:border-violet-500 rounded-xl font-mono"
                 />
               </div>
 
               {error && (
-                <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-center text-sm text-destructive">
+                <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-center text-sm text-red-400">
                   {error}
                 </div>
               )}
               {message && (
-                <div className="rounded-lg border border-primary/20 bg-primary/10 p-3 text-center text-sm text-primary">
+                <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-center text-sm text-emerald-400">
                   {message}
                 </div>
               )}
@@ -99,7 +103,7 @@ export function CheckEmailPage() {
               <Button
                 type="submit"
                 disabled={verifying || code.length !== 6}
-                className="h-11 w-full bg-primary text-primary-foreground shadow-lg shadow-primary/20 hover:bg-primary/90"
+                className="h-11 w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white rounded-xl font-medium shadow-lg shadow-violet-500/25 transition-all"
               >
                 {verifying ? <AetherSpinner className="w-4 h-4 mr-2" /> : null}
                 Verify code
@@ -111,13 +115,13 @@ export function CheckEmailPage() {
               variant="outline"
               onClick={handleResend}
               disabled={resending || !email}
-              className="h-11 w-full border-border text-foreground hover:bg-accent hover:text-accent-foreground"
+              className="h-11 w-full border-slate-800 bg-slate-950/60 text-slate-300 hover:bg-slate-800/60 hover:text-white rounded-xl transition-all"
             >
               {resending ? <AetherSpinner className="w-4 h-4 mr-2" /> : null}
               Resend verification email
             </Button>
-            <Button asChild variant="ghost" className="h-9 w-full text-muted-foreground hover:text-foreground">
-              <Link to="/login">Back to Sign In</Link>
+            <Button asChild variant="ghost" className="h-9 w-full text-slate-400 hover:text-white">
+              <Link to={isAdmin ? '/admin/login' : '/login'}>Back to Sign In</Link>
             </Button>
           </CardContent>
         </Card>

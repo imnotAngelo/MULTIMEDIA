@@ -36,24 +36,37 @@ export function VerifyEmailPage() {
   }, [navigate, token]);
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <Card className="border-slate-800 bg-slate-900/80 backdrop-blur-xl shadow-2xl shadow-black/20">
-          <CardHeader className="space-y-1 text-center pb-4">
-            <div className="flex justify-center mb-2">
-              {status === 'verifying' && <Loader2 className="w-10 h-10 text-violet-400 animate-spin" />}
-              {status === 'success' && <CheckCircle2 className="w-10 h-10 text-emerald-400" />}
-              {status === 'error' && <XCircle className="w-10 h-10 text-red-400" />}
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Ambient background glow */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(139,92,246,0.15),transparent_50%),radial-gradient(ellipse_at_bottom,rgba(14,165,233,0.10),transparent_50%)]" />
+      <div className="absolute -right-24 -top-24 h-96 w-96 rounded-full border border-violet-500/10 animate-pulse" />
+      <div className="absolute -left-24 -bottom-24 h-96 w-96 rounded-full border border-fuchsia-500/10" />
+
+      <div className="w-full max-w-md relative z-10 animate-fade-in">
+        <Card className="border border-slate-800/80 bg-slate-900/60 backdrop-blur-xl shadow-2xl shadow-black/40 rounded-2xl">
+          <CardHeader className="space-y-2 text-center pb-4 pt-6">
+            <div className="flex justify-center mb-1">
+              <div className={`p-3 rounded-2xl border shadow-lg ${
+                status === 'verifying'
+                  ? 'bg-violet-500/15 border-violet-500/30 text-violet-400 shadow-violet-500/20'
+                  : status === 'success'
+                  ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400 shadow-emerald-500/20'
+                  : 'bg-red-500/15 border-red-500/30 text-red-400 shadow-red-500/20'
+              }`}>
+                {status === 'verifying' && <Loader2 className="w-8 h-8 animate-spin" />}
+                {status === 'success' && <CheckCircle2 className="w-8 h-8" />}
+                {status === 'error' && <XCircle className="w-8 h-8" />}
+              </div>
             </div>
-            <CardTitle className="text-xl text-white">
+            <CardTitle className="text-2xl font-bold tracking-tight text-white">
               {status === 'verifying' && 'Verifying your email...'}
               {status === 'success' && 'Email verified'}
               {status === 'error' && 'Verification failed'}
             </CardTitle>
-            <CardDescription className="text-slate-400">{message}</CardDescription>
+            <CardDescription className="text-slate-400 text-xs sm:text-sm">{message}</CardDescription>
           </CardHeader>
-          <CardContent>
-            <Button asChild className="w-full bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-500 hover:to-violet-400 text-white h-11">
+          <CardContent className="p-6 pt-0">
+            <Button asChild className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white h-11 rounded-xl font-medium shadow-lg shadow-violet-500/25 transition-all">
               <Link to={destination}>Go to Sign In</Link>
             </Button>
           </CardContent>
