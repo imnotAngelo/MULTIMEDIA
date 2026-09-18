@@ -70,13 +70,12 @@ export function LoginPage() {
   };
 
   return (
-    <div className="auth-aether-page min-h-screen flex relative overflow-hidden bg-slate-950">
+    <div className="auth-aether-page min-h-screen flex relative overflow-hidden">
       {/* Left Branding Hero Panel */}
-      <section className="relative hidden md:flex md:w-[46%] lg:w-1/2 min-h-screen overflow-hidden bg-[#090f24] px-8 py-10 lg:px-14 lg:py-12 border-r border-white/5">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_20%_20%,rgba(139,92,246,0.18),transparent_50%),radial-gradient(ellipse_at_80%_80%,rgba(217,70,239,0.14),transparent_50%),radial-gradient(ellipse_at_50%_50%,rgba(14,165,233,0.10),transparent_60%)]" />
-        <div className="absolute -right-24 top-16 h-72 w-72 rounded-full border border-violet-500/20 animate-pulse" />
-        <div className="absolute -bottom-32 -left-20 h-80 w-80 rounded-full border border-fuchsia-500/15" />
-        <div className="absolute inset-x-10 bottom-10 h-px bg-gradient-to-r from-transparent via-violet-400/30 to-transparent" />
+      <section className="auth-hero-panel relative hidden md:flex md:w-[46%] lg:w-1/2 min-h-screen overflow-hidden px-8 py-10 lg:px-14 lg:py-12">
+        <div className="absolute -right-24 top-16 h-72 w-72 rounded-full auth-hero-ring animate-pulse" />
+        <div className="absolute -bottom-32 -left-20 h-80 w-80 rounded-full auth-hero-ring--secondary" />
+        <div className="absolute inset-x-10 bottom-10 h-px auth-hero-line" />
         
         <div className="relative z-10 flex w-full flex-col justify-between">
           <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.3em] text-cyan-200/80">
@@ -89,37 +88,7 @@ export function LoginPage() {
               <AetherLogo />
             </div>
 
-            <div className="space-y-3 max-w-md pt-2">
-              <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3.5 backdrop-blur-md transition-all hover:bg-white/[0.06]">
-                <div className="rounded-lg bg-violet-500/15 p-2 text-violet-400 shrink-0">
-                  <BookOpen className="w-4 h-4" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-semibold text-white">Curriculum & Lessons</h4>
-                  <p className="text-xs text-slate-400 mt-0.5">Integrated slide decks, video lectures, and rich responsive document viewing.</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3.5 backdrop-blur-md transition-all hover:bg-white/[0.06]">
-                <div className="rounded-lg bg-cyan-500/15 p-2 text-cyan-400 shrink-0">
-                  <FlaskConical className="w-4 h-4" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-semibold text-white">Interactive Laboratories</h4>
-                  <p className="text-xs text-slate-400 mt-0.5">Canva, Figma, and creative design platforms built directly into course activities.</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3.5 backdrop-blur-md transition-all hover:bg-white/[0.06]">
-                <div className="rounded-lg bg-fuchsia-500/15 p-2 text-fuchsia-400 shrink-0">
-                  <BarChart3 className="w-4 h-4" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-semibold text-white">Smart Quizzes & Records</h4>
-                  <p className="text-xs text-slate-400 mt-0.5">Automated assessment generation, section gradebooks, and student progress tracking.</p>
-                </div>
-              </div>
-            </div>
+            <div className="space-y-3 max-w-md pt-2" />
           </div>
 
           <div className="max-w-sm">
@@ -130,7 +99,7 @@ export function LoginPage() {
       </section>
 
       {/* Right Login Form */}
-      <main className="relative z-10 flex min-h-screen w-full items-center justify-center px-5 py-10 sm:px-10 md:w-[54%] lg:w-1/2 lg:px-16 bg-slate-950">
+      <main className="relative z-10 flex min-h-screen w-full items-center justify-center px-5 py-10 sm:px-10 md:w-[54%] lg:w-1/2 lg:px-16">
         <div className="w-full max-w-[440px] animate-fade-in">
           <div className="mb-8 md:hidden text-center">
             <div className="mx-auto mb-4 w-44"><AetherLogo compact /></div>
