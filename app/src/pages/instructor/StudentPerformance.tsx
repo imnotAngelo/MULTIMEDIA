@@ -381,8 +381,8 @@ export function StudentPerformance() {
     if (total === 0) return { total: 0, avgQuiz: 0, avgLab: 0, avgOverall: 0, passRate: 0 };
 
     const validQuizAvgs = students.map((s) => s.quizAverage).filter((q): q is number => q !== null);
-    const validLabAvgs = students.map((s) => s.labAverage).filter((l): q is number => l !== null);
-    const validOverall = students.map((s) => s.overallAverage).filter((o): q is number => o !== null);
+    const validLabAvgs = students.map((s) => s.labAverage).filter((l): l is number => l !== null);
+    const validOverall = students.map((s) => s.overallAverage).filter((o): o is number => o !== null);
 
     const avgQuiz = validQuizAvgs.length > 0 ? Math.round(validQuizAvgs.reduce((a, b) => a + b, 0) / validQuizAvgs.length) : 0;
     const avgLab = validLabAvgs.length > 0 ? Math.round(validLabAvgs.reduce((a, b) => a + b, 0) / validLabAvgs.length) : 0;
@@ -577,9 +577,6 @@ export function StudentPerformance() {
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
               All Students &amp; Records
             </h1>
-            <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-              Complete academic ledger of quiz submissions and laboratory work for all students in your handled sections. Inspect student records, evaluate file uploads, and monitor learning outcomes.
-            </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">

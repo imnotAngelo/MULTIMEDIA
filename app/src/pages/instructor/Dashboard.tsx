@@ -256,30 +256,11 @@ export function InstructorDashboard() {
                 {user?.full_name || 'Professor'}
               </span>
             </h1>
-            <p className="text-sm text-slate-300 max-w-xl leading-relaxed">
-              Manage your curriculum, orchestrate AI-assisted quizzes, grade laboratory submissions, and monitor student engagement across all classes.
-            </p>
+          
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <Button
-              onClick={() => navigate('/instructor/quiz/create-auto')}
-              className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-lg shadow-violet-500/25 gap-2 font-medium"
-            >
-              <Sparkles className="w-4 h-4" />
-              <span>AI Quiz Generator</span>
-            </Button>
-
-            <Button
-              onClick={handleManualRefresh}
-              variant="outline"
-              disabled={refreshing}
-              className="border-slate-700 text-slate-300 hover:bg-slate-800/60"
-              title="Refresh dashboard stats"
-            >
-              <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
+            
           </div>
         </div>
 

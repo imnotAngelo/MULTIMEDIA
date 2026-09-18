@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+﻿import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { usePageCache } from '@/stores/pageCacheStore';
 import { notificationService } from '@/services/notificationService';
@@ -20,6 +20,10 @@ import {
   ChevronUp,
   Monitor,
   Layers,
+  ChevronRight,
+  ArrowLeft,
+  Check,
+  Award,
 } from 'lucide-react';
 import { AetherLoader } from '@/components/AetherLoader';
 import { authFetch } from '@/lib/authFetch';
@@ -123,8 +127,13 @@ const EMPTY_FORM: FormData = {
 export function LaboratoriesManagement() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
+  const location = useLocation();
   const pageCache = usePageCache();
   const CACHE_KEY = `labs-management:${user?.id ?? 'anon'}`;
+
+  // Detect whether we're on the /create route → show full-page wizard
+  const isCreateRoute = location.pathname === '/instructor/laboratories/create';
+  const [wizardStep, setWizardStep] = useState<1 | 2 | 3>(1);
 
   const [laboratories, setLaboratories] = useState<Laboratory[]>(() => {
     const cached = pageCache.get<{ laboratories: Laboratory[]; units: Unit[] }>(CACHE_KEY);
@@ -153,6 +162,18 @@ export function LaboratoriesManagement() {
     if (cached.fresh) { setLoading(false); return; }
     loadData(cached.data !== null);
   }, [user?.id]);
+
+  // Auto-open wizard when navigating directly to /instructor/laboratories/create
+  useEffect(() => {
+    if (isCreateRoute && !showCreateForm) {
+      setFormData(EMPTY_FORM);
+      setEditingId(null);
+      setFormError('');
+      setWizardStep(1);
+      setShowCreateForm(true);
+      refreshUnits();
+    }
+  }, [isCreateRoute]);
 
   useEffect(() => {
     if (!showCreateForm || !formData.unitId) {
@@ -246,7 +267,9 @@ export function LaboratoriesManagement() {
     setEditingId(null);
     setFormError('');
     setShowCreateForm(true);
+    setWizardStep(1);
     refreshUnits();
+    navigate('/instructor/laboratories/create');
   };
 
   const handleOpenEdit = (lab: Laboratory) => {
@@ -265,6 +288,7 @@ export function LaboratoriesManagement() {
     setEditingId(lab.id);
     setFormError('');
     setShowCreateForm(true);
+    setWizardStep(1);
     refreshUnits();
   };
 
@@ -273,6 +297,8 @@ export function LaboratoriesManagement() {
     setEditingId(null);
     setFormData(EMPTY_FORM);
     setFormError('');
+    setWizardStep(1);
+    if (isCreateRoute) navigate('/instructor/laboratories');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -435,248 +461,451 @@ export function LaboratoriesManagement() {
         </div>
       </div>
 
-      {/* Create / Edit Modal */}
+      {/* ── Create/Edit Wizard (full-page on /create route, modal on edit) ── */}
       {showCreateForm && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-3 sm:p-4 bg-black/60 backdrop-blur-sm">
-          <div className="my-3 sm:my-6 bg-slate-900 border border-slate-700 rounded-xl w-full max-w-lg max-h-[calc(100vh-1.5rem)] sm:max-h-[calc(100vh-3rem)] shadow-2xl flex flex-col overflow-hidden">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-slate-800 shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-violet-500/15 flex items-center justify-center">
-                  <Beaker className="w-4 h-4 text-violet-400" />
-                </div>
-                <h2 className="text-lg font-semibold text-white">
-                  {editingId ? 'Edit Laboratory' : 'Create Laboratory'}
-                </h2>
-              </div>
-              <button
-                onClick={handleCloseForm}
-                className="text-slate-400 hover:text-white transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+        isCreateRoute ? (
+          /* ─── FULL-PAGE WIZARD (Create mode) ─────────────────────────── */
+          <div className="fixed inset-0 z-50 bg-slate-950 overflow-y-auto">
+            <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
 
-            {/* Modal Body */}
-            <form onSubmit={handleSubmit} className="overflow-y-auto">
-              <div className="p-5 sm:p-6 space-y-4">
+              {/* Top nav */}
+              <div className="flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={handleCloseForm}
+                  className="flex items-center gap-2 text-violet-400 hover:text-violet-300 text-sm font-medium transition-colors"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Back to Laboratories
+                </button>
+                <div className="text-xs px-2.5 py-1 rounded-full bg-violet-500/10 text-violet-400 font-medium border border-violet-500/20">
+                  Laboratory Studio
+                </div>
+              </div>
+
+              {/* Step indicator */}
+              <div className="bg-slate-900/70 border border-slate-800 rounded-xl px-6 py-4">
+                <div className="flex items-center justify-between max-w-lg mx-auto">
+                  {[
+                    { n: 1, label: 'Lab Details' },
+                    { n: 2, label: 'Platform & Link' },
+                    { n: 3, label: 'Schedule & Audience' },
+                  ].map(({ n, label }, idx, arr) => (
+                    <div key={n} className="flex items-center gap-2">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm ${
+                          wizardStep > n
+                            ? 'bg-violet-600 text-white shadow-lg shadow-violet-600/30'
+                            : wizardStep === n
+                            ? 'bg-violet-600 text-white shadow-lg shadow-violet-600/30'
+                            : 'bg-slate-800 text-slate-400'
+                        }`}>
+                          {wizardStep > n ? <Check className="w-4 h-4" /> : n}
+                        </div>
+                        <span className={`text-sm font-semibold hidden sm:block ${wizardStep === n ? 'text-violet-400' : 'text-slate-500'}`}>
+                          {label}
+                        </span>
+                      </div>
+                      {idx < arr.length - 1 && (
+                        <ChevronRight className="w-5 h-5 text-slate-600 ml-2" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Error banner */}
               {formError && (
-                <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+                <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3">
                   <p className="text-red-400 text-sm">{formError}</p>
                 </div>
               )}
 
-              {/* Title */}
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                  Laboratory Title <span className="text-red-400">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={formData.title}
-                  onChange={e => setFormData(f => ({ ...f, title: e.target.value }))}
-                  placeholder="e.g. Logo Design using Canva"
-                  className="w-full bg-slate-800/60 border border-slate-700 rounded-lg px-3 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:border-violet-500 text-sm"
-                />
-              </div>
-
-              {/* Description */}
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                  Description
-                </label>
-                <textarea
-                  value={formData.description}
-                  onChange={e => setFormData(f => ({ ...f, description: e.target.value }))}
-                  placeholder="Instructions or objectives for this laboratory..."
-                  rows={3}
-                  className="w-full bg-slate-800/60 border border-slate-700 rounded-lg px-3 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:border-violet-500 text-sm resize-none"
-                />
-              </div>
-
-              {/* Platform */}
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                  Platform / Tool <span className="text-red-400">*</span>
-                </label>
-                <select
-                  value={formData.platform}
-                  onChange={e => {
-                    const platform = e.target.value;
-                    const autoUrl = PLATFORM_URLS[platform] ?? '';
-                    setFormData(f => ({
-                      ...f,
-                      platform,
-                      // Auto-fill URL if the current URL is empty or was a previous auto-fill
-                      platformUrl:
-                        !f.platformUrl || Object.values(PLATFORM_URLS).includes(f.platformUrl)
-                          ? autoUrl
-                          : f.platformUrl,
-                    }));
-                  }}
-                  className="w-full bg-slate-800/60 border border-slate-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-violet-500 text-sm"
-                >
-                  {PLATFORM_OPTIONS.map(p => (
-                    <option key={p.value} value={p.value}>{p.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Platform URL */}
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                  Platform Link <span className="text-red-400">*</span>
-                </label>
-                <div className="relative">
-                  <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                  <input
-                    type="url"
-                    value={formData.platformUrl}
-                    onChange={e => setFormData(f => ({ ...f, platformUrl: e.target.value }))}
-                    placeholder="https://www.canva.com/..."
-                    className="w-full bg-slate-800/60 border border-slate-700 rounded-lg pl-9 pr-3 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:border-violet-500 text-sm"
-                  />
-                </div>
-                <p className="text-slate-500 text-xs mt-1">
-                  Paste the link to the platform or specific activity template
-                </p>
-              </div>
-
-              {/* Unit */}
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                  <BookOpen className="w-3.5 h-3.5 inline mr-1" />
-                  Link to Unit
-                </label>
-                <select
-                  value={formData.unitId}
-                  onChange={e => setFormData(f => ({ ...f, unitId: e.target.value, lessonId: '' }))}
-                  className="w-full bg-slate-800/60 border border-slate-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-violet-500 text-sm"
-                >
-                  <option value="">— No unit —</option>
-                  {units.map(u => (
-                    <option key={u.id} value={u.id}>{u.title}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Lesson */}
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                  <BookOpen className="w-3.5 h-3.5 inline mr-1" />
-                  Link to Lesson
-                </label>
-                <select
-                  value={formData.lessonId}
-                  onChange={e => setFormData(f => ({ ...f, lessonId: e.target.value }))}
-                  disabled={!formData.unitId || lessonsLoading}
-                  className="w-full bg-slate-800/60 border border-slate-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-violet-500 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  <option value="">
-                    {!formData.unitId
-                      ? 'Choose a unit first'
-                      : lessonsLoading
-                        ? 'Loading lessons...'
-                        : lessons.length === 0
-                          ? 'No published lessons found'
-                          : '-- No lesson --'}
-                  </option>
-                  {lessons.map(lesson => (
-                    <option key={lesson.id} value={lesson.id}>{lesson.title}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Due Date + Points row */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                    <Calendar className="w-3.5 h-3.5 inline mr-1" />
-                    Due Date
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.dueDate}
-                    onChange={e => setFormData(f => ({ ...f, dueDate: e.target.value }))}
-                    className="w-full bg-slate-800/60 border border-slate-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-violet-500 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                    Points
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={1000}
-                    value={formData.points}
-                    onChange={e => setFormData(f => ({ ...f, points: Math.max(1, parseInt(e.target.value) || 1) }))}
-                    className="w-full bg-slate-800/60 border border-slate-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-violet-500 text-sm"
-                  />
-                  <p className="text-slate-500 text-xs mt-1">Max score students can earn</p>
-                </div>
-              </div>
-              <label className="flex items-center gap-2 text-sm text-slate-300">
-                <input
-                  type="checkbox"
-                  checked={formData.allowLateSubmissions}
-                  onChange={e => setFormData(f => ({ ...f, allowLateSubmissions: e.target.checked }))}
-                  className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-violet-500"
-                />
-                Allow late submissions after the due date
-              </label>
-
-              {user?.teaching_sections && user.teaching_sections.length > 0 && (
-                <div className="rounded-lg border border-slate-800 bg-slate-950/40 p-3 space-y-3">
-                  <div>
-                    <h4 className="text-sm font-semibold text-slate-200">Assign to Sections</h4>
-                    <p className="text-xs text-slate-400 mt-1">Select the sections that can access this laboratory.</p>
+              {/* ── STEP 1: Lab Details ── */}
+              {wizardStep === 1 && (
+                <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-6 space-y-6">
+                  <div className="flex items-center gap-3 border-b border-slate-800 pb-4">
+                    <div className="p-2.5 rounded-lg bg-violet-500/10 text-violet-400">
+                      <Beaker className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-bold text-white">Step 1: Lab Details</h2>
+                      <p className="text-xs text-slate-400 mt-0.5">Name your laboratory and link it to an instructional unit and lesson.</p>
+                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-3">
-                    {user.teaching_sections.map((section: string) => (
-                      <label key={section} className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={formData.targetSections.includes(section)}
-                          onChange={(event) => {
-                            setFormData(current => ({
-                              ...current,
-                              targetSections: event.target.checked
-                                ? [...current.targetSections, section]
-                                : current.targetSections.filter(value => value !== section),
-                            }));
-                          }}
-                          className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-violet-500 focus:ring-violet-500 cursor-pointer"
-                        />
-                        <span className="text-sm text-slate-300">{section}</span>
-                      </label>
-                    ))}
+
+                  {/* Title */}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                      Laboratory Title <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.title}
+                      onChange={e => setFormData(f => ({ ...f, title: e.target.value }))}
+                      placeholder="e.g. Logo Design using Canva"
+                      className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder:text-slate-500 focus:border-violet-500 focus:ring-1 focus:ring-violet-500 focus:outline-none transition-all text-sm"
+                    />
+                  </div>
+
+                  {/* Description */}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1.5">Description</label>
+                    <textarea
+                      value={formData.description}
+                      onChange={e => setFormData(f => ({ ...f, description: e.target.value }))}
+                      placeholder="Instructions or objectives for this laboratory..."
+                      rows={3}
+                      className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder:text-slate-500 focus:border-violet-500 focus:ring-1 focus:ring-violet-500 focus:outline-none transition-all text-sm resize-none"
+                    />
+                  </div>
+
+                  {/* Unit */}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                      <BookOpen className="w-3.5 h-3.5 inline mr-1" />
+                      Link to Unit <span className="text-slate-500 font-normal">(optional)</span>
+                    </label>
+                    <select
+                      value={formData.unitId}
+                      onChange={e => setFormData(f => ({ ...f, unitId: e.target.value, lessonId: '' }))}
+                      className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white focus:border-violet-500 focus:outline-none text-sm"
+                    >
+                      <option value="">— No unit —</option>
+                      {units.map(u => <option key={u.id} value={u.id}>{u.title}</option>)}
+                    </select>
+                  </div>
+
+                  {/* Lesson */}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                      <BookOpen className="w-3.5 h-3.5 inline mr-1" />
+                      Link to Lesson <span className="text-slate-500 font-normal">(optional)</span>
+                    </label>
+                    <select
+                      value={formData.lessonId}
+                      onChange={e => setFormData(f => ({ ...f, lessonId: e.target.value }))}
+                      disabled={!formData.unitId || lessonsLoading}
+                      className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white focus:border-violet-500 focus:outline-none text-sm disabled:opacity-50"
+                    >
+                      <option value="">
+                        {!formData.unitId ? 'Choose a unit first' : lessonsLoading ? 'Loading lessons...' : lessons.length === 0 ? 'No lessons in this unit' : '— No lesson —'}
+                      </option>
+                      {lessons.map(l => <option key={l.id} value={l.id}>{l.title}</option>)}
+                    </select>
+                  </div>
+
+                  {/* Nav */}
+                  <div className="flex justify-end pt-2">
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        if (!formData.title.trim()) { setFormError('Laboratory title is required.'); return; }
+                        setFormError('');
+                        setWizardStep(2);
+                      }}
+                      className="bg-violet-600 hover:bg-violet-700 text-white gap-2"
+                    >
+                      Next: Platform & Link <ChevronRight className="w-4 h-4" />
+                    </Button>
                   </div>
                 </div>
               )}
 
+              {/* ── STEP 2: Platform & Link ── */}
+              {wizardStep === 2 && (
+                <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-6 space-y-6">
+                  <div className="flex items-center gap-3 border-b border-slate-800 pb-4">
+                    <div className="p-2.5 rounded-lg bg-cyan-500/10 text-cyan-400">
+                      <Monitor className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-bold text-white">Step 2: Platform & Link</h2>
+                      <p className="text-xs text-slate-400 mt-0.5">Choose the tool students will use and paste the activity link.</p>
+                    </div>
+                  </div>
+
+                  {/* Platform Cards */}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-3">Select Platform / Tool <span className="text-red-400">*</span></label>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {PLATFORM_OPTIONS.map(p => (
+                        <button
+                          key={p.value}
+                          type="button"
+                          onClick={() => {
+                            const autoUrl = PLATFORM_URLS[p.value] ?? '';
+                            setFormData(f => ({
+                              ...f,
+                              platform: p.value,
+                              platformUrl: !f.platformUrl || Object.values(PLATFORM_URLS).includes(f.platformUrl) ? autoUrl : f.platformUrl,
+                            }));
+                          }}
+                          className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border text-sm font-medium text-left transition-all ${
+                            formData.platform === p.value
+                              ? `${p.color} ring-2 ring-violet-500`
+                              : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:bg-slate-800'
+                          }`}
+                        >
+                          {formData.platform === p.value && <Check className="w-3.5 h-3.5 flex-shrink-0" />}
+                          <span className="truncate">{p.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Platform URL */}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                      Activity / Platform Link <span className="text-red-400">*</span>
+                    </label>
+                    <div className="relative">
+                      <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                      <input
+                        type="url"
+                        value={formData.platformUrl}
+                        onChange={e => setFormData(f => ({ ...f, platformUrl: e.target.value }))}
+                        placeholder="https://www.canva.com/design/..."
+                        className="w-full pl-10 pr-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder:text-slate-500 focus:border-violet-500 focus:ring-1 focus:ring-violet-500 focus:outline-none transition-all text-sm"
+                      />
+                    </div>
+                    <p className="text-slate-500 text-xs mt-1">Paste the direct link to the platform or a specific activity template.</p>
+                  </div>
+
+                  {/* Nav */}
+                  <div className="flex justify-between pt-2">
+                    <Button type="button" variant="outline" onClick={() => { setFormError(''); setWizardStep(1); }} className="border-slate-700 text-slate-300 hover:bg-slate-800">
+                      <ArrowLeft className="w-4 h-4 mr-1" /> Back
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        if (!formData.platformUrl.trim()) { setFormError('Platform link is required.'); return; }
+                        setFormError('');
+                        setWizardStep(3);
+                      }}
+                      className="bg-violet-600 hover:bg-violet-700 text-white gap-2"
+                    >
+                      Next: Schedule & Audience <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* ── STEP 3: Schedule & Audience ── */}
+              {wizardStep === 3 && (
+                <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-6 space-y-6">
+                  <div className="flex items-center gap-3 border-b border-slate-800 pb-4">
+                    <div className="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-400">
+                      <Calendar className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-bold text-white">Step 3: Schedule & Audience</h2>
+                      <p className="text-xs text-slate-400 mt-0.5">Set the due date, points, and which sections can access this lab.</p>
+                    </div>
+                  </div>
+
+                  {/* Due Date + Points */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                        <Calendar className="w-3.5 h-3.5 inline mr-1" />Due Date
+                      </label>
+                      <input
+                        type="date"
+                        value={formData.dueDate}
+                        onChange={e => setFormData(f => ({ ...f, dueDate: e.target.value }))}
+                        className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white focus:border-violet-500 focus:outline-none text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                        <Award className="w-3.5 h-3.5 inline mr-1" />Points
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={1000}
+                        value={formData.points}
+                        onChange={e => setFormData(f => ({ ...f, points: Math.max(1, parseInt(e.target.value) || 1) }))}
+                        className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white focus:border-violet-500 focus:outline-none text-sm"
+                      />
+                      <p className="text-slate-500 text-xs mt-1">Max score for this lab</p>
+                    </div>
+                  </div>
+
+                  {/* Allow Late */}
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <div
+                      onClick={() => setFormData(f => ({ ...f, allowLateSubmissions: !f.allowLateSubmissions }))}
+                      className={`w-10 h-5 rounded-full transition-colors ${formData.allowLateSubmissions ? 'bg-violet-600' : 'bg-slate-700'} relative flex-shrink-0`}
+                    >
+                      <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${formData.allowLateSubmissions ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                    </div>
+                    <span className="text-sm text-slate-300">Allow late submissions after the due date</span>
+                  </label>
+
+                  {/* Section picker */}
+                  {user?.teaching_sections && user.teaching_sections.length > 0 && (
+                    <div className="bg-slate-800/50 border border-slate-700/60 rounded-lg p-4 space-y-3">
+                      <div>
+                        <h4 className="text-sm font-semibold text-slate-200">Assign to Sections</h4>
+                        <p className="text-xs text-slate-400 mt-0.5">Select which sections can access this laboratory.</p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {user.teaching_sections.map((section: string) => {
+                          const isSelected = formData.targetSections.includes(section);
+                          return (
+                            <button
+                              key={section}
+                              type="button"
+                              onClick={() => setFormData(f => ({
+                                ...f,
+                                targetSections: isSelected
+                                  ? f.targetSections.filter(s => s !== section)
+                                  : [...f.targetSections, section],
+                              }))}
+                              className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-all ${
+                                isSelected
+                                  ? 'bg-violet-600/20 border-violet-500/50 text-violet-300'
+                                  : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-violet-500/30'
+                              }`}
+                            >
+                              {isSelected && <Check className="w-3 h-3 inline mr-1" />}
+                              {section}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Summary card */}
+                  <div className="bg-slate-800/50 border border-slate-700/60 rounded-lg p-4 space-y-2">
+                    <h4 className="text-sm font-semibold text-slate-200 mb-3">Summary</h4>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div><span className="text-slate-500">Title:</span> <span className="text-slate-200 font-medium">{formData.title || '—'}</span></div>
+                      <div><span className="text-slate-500">Platform:</span> <span className="text-slate-200 font-medium">{formData.platform}</span></div>
+                      <div><span className="text-slate-500">Points:</span> <span className="text-slate-200 font-medium">{formData.points}</span></div>
+                      <div><span className="text-slate-500">Due:</span> <span className="text-slate-200 font-medium">{formData.dueDate || 'No date set'}</span></div>
+                    </div>
+                  </div>
+
+                  {/* Nav */}
+                  <div className="flex justify-between pt-2">
+                    <Button type="button" variant="outline" onClick={() => { setFormError(''); setWizardStep(2); }} className="border-slate-700 text-slate-300 hover:bg-slate-800">
+                      <ArrowLeft className="w-4 h-4 mr-1" /> Back
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={(e) => handleSubmit(e as any)}
+                      className="bg-violet-600 hover:bg-violet-700 text-white gap-2"
+                    >
+                      <Beaker className="w-4 h-4" />
+                      Create Laboratory
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+            </div>
+          </div>
+        ) : (
+          /* ─── MODAL (Edit mode) ───────────────────────────────────────── */
+          <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-3 sm:p-4 bg-black/60 backdrop-blur-sm">
+            <div className="my-3 sm:my-6 bg-slate-900 border border-slate-700 rounded-xl w-full max-w-lg max-h-[calc(100vh-1.5rem)] sm:max-h-[calc(100vh-3rem)] shadow-2xl flex flex-col overflow-hidden">
+              {/* Modal Header */}
+              <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-slate-800 shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-violet-500/15 flex items-center justify-center">
+                    <Beaker className="w-4 h-4 text-violet-400" />
+                  </div>
+                  <h2 className="text-lg font-semibold text-white">Edit Laboratory</h2>
+                </div>
+                <button onClick={handleCloseForm} className="text-slate-400 hover:text-white transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
               </div>
 
-              {/* Actions */}
-              <div className="sticky bottom-0 flex justify-end gap-3 px-5 sm:px-6 py-4 bg-slate-900 border-t border-slate-800">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleCloseForm}
-                  className="border-slate-700 text-slate-300 hover:bg-slate-800"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  className="bg-violet-600 hover:bg-violet-700 text-white"
-                >
-                  {editingId ? 'Save Changes' : 'Create Laboratory'}
-                </Button>
-              </div>
-            </form>
+              {/* Modal Body */}
+              <form onSubmit={handleSubmit} className="overflow-y-auto">
+                <div className="p-5 sm:p-6 space-y-4">
+                  {formError && (
+                    <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+                      <p className="text-red-400 text-sm">{formError}</p>
+                    </div>
+                  )}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1.5">Laboratory Title <span className="text-red-400">*</span></label>
+                    <input type="text" value={formData.title} onChange={e => setFormData(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Logo Design using Canva" className="w-full bg-slate-800/60 border border-slate-700 rounded-lg px-3 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:border-violet-500 text-sm" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1.5">Description</label>
+                    <textarea value={formData.description} onChange={e => setFormData(f => ({ ...f, description: e.target.value }))} placeholder="Instructions or objectives..." rows={3} className="w-full bg-slate-800/60 border border-slate-700 rounded-lg px-3 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:border-violet-500 text-sm resize-none" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1.5">Platform / Tool</label>
+                    <select value={formData.platform} onChange={e => { const p = e.target.value; setFormData(f => ({ ...f, platform: p, platformUrl: !f.platformUrl || Object.values(PLATFORM_URLS).includes(f.platformUrl) ? (PLATFORM_URLS[p] ?? '') : f.platformUrl })); }} className="w-full bg-slate-800/60 border border-slate-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-violet-500 text-sm">
+                      {PLATFORM_OPTIONS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1.5">Platform Link <span className="text-red-400">*</span></label>
+                    <div className="relative">
+                      <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                      <input type="url" value={formData.platformUrl} onChange={e => setFormData(f => ({ ...f, platformUrl: e.target.value }))} placeholder="https://..." className="w-full bg-slate-800/60 border border-slate-700 rounded-lg pl-9 pr-3 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:border-violet-500 text-sm" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1.5">Link to Unit</label>
+                    <select value={formData.unitId} onChange={e => setFormData(f => ({ ...f, unitId: e.target.value, lessonId: '' }))} className="w-full bg-slate-800/60 border border-slate-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-violet-500 text-sm">
+                      <option value="">— No unit —</option>
+                      {units.map(u => <option key={u.id} value={u.id}>{u.title}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1.5">Link to Lesson</label>
+                    <select value={formData.lessonId} onChange={e => setFormData(f => ({ ...f, lessonId: e.target.value }))} disabled={!formData.unitId || lessonsLoading} className="w-full bg-slate-800/60 border border-slate-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-violet-500 text-sm disabled:opacity-60">
+                      <option value="">{!formData.unitId ? 'Choose a unit first' : lessonsLoading ? 'Loading...' : lessons.length === 0 ? 'No lessons' : '— No lesson —'}</option>
+                      {lessons.map(l => <option key={l.id} value={l.id}>{l.title}</option>)}
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-1.5">Due Date</label>
+                      <input type="date" value={formData.dueDate} onChange={e => setFormData(f => ({ ...f, dueDate: e.target.value }))} className="w-full bg-slate-800/60 border border-slate-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-violet-500 text-sm" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-1.5">Points</label>
+                      <input type="number" min={1} max={1000} value={formData.points} onChange={e => setFormData(f => ({ ...f, points: Math.max(1, parseInt(e.target.value) || 1) }))} className="w-full bg-slate-800/60 border border-slate-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-violet-500 text-sm" />
+                    </div>
+                  </div>
+                  <label className="flex items-center gap-2 text-sm text-slate-300">
+                    <input type="checkbox" checked={formData.allowLateSubmissions} onChange={e => setFormData(f => ({ ...f, allowLateSubmissions: e.target.checked }))} className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-violet-500" />
+                    Allow late submissions
+                  </label>
+                  {user?.teaching_sections && user.teaching_sections.length > 0 && (
+                    <div className="rounded-lg border border-slate-800 bg-slate-950/40 p-3 space-y-3">
+                      <h4 className="text-sm font-semibold text-slate-200">Assign to Sections</h4>
+                      <div className="flex flex-wrap gap-3">
+                        {user.teaching_sections.map((section: string) => (
+                          <label key={section} className="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" checked={formData.targetSections.includes(section)} onChange={(ev) => setFormData(f => ({ ...f, targetSections: ev.target.checked ? [...f.targetSections, section] : f.targetSections.filter(s => s !== section) }))} className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-violet-500" />
+                            <span className="text-sm text-slate-300">{section}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="sticky bottom-0 flex justify-end gap-3 px-5 sm:px-6 py-4 bg-slate-900 border-t border-slate-800">
+                  <Button type="button" variant="outline" onClick={handleCloseForm} className="border-slate-700 text-slate-300 hover:bg-slate-800">Cancel</Button>
+                  <Button type="submit" className="bg-violet-600 hover:bg-violet-700 text-white">Save Changes</Button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
+        )
       )}
 
       {/* List */}

@@ -23,6 +23,7 @@ import {
   PanelLeftOpen,
   Folder,
   Sparkles,
+  Trash2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -31,6 +32,18 @@ import { useAuthStore } from '@/stores/authStore';
 import { useSidebarStore } from '@/stores/sidebarStore';
 import { AetherLogo } from '@/components/AetherLogo';
 import { useCourseTreeStore } from '@/stores/courseTreeStore';
+import { authFetch } from '@/lib/authFetch';
+import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface NavItem {
   label: string;
@@ -39,6 +52,7 @@ interface NavItem {
   badge?: number;
   subItems?: NavItem[];
   unitId?: string;
+  lessonId?: string;
   category?: string;
 }
 
@@ -72,6 +86,50 @@ export function Sidebar({
   const { isCollapsed, toggleCollapsed } = useSidebarStore();
   const { cache, loadUserCourseTree } = useCourseTreeStore();
   const quickActionStorageKey = authUser?.id ? `aether-course-quick-action:${authUser.id}` : 'aether-course-quick-action';
+
+  // ── Delete state ──────────────────────────────────────────────────────────
+  const [unitToDelete, setUnitToDelete] = useState<{ id: string; title: string } | null>(null);
+  const [lessonToDelete, setLessonToDelete] = useState<{ id: string; title: string; unitId: string } | null>(null);
+  const [isDeletingUnit, setIsDeletingUnit] = useState(false);
+  const [isDeletingLesson, setIsDeletingLesson] = useState(false);
+
+  const handleConfirmDeleteUnit = async () => {
+    if (!unitToDelete) return;
+    try {
+      setIsDeletingUnit(true);
+      const response = await authFetch(`/units/${unitToDelete.id}`, { method: 'DELETE' });
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.error?.message || 'Failed to delete unit');
+      toast.success(`"${unitToDelete.title}" deleted`);
+      setUnitToDelete(null);
+      // Refresh sidebar tree
+      if (authUser?.id) void loadUserCourseTree(authUser.id);
+      window.dispatchEvent(new CustomEvent('aether-course-outline-refresh', { detail: { userId: authUser?.id } }));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete unit');
+    } finally {
+      setIsDeletingUnit(false);
+    }
+  };
+
+  const handleConfirmDeleteLesson = async () => {
+    if (!lessonToDelete) return;
+    try {
+      setIsDeletingLesson(true);
+      const response = await authFetch(`/units/lessons/${lessonToDelete.id}`, { method: 'DELETE' });
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.error?.message || 'Failed to delete lesson');
+      toast.success(`"${lessonToDelete.title}" deleted`);
+      setLessonToDelete(null);
+      // Refresh sidebar tree
+      if (authUser?.id) void loadUserCourseTree(authUser.id);
+      window.dispatchEvent(new CustomEvent('aether-course-outline-refresh', { detail: { userId: authUser?.id } }));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete lesson');
+    } finally {
+      setIsDeletingLesson(false);
+    }
+  };
 
   useEffect(() => {
     if (userRole !== 'instructor' && userRole !== 'student') {
@@ -117,6 +175,7 @@ export function Sidebar({
         subItems: unitLessons.map((lesson: any) => ({
           label: lesson.title,
           unitId: unit.id,
+          lessonId: lesson.id,
           href: isInstructor
             ? `/instructor/lesson/${encodeURIComponent(unit.id)}/${encodeURIComponent(lesson.id)}`
             : `/lessons?unit=${encodeURIComponent(unit.id)}&lesson=${encodeURIComponent(lesson.id)}`,
@@ -413,114 +472,198 @@ export function Sidebar({
                       )}
 
                       {item.subItems && item.subItems.length > 0 ? (
-                        item.subItems.map((subItem) => {
-                          const unitId = subItem.unitId || (new URLSearchParams(subItem.href.split('?')[1] || '').get('unit') || undefined);
-                          const hasLessonItems = Boolean(subItem.subItems?.length);
-                          const currentSearchParams = new URLSearchParams(location.search);
-                          const activeUnitId = currentSearchParams.get('unit');
-                          const activeLessonId = currentSearchParams.get('lesson');
+                        isCourseOutlineItem ? (
+                          // ── Course-outline items: units with lessons, delete buttons, Add Lesson ──
+                          item.subItems.map((subItem) => {
+                            const unitId = subItem.unitId || (new URLSearchParams(subItem.href.split('?')[1] || '').get('unit') || undefined);
+                            const hasLessonItems = Boolean(subItem.subItems?.length);
+                            const currentSearchParams = new URLSearchParams(location.search);
+                            const activeUnitId = currentSearchParams.get('unit');
+                            const activeLessonId = currentSearchParams.get('lesson');
 
-                          const isThisUnitActive = location.pathname.startsWith('/lessons')
-                            ? activeUnitId === unitId
-                            : location.pathname.includes(`/instructor/courses`) && activeUnitId === unitId;
+                            const isThisUnitActive = location.pathname.startsWith('/lessons')
+                              ? activeUnitId === unitId
+                              : location.pathname.includes(`/instructor/courses`) && activeUnitId === unitId;
 
-                          return (
-                            <div key={subItem.href} className="space-y-0.5">
-                              <div className="flex items-center">
-                                <NavLink
-                                  to={subItem.href}
-                                  onClick={() => {
-                                    if (!expandedCourseUnits.includes(subItem.href)) {
-                                      setExpandedCourseUnits((current) => [...current, subItem.href]);
-                                    }
-                                    setIsMobileMenuOpen(false);
-                                  }}
-                                  className={cn(
-                                    'flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition-all duration-200',
-                                    isThisUnitActive
-                                      ? 'bg-violet-500/15 text-violet-700 dark:text-violet-300 font-bold border-l-2 border-violet-500'
-                                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200 border-l-2 border-transparent'
-                                  )}
-                                >
-                                  <Folder className={cn('h-3.5 w-3.5 shrink-0', isThisUnitActive ? 'text-violet-600 dark:text-violet-400' : 'text-slate-400')} />
-                                  <span className="truncate flex-1">{subItem.label}</span>
-                                  {subItem.subItems && subItem.subItems.length > 0 && (
-                                    <span className="text-[10px] text-slate-400 dark:text-slate-500">
-                                      ({subItem.subItems.length})
-                                    </span>
-                                  )}
-                                </NavLink>
-
-                                {hasLessonItems && (
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setExpandedCourseUnits((current) =>
-                                        current.includes(subItem.href)
-                                          ? current.filter((href) => href !== subItem.href)
-                                          : [...current, subItem.href]
-                                      )
-                                    }
-                                    className="p-1 rounded text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                            return (
+                              <div key={subItem.href} className="space-y-0.5 group/unit">
+                                <div className="flex items-center gap-0.5">
+                                  <NavLink
+                                    to={subItem.href}
+                                    onClick={() => {
+                                      if (!expandedCourseUnits.includes(subItem.href)) {
+                                        setExpandedCourseUnits((current) => [...current, subItem.href]);
+                                      }
+                                      setIsMobileMenuOpen(false);
+                                    }}
+                                    className={cn(
+                                      'flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition-all duration-200',
+                                      isThisUnitActive
+                                        ? 'bg-violet-500/15 text-violet-700 dark:text-violet-300 font-bold border-l-2 border-violet-500'
+                                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200 border-l-2 border-transparent'
+                                    )}
                                   >
-                                    <ChevronRight
-                                      className={cn(
-                                        'w-3 h-3 transition-transform duration-200',
-                                        expandedCourseUnits.includes(subItem.href) && 'rotate-90'
-                                      )}
-                                    />
-                                  </button>
-                                )}
-                              </div>
+                                    <Folder className={cn('h-3.5 w-3.5 shrink-0', isThisUnitActive ? 'text-violet-600 dark:text-violet-400' : 'text-slate-400')} />
+                                    <span className="truncate flex-1">{subItem.label}</span>
+                                    {subItem.subItems && subItem.subItems.length > 0 && (
+                                      <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                                        ({subItem.subItems.length})
+                                      </span>
+                                    )}
+                                  </NavLink>
 
-                              {/* Lesson sub-items */}
-                              {expandedCourseUnits.includes(subItem.href) && (
-                                <div className="ml-3 pl-2 border-l border-slate-200 dark:border-slate-800/80 space-y-0.5 py-0.5">
-                                  {hasLessonItems &&
-                                    subItem.subItems!.map((lessonItem) => {
-                                      const lessonUrlParams = new URLSearchParams(lessonItem.href.split('?')[1] || '');
-                                      const lessonTargetId = lessonUrlParams.get('lesson');
-                                      const isThisLessonActive = location.pathname.startsWith('/lessons')
-                                        ? activeLessonId === lessonTargetId
-                                        : location.pathname.includes(`/instructor/lesson/`);
-
-                                      return (
-                                        <NavLink
-                                          key={lessonItem.href}
-                                          to={lessonItem.href}
-                                          onClick={() => setIsMobileMenuOpen(false)}
-                                          className={cn(
-                                            'flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] transition-all',
-                                            isThisLessonActive
-                                              ? 'bg-violet-600/20 text-violet-700 dark:text-violet-300 font-bold'
-                                              : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200'
-                                          )}
+                                  {/* Unit action buttons — only for instructors */}
+                                  {userRole === 'instructor' && (
+                                    <>
+                                      {hasLessonItems && (
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            setExpandedCourseUnits((current) =>
+                                              current.includes(subItem.href)
+                                                ? current.filter((href) => href !== subItem.href)
+                                                : [...current, subItem.href]
+                                            )
+                                          }
+                                          className="p-1 rounded text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
                                         >
-                                          <FileText className={cn('h-3 w-3 shrink-0', isThisLessonActive ? 'text-violet-500' : 'text-slate-400')} />
-                                          <span className="truncate">{lessonItem.label}</span>
-                                        </NavLink>
-                                      );
-                                    })}
-
-                                  {!hasLessonItems && (
-                                    <p className="px-2 py-0.5 text-[10px] text-slate-400">No lessons yet</p>
+                                          <ChevronRight
+                                            className={cn(
+                                              'w-3 h-3 transition-transform duration-200',
+                                              expandedCourseUnits.includes(subItem.href) && 'rotate-90'
+                                            )}
+                                          />
+                                        </button>
+                                      )}
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          setUnitToDelete({ id: subItem.unitId!, title: subItem.label });
+                                        }}
+                                        className="p-1 rounded opacity-0 group-hover/unit:opacity-100 text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                                        title={`Delete ${subItem.label}`}
+                                      >
+                                        <Trash2 className="h-3 w-3" />
+                                      </button>
+                                    </>
                                   )}
 
-                                  {userRole === 'instructor' && (
+                                  {/* Student view: just the chevron */}
+                                  {userRole !== 'instructor' && hasLessonItems && (
                                     <button
                                       type="button"
-                                      onClick={() => handleQuickAdd('lesson', unitId)}
-                                      className="flex w-full items-center gap-1.5 rounded px-2 py-1 text-left text-[10px] font-medium text-violet-600 dark:text-violet-400 hover:bg-violet-500/10"
+                                      onClick={() =>
+                                        setExpandedCourseUnits((current) =>
+                                          current.includes(subItem.href)
+                                            ? current.filter((href) => href !== subItem.href)
+                                            : [...current, subItem.href]
+                                        )
+                                      }
+                                      className="p-1 rounded text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
                                     >
-                                      <Plus className="h-3 w-3" />
-                                      Add Lesson
+                                      <ChevronRight
+                                        className={cn(
+                                          'w-3 h-3 transition-transform duration-200',
+                                          expandedCourseUnits.includes(subItem.href) && 'rotate-90'
+                                        )}
+                                      />
                                     </button>
                                   )}
                                 </div>
-                              )}
-                            </div>
-                          );
-                        })
+
+                                {/* Lesson sub-items */}
+                                {expandedCourseUnits.includes(subItem.href) && (
+                                  <div className="ml-3 pl-2 border-l border-slate-200 dark:border-slate-800/80 space-y-0.5 py-0.5">
+                                    {hasLessonItems &&
+                                      subItem.subItems!.map((lessonItem) => {
+                                        const lessonUrlParams = new URLSearchParams(lessonItem.href.split('?')[1] || '');
+                                        const lessonTargetId = lessonUrlParams.get('lesson');
+                                        const isThisLessonActive = location.pathname.startsWith('/lessons')
+                                          ? activeLessonId === lessonTargetId
+                                          : location.pathname.includes(`/instructor/lesson/`);
+
+                                        return (
+                                          <div key={lessonItem.href} className="flex items-center gap-0.5 group/lesson">
+                                            <NavLink
+                                              to={lessonItem.href}
+                                              onClick={() => setIsMobileMenuOpen(false)}
+                                              className={cn(
+                                                'flex min-w-0 flex-1 items-center gap-1.5 rounded-md px-2 py-1 text-[11px] transition-all',
+                                                isThisLessonActive
+                                                  ? 'bg-violet-600/20 text-violet-700 dark:text-violet-300 font-bold'
+                                                  : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200'
+                                              )}
+                                            >
+                                              <FileText className={cn('h-3 w-3 shrink-0', isThisLessonActive ? 'text-violet-500' : 'text-slate-400')} />
+                                              <span className="truncate">{lessonItem.label}</span>
+                                            </NavLink>
+
+                                            {/* Lesson delete — instructor only */}
+                                            {userRole === 'instructor' && (
+                                              <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                  e.preventDefault();
+                                                  e.stopPropagation();
+                                                  setLessonToDelete({
+                                                    id: lessonItem.lessonId!,
+                                                    title: lessonItem.label,
+                                                    unitId: lessonItem.unitId!,
+                                                  });
+                                                }}
+                                                className="p-1 rounded opacity-0 group-hover/lesson:opacity-100 text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all flex-shrink-0"
+                                                title={`Delete ${lessonItem.label}`}
+                                              >
+                                                <Trash2 className="h-3 w-3" />
+                                              </button>
+                                            )}
+                                          </div>
+                                        );
+                                      })}
+
+                                    {!hasLessonItems && (
+                                      <p className="px-2 py-0.5 text-[10px] text-slate-400">No lessons yet</p>
+                                    )}
+
+                                    {userRole === 'instructor' && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleQuickAdd('lesson', unitId)}
+                                        className="flex w-full items-center gap-1.5 rounded px-2 py-1 text-left text-[10px] font-medium text-violet-600 dark:text-violet-400 hover:bg-violet-500/10"
+                                      >
+                                        <Plus className="h-3 w-3" />
+                                        Add Lesson
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })
+                        ) : (
+                          // ── Non-course items (Laboratories, Quizzes, etc.): plain flat NavLinks ──
+                          item.subItems.map((subItem) => {
+                            const isSubActive = location.pathname === subItem.href || location.pathname.startsWith(subItem.href + '/');
+                            return (
+                              <NavLink
+                                key={subItem.href}
+                                to={subItem.href}
+                                onClick={() => setIsMobileMenuOpen(false)}
+                                className={cn(
+                                  'flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition-all duration-200',
+                                  isSubActive
+                                    ? 'bg-violet-500/15 text-violet-700 dark:text-violet-300 font-bold border-l-2 border-violet-500'
+                                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200 border-l-2 border-transparent'
+                                )}
+                              >
+                                <subItem.icon className={cn('h-3.5 w-3.5 shrink-0', isSubActive ? 'text-violet-500' : 'text-slate-400')} />
+                                <span className="truncate">{subItem.label}</span>
+                              </NavLink>
+                            );
+                          })
+                        )
                       ) : isCourseOutlineItem ? (
                         <p className="px-2 py-1 text-[10px] text-slate-400">No units yet</p>
                       ) : null}
@@ -624,6 +767,62 @@ export function Sidebar({
           </aside>
         </div>
       )}
+
+      {/* ── Delete Unit Confirmation ─────────────────────────────────────── */}
+      <AlertDialog open={!!unitToDelete} onOpenChange={(open) => { if (!open) setUnitToDelete(null); }}>
+        <AlertDialogContent className="border border-slate-800 bg-slate-950 text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">Delete Unit?</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              Deleting <span className="font-semibold text-slate-200">"{unitToDelete?.title}"</span> will permanently remove it
+              and <span className="font-semibold text-red-400">all lessons inside it</span>. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              className="border-slate-700 text-slate-300 hover:bg-slate-800"
+              onClick={() => setUnitToDelete(null)}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDeleteUnit}
+              disabled={isDeletingUnit}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {isDeletingUnit ? 'Deleting…' : 'Yes, delete unit'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ── Delete Lesson Confirmation ───────────────────────────────────── */}
+      <AlertDialog open={!!lessonToDelete} onOpenChange={(open) => { if (!open) setLessonToDelete(null); }}>
+        <AlertDialogContent className="border border-slate-800 bg-slate-950 text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">Delete Lesson?</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              <span className="font-semibold text-slate-200">"{lessonToDelete?.title}"</span> will be permanently deleted.
+              This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              className="border-slate-700 text-slate-300 hover:bg-slate-800"
+              onClick={() => setLessonToDelete(null)}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDeleteLesson}
+              disabled={isDeletingLesson}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {isDeletingLesson ? 'Deleting…' : 'Yes, delete lesson'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
