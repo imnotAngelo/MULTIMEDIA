@@ -184,17 +184,6 @@ export function Dashboard() {
             )}
           </div>
 
-          <div className="flex items-center gap-3">
-            <Button
-              onClick={loadDashboardStats}
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-2 text-xs font-medium"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-              Refresh Data
-            </Button>
-          </div>
         </div>
       </div>
 
