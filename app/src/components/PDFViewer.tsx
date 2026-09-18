@@ -30,7 +30,8 @@ interface PDFViewerProps {
 export function PDFViewer({ url, title, onDownload }: PDFViewerProps) {
   const [numPages, setNumPages] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [zoom, setZoom] = useState(110);
+  const [zoom, setZoom] = useState(100); // 100% = fit to container width
+  const [isFitMode, setIsFitMode] = useState(true); // auto-fit width by default
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<string>('');
@@ -38,6 +39,19 @@ export function PDFViewer({ url, title, onDownload }: PDFViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pdfRef = useRef<Awaited<ReturnType<typeof pdfjsLib.getDocument>['promise']> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
+  const [canvasContainerWidth, setCanvasContainerWidth] = useState(0);
+
+  useEffect(() => {
+    const element = canvasContainerRef.current;
+    if (!element) return;
+
+    const updateWidth = () => setCanvasContainerWidth(element.clientWidth);
+    updateWidth();
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [isFullscreen]);
 
   // Load PDF document
   useEffect(() => {
@@ -100,7 +114,7 @@ export function PDFViewer({ url, title, onDownload }: PDFViewerProps) {
     };
   }, [url]);
 
-  // Render current page
+  // Render current page — crisp at every screen size
   useEffect(() => {
     let renderTask: any = null;
     const renderPage = async () => {
@@ -108,20 +122,44 @@ export function PDFViewer({ url, title, onDownload }: PDFViewerProps) {
 
       try {
         const page = await pdfRef.current.getPage(currentPage);
-        const scale = zoom / 100;
+        const baseViewport = page.getViewport({ scale: 1 });
+
+        // Padding: 16px each side (8px mobile, 32px desktop)
+        const padding = isFullscreen ? 64 : (canvasContainerWidth < 640 ? 16 : 32);
+        const availableWidth = Math.max(100, canvasContainerWidth - padding);
+
+        // Fit-width scale: always fills the container
+        const fitScale = availableWidth / baseViewport.width;
+
+        // In fit mode, always match container width (perfect for mobile).
+        // In manual zoom mode, apply zoom relative to fit.
+        const scale = isFitMode ? fitScale : fitScale * (zoom / 100);
+
         const viewport = page.getViewport({ scale });
+
+        // Use device pixel ratio for crisp rendering on hi-DPI/retina screens
+        const dpr = Math.min(window.devicePixelRatio || 1, 3); // cap at 3× to save memory
 
         const canvas = canvasRef.current;
         const context = canvas.getContext('2d');
-
         if (!context) return;
 
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
+        // Physical canvas size (hi-res pixels)
+        canvas.width = Math.ceil(viewport.width * dpr);
+        canvas.height = Math.ceil(viewport.height * dpr);
+
+        // CSS display size (logical pixels — matches the layout)
+        canvas.style.width = `${viewport.width}px`;
+        canvas.style.height = `${viewport.height}px`;
+        canvas.style.maxWidth = '100%';
+
+        // Scale context to match DPR
+        context.setTransform(dpr, 0, 0, dpr, 0, 0);
 
         renderTask = page.render({
           canvasContext: context,
-          viewport: viewport,
+          canvas,
+          viewport,
         });
 
         await renderTask.promise;
@@ -135,14 +173,10 @@ export function PDFViewer({ url, title, onDownload }: PDFViewerProps) {
     renderPage();
     return () => {
       if (renderTask) {
-        try {
-          renderTask.cancel();
-        } catch {
-          // ignore cancel error
-        }
+        try { renderTask.cancel(); } catch { /* ignore */ }
       }
     };
-  }, [currentPage, numPages, zoom]);
+  }, [currentPage, numPages, zoom, isFitMode, canvasContainerWidth, isFullscreen]);
 
   const handlePrevPage = useCallback(() => {
     if (currentPage > 1) {
@@ -157,14 +191,17 @@ export function PDFViewer({ url, title, onDownload }: PDFViewerProps) {
   }, [numPages, currentPage]);
 
   const handleZoomIn = () => {
-    setZoom((prev) => Math.min(prev + 20, 250));
+    setIsFitMode(false);
+    setZoom((prev) => Math.min(prev + 20, 300));
   };
 
   const handleZoomOut = () => {
-    setZoom((prev) => Math.max(prev - 20, 60));
+    setIsFitMode(false);
+    setZoom((prev) => Math.max(prev - 20, 40));
   };
 
   const handleFitToScreen = () => {
+    setIsFitMode(true);
     setZoom(100);
   };
 
@@ -253,9 +290,9 @@ export function PDFViewer({ url, title, onDownload }: PDFViewerProps) {
       }`}
     >
       {/* Sleek, Single-Bar Aesthetic Reader Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white/95 dark:bg-slate-900/90 px-4 py-2.5 shadow-sm backdrop-blur-md">
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white/95 dark:bg-slate-900/90 px-2.5 py-2.5 sm:gap-3 sm:px-4 shadow-sm backdrop-blur-md">
         {/* Left: Page Navigation */}
-        <div className="flex items-center gap-1.5 sm:gap-2">
+        <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
           <Button
             variant="ghost"
             size="sm"
@@ -287,31 +324,36 @@ export function PDFViewer({ url, title, onDownload }: PDFViewerProps) {
         </div>
 
         {/* Center: Zoom Controls */}
-        <div className="flex items-center gap-1 sm:gap-1.5">
+        <div className="flex min-w-0 items-center gap-1 sm:gap-1.5">
           <Button
             variant="ghost"
             size="sm"
             onClick={handleZoomOut}
-            disabled={zoom <= 60}
+            disabled={!isFitMode && zoom <= 40}
             className="h-8 w-8 p-0 rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-25"
             title="Zoom Out (-)"
           >
             <ZoomOut className="h-3.5 w-3.5" />
           </Button>
 
+          {/* Zoom readout — shows "Fit" when in fit mode, percentage when zoomed manually */}
           <button
-            onClick={() => setZoom(100)}
-            className="rounded-lg px-2 py-1 font-mono text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-            title="Reset to 100%"
+            onClick={handleFitToScreen}
+            className={`rounded-lg px-2 py-1 font-mono text-xs font-semibold transition-colors ${
+              isFitMode
+                ? 'bg-violet-100 dark:bg-violet-500/20 text-violet-600 dark:text-violet-300'
+                : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+            title="Reset to Fit Width"
           >
-            {zoom}%
+            {isFitMode ? 'Fit' : `${zoom}%`}
           </button>
 
           <Button
             variant="ghost"
             size="sm"
             onClick={handleZoomIn}
-            disabled={zoom >= 250}
+            disabled={!isFitMode && zoom >= 300}
             className="h-8 w-8 p-0 rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-25"
             title="Zoom In (+)"
           >
@@ -324,16 +366,20 @@ export function PDFViewer({ url, title, onDownload }: PDFViewerProps) {
             variant="ghost"
             size="sm"
             onClick={handleFitToScreen}
-            className="h-8 px-2.5 rounded-xl text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hidden sm:inline-flex items-center gap-1.5"
-            title="Reset to standard view"
+            className={`h-8 px-2.5 rounded-xl text-xs font-medium hidden sm:inline-flex items-center gap-1.5 transition-colors ${
+              isFitMode
+                ? 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-500/10'
+                : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+            title="Fit width (reset view)"
           >
-            <Eye className="h-3.5 w-3.5 text-violet-500" />
-            <span>Fit</span>
+            <RotateCw className="h-3.5 w-3.5" />
+            <span>Fit Width</span>
           </Button>
         </div>
 
         {/* Right: Actions */}
-        <div className="flex items-center gap-1.5">
+        <div className="ml-auto flex min-w-0 items-center gap-1.5">
           {onDownload && (
             <Button
               variant="ghost"
@@ -369,19 +415,22 @@ export function PDFViewer({ url, title, onDownload }: PDFViewerProps) {
         </div>
       </div>
 
-      {/* Aesthetic Document Canvas Container */}
+      {/* Document Canvas Container — scrollable on mobile when zoomed in */}
       <div
-        className={`flex w-full overflow-auto items-start justify-center rounded-2xl transition-all ${
+        ref={canvasContainerRef}
+        className={`w-full rounded-2xl transition-all ${
           isFullscreen
-            ? 'flex-1 bg-[#060b11] p-4 sm:p-8'
-            : 'min-h-[580px] max-h-[82vh] border border-slate-200/80 dark:border-slate-800/80 bg-slate-100/60 dark:bg-slate-950/60 p-4 sm:p-8 shadow-inner'
+            ? 'flex flex-1 overflow-auto bg-[#060b11] p-4 sm:p-8 items-start justify-center'
+            : isFitMode
+              ? 'overflow-hidden border border-slate-200/80 dark:border-slate-800/80 bg-slate-100/60 dark:bg-slate-950/60 p-1 sm:p-4 shadow-inner min-h-[40vh] sm:min-h-[580px]'
+              : 'overflow-auto border border-slate-200/80 dark:border-slate-800/80 bg-slate-100/60 dark:bg-slate-950/60 p-2 sm:p-4 shadow-inner min-h-[40vh] sm:min-h-[580px]'
         }`}
       >
-        <div className="mx-auto flex items-center justify-center">
+        <div className={`${isFitMode ? 'w-full' : 'mx-auto'} flex items-start justify-center`}>
           <canvas
             ref={canvasRef}
-            className="rounded-xl bg-white shadow-[0_16px_48px_rgba(0,0,0,0.18)] ring-1 ring-slate-900/10 dark:ring-white/10 transition-all"
-            style={{ display: 'block' }}
+            className="rounded-xl bg-white shadow-[0_8px_32px_rgba(0,0,0,0.15)] ring-1 ring-slate-900/10 dark:ring-white/10 transition-all"
+            style={{ display: 'block', maxWidth: isFitMode ? '100%' : 'none' }}
           />
         </div>
       </div>

@@ -66,13 +66,17 @@ export function DocumentViewer({ lessonId, documentUrl, title, fileType }: Docum
   }
 
   return (
-    <div className="glass-panel min-h-[70vh] w-full overflow-hidden rounded-xl">
+    <div className="glass-panel w-full overflow-hidden rounded-xl" style={{ minHeight: 'min(80vh, 600px)' }}>
       <DocViewer
         documents={[{ uri: resolvedUrl, fileType, fileName: `${title}.${fileType}` }]}
         pluginRenderers={DocViewerRenderers}
         requestHeaders={token ? { Authorization: `Bearer ${token}` } : undefined}
-        config={{ header: { disableHeader: true }, pdfZoom: { defaultZoom: 1.1 } }}
-        style={{ height: '80vh', minHeight: '600px', width: '100%' }}
+        config={{
+          header: { disableHeader: true },
+          pdfZoom: { defaultZoom: 1.0, zoomJump: 0.2 },
+          pdfVerticalScrollByDefault: true,
+        }}
+        style={{ height: 'min(80vh, 720px)', minHeight: '400px', width: '100%' }}
         onError={() => setError('Document preview could not be loaded.')}
       />
       {error && <p className="p-4 text-center text-sm text-amber-200">{error}</p>}

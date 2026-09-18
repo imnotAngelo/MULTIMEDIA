@@ -1,4 +1,4 @@
-﻿import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   BookOpen,
   ExternalLink,
@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { authFetch } from '@/lib/authFetch';
 import { resolveBackendAssetUrl } from '@/lib/apiConfig';
+import { useAuthStore } from '@/stores/authStore';
+import { usePageCache } from '@/stores/pageCacheStore';
 
 // --- Instructor-assigned labs (loaded from Supabase) ---
 interface InstructorLab {
@@ -68,7 +70,14 @@ const getPlatformBadge = (p: string) =>
   PLATFORM_BADGE[p] ?? 'bg-slate-500/10 border-slate-500/30 text-slate-400';
 
 export function Laboratories() {
-  const [labs, setLabs] = useState<InstructorLab[]>([]);
+  const { user } = useAuthStore();
+  const pageCache = usePageCache();
+  const CACHE_KEY = `student-labs:${user?.id ?? 'anon'}`;
+
+  const [labs, setLabs] = useState<InstructorLab[]>(() => {
+    const cached = pageCache.get<InstructorLab[]>(CACHE_KEY);
+    return cached.data ?? [];
+  });
   const [submissions, setSubmissions] = useState<Record<string, Submission>>(loadCache);
   const [submittingLabId, setSubmittingLabId] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -111,13 +120,18 @@ export function Laboratories() {
 
   // Load laboratories and submissions from Supabase on mount.
   useEffect(() => {
-    authFetch('/laboratories')
-      .then(r => r.ok ? r.json() : Promise.reject(r.status))
-      .then(data => {
-        if (!data.success) throw new Error(data.error?.message || 'Failed to load laboratories');
-        setLabs(data.data ?? []);
-      })
-      .catch(() => setLabs([]));
+    const cached = pageCache.get<InstructorLab[]>(CACHE_KEY);
+    // Always show cached labs immediately; fetch fresh in background if stale
+    if (!cached.fresh) {
+      authFetch('/laboratories')
+        .then(r => r.ok ? r.json() : Promise.reject(r.status))
+        .then(data => {
+          if (!data.success) throw new Error(data.error?.message || 'Failed to load laboratories');
+          setLabs(data.data ?? []);
+          pageCache.set(CACHE_KEY, data.data ?? []);
+        })
+        .catch(() => setLabs([]));
+    }
 
     authFetch('/laboratory-submissions/my-files')
       .then(r => r.ok ? r.json() : Promise.reject(r.status))
@@ -137,7 +151,7 @@ export function Laboratories() {
         saveCache(parsed);
       })
       .catch(() => { /* offline – keep cache */ });
-  }, []);
+  }, [user?.id]);
 
   const refresh = () => {
     authFetch('/laboratories')

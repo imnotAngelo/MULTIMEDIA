@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/stores/authStore';
+import { usePageCache } from '@/stores/pageCacheStore';
 import {
   BookOpen,
   Users,
@@ -55,20 +56,26 @@ interface ActiveStudent {
 export function InstructorDashboard() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
-  const [units, setUnits] = useState<Unit[]>([]);
-  const [lessons, setLessons] = useState<Lesson[]>([]);
-  const [students, setStudents] = useState<ActiveStudent[]>([]);
-  const [loading, setLoading] = useState(true);
+  const pageCache = usePageCache();
+  const CACHE_KEY = `instructor-dashboard:${user?.id ?? 'anon'}`;
+
+  // Hydrate from cache on mount so the page is instant on revisit
+  const cachedPayload = pageCache.get<{
+    units: Unit[]; lessons: Lesson[]; students: ActiveStudent[];
+    stats: typeof defaultStats;
+  }>(CACHE_KEY);
+
+  const defaultStats = {
+    totalUnits: 0, totalLaboratories: 0, activeStudents: 0,
+    totalStudents: 0, totalQuizzes: 0, lessonsCompleted: 0, totalSubmissions: 0,
+  };
+
+  const [units, setUnits] = useState<Unit[]>(cachedPayload.data?.units ?? []);
+  const [lessons, setLessons] = useState<Lesson[]>(cachedPayload.data?.lessons ?? []);
+  const [students, setStudents] = useState<ActiveStudent[]>(cachedPayload.data?.students ?? []);
+  const [loading, setLoading] = useState(cachedPayload.data === null); // no spinner if cached
   const [refreshing, setRefreshing] = useState(false);
-  const [stats, setStats] = useState({
-    totalUnits: 0,
-    totalLaboratories: 0,
-    activeStudents: 0,
-    totalStudents: 0,
-    totalQuizzes: 0,
-    lessonsCompleted: 0,
-    totalSubmissions: 0,
-  });
+  const [stats, setStats] = useState(cachedPayload.data?.stats ?? defaultStats);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -85,12 +92,18 @@ export function InstructorDashboard() {
       setLoading(false);
       return;
     }
-    loadDashboardData();
+    const cached = pageCache.get(CACHE_KEY);
+    if (cached.fresh) {
+      setLoading(false);
+      return;
+    }
+    // Fetch silently if we already have cached data to show
+    loadDashboardData(cached.data !== null);
   }, [user?.id]);
 
-  const loadDashboardData = async () => {
+  const loadDashboardData = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
 
       // Fetch units
       const unitsResponse = await authFetch('/units', { cache: 'no-store' });
@@ -191,7 +204,7 @@ export function InstructorDashboard() {
         (l) => (l.slides && l.slides.length > 0) || (l.slideCount && l.slideCount > 0)
       ).length;
 
-      setStats({
+      const newStats = {
         totalUnits: activeUnits.length,
         totalLaboratories: laboratoriesCreated,
         activeStudents: activeCount,
@@ -199,6 +212,14 @@ export function InstructorDashboard() {
         totalQuizzes,
         lessonsCompleted: lessonsCompletedTotal ?? fallbackCompleted,
         totalSubmissions: submissionsTotal,
+      };
+      setStats(newStats);
+      // Save to cache for instant display on next visit
+      pageCache.set(CACHE_KEY, {
+        units: activeUnits,
+        lessons: allLessons,
+        students: studentList,
+        stats: newStats,
       });
     } catch (error) {
       console.error('Failed to load dashboard:', error);
@@ -210,11 +231,12 @@ export function InstructorDashboard() {
 
   const handleManualRefresh = () => {
     setRefreshing(true);
+    pageCache.invalidate(CACHE_KEY); // force fresh fetch
     loadDashboardData();
     toast.success('Instructor workspace refreshed');
   };
 
-  if (loading) {
+  if (loading && units.length === 0) {
     return <AetherLoader label="Organizing your instructor command center" />;
   }
 

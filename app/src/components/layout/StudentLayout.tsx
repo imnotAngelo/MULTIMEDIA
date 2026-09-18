@@ -23,7 +23,7 @@ export function StudentLayout() {
       />
       <div className={cn('min-h-screen flex flex-col transition-all duration-300 ease-in-out', isCollapsed ? 'lg:ml-20' : 'lg:ml-64')}>
         <Header />
-        <main className="flex-1 p-6">
+        <main className="min-w-0 flex-1 p-3 sm:p-6">
           <Breadcrumbs />
           <Outlet />
         </main>

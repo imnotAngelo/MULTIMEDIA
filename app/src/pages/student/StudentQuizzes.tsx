@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
+import { usePageCache } from '@/stores/pageCacheStore';
 import { authFetch } from '@/lib/authFetch';
 import { Button } from '@/components/ui/button';
 import {
@@ -46,17 +47,28 @@ interface Quiz {
 export function StudentQuizzes() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
-  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
-  const [loading, setLoading] = useState(true);
+  const pageCache = usePageCache();
+  const CACHE_KEY = `student-quizzes:${user?.id ?? 'anon'}`;
+
+  const [quizzes, setQuizzes] = useState<Quiz[]>(() => {
+    const cached = pageCache.get<Quiz[]>(CACHE_KEY);
+    return cached.data ?? [];
+  });
+  const [loading, setLoading] = useState(() => {
+    const cached = pageCache.get<Quiz[]>(CACHE_KEY);
+    return cached.data === null;
+  });
   const [error, setError] = useState('');
 
   useEffect(() => {
-    loadQuizzes();
-  }, []);
+    const cached = pageCache.get<Quiz[]>(CACHE_KEY);
+    if (cached.fresh) { setLoading(false); return; }
+    loadQuizzes(cached.data !== null);
+  }, [user?.id]);
 
-  const loadQuizzes = async () => {
+  const loadQuizzes = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       setError('');
       const response = await authFetch('/assessments?filter=quiz&limit=100');
 
@@ -100,6 +112,7 @@ export function StudentQuizzes() {
           });
 
         setQuizzes(quizList);
+        pageCache.set(CACHE_KEY, quizList);
       } else {
         setQuizzes([]);
       }

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { useThemeStore } from '@/stores/themeStore';
+import { usePageCache } from '@/stores/pageCacheStore';
 import { authFetch } from '@/lib/authFetch';
 import { Button } from '@/components/ui/button';
 import {
@@ -30,15 +31,25 @@ export function Dashboard() {
   const theme = useThemeStore((state) => state.theme);
   const isLightMode = theme === 'light';
   const navigate = useNavigate();
+  const pageCache = usePageCache();
+  const CACHE_KEY = `student-dashboard-stats:${user?.id ?? 'anon'}`;
 
-  const [stats, setStats] = useState<DashboardStats>({
-    totalLaboratories: 0,
-    completedLaboratories: 0,
-    totalQuizzes: 0,
-    completedQuizzes: 0,
-    totalLessons: 0,
+  const [stats, setStats] = useState<DashboardStats>(() => {
+    // Hydrate from cache immediately — no spinner if we have fresh data
+    const cached = pageCache.get<DashboardStats>(CACHE_KEY);
+    return cached.data ?? {
+      totalLaboratories: 0,
+      completedLaboratories: 0,
+      totalQuizzes: 0,
+      completedQuizzes: 0,
+      totalLessons: 0,
+    };
   });
-  const [loading, setLoading] = useState(true);
+  // If we already have cached data, skip the full loading state
+  const [loading, setLoading] = useState(() => {
+    const cached = pageCache.get<DashboardStats>(CACHE_KEY);
+    return cached.data === null; // only show spinner if no cached data at all
+  });
 
   // Time-aware greeting
   const getGreeting = () => {
@@ -49,12 +60,19 @@ export function Dashboard() {
   };
 
   useEffect(() => {
-    loadDashboardStats();
-  }, []);
+    const cached = pageCache.get<DashboardStats>(CACHE_KEY);
+    if (cached.fresh) {
+      // Data is still fresh — no network call needed
+      setLoading(false);
+      return;
+    }
+    // Stale or missing — fetch (silently if we already have data to show)
+    loadDashboardStats(cached.data !== null);
+  }, [user?.id]);
 
-  const loadDashboardStats = async () => {
+  const loadDashboardStats = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const [laboratoriesResponse, submissionsResponse, quizzesResponse, unitsResponse] = await Promise.all([
         authFetch('/laboratories', { cache: 'no-store' }),
         authFetch('/laboratory-submissions/my-files', { cache: 'no-store' }),
@@ -103,13 +121,15 @@ export function Dashboard() {
         else if (u.lessonCount) totalLessonsCount += Number(u.lessonCount) || 0;
       });
 
-      setStats({
+      const newStats = {
         totalLaboratories: laboratories.length,
         completedLaboratories: Math.min(completedLaboratories, laboratories.length),
         totalQuizzes: quizzes.length,
         completedQuizzes: quizCompletionResults.filter(Boolean).length,
         totalLessons: totalLessonsCount || 4,
-      });
+      };
+      setStats(newStats);
+      pageCache.set(CACHE_KEY, newStats);
     } catch (error) {
       console.error('Failed to load dashboard statistics:', error);
     } finally {

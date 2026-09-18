@@ -84,19 +84,19 @@ export function ViewLesson({ unitId: providedUnitId, lessonId: providedLessonId,
 
   // Styling helpers
   const pageClass = isLightMode
-    ? 'min-h-screen bg-gradient-to-br from-slate-50 via-cyan-50/40 to-emerald-50/30 p-3 sm:p-5 lg:p-7'
-    : 'min-h-screen bg-gradient-to-br from-[#061b24] via-[#0a2430] to-[#081c26] p-3 sm:p-5 lg:p-7';
+    ? 'min-h-screen min-w-0 overflow-x-hidden bg-gradient-to-br from-slate-50 via-cyan-50/40 to-emerald-50/30 p-3 sm:p-5 lg:p-7'
+    : 'min-h-screen min-w-0 overflow-x-hidden bg-gradient-to-br from-[#061b24] via-[#0a2430] to-[#081c26] p-3 sm:p-5 lg:p-7';
   
   const panelClass = isLightMode
-    ? 'rounded-2xl border border-slate-200/80 bg-white/95 p-5 sm:p-6 shadow-sm backdrop-blur-md'
-    : 'rounded-2xl border border-slate-800/80 bg-slate-900/80 p-5 sm:p-6 shadow-xl backdrop-blur-md';
+    ? 'min-w-0 rounded-2xl border border-slate-200/80 bg-white/95 p-4 sm:p-6 shadow-sm backdrop-blur-md'
+    : 'min-w-0 rounded-2xl border border-slate-800/80 bg-slate-900/80 p-4 sm:p-6 shadow-xl backdrop-blur-md';
   
   const headingClass = isLightMode ? 'text-slate-900' : 'text-white';
   const mutedTextClass = isLightMode ? 'text-slate-600' : 'text-slate-400';
   
   const slidePanelClass = isLightMode
-    ? 'rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 min-h-[26rem] flex flex-col shadow-sm'
-    : 'rounded-2xl border border-slate-800/90 bg-slate-900/90 p-6 sm:p-8 min-h-[26rem] flex flex-col shadow-2xl';
+    ? 'rounded-2xl border border-slate-200 bg-white p-4 sm:p-8 min-h-[18rem] sm:min-h-[26rem] flex flex-col shadow-sm'
+    : 'rounded-2xl border border-slate-800/90 bg-slate-900/90 p-4 sm:p-8 min-h-[18rem] sm:min-h-[26rem] flex flex-col shadow-2xl';
 
   useEffect(() => {
     if (!unitId || !lessonId) {
@@ -412,11 +412,11 @@ export function ViewLesson({ unitId: providedUnitId, lessonId: providedLessonId,
 
   // Quick Action Toolbar Component
   const actionToolbar = (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
       <Button
         onClick={() => navigate('/instructor/quiz/create-auto', { state: { lessonId: lesson.id, lessonTitle: lesson.title } })}
         size="sm"
-        className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-md shadow-violet-500/20 gap-1.5"
+        className="flex-1 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-md shadow-violet-500/20 gap-1.5 sm:flex-none"
       >
         <Sparkles className="h-3.5 w-3.5" />
         <span>Generate AI Quiz</span>
@@ -426,7 +426,7 @@ export function ViewLesson({ unitId: providedUnitId, lessonId: providedLessonId,
         onClick={() => navigate('/instructor/laboratories')}
         size="sm"
         variant="outline"
-        className={isLightMode ? 'border-slate-300 text-slate-700 hover:bg-slate-100 gap-1.5' : 'border-slate-700 text-slate-200 hover:bg-slate-800 gap-1.5'}
+        className={`flex-1 gap-1.5 ${isLightMode ? 'border-slate-300 text-slate-700 hover:bg-slate-100' : 'border-slate-700 text-slate-200 hover:bg-slate-800'} sm:flex-none`}
       >
         <FlaskConical className="h-3.5 w-3.5 text-emerald-400" />
         <span>Laboratories</span>
@@ -438,7 +438,7 @@ export function ViewLesson({ unitId: providedUnitId, lessonId: providedLessonId,
           disabled={downloadingPdf}
           size="sm"
           variant="outline"
-          className={isLightMode ? 'border-slate-300 text-slate-700 hover:bg-slate-100 gap-1.5' : 'border-slate-700 text-slate-200 hover:bg-slate-800 gap-1.5'}
+          className={`flex-1 gap-1.5 ${isLightMode ? 'border-slate-300 text-slate-700 hover:bg-slate-100' : 'border-slate-700 text-slate-200 hover:bg-slate-800'} sm:flex-none`}
         >
           <Download className="h-3.5 w-3.5 text-cyan-400" />
           <span>{downloadingPdf ? 'Exporting...' : 'Export PDF'}</span>
@@ -467,7 +467,7 @@ export function ViewLesson({ unitId: providedUnitId, lessonId: providedLessonId,
         onClick={() => setEditingMedia((prev) => !prev)}
         size="sm"
         variant="outline"
-        className={isLightMode ? 'border-slate-300 text-slate-700 hover:bg-slate-100 gap-1.5' : 'border-slate-700 text-slate-200 hover:bg-slate-800 gap-1.5'}
+        className={`flex-1 gap-1.5 ${isLightMode ? 'border-slate-300 text-slate-700 hover:bg-slate-100' : 'border-slate-700 text-slate-200 hover:bg-slate-800'} sm:flex-none`}
       >
         {editingMedia ? <X className="h-3.5 w-3.5" /> : <Edit2 className="h-3.5 w-3.5" />}
         <span>{editingMedia ? 'Close' : 'Media Links'}</span>
@@ -490,7 +490,7 @@ export function ViewLesson({ unitId: providedUnitId, lessonId: providedLessonId,
                 <ChevronLeft className="h-4 w-4" />
                 Back to Lessons
               </button>
-              <h1 className={`text-2xl font-bold sm:text-3xl ${headingClass}`}>{lesson.title}</h1>
+              <h1 className={`break-words text-2xl font-bold sm:text-3xl ${headingClass}`}>{lesson.title}</h1>
               <p className={`mt-1 text-xs font-medium uppercase tracking-wider ${mutedTextClass}`}>PowerPoint Presentation</p>
             </div>
             {actionToolbar}
@@ -519,7 +519,7 @@ export function ViewLesson({ unitId: providedUnitId, lessonId: providedLessonId,
                 <ChevronLeft className="h-4 w-4" />
                 Back to Lessons
               </button>
-              <h1 className={`text-2xl font-bold sm:text-3xl ${headingClass}`}>{lesson.title}</h1>
+              <h1 className={`break-words text-2xl font-bold sm:text-3xl ${headingClass}`}>{lesson.title}</h1>
               <p className={`mt-1 text-xs font-medium uppercase tracking-wider ${mutedTextClass}`}>PDF Course Document</p>
             </div>
             {actionToolbar}
@@ -591,7 +591,7 @@ export function ViewLesson({ unitId: providedUnitId, lessonId: providedLessonId,
               Back to Lessons
             </button>
             <div className="flex flex-wrap items-center gap-2.5">
-              <h1 className={`text-2xl font-bold sm:text-3xl ${headingClass}`}>{lesson.title}</h1>
+              <h1 className={`break-words text-2xl font-bold sm:text-3xl ${headingClass}`}>{lesson.title}</h1>
               <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${isLightMode ? 'bg-violet-100 text-violet-700' : 'bg-violet-500/10 text-violet-300 border border-violet-500/20'}`}>
                 {lesson.slides?.length || 0} slides
               </span>
@@ -655,10 +655,10 @@ export function ViewLesson({ unitId: providedUnitId, lessonId: providedLessonId,
 
         {/* Media Switcher Tab Navigation */}
         {(lesson.videoUrl || lesson.appLink) && (
-          <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
+          <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 pb-2">
             <button
               onClick={() => setActiveMediaTab('slides')}
-              className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-all ${
+              className={`flex min-w-0 flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-all sm:flex-none sm:px-4 ${
                 activeMediaTab === 'slides'
                   ? 'bg-violet-600 text-white shadow-md shadow-violet-500/20'
                   : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
@@ -671,7 +671,7 @@ export function ViewLesson({ unitId: providedUnitId, lessonId: providedLessonId,
             {lesson.videoUrl && (
               <button
                 onClick={() => setActiveMediaTab('video')}
-                className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-all ${
+                className={`flex min-w-0 flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-all sm:flex-none sm:px-4 ${
                   activeMediaTab === 'video'
                     ? 'bg-violet-600 text-white shadow-md shadow-violet-500/20'
                     : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
@@ -685,7 +685,7 @@ export function ViewLesson({ unitId: providedUnitId, lessonId: providedLessonId,
             {lesson.appLink && (
               <button
                 onClick={() => setActiveMediaTab('app')}
-                className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-all ${
+                className={`flex min-w-0 flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-all sm:flex-none sm:px-4 ${
                   activeMediaTab === 'app'
                     ? 'bg-violet-600 text-white shadow-md shadow-violet-500/20'
                     : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
@@ -702,7 +702,14 @@ export function ViewLesson({ unitId: providedUnitId, lessonId: providedLessonId,
         {activeMediaTab === 'video' && resolvedVideoUrl && (
           <div className={`${panelClass} flex flex-col items-center justify-center p-4`}>
             <div className="w-full max-w-4xl overflow-hidden rounded-2xl border border-slate-800 bg-black shadow-2xl">
-              <video src={resolvedVideoUrl} controls className="max-h-[600px] w-full object-contain" />
+              {/* 16:9 aspect ratio container — no fixed pixel height */}
+              <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+                <video
+                  src={resolvedVideoUrl}
+                  controls
+                  className="absolute inset-0 h-full w-full object-contain"
+                />
+              </div>
             </div>
             <div className="mt-4 flex w-full max-w-4xl items-center justify-between text-xs text-slate-400">
               <span>Attached class recording for {lesson.title}</span>
@@ -732,14 +739,17 @@ export function ViewLesson({ unitId: providedUnitId, lessonId: providedLessonId,
                 Open in Full Window
               </a>
             </div>
-            <div className="h-[550px] w-full overflow-hidden rounded-xl border border-slate-800 bg-slate-950">
-              <iframe
-                src={lesson.appLink}
-                title={lesson.appName || 'External Tool'}
-                className="h-full w-full border-0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
+            {/* Responsive iframe — 16:9 on mobile, fixed tall on desktop */}
+            <div className="w-full overflow-hidden rounded-xl border border-slate-800 bg-slate-950">
+              <div className="relative w-full sm:h-[550px]" style={{ paddingBottom: 'clamp(0px, 56.25vw, 550px)' }}>
+                <iframe
+                  src={lesson.appLink}
+                  title={lesson.appName || 'External Tool'}
+                  className="absolute inset-0 h-full w-full border-0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
             </div>
           </div>
         )}
@@ -791,7 +801,7 @@ export function ViewLesson({ unitId: providedUnitId, lessonId: providedLessonId,
 
                 {/* Main Slide Presentation Stage */}
                 <main className="min-w-0 space-y-4">
-                  <div className={slidePanelClass}>
+                  <div className={`${slidePanelClass} min-w-0`}>
                     <div key={currentSlide} className="flex-1 flex flex-col justify-between">
                       <div>
                         {/* Slide Top Metadata */}

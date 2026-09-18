@@ -16,6 +16,7 @@ import { authFetch } from '@/lib/authFetch';
 import { SlideViewer } from './SlideViewer';
 import { useAuthStore } from '@/stores/authStore';
 import { useCourseTreeStore } from '@/stores/courseTreeStore';
+import { usePageCache } from '@/stores/pageCacheStore';
 import { AetherLoader } from '@/components/AetherLoader';
 
 interface Unit {
@@ -63,17 +64,30 @@ export function Lessons() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const { setUserCourseTree } = useCourseTreeStore();
+  const pageCache = usePageCache();
   const [searchParams] = useSearchParams();
   const requestedUnitId = searchParams.get('unit');
   const requestedLessonId = searchParams.get('lesson');
+  const CACHE_KEY = `lessons-data:${user?.id ?? 'anon'}`;
 
-  const [units, setUnits] = useState<Unit[]>([]);
-  const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [units, setUnits] = useState<Unit[]>(() => {
+    const cached = pageCache.get<{ units: Unit[]; lessons: Lesson[] }>(CACHE_KEY);
+    return cached.data?.units ?? [];
+  });
+  const [lessons, setLessons] = useState<Lesson[]>(() => {
+    const cached = pageCache.get<{ units: Unit[]; lessons: Lesson[] }>(CACHE_KEY);
+    return cached.data?.lessons ?? [];
+  });
   const [activeLessonId, setActiveLessonId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => {
+    const cached = pageCache.get<{ units: Unit[]; lessons: Lesson[] }>(CACHE_KEY);
+    return cached.data === null;
+  });
 
   useEffect(() => {
-    loadData();
+    const cached = pageCache.get<{ units: Unit[]; lessons: Lesson[] }>(CACHE_KEY);
+    if (cached.fresh) { setLoading(false); return; }
+    loadData(cached.data !== null);
   }, [user?.id]);
 
   useEffect(() => {
@@ -115,9 +129,9 @@ export function Lessons() {
     }
   }, [requestedUnitId, requestedLessonId, units, lessons, loading]);
 
-  const loadData = async () => {
+  const loadData = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       
       const unitsResponse = await authFetch('/units');
       const unitsData = await unitsResponse.json();
@@ -138,6 +152,9 @@ export function Lessons() {
       const allLessons: Lesson[] = lessonResults.flat();
       setLessons(allLessons);
 
+      // Save to cache
+      pageCache.set(CACHE_KEY, { units: unitList, lessons: allLessons });
+
       // Sync with global course tree store and refresh sidebar
       if (user?.id) {
         setUserCourseTree(user.id, {
@@ -156,7 +173,7 @@ export function Lessons() {
     }
   };
 
-  if (loading) {
+  if (loading && units.length === 0) {
     return (
       <div className="flex items-center justify-center p-12">
         <AetherLoader label="Arranging your lessons" />

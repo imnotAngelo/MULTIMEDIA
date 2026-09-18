@@ -1,6 +1,7 @@
 import { Fragment, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
+import { usePageCache } from '@/stores/pageCacheStore';
 import { authFetch } from '@/lib/authFetch';
 import { Button } from '@/components/ui/button';
 import {
@@ -64,12 +65,21 @@ interface QuizStats {
 export function QuizManagement() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
-  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
-  const [stats, setStats] = useState<QuizStats>({
-    totalQuizzes: 0,
-    totalSubmissions: 0,
+  const pageCache = usePageCache();
+  const CACHE_KEY = `quiz-management:${user?.id ?? 'anon'}`;
+
+  const [quizzes, setQuizzes] = useState<Quiz[]>(() => {
+    const cached = pageCache.get<{ quizzes: Quiz[]; stats: QuizStats }>(CACHE_KEY);
+    return cached.data?.quizzes ?? [];
   });
-  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<QuizStats>(() => {
+    const cached = pageCache.get<{ quizzes: Quiz[]; stats: QuizStats }>(CACHE_KEY);
+    return cached.data?.stats ?? { totalQuizzes: 0, totalSubmissions: 0 };
+  });
+  const [loading, setLoading] = useState(() => {
+    const cached = pageCache.get<{ quizzes: Quiz[]; stats: QuizStats }>(CACHE_KEY);
+    return cached.data === null;
+  });
   const [error, setError] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [submissions, setSubmissions] = useState<Record<string, QuizSubmission[]>>({});
@@ -78,19 +88,20 @@ export function QuizManagement() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    // Check if user has valid token before loading
     const token = localStorage.getItem('access_token');
     if (!token) {
       setError('Not logged in. Please log in to view quizzes.');
       setLoading(false);
       return;
     }
-    loadQuizzes();
-  }, []);
+    const cached = pageCache.get(CACHE_KEY);
+    if (cached.fresh) { setLoading(false); return; }
+    loadQuizzes(cached.data !== null);
+  }, [user?.id]);
 
-  const loadQuizzes = async () => {
+  const loadQuizzes = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
 
       const response = await authFetch('/assessments/instructor/all');
 
@@ -121,7 +132,7 @@ export function QuizManagement() {
             updatedAt: a.updatedAt || a.updated_at || '',
           }));
         setQuizzes(quizList);
-        calculateStats(quizList);
+        calculateStats(quizList, true); // pass true to also save to cache
         setError('');
       } else {
         setQuizzes([]);
@@ -134,15 +145,18 @@ export function QuizManagement() {
     }
   };
 
-  const calculateStats = (quizList: Quiz[]) => {
+  const calculateStats = (quizList: Quiz[], saveToCache = false) => {
     const totalSubmissions = quizList.reduce((sum, q) => sum + q.submissions, 0);
 
-    const stats: QuizStats = {
+    const newStats: QuizStats = {
       totalQuizzes: quizList.length,
       totalSubmissions,
     };
 
-    setStats(stats);
+    setStats(newStats);
+    if (saveToCache) {
+      pageCache.set(CACHE_KEY, { quizzes: quizList, stats: newStats });
+    }
   };
 
   const handleCreateQuiz = () => {
@@ -169,7 +183,8 @@ export function QuizManagement() {
       if (response.ok) {
         toast.success(`"${quizToDelete.title}" deleted successfully`);
         setQuizToDelete(null);
-        loadQuizzes();
+        pageCache.invalidate(CACHE_KEY);
+        loadQuizzes(false);
       } else {
         toast.error('Failed to delete quiz');
       }

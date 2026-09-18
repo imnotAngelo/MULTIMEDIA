@@ -259,7 +259,7 @@ export function SlideViewer({ lessonId, lessonTitle, lesson: initialLesson }: Sl
     try {
       const newCommentObj: Comment = {
         id: uuidv4(),
-        author: user?.first_name ? `${user.first_name} ${user.last_name || ''}` : 'You',
+        author: user?.full_name || 'You',
         content: newComment.trim(),
         timestamp: new Date().toLocaleString(),
         likes: 0,
@@ -488,13 +488,13 @@ export function SlideViewer({ lessonId, lessonTitle, lesson: initialLesson }: Sl
   const isLastSlide = currentSlide === slides.length - 1;
 
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 max-w-full space-y-4 overflow-x-hidden">
       {/* Media Switcher Tab Header (if video or tool attached) */}
       {(videoUrl || appLink) && (
-        <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
+        <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 pb-3">
           <button
             onClick={() => setActiveTab('slides')}
-            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-all ${
+            className={`flex min-w-0 flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-all sm:flex-none sm:px-4 ${
               activeTab === 'slides'
                 ? 'bg-violet-600 text-white shadow-md shadow-violet-500/20'
                 : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
@@ -507,7 +507,7 @@ export function SlideViewer({ lessonId, lessonTitle, lesson: initialLesson }: Sl
           {videoUrl && (
             <button
               onClick={() => setActiveTab('video')}
-              className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-all ${
+              className={`flex min-w-0 flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-all sm:flex-none sm:px-4 ${
                 activeTab === 'video'
                   ? 'bg-violet-600 text-white shadow-md shadow-violet-500/20'
                   : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
@@ -521,7 +521,7 @@ export function SlideViewer({ lessonId, lessonTitle, lesson: initialLesson }: Sl
           {appLink && (
             <button
               onClick={() => setActiveTab('app')}
-              className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-all ${
+              className={`flex min-w-0 flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-all sm:flex-none sm:px-4 ${
                 activeTab === 'app'
                   ? 'bg-violet-600 text-white shadow-md shadow-violet-500/20'
                   : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
@@ -553,7 +553,14 @@ export function SlideViewer({ lessonId, lessonTitle, lesson: initialLesson }: Sl
             </a>
           </div>
           <div className="relative rounded-2xl overflow-hidden border border-slate-800 bg-black shadow-2xl">
-            <video src={videoUrl} controls className="w-full max-h-[550px] object-contain" />
+            {/* 16:9 aspect ratio — fills width on mobile, caps at natural video height on desktop */}
+            <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+              <video
+                src={videoUrl}
+                controls
+                className="absolute inset-0 h-full w-full object-contain"
+              />
+            </div>
           </div>
         </div>
       )}
@@ -576,14 +583,17 @@ export function SlideViewer({ lessonId, lessonTitle, lesson: initialLesson }: Sl
               Open Full Window
             </a>
           </div>
-          <div className="h-[550px] w-full overflow-hidden rounded-xl border border-slate-800 bg-slate-950">
-            <iframe
-              src={appLink}
-              title={appName || 'Interactive Tool'}
-              className="h-full w-full border-0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            />
+          {/* Responsive iframe — 16:9 on mobile, tall on desktop */}
+          <div className="w-full overflow-hidden rounded-xl border border-slate-800 bg-slate-950">
+            <div className="relative w-full sm:h-[550px]" style={{ paddingBottom: 'clamp(0px, 56.25vw, 550px)' }}>
+              <iframe
+                src={appLink}
+                title={appName || 'Interactive Tool'}
+                className="absolute inset-0 h-full w-full border-0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
           </div>
         </div>
       )}
@@ -593,11 +603,11 @@ export function SlideViewer({ lessonId, lessonTitle, lesson: initialLesson }: Sl
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Slide Viewer Canvas */}
           <div className={showDiscussion ? 'lg:col-span-2 space-y-4' : 'lg:col-span-3 space-y-4'}>
-            <Card className="bg-gradient-to-br from-slate-900/95 via-slate-900/90 to-slate-950 border-slate-800/90 p-6 sm:p-8 min-h-[30rem] flex flex-col justify-between shadow-2xl backdrop-blur-md">
+            <Card className="min-w-0 bg-gradient-to-br from-slate-900/95 via-slate-900/90 to-slate-950 border-slate-800/90 p-4 sm:p-8 min-h-[18rem] sm:min-h-[30rem] flex flex-col justify-between shadow-2xl backdrop-blur-md">
               {/* Header Bar */}
               <div className="pb-4 border-b border-slate-800/80">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex-1 min-w-[200px]">
+                  <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="rounded-md bg-violet-600/20 px-2.5 py-0.5 text-xs font-bold text-violet-300 border border-violet-500/20">
                         Slide {currentSlide + 1} of {slides.length}
@@ -608,18 +618,18 @@ export function SlideViewer({ lessonId, lessonTitle, lesson: initialLesson }: Sl
                         </span>
                       )}
                     </div>
-                    <h2 className="text-2xl sm:text-3xl font-extrabold text-white mt-2 tracking-tight">
+                    <h2 className="break-words text-2xl sm:text-3xl font-extrabold text-white mt-2 tracking-tight">
                       {slide.title}
                     </h2>
                   </div>
 
                   {/* Actions Header */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex w-full flex-wrap items-center gap-1 sm:w-auto sm:flex-nowrap sm:gap-2">
                     <Button
                       onClick={handleCopySlideNotes}
                       size="sm"
                       variant="ghost"
-                      className="h-8 text-xs text-slate-400 hover:text-white hover:bg-slate-800"
+                      className="h-8 flex-1 text-xs text-slate-400 hover:text-white hover:bg-slate-800 sm:flex-none"
                       title="Copy notes to clipboard"
                     >
                       {copiedNotes ? <Check className="w-3.5 h-3.5 text-emerald-400 mr-1" /> : <Copy className="w-3.5 h-3.5 mr-1" />}
@@ -630,7 +640,7 @@ export function SlideViewer({ lessonId, lessonTitle, lesson: initialLesson }: Sl
                       onClick={() => setTheaterMode(true)}
                       size="sm"
                       variant="ghost"
-                      className="h-8 text-xs text-slate-400 hover:text-white hover:bg-slate-800"
+                      className="h-8 flex-1 text-xs text-slate-400 hover:text-white hover:bg-slate-800 sm:flex-none"
                       title="Cinema Mode (F)"
                     >
                       <Maximize2 className="w-3.5 h-3.5 mr-1" />
@@ -641,7 +651,7 @@ export function SlideViewer({ lessonId, lessonTitle, lesson: initialLesson }: Sl
                       onClick={() => setShowDiscussion((prev) => !prev)}
                       size="sm"
                       variant="ghost"
-                      className={`h-8 text-xs hover:bg-slate-800 ${showDiscussion ? 'text-violet-400' : 'text-slate-400 hover:text-white'}`}
+                      className={`h-8 flex-1 text-xs hover:bg-slate-800 sm:flex-none ${showDiscussion ? 'text-violet-400' : 'text-slate-400 hover:text-white'}`}
                       title="Toggle discussion drawer"
                     >
                       <MessageCircle className="w-3.5 h-3.5 mr-1" />
@@ -652,7 +662,7 @@ export function SlideViewer({ lessonId, lessonTitle, lesson: initialLesson }: Sl
                       onClick={handleDownloadPDF}
                       size="sm"
                       variant="outline"
-                      className="h-8 border-slate-700 text-slate-300 hover:bg-slate-800 text-xs"
+                      className="h-8 flex-1 border-slate-700 text-slate-300 hover:bg-slate-800 text-xs sm:flex-none"
                     >
                       <Download className="w-3.5 h-3.5 mr-1" />
                       PDF
@@ -663,7 +673,7 @@ export function SlideViewer({ lessonId, lessonTitle, lesson: initialLesson }: Sl
 
               {/* Slide Body Content */}
               <div className="py-6 space-y-6 flex-grow">
-                <div className="prose prose-invert max-w-none">
+                <div className="prose prose-invert max-w-none break-words">
                   <p className="text-slate-200 text-base sm:text-lg leading-relaxed whitespace-pre-wrap">
                     {slide.content}
                   </p>
@@ -764,7 +774,7 @@ export function SlideViewer({ lessonId, lessonTitle, lesson: initialLesson }: Sl
             </Card>
 
             {/* Bottom Controls & Slider Timeline */}
-            <div className="flex items-center justify-between gap-4 pt-2">
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
               <Button
                 onClick={() => setCurrentSlide((prev) => Math.max(0, prev - 1))}
                 disabled={currentSlide === 0}

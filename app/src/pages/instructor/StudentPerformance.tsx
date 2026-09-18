@@ -1,4 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
+import { useAuthStore } from '@/stores/authStore';
+import { usePageCache } from '@/stores/pageCacheStore';
 import {
   Users,
   Search,
@@ -88,9 +90,18 @@ interface StudentRecord extends Student {
 export function StudentPerformance() {
   const theme = useThemeStore((state) => state.theme);
   const isLightMode = theme === 'light';
+  const { user } = useAuthStore();
+  const pageCache = usePageCache();
+  const CACHE_KEY = `student-performance:${user?.id ?? 'anon'}`;
 
-  const [students, setStudents] = useState<StudentRecord[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [students, setStudents] = useState<StudentRecord[]>(() => {
+    const cached = pageCache.get<StudentRecord[]>(CACHE_KEY);
+    return cached.data ?? [];
+  });
+  const [loading, setLoading] = useState(() => {
+    const cached = pageCache.get<StudentRecord[]>(CACHE_KEY);
+    return cached.data === null;
+  });
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
 
@@ -111,9 +122,10 @@ export function StudentPerformance() {
   const [statusValue, setStatusValue] = useState<string>('reviewed');
   const [savingGrade, setSavingGrade] = useState(false);
 
-  const loadData = async () => {
+  const loadData = async (silent = false) => {
     try {
       setError('');
+      if (!silent) setLoading(true);
       // Fetch students via handled-students (fallback to student-requests)
       let studentsList: Student[] = [];
       try {
@@ -295,6 +307,7 @@ export function StudentPerformance() {
       });
 
       setStudents(consolidatedRecords);
+      pageCache.set(CACHE_KEY, consolidatedRecords);
     } catch (err: any) {
       console.error('Failed to load student performance ledger:', err);
       setError(err?.message || 'Failed to load student records');
@@ -305,12 +318,18 @@ export function StudentPerformance() {
   };
 
   useEffect(() => {
-    loadData();
-  }, []);
+    const cached = pageCache.get<StudentRecord[]>(CACHE_KEY);
+    if (cached.fresh) {
+      setLoading(false);
+      return;
+    }
+    loadData(cached.data !== null);
+  }, [user?.id]);
 
   const handleManualRefresh = () => {
     setRefreshing(true);
-    loadData();
+    pageCache.invalidate(CACHE_KEY);
+    loadData(false);
     toast.success('Student records refreshed');
   };
 

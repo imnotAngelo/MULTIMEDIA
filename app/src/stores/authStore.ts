@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import type { User } from '@/types';
 import { api } from '@/services/api';
 import { useCourseTreeStore } from '@/stores/courseTreeStore';
+import { usePageCache } from '@/stores/pageCacheStore';
 
 interface AuthState {
   user: User | null;
@@ -63,6 +64,13 @@ const clearPersistedAuth = () => {
 
   try {
     useCourseTreeStore.getState().clearAll();
+  } catch {
+    // ignore
+  }
+
+  try {
+    // Clear page data cache so the next user's session starts fresh
+    usePageCache.getState().clear();
   } catch {
     // ignore
   }

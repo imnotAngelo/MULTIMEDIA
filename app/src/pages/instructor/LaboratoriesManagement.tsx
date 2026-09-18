@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
+import { usePageCache } from '@/stores/pageCacheStore';
 import { notificationService } from '@/services/notificationService';
 import { Button } from '@/components/ui/button';
 import {
@@ -122,11 +123,23 @@ const EMPTY_FORM: FormData = {
 export function LaboratoriesManagement() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
-  const [laboratories, setLaboratories] = useState<Laboratory[]>([]);
-  const [units, setUnits] = useState<Unit[]>([]);
+  const pageCache = usePageCache();
+  const CACHE_KEY = `labs-management:${user?.id ?? 'anon'}`;
+
+  const [laboratories, setLaboratories] = useState<Laboratory[]>(() => {
+    const cached = pageCache.get<{ laboratories: Laboratory[]; units: Unit[] }>(CACHE_KEY);
+    return cached.data?.laboratories ?? [];
+  });
+  const [units, setUnits] = useState<Unit[]>(() => {
+    const cached = pageCache.get<{ laboratories: Laboratory[]; units: Unit[] }>(CACHE_KEY);
+    return cached.data?.units ?? [];
+  });
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [lessonsLoading, setLessonsLoading] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => {
+    const cached = pageCache.get<{ laboratories: Laboratory[]; units: Unit[] }>(CACHE_KEY);
+    return cached.data === null;
+  });
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<FormData>(EMPTY_FORM);
@@ -136,8 +149,10 @@ export function LaboratoriesManagement() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    const cached = pageCache.get(CACHE_KEY);
+    if (cached.fresh) { setLoading(false); return; }
+    loadData(cached.data !== null);
+  }, [user?.id]);
 
   useEffect(() => {
     if (!showCreateForm || !formData.unitId) {
@@ -185,8 +200,8 @@ export function LaboratoriesManagement() {
     };
   }, [formData.unitId, showCreateForm]);
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const [labsResponse, unitsResponse] = await Promise.all([
         authFetch('/laboratories/metadata'),
@@ -200,8 +215,12 @@ export function LaboratoriesManagement() {
           : labsJson.error?.message;
         throw new Error(message || `Laboratory request failed (${labsResponse.status})`);
       }
-      setLaboratories(labsJson.data ?? []);
-      setUnits(unitsJson.success ? (unitsJson.data ?? []).map((unit: any) => ({ id: unit.id, title: unit.title })) : []);
+      const labsList = labsJson.data ?? [];
+      const unitsList = unitsJson.success ? (unitsJson.data ?? []).map((unit: any) => ({ id: unit.id, title: unit.title })) : [];
+      setLaboratories(labsList);
+      setUnits(unitsList);
+      // Save to cache for instant display on revisit
+      pageCache.set(CACHE_KEY, { laboratories: labsList, units: unitsList });
     } catch (error) {
       setLaboratories([]);
       setUnits([]);
@@ -364,7 +383,7 @@ export function LaboratoriesManagement() {
         </div>
         <div className="flex gap-2">
           <Button
-            onClick={loadData}
+            onClick={() => { pageCache.invalidate(CACHE_KEY); loadData(false); }}
             variant="outline"
             className="border-slate-700 text-slate-300 hover:bg-slate-800/50"
           >
