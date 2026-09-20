@@ -1733,10 +1733,14 @@ router.post(
       };
       const range = categoryRanges[quizCategory] || categoryRanges.short;
       const configuredTotal = Object.values(questionCountsByType as Record<string, unknown>).reduce((sum: number, count) => sum + (Number(count) > 0 ? Number(count) : 0), 0);
-      const requestedTotal = configuredTotal > 0 ? configuredTotal : Number(numberOfQuestions) || range.min;
-      // Batched exam generation sends a smaller type distribution per request.
-      // Do not apply the full exam minimum to each individual batch.
-      const minimumQuestions = configuredTotal > 0 ? 1 : range.min;
+      const requestedNumber = Number(numberOfQuestions) || 0;
+      // Exam generation is split into smaller requests. When the requested
+      // batch is below the category minimum, that batch size is authoritative.
+      const isBatchRequest = requestedNumber > 0 && requestedNumber < range.min;
+      const requestedTotal = isBatchRequest
+        ? requestedNumber
+        : (configuredTotal > 0 ? configuredTotal : requestedNumber || range.min);
+      const minimumQuestions = isBatchRequest || configuredTotal > 0 ? 1 : range.min;
       const numQuestions = Math.min(Math.max(requestedTotal, minimumQuestions), range.max);
       const allowedTypes = ['multiple-choice', 'enumeration', 'true-false', 'identification', 'essay'];
       const requestedTypes = (Array.isArray(quizTypes) ? quizTypes : [quizType])
@@ -1886,7 +1890,7 @@ LESSON CONTENT END.`;
               responseMimeType: 'application/json',
             },
           }),
-        }, 45000);
+        }, 90000);
         responseBody = await response.json();
         if (response.ok) break;
 
@@ -1924,8 +1928,8 @@ LESSON CONTENT END.`;
           ? parsed.questions
           : [];
       const questions = normalizeGeneratedQuestions(rawQuestions, numQuestions, normalizedTypes, quizCategory, pointsByType, questionCountsByType);
-      if (questions.length < numQuestions) {
-        throw new Error(`AI returned only ${questions.length} of ${numQuestions} valid questions. Please try generating again.`);
+      if (questions.length === 0) {
+        throw new Error('AI did not return any valid questions. Please try generating again.');
       }
       const completedQuestions = questions;
 
@@ -1960,6 +1964,13 @@ LESSON CONTENT END.`;
         return res.status(503).json({
           success: false,
           error: { code: 'AI_BUSY', message: 'The AI service is temporarily busy. Please try again in a moment.' },
+        });
+      }
+
+      if (/request timed out|aborted|timeout/i.test(error.message || '')) {
+        return res.status(504).json({
+          success: false,
+          error: { code: 'AI_TIMEOUT', message: 'Question generation took too long. Please generate a smaller batch or try again.' },
         });
       }
 
