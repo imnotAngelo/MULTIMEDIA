@@ -8,18 +8,7 @@ import { authMiddleware, type AuthRequest } from "../middleware/auth.js";
 import { matchesContentTarget } from "../lib/contentTargeting.js";
 
 // --- Multer setup for lab file submissions ---
-const labUploadsDir = path.join(process.cwd(), "uploads", "lab-submissions");
-if (!fs.existsSync(labUploadsDir)) {
-  fs.mkdirSync(labUploadsDir, { recursive: true });
-}
-
-const labFileStorage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, labUploadsDir),
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
-  },
-});
+const labFileStorage = multer.memoryStorage();
 
 const labUpload = multer({
   storage: labFileStorage,
@@ -75,9 +64,19 @@ router.get("/file/:submissionId", authMiddleware, async (req: AuthRequest, res: 
       || (req.user?.role === "instructor" && laboratory?.instructor_id === userId);
     if (!allowed) return res.status(404).json({ error: "File not found" });
 
-    const filePath = path.join(backendRoot, "uploads", submission.file_path);
-    if (!fs.existsSync(filePath)) return res.status(404).json({ error: "File not found" });
-    return res.sendFile(filePath);
+    if (supabase) {
+      const { data: file, error: storageError } = await supabase.storage
+        .from("lab-submissions")
+        .download(submission.file_path);
+      if (!storageError && file) {
+        res.setHeader('Content-Type', file.type || 'application/octet-stream');
+        return res.send(Buffer.from(await file.arrayBuffer()));
+      }
+    }
+
+    const localFilePath = path.join(backendRoot, "uploads", submission.file_path);
+    if (!fs.existsSync(localFilePath)) return res.status(404).json({ error: "File not found" });
+    return res.sendFile(localFilePath);
   } catch (error: any) {
     console.error("Error serving laboratory submission file:", error);
     return res.status(404).json({ error: "File not found" });
@@ -197,7 +196,13 @@ router.post("/upload-file", authMiddleware, async (req: AuthRequest, res: Respon
       return res.status(403).json({ error: "This laboratory is not assigned to your section and year level" });
     }
 
-    const filePath = `lab-submissions/${file.filename}`;
+    const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}${path.extname(file.originalname)}`;
+    const filePath = `lab-submissions/${fileName}`;
+
+    const { error: storageError } = await supabase.storage
+      .from("lab-submissions")
+      .upload(filePath, file.buffer, { contentType: file.mimetype, upsert: false });
+    if (storageError) throw storageError;
 
     // Remove previous submission if exists
     const { data: existing } = await supabase
@@ -207,6 +212,7 @@ router.post("/upload-file", authMiddleware, async (req: AuthRequest, res: Respon
       .maybeSingle();
 
     if (existing) {
+      await supabase.storage.from("lab-submissions").remove([existing.file_path]);
       const oldPath = path.join(process.cwd(), "uploads", existing.file_path);
       if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
       await supabase.from("lab_file_submissions").delete().eq("id", existing.id);
@@ -255,9 +261,9 @@ router.post("/upload-file", authMiddleware, async (req: AuthRequest, res: Respon
       submittedAt: data.submitted_at,
     });
   } catch (err: any) {
-    if (file) {
-      const p = path.join(process.cwd(), "uploads", "lab-submissions", file.filename);
-      if (fs.existsSync(p)) fs.unlinkSync(p);
+    if (file?.filename) {
+      const fallbackPath = path.join(process.cwd(), "uploads", "lab-submissions", file.filename);
+      if (fs.existsSync(fallbackPath)) fs.unlinkSync(fallbackPath);
     }
     console.error("Error uploading lab file submission:", err);
     res.status(500).json({ error: err.message });

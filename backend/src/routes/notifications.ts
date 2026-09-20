@@ -16,18 +16,7 @@ function logNotificationFallback(reason: string, details?: unknown) {
 }
 
 // --- Multer setup for announcement attachments ---
-const announcementUploadsDir = path.join(process.cwd(), 'uploads', 'announcements');
-if (!fs.existsSync(announcementUploadsDir)) {
-  fs.mkdirSync(announcementUploadsDir, { recursive: true });
-}
-
-const announcementStorage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, announcementUploadsDir),
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
-  },
-});
+const announcementStorage = multer.memoryStorage();
 
 const announcementUpload = multer({
   storage: announcementStorage,
@@ -244,7 +233,12 @@ router.post(
         let attachmentUrl: string | null = null;
         let attachmentName: string | null = null;
         if (req.file) {
-          attachmentUrl = `/uploads/announcements/${req.file.filename}`;
+          const storagePath = `announcements/${Date.now()}-${Math.random().toString(36).slice(2)}${path.extname(req.file.originalname)}`;
+          const { error: storageError } = await supabase?.storage
+            .from('announcements')
+            .upload(storagePath, req.file.buffer, { contentType: req.file.mimetype, upsert: false }) || { error: new Error('Supabase is unavailable') };
+          if (storageError) throw storageError;
+          attachmentUrl = supabase.storage.from('announcements').getPublicUrl(storagePath).data.publicUrl;
           attachmentName = req.file.originalname;
         }
 
