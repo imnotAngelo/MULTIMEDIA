@@ -30,8 +30,8 @@ interface PDFViewerProps {
 export function PDFViewer({ url, title, onDownload }: PDFViewerProps) {
   const [numPages, setNumPages] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [zoom, setZoom] = useState(100); // 100% = fit to container width
-  const [isFitMode, setIsFitMode] = useState(true); // auto-fit width by default
+  const [zoom, setZoom] = useState(100);
+  const [fitMode, setFitMode] = useState<'width' | 'page' | 'custom'>('width');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<string>('');
@@ -40,18 +40,32 @@ export function PDFViewer({ url, title, onDownload }: PDFViewerProps) {
   const pdfRef = useRef<Awaited<ReturnType<typeof pdfjsLib.getDocument>['promise']> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
-  const [canvasContainerWidth, setCanvasContainerWidth] = useState(0);
+  const [containerDimensions, setContainerDimensions] = useState({ width: 0, height: 0 });
 
+  // Update container dimensions whenever container mounts, resizes, or fullscreen/loading toggles
   useEffect(() => {
+    if (loading) return;
     const element = canvasContainerRef.current;
     if (!element) return;
 
-    const updateWidth = () => setCanvasContainerWidth(element.clientWidth);
-    updateWidth();
-    const observer = new ResizeObserver(updateWidth);
+    const updateSize = () => {
+      if (element.clientWidth) {
+        setContainerDimensions({
+          width: element.clientWidth,
+          height: element.clientHeight,
+        });
+      }
+    };
+
+    updateSize();
+    const observer = new ResizeObserver(updateSize);
     observer.observe(element);
-    return () => observer.disconnect();
-  }, [isFullscreen]);
+    window.addEventListener('resize', updateSize);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', updateSize);
+    };
+  }, [isFullscreen, loading]);
 
   // Load PDF document
   useEffect(() => {
@@ -114,33 +128,66 @@ export function PDFViewer({ url, title, onDownload }: PDFViewerProps) {
     };
   }, [url]);
 
-  // Render current page — crisp at every screen size
+  // Render current page — crisp at every screen size, perfectly fitted to frame
   useEffect(() => {
     let renderTask: any = null;
+    let isCancelled = false;
+
     const renderPage = async () => {
-      if (!pdfRef.current || !canvasRef.current || canvasContainerWidth === 0) return;
+      if (!pdfRef.current || !canvasRef.current || loading) return;
+
+      const element = canvasContainerRef.current;
+      const curWidth = element?.clientWidth || containerDimensions.width;
+      const curHeight = element?.clientHeight || containerDimensions.height;
+
+      // If dimensions are not ready in the DOM yet, defer to next frame
+      if (!curWidth) {
+        requestAnimationFrame(() => {
+          if (!isCancelled && element?.clientWidth) {
+            setContainerDimensions({ width: element.clientWidth, height: element.clientHeight });
+          }
+        });
+        return;
+      }
 
       try {
         const page = await pdfRef.current.getPage(currentPage);
+        if (isCancelled) return;
+
         const baseViewport = page.getViewport({ scale: 1 });
+        const isLandscape = baseViewport.width > baseViewport.height;
 
-        // Padding: 16px each side (8px mobile, 32px desktop)
-        const padding = isFullscreen ? 64 : (canvasContainerWidth < 640 ? 16 : 32);
-        const availableWidth = Math.max(100, canvasContainerWidth - padding);
+        const paddingX = isFullscreen ? 64 : (curWidth < 640 ? 16 : 48);
+        const paddingY = isFullscreen ? 64 : (curWidth < 640 ? 16 : 32);
+        const availableWidth = Math.max(100, curWidth - paddingX);
+        const availableHeight = Math.max(100, curHeight - paddingY);
 
-        // Fit-width scale: always fills the container
-        const fitScale = availableWidth / baseViewport.width;
+        // Fit Width: fill width up to 1000px on desktop for pleasant reading
+        const targetWidth = isLandscape
+          ? availableWidth
+          : Math.min(availableWidth, Math.max(680, availableWidth * 0.95));
+        const widthFitScale = targetWidth / baseViewport.width;
 
-        // In fit mode, always match container width (perfect for mobile).
-        // In manual zoom mode, apply zoom relative to fit.
-        const scale = isFitMode ? fitScale : fitScale * (zoom / 100);
+        // Fit Page: fit both width and height within the frame
+        const pageFitScale = Math.min(
+          availableWidth / baseViewport.width,
+          availableHeight / baseViewport.height
+        );
+
+        let scale = widthFitScale;
+        if (fitMode === 'page') {
+          scale = pageFitScale;
+        } else if (fitMode === 'width') {
+          scale = widthFitScale;
+        } else {
+          scale = widthFitScale * (zoom / 100);
+        }
 
         const viewport = page.getViewport({ scale });
-
-        // Use device pixel ratio for crisp rendering on hi-DPI/retina screens
-        const dpr = Math.min(window.devicePixelRatio || 1, 3); // cap at 3× to save memory
+        const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
 
         const canvas = canvasRef.current;
+        if (!canvas || isCancelled) return;
         const context = canvas.getContext('2d');
         if (!context) return;
 
@@ -148,12 +195,10 @@ export function PDFViewer({ url, title, onDownload }: PDFViewerProps) {
         canvas.width = Math.ceil(viewport.width * dpr);
         canvas.height = Math.ceil(viewport.height * dpr);
 
-        // CSS display size (logical pixels — matches the layout)
-        canvas.style.width = `${viewport.width}px`;
-        canvas.style.height = `${viewport.height}px`;
-        canvas.style.maxWidth = '100%';
+        // CSS display size (logical pixels — matches layout)
+        canvas.style.width = `${Math.ceil(viewport.width)}px`;
+        canvas.style.height = `${Math.ceil(viewport.height)}px`;
 
-        // Scale context to match DPR
         context.setTransform(dpr, 0, 0, dpr, 0, 0);
 
         renderTask = page.render({
@@ -172,11 +217,12 @@ export function PDFViewer({ url, title, onDownload }: PDFViewerProps) {
 
     renderPage();
     return () => {
+      isCancelled = true;
       if (renderTask) {
         try { renderTask.cancel(); } catch { /* ignore */ }
       }
     };
-  }, [currentPage, numPages, zoom, isFitMode, canvasContainerWidth, isFullscreen]);
+  }, [currentPage, numPages, zoom, fitMode, containerDimensions, isFullscreen, loading]);
 
   const handlePrevPage = useCallback(() => {
     if (currentPage > 1) {
@@ -191,17 +237,22 @@ export function PDFViewer({ url, title, onDownload }: PDFViewerProps) {
   }, [numPages, currentPage]);
 
   const handleZoomIn = () => {
-    setIsFitMode(false);
-    setZoom((prev) => Math.min(prev + 20, 300));
+    setFitMode('custom');
+    setZoom((prev) => Math.min(prev + 15, 250));
   };
 
   const handleZoomOut = () => {
-    setIsFitMode(false);
-    setZoom((prev) => Math.max(prev - 20, 40));
+    setFitMode('custom');
+    setZoom((prev) => Math.max(prev - 15, 40));
   };
 
-  const handleFitToScreen = () => {
-    setIsFitMode(true);
+  const handleFitWidth = () => {
+    setFitMode('width');
+    setZoom(100);
+  };
+
+  const handleFitPage = () => {
+    setFitMode('page');
     setZoom(100);
   };
 
@@ -218,6 +269,10 @@ export function PDFViewer({ url, title, onDownload }: PDFViewerProps) {
         handleZoomIn();
       } else if (e.key === '-' || e.key === '_') {
         handleZoomOut();
+      } else if (e.key === 'w' || e.key === 'W') {
+        handleFitWidth();
+      } else if (e.key === 'p' || e.key === 'P') {
+        handleFitPage();
       }
     },
     [handleNextPage, handlePrevPage]
@@ -329,31 +384,23 @@ export function PDFViewer({ url, title, onDownload }: PDFViewerProps) {
             variant="ghost"
             size="sm"
             onClick={handleZoomOut}
-            disabled={!isFitMode && zoom <= 40}
+            disabled={fitMode === 'custom' && zoom <= 40}
             className="h-8 w-8 p-0 rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-25"
             title="Zoom Out (-)"
           >
             <ZoomOut className="h-3.5 w-3.5" />
           </Button>
 
-          {/* Zoom readout — shows "Fit" when in fit mode, percentage when zoomed manually */}
-          <button
-            onClick={handleFitToScreen}
-            className={`rounded-lg px-2 py-1 font-mono text-xs font-semibold transition-colors ${
-              isFitMode
-                ? 'bg-violet-100 dark:bg-violet-500/20 text-violet-600 dark:text-violet-300'
-                : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-            }`}
-            title="Reset to Fit Width"
-          >
-            {isFitMode ? 'Fit' : `${zoom}%`}
-          </button>
+          {/* Zoom readout */}
+          <span className="px-2 py-1 font-mono text-xs font-semibold text-slate-600 dark:text-slate-300">
+            {fitMode === 'width' ? 'Fit Width' : fitMode === 'page' ? 'Fit Page' : `${zoom}%`}
+          </span>
 
           <Button
             variant="ghost"
             size="sm"
             onClick={handleZoomIn}
-            disabled={!isFitMode && zoom >= 300}
+            disabled={fitMode === 'custom' && zoom >= 250}
             className="h-8 w-8 p-0 rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-25"
             title="Zoom In (+)"
           >
@@ -365,16 +412,31 @@ export function PDFViewer({ url, title, onDownload }: PDFViewerProps) {
           <Button
             variant="ghost"
             size="sm"
-            onClick={handleFitToScreen}
+            onClick={handleFitWidth}
             className={`h-8 px-2.5 rounded-xl text-xs font-medium hidden sm:inline-flex items-center gap-1.5 transition-colors ${
-              isFitMode
-                ? 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-500/10'
+              fitMode === 'width'
+                ? 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-500/10 font-semibold'
                 : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
             }`}
-            title="Fit width (reset view)"
+            title="Fit document width (scroll to read)"
           >
             <RotateCw className="h-3.5 w-3.5" />
             <span>Fit Width</span>
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleFitPage}
+            className={`h-8 px-2.5 rounded-xl text-xs font-medium hidden sm:inline-flex items-center gap-1.5 transition-colors ${
+              fitMode === 'page'
+                ? 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-500/10 font-semibold'
+                : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+            title="Fit entire page inside frame"
+          >
+            <FileText className="h-3.5 w-3.5" />
+            <span>Fit Page</span>
           </Button>
         </div>
 
@@ -415,22 +477,19 @@ export function PDFViewer({ url, title, onDownload }: PDFViewerProps) {
         </div>
       </div>
 
-      {/* Document Canvas Container — scrollable on mobile when zoomed in */}
+      {/* Document Canvas Container — scrollable on desktop and mobile */}
       <div
         ref={canvasContainerRef}
-        className={`w-full rounded-2xl transition-all ${
+        className={`w-full rounded-2xl transition-all overflow-auto border border-slate-200/80 dark:border-slate-800/80 bg-slate-100/60 dark:bg-slate-950/60 p-3 sm:p-6 shadow-inner ${
           isFullscreen
-            ? 'flex flex-1 overflow-auto bg-[#060b11] p-4 sm:p-8 items-start justify-center'
-            : isFitMode
-              ? 'overflow-hidden border border-slate-200/80 dark:border-slate-800/80 bg-slate-100/60 dark:bg-slate-950/60 p-1 sm:p-4 shadow-inner flex items-start justify-center min-h-[60vh] sm:min-h-[70vh] lg:min-h-[calc(100vh-12rem)]'
-              : 'overflow-auto border border-slate-200/80 dark:border-slate-800/80 bg-slate-100/60 dark:bg-slate-950/60 p-2 sm:p-4 shadow-inner flex items-start justify-center min-h-[60vh] sm:min-h-[70vh] lg:min-h-[calc(100vh-12rem)]'
+            ? 'flex flex-1 bg-[#060b11] p-4 sm:p-8 items-start justify-center'
+            : 'flex items-start justify-center min-h-[60vh] sm:min-h-[70vh] lg:h-[calc(100vh-13rem)]'
         }`}
       >
-        <div className={`${isFitMode ? 'w-full' : 'mx-auto'} flex items-start justify-center`}>
+        <div className="flex items-center justify-center my-auto min-w-full">
           <canvas
             ref={canvasRef}
-            className="rounded-xl bg-white shadow-[0_8px_32px_rgba(0,0,0,0.15)] ring-1 ring-slate-900/10 dark:ring-white/10 transition-all"
-            style={{ display: 'block', maxWidth: isFitMode ? '100%' : 'none' }}
+            className="rounded-xl bg-white shadow-[0_8px_32px_rgba(0,0,0,0.18)] ring-1 ring-slate-900/10 dark:ring-white/10 transition-all mx-auto block shrink-0"
           />
         </div>
       </div>
