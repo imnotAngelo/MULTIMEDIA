@@ -8,6 +8,16 @@ const configuredApiUrl = import.meta.env.VITE_API_URL?.trim();
 const deployedApiUrl = 'https://multimedia-2-x7ol.onrender.com/api';
 const localDevApiUrl = 'http://127.0.0.1:3001/api';
 
+const isLocalApiUrl = (value?: string) => {
+  if (!value) return false;
+  try {
+    const hostname = new URL(value).hostname.toLowerCase();
+    return ['localhost', '127.0.0.1', '[::1]'].includes(hostname);
+  } catch {
+    return false;
+  }
+};
+
 // Check if user explicitly requested online mode via URL parameter (?api=online) or localStorage
 const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
 const urlMode = searchParams?.get('api');
@@ -23,7 +33,7 @@ const isLocalDevelopment = !forceOnline && !import.meta.env.PROD;
 
 export const API_BASE_URL = isLocalDevelopment
   ? localDevApiUrl
-  : (configuredApiUrl || deployedApiUrl);
+  : (configuredApiUrl && !isLocalApiUrl(configuredApiUrl) ? configuredApiUrl : deployedApiUrl);
 
 export const IS_ONLINE_API = !isLocalDevelopment;
 
