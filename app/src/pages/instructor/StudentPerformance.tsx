@@ -809,16 +809,11 @@ export function StudentPerformance() {
                       </div>
                     </td>
 
-                    {/* Section & Year */}
+                    {/* Section */}
                     <td className="py-4 px-4 whitespace-nowrap">
-                      <div className="space-y-0.5">
-                        <span className="font-medium text-slate-800 dark:text-slate-200">
-                          Section {student.section || 'N/A'}
-                        </span>
-                        {student.year_level && (
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400">Year {student.year_level}</p>
-                        )}
-                      </div>
+                      <span className="font-medium text-slate-800 dark:text-slate-200">
+                        Section {student.section || 'N/A'}
+                      </span>
                     </td>
 
                     {/* Quizzes Record */}
@@ -1029,12 +1024,12 @@ export function StudentPerformance() {
 
       {/* STUDENT RECORD DOSSIER MODAL */}
       <Dialog open={Boolean(selectedStudent)} onOpenChange={(open) => !open && setSelectedStudent(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-6 sm:p-8 rounded-3xl">
+        <DialogContent className="w-[calc(100%-1rem)] max-w-7xl max-h-[96vh] overflow-y-auto rounded-3xl border border-slate-200 bg-white p-4 text-slate-900 shadow-2xl dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 sm:p-8 lg:p-10">
           {selectedStudent && (
             <div className="space-y-6">
               {/* Dossier Header */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-200 dark:border-slate-800">
-                <div className="flex items-center gap-4">
+              <div className="flex flex-col gap-5 border-b border-slate-200 pb-6 dark:border-slate-800 xl:flex-row xl:items-start xl:justify-between xl:gap-12">
+                <div className="flex min-w-0 items-center gap-4">
                   {selectedStudent.avatar_url ? (
                     <img
                       src={selectedStudent.avatar_url}
@@ -1046,8 +1041,8 @@ export function StudentPerformance() {
                       {(selectedStudent.full_name || selectedStudent.email).charAt(0).toUpperCase()}
                     </div>
                   )}
-                  <div>
-                    <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white">
+                  <div className="min-w-0">
+                    <h2 className="break-words text-xl font-extrabold text-slate-900 dark:text-white sm:text-2xl">
                       {selectedStudent.full_name}
                     </h2>
                     <p className="text-sm text-slate-500 dark:text-slate-400">{selectedStudent.email}</p>
@@ -1055,33 +1050,26 @@ export function StudentPerformance() {
                       <span className="px-2 py-0.5 rounded-md text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
                         Section {selectedStudent.section || 'N/A'}
                       </span>
-                      {selectedStudent.year_level && (
-                        <span className="px-2 py-0.5 rounded-md text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                          Year {selectedStudent.year_level}
-                        </span>
-                      )}
                       {getStandingBadge(selectedStudent.academicStanding)}
                     </div>
                   </div>
                 </div>
 
                 {/* Score Summary Box */}
-                <div className="flex items-center gap-3 sm:gap-4 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/80">
-                  <div className="text-center px-2">
+                <div className="grid w-full max-w-xl shrink-0 grid-cols-3 items-center rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/80 xl:ml-8 xl:w-auto xl:min-w-[20rem]">
+                  <div className="px-2 text-center">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Overall</p>
                     <p className="text-xl font-extrabold text-slate-900 dark:text-white">
                       {selectedStudent.overallAverage !== null ? `${selectedStudent.overallAverage}%` : 'N/A'}
                     </p>
                   </div>
-                  <div className="h-8 w-px bg-slate-200 dark:bg-slate-800" />
-                  <div className="text-center px-2">
+                  <div className="border-l border-slate-200 px-2 text-center dark:border-slate-800">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-sky-500">Quiz Avg</p>
                     <p className="text-xl font-extrabold text-sky-600 dark:text-sky-400">
                       {selectedStudent.quizAverage !== null ? `${selectedStudent.quizAverage}%` : 'N/A'}
                     </p>
                   </div>
-                  <div className="h-8 w-px bg-slate-200 dark:bg-slate-800" />
-                  <div className="text-center px-2">
+                  <div className="border-l border-slate-200 px-2 text-center dark:border-slate-800">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-teal-500">Lab Avg</p>
                     <p className="text-xl font-extrabold text-teal-600 dark:text-teal-400">
                       {selectedStudent.labAverage !== null ? `${selectedStudent.labAverage}` : 'N/A'}
@@ -1096,7 +1084,7 @@ export function StudentPerformance() {
                 onValueChange={(val) => setActiveModalTab(val as any)}
                 className="w-full"
               >
-                <TabsList className="grid grid-cols-3 mb-6 bg-slate-100 dark:bg-slate-900">
+                <TabsList className="mb-6 grid grid-cols-3 border border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
                   <TabsTrigger value="overview">Overview</TabsTrigger>
                   <TabsTrigger value="quizzes">
                     Quizzes ({selectedStudent.quizzesCompleted}/{selectedStudent.totalQuizzesCount})

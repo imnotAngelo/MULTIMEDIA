@@ -248,11 +248,6 @@ export function StudentApprovals() {
                       <p className={`text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>{request.email}</p>
                       <div className="mt-1.5 flex items-center gap-2 flex-wrap">
                         <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium border ${
-                          isLight ? 'bg-violet-50 text-violet-700 border-violet-200' : 'bg-violet-500/15 text-violet-300 border-violet-500/30'
-                        }`}>
-                          Year {request.year_level}
-                        </span>
-                        <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium border ${
                           isLight ? 'bg-slate-100 text-slate-700 border-slate-200' : 'bg-slate-800 text-slate-300 border-slate-700'
                         }`}>
                           Section {request.section}
@@ -324,11 +319,6 @@ export function StudentApprovals() {
                       <h3 className={`font-medium ${isLight ? 'text-slate-900' : 'text-white'}`}>{student.full_name}</h3>
                       <p className={`text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>{student.email}</p>
                       <div className="mt-1.5 flex items-center gap-2 flex-wrap">
-                        <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium border ${
-                          isLight ? 'bg-violet-50 text-violet-700 border-violet-200' : 'bg-violet-500/15 text-violet-300 border-violet-500/30'
-                        }`}>
-                          Year {student.year_level}
-                        </span>
                         <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium border ${
                           isLight ? 'bg-slate-100 text-slate-700 border-slate-200' : 'bg-slate-800 text-slate-300 border-slate-700'
                         }`}>
