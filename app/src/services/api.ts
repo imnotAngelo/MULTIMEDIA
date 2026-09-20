@@ -55,7 +55,7 @@ class ApiService {
 
 
       // Handle 401 - try to refresh token
-      if (response.status === 401) {
+      if (response.status === 401 && endpoint !== '/auth/refresh') {
         console.warn('⚠️ Got 401, attempting to refresh token...');
         const refreshToken = localStorage.getItem('refresh_token');
         
