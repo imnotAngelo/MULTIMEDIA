@@ -1734,7 +1734,10 @@ router.post(
       const range = categoryRanges[quizCategory] || categoryRanges.short;
       const configuredTotal = Object.values(questionCountsByType as Record<string, unknown>).reduce((sum: number, count) => sum + (Number(count) > 0 ? Number(count) : 0), 0);
       const requestedTotal = configuredTotal > 0 ? configuredTotal : Number(numberOfQuestions) || range.min;
-      const numQuestions = Math.min(Math.max(requestedTotal, range.min), range.max);
+      // Batched exam generation sends a smaller type distribution per request.
+      // Do not apply the full exam minimum to each individual batch.
+      const minimumQuestions = configuredTotal > 0 ? 1 : range.min;
+      const numQuestions = Math.min(Math.max(requestedTotal, minimumQuestions), range.max);
       const allowedTypes = ['multiple-choice', 'enumeration', 'true-false', 'identification', 'essay'];
       const requestedTypes = (Array.isArray(quizTypes) ? quizTypes : [quizType])
         .filter((type: unknown, index: number, types: unknown[]) => allowedTypes.includes(String(type)) && types.indexOf(type) === index);
