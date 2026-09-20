@@ -423,11 +423,17 @@ export const login = async (req: AuthRequest, res: Response) => {
         throw new Error('Supabase unavailable');
       }
 
-      const { data: dbUser, error } = await supabase
+      const lookup = supabase
         .from('users')
         .select('id, email, password_hash, full_name, role, email_verified, instructor_approved, student_approved, year_level, teaching_year_levels, section, teaching_sections, avatar_url')
         .eq('email', email)
         .single();
+      const { data: dbUser, error } = await Promise.race([
+        lookup,
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Login database lookup timed out')), 15000)
+        ),
+      ]);
 
       if (error && error.code !== 'PGRST116') {
         throw error;
