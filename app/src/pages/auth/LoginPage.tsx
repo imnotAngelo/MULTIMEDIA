@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Eye, EyeOff, Mail, Lock, GraduationCap, Presentation, BookOpen, FlaskConical, BarChart3 } from 'lucide-react';
 import { AetherSpinner } from '@/components/AetherSpinner';
 import { AetherLogo } from '@/components/AetherLogo';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { api } from '@/services/api';
 
 type Role = 'student' | 'instructor';
@@ -71,6 +72,7 @@ export function LoginPage() {
 
   return (
     <div className="auth-aether-page min-h-screen flex relative overflow-hidden">
+      <div className="absolute right-5 top-5 z-30"><ThemeToggle /></div>
       {/* Left Branding Hero Panel */}
       <section className="auth-hero-panel relative hidden md:flex md:w-[46%] lg:w-1/2 min-h-screen overflow-hidden px-8 py-10 lg:px-14 lg:py-12">
         <div className="absolute -right-24 top-16 h-72 w-72 rounded-full auth-hero-ring animate-pulse" />

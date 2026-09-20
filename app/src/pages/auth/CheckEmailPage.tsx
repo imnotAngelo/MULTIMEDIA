@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AetherSpinner } from '@/components/AetherSpinner';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { api } from '@/services/api';
 
 export function CheckEmailPage() {
@@ -52,14 +53,15 @@ export function CheckEmailPage() {
   };
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-950 px-4 py-8 text-white sm:px-6">
+    <div className="auth-ambient-page relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-8 text-slate-900 dark:text-white sm:px-6">
+      <div className="absolute right-5 top-5 z-30"><ThemeToggle /></div>
       {/* Ambient background glow */}
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(139,92,246,0.15),transparent_50%),radial-gradient(ellipse_at_bottom,rgba(14,165,233,0.10),transparent_50%)]" />
       <div className="absolute -right-24 -top-24 h-96 w-96 rounded-full border border-violet-500/10 animate-pulse" />
       <div className="absolute -left-24 -bottom-24 h-96 w-96 rounded-full border border-fuchsia-500/10" />
 
       <div className="w-full max-w-md relative z-10 animate-fade-in">
-        <Card className="relative border border-slate-800/80 bg-slate-900/60 shadow-2xl shadow-black/40 backdrop-blur-xl rounded-2xl">
+        <Card className="auth-card-surface relative rounded-2xl shadow-2xl">
           <CardHeader className="space-y-2 text-center pb-4 pt-6">
             <div className="flex justify-center mb-1">
               <div className="rounded-2xl border border-violet-500/30 bg-violet-500/15 p-3 text-violet-400 shadow-lg shadow-violet-500/20">

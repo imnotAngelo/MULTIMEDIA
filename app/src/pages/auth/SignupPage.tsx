@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Eye, EyeOff, Mail, Lock, User, GraduationCap, Presentation, X, BookOpen, FlaskConical, BarChart3, CheckCircle2 } from 'lucide-react';
 import { AetherSpinner } from '@/components/AetherSpinner';
 import { AetherLogo } from '@/components/AetherLogo';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 const ACADEMIC_YEAR_OPTIONS: Array<{ value: 1 | 2 | 3; label: string }> = [
   { value: 1, label: '1st Sem' },
@@ -164,6 +165,7 @@ export function SignupPage() {
 
   return (
     <div className="auth-aether-page min-h-screen flex relative overflow-hidden">
+      <div className="absolute right-5 top-5 z-30"><ThemeToggle /></div>
       {/* Left Branding Hero Panel */}
       <section className="auth-hero-panel relative hidden md:flex md:w-[46%] lg:w-1/2 min-h-screen overflow-hidden px-8 py-10 lg:px-14 lg:py-12">
         <div className="absolute -right-24 top-16 h-72 w-72 rounded-full auth-hero-ring animate-pulse" />

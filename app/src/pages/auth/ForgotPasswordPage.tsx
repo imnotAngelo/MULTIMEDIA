@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AetherLogo } from '@/components/AetherLogo';
 import { AetherSpinner } from '@/components/AetherSpinner';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { api } from '@/services/api';
 
 export function ForgotPasswordPage() {
@@ -31,6 +32,7 @@ export function ForgotPasswordPage() {
 
   return (
     <div className="min-h-screen auth-ambient-page flex items-center justify-center p-4 relative overflow-hidden">
+      <div className="absolute right-5 top-5 z-30"><ThemeToggle /></div>
       {/* Ambient background glow */}
       <div className="absolute inset-0 auth-ambient-glow" />
       <div className="absolute -right-24 -top-24 h-96 w-96 rounded-full auth-ambient-ring animate-pulse" />

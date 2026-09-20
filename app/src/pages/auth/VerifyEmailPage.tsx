@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { api } from '@/services/api';
 
 export function VerifyEmailPage() {
@@ -36,14 +37,15 @@ export function VerifyEmailPage() {
   }, [navigate, token]);
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="auth-ambient-page min-h-screen flex items-center justify-center p-4 relative overflow-hidden text-slate-900 dark:text-white">
+      <div className="absolute right-5 top-5 z-30"><ThemeToggle /></div>
       {/* Ambient background glow */}
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(139,92,246,0.15),transparent_50%),radial-gradient(ellipse_at_bottom,rgba(14,165,233,0.10),transparent_50%)]" />
       <div className="absolute -right-24 -top-24 h-96 w-96 rounded-full border border-violet-500/10 animate-pulse" />
       <div className="absolute -left-24 -bottom-24 h-96 w-96 rounded-full border border-fuchsia-500/10" />
 
       <div className="w-full max-w-md relative z-10 animate-fade-in">
-        <Card className="border border-slate-800/80 bg-slate-900/60 backdrop-blur-xl shadow-2xl shadow-black/40 rounded-2xl">
+        <Card className="auth-card-surface rounded-2xl shadow-2xl">
           <CardHeader className="space-y-2 text-center pb-4 pt-6">
             <div className="flex justify-center mb-1">
               <div className={`p-3 rounded-2xl border shadow-lg ${
