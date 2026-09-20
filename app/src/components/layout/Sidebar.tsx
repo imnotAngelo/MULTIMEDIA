@@ -714,7 +714,7 @@ export function Sidebar({
                 </p>
                 <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate leading-tight mt-0.5">
                   {userRole === 'student'
-                    ? (section ? `Year ${yearLevel || 1} • Sec ${section}` : 'Student')
+                    ? (section ? `Sec ${section}` : 'Student')
                     : 'Instructor'}
                 </p>
               </div>
