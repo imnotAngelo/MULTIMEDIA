@@ -58,7 +58,7 @@ export function SectionYearTargetPicker({
   };
 
   const addSection = () => {
-    const trimmed = sectionInput.trim();
+    const trimmed = sectionInput.trim().toUpperCase();
     if (!trimmed) return;
     if (!sections.includes(trimmed)) onSectionsChange([...sections, trimmed]);
     onSectionInputChange('');
@@ -122,7 +122,7 @@ export function SectionYearTargetPicker({
             type="text"
             placeholder="e.g. A, then press Enter"
             value={sectionInput}
-            onChange={(e) => onSectionInputChange(e.target.value)}
+            onChange={(e) => onSectionInputChange(e.target.value.toUpperCase())}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ',') {
                 e.preventDefault();

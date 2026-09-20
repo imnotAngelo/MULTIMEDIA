@@ -159,17 +159,18 @@ export function InstructorSettings() {
   };
 
   const handleAddSection = async () => {
-    if (!newSection.trim()) {
+    const normalizedSection = newSection.trim().toUpperCase();
+    if (!normalizedSection) {
       toast.error('Section name cannot be empty.');
       return;
     }
-    if (teachingSections.includes(newSection.trim())) {
+    if (teachingSections.includes(normalizedSection)) {
       toast.error('This section already exists.');
       return;
     }
     setAddingSectionId('adding');
     try {
-      const updatedSections = [...teachingSections, newSection.trim()];
+      const updatedSections = [...teachingSections, normalizedSection];
       const res: any = await api.updateProfile({
         teaching_sections: updatedSections,
       } as any);
@@ -562,7 +563,7 @@ export function InstructorSettings() {
             <input
               type="text"
               value={newSection}
-              onChange={(e) => setNewSection(e.target.value)}
+              onChange={(e) => setNewSection(e.target.value.toUpperCase())}
               onKeyDown={(e) => e.key === 'Enter' && handleAddSection()}
               placeholder="e.g., Class A, Section 1, Period 3..."
               className="flex-1 rounded-lg bg-slate-800/60 border border-white/10 px-3 py-2 text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/40"

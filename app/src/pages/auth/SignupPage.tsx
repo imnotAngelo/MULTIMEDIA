@@ -94,7 +94,7 @@ export function SignupPage() {
   };
 
   const addTeachingSection = () => {
-    const trimmed = sectionInput.trim();
+    const trimmed = sectionInput.trim().toUpperCase();
     if (!trimmed) return;
     setTeachingSections((current) => (current.includes(trimmed) ? current : [...current, trimmed]));
     setSectionInput('');
@@ -275,7 +275,7 @@ export function SignupPage() {
                         type="text"
                         placeholder="e.g. A, Section 1"
                         value={section}
-                        onChange={(e) => setSection(e.target.value)}
+                        onChange={(e) => setSection(e.target.value.toUpperCase())}
                         maxLength={50}
                         required
                         className="bg-slate-950/70 border-slate-800 text-white placeholder:text-slate-600 focus-visible:ring-2 focus-visible:ring-violet-500/30 focus-visible:border-violet-500 h-11 rounded-xl"
@@ -353,7 +353,7 @@ export function SignupPage() {
                           type="text"
                           placeholder="e.g. A, then click Add"
                           value={sectionInput}
-                          onChange={(e) => setSectionInput(e.target.value)}
+                          onChange={(e) => setSectionInput(e.target.value.toUpperCase())}
                           onKeyDown={handleSectionInputKeyDown}
                           maxLength={50}
                           className="bg-slate-950/70 border-slate-800 text-white placeholder:text-slate-600 focus-visible:ring-2 focus-visible:ring-violet-500/30 focus-visible:border-violet-500 h-11 rounded-xl"
