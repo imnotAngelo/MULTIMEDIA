@@ -536,6 +536,15 @@
       0 0 42px rgba(34, 211, 238, 0.13);
   }
 
+  html.light .auth-form-surface:hover {
+    transform: translateY(-4px);
+    border-color: rgba(99, 102, 241, 0.3) !important;
+    box-shadow:
+      inset 0 1px rgba(255, 255, 255, 0.9),
+      0 34px 80px rgba(15, 23, 42, 0.12),
+      0 0 42px rgba(99, 102, 241, 0.08);
+  }
+
   .auth-form-surface input,
   .auth-form-surface select {
     background-color: rgba(255, 255, 255, 0.05) !important;
@@ -547,9 +556,341 @@
     color: rgba(148, 163, 184, 0.78) !important;
   }
 
+  html.light .auth-form-surface input,
+  html.light .auth-form-surface select {
+    background-color: rgba(255, 255, 255, 0.7) !important;
+    border-color: rgba(148, 163, 184, 0.35) !important;
+    color: #0f172a !important;
+  }
+
+  html.light .auth-form-surface input::placeholder {
+    color: #94a3b8 !important;
+  }
+
   .auth-form-surface select option {
     background-color: #101b3b;
     color: #f8fafc;
+  }
+
+  html.light .auth-form-surface select option {
+    background-color: #ffffff;
+    color: #0f172a;
+  }
+
+  /* ===== AUTH HERO PANEL ===== */
+  .auth-hero-panel {
+    background:
+      radial-gradient(ellipse at 20% 20%, rgba(139, 92, 246, 0.18), transparent 50%),
+      radial-gradient(ellipse at 80% 80%, rgba(217, 70, 239, 0.14), transparent 50%),
+      radial-gradient(ellipse at 50% 50%, rgba(14, 165, 233, 0.10), transparent 60%),
+      linear-gradient(145deg, #090f24, #0d1530);
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  html.light .auth-hero-panel {
+    background:
+      radial-gradient(ellipse at 20% 20%, rgba(99, 102, 241, 0.12), transparent 50%),
+      radial-gradient(ellipse at 80% 80%, rgba(168, 85, 247, 0.08), transparent 50%),
+      radial-gradient(ellipse at 50% 50%, rgba(59, 130, 246, 0.06), transparent 60%),
+      linear-gradient(145deg, #eef2ff, #e0e7ff, #ede9fe);
+    border-right-color: rgba(99, 102, 241, 0.12);
+  }
+
+  .auth-hero-panel--admin {
+    background:
+      radial-gradient(ellipse at 20% 20%, rgba(6, 182, 212, 0.18), transparent 50%),
+      radial-gradient(ellipse at 80% 80%, rgba(59, 130, 246, 0.16), transparent 50%),
+      radial-gradient(ellipse at 50% 50%, rgba(99, 102, 241, 0.10), transparent 60%),
+      linear-gradient(145deg, #071326, #0c1a36);
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  html.light .auth-hero-panel--admin {
+    background:
+      radial-gradient(ellipse at 20% 20%, rgba(6, 182, 212, 0.1), transparent 50%),
+      radial-gradient(ellipse at 80% 80%, rgba(59, 130, 246, 0.08), transparent 50%),
+      radial-gradient(ellipse at 50% 50%, rgba(99, 102, 241, 0.06), transparent 60%),
+      linear-gradient(145deg, #ecfeff, #e0f2fe, #ede9fe);
+    border-right-color: rgba(6, 182, 212, 0.12);
+  }
+
+  /* Hero feature cards */
+  .auth-hero-feature {
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(12px);
+    transition: background 200ms ease;
+  }
+
+  .auth-hero-feature:hover {
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  html.light .auth-hero-feature {
+    border-color: rgba(99, 102, 241, 0.15);
+    background: rgba(255, 255, 255, 0.65);
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+  }
+
+  html.light .auth-hero-feature:hover {
+    background: rgba(255, 255, 255, 0.85);
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.1);
+  }
+
+  /* Hero decorative rings */
+  .auth-hero-ring {
+    border: 1px solid rgba(139, 92, 246, 0.2);
+  }
+
+  html.light .auth-hero-ring {
+    border-color: rgba(99, 102, 241, 0.12);
+  }
+
+  .auth-hero-ring--secondary {
+    border: 1px solid rgba(217, 70, 239, 0.15);
+  }
+
+  html.light .auth-hero-ring--secondary {
+    border-color: rgba(168, 85, 247, 0.1);
+  }
+
+  .auth-hero-ring--admin {
+    border: 1px solid rgba(6, 182, 212, 0.2);
+  }
+
+  html.light .auth-hero-ring--admin {
+    border-color: rgba(6, 182, 212, 0.12);
+  }
+
+  .auth-hero-ring--admin-secondary {
+    border: 1px solid rgba(59, 130, 246, 0.15);
+  }
+
+  html.light .auth-hero-ring--admin-secondary {
+    border-color: rgba(59, 130, 246, 0.1);
+  }
+
+  /* Hero gradient line */
+  .auth-hero-line {
+    background: linear-gradient(to right, transparent, rgba(139, 92, 246, 0.3), transparent);
+  }
+
+  html.light .auth-hero-line {
+    background: linear-gradient(to right, transparent, rgba(99, 102, 241, 0.2), transparent);
+  }
+
+  .auth-hero-line--admin {
+    background: linear-gradient(to right, transparent, rgba(6, 182, 212, 0.3), transparent);
+  }
+
+  html.light .auth-hero-line--admin {
+    background: linear-gradient(to right, transparent, rgba(6, 182, 212, 0.2), transparent);
+  }
+
+  /* Hero text colors in light mode */
+  html.light .auth-hero-panel h4,
+  html.light .auth-hero-panel--admin h4 {
+    color: #1e293b;
+  }
+
+  html.light .auth-hero-panel p,
+  html.light .auth-hero-panel--admin p {
+    color: #475569;
+  }
+
+  html.light .auth-hero-panel h2,
+  html.light .auth-hero-panel--admin h2 {
+    color: #0f172a;
+  }
+
+  /* Auth right panel background */
+  .auth-aether-page > main {
+    background-color: #020617;
+  }
+
+  html.light .auth-aether-page > main {
+    background-color: #faf9f7;
+  }
+
+  /* Auth centered pages (forgot/reset/check/verify) ambient glow */
+  .auth-ambient-page {
+    background-color: #020617;
+  }
+
+  html.light .auth-ambient-page {
+    background-color: #faf9f7;
+  }
+
+  .auth-ambient-glow {
+    background:
+      radial-gradient(ellipse at top, rgba(139, 92, 246, 0.15), transparent 50%),
+      radial-gradient(ellipse at bottom, rgba(14, 165, 233, 0.1), transparent 50%);
+  }
+
+  html.light .auth-ambient-glow {
+    background:
+      radial-gradient(ellipse at top, rgba(99, 102, 241, 0.1), transparent 50%),
+      radial-gradient(ellipse at bottom, rgba(59, 130, 246, 0.06), transparent 50%);
+  }
+
+  /* Auth ambient decorative rings */
+  .auth-ambient-ring {
+    border: 1px solid rgba(139, 92, 246, 0.1);
+  }
+
+  html.light .auth-ambient-ring {
+    border-color: rgba(99, 102, 241, 0.08);
+  }
+
+  .auth-ambient-ring--secondary {
+    border: 1px solid rgba(217, 70, 239, 0.1);
+  }
+
+  html.light .auth-ambient-ring--secondary {
+    border-color: rgba(168, 85, 247, 0.06);
+  }
+
+  /* Auth centered card surface */
+  .auth-card-surface {
+    border: 1px solid rgba(30, 41, 59, 0.8);
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(24px);
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
+  }
+
+  html.light .auth-card-surface {
+    border-color: rgba(148, 163, 184, 0.25);
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(24px);
+    box-shadow: 0 25px 50px rgba(15, 23, 42, 0.08);
+  }
+
+  html.light .auth-card-surface input {
+    background-color: rgba(241, 245, 249, 0.8) !important;
+    border-color: rgba(148, 163, 184, 0.35) !important;
+    color: #0f172a !important;
+  }
+
+  html.light .auth-card-surface input::placeholder {
+    color: #94a3b8 !important;
+  }
+
+  /* Auth icon badge */
+  .auth-icon-badge {
+    background: rgba(139, 92, 246, 0.15);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    color: #a78bfa;
+    box-shadow: 0 8px 24px rgba(139, 92, 246, 0.2);
+  }
+
+  html.light .auth-icon-badge {
+    background: rgba(99, 102, 241, 0.1);
+    border-color: rgba(99, 102, 241, 0.2);
+    color: #6366f1;
+    box-shadow: 0 8px 24px rgba(99, 102, 241, 0.1);
+  }
+
+  /* Auth headings in light mode */
+  html.light .auth-card-surface h1,
+  html.light .auth-card-surface .text-2xl {
+    color: #0f172a;
+  }
+
+  html.light .auth-card-surface .text-slate-400,
+  html.light .auth-card-surface .text-xs {
+    color: #64748b;
+  }
+
+  /* Auth label colors */
+  html.light .auth-form-surface label,
+  html.light .auth-card-surface label {
+    color: #334155 !important;
+  }
+
+  /* Auth accent label colors */
+  html.light .auth-aether-page .text-violet-400,
+  html.light .auth-ambient-page .text-violet-400 {
+    color: #7c3aed;
+  }
+
+  html.light .auth-aether-page .text-cyan-400,
+  html.light .auth-ambient-page .text-cyan-400,
+  html.light .auth-aether-page .text-cyan-300 {
+    color: #0891b2;
+  }
+
+  html.light .auth-aether-page .text-fuchsia-400 {
+    color: #c026d3;
+  }
+
+  /* Auth heading text */
+  html.light .auth-aether-page h1 {
+    color: #0f172a;
+  }
+
+  html.light .auth-aether-page .text-slate-400 {
+    color: #64748b;
+  }
+
+  /* Auth role selector */
+  html.light .auth-aether-page .border-slate-800 {
+    border-color: rgba(148, 163, 184, 0.3);
+  }
+
+  html.light .auth-aether-page .bg-slate-950\/60,
+  html.light .auth-ambient-page .bg-slate-950\/60 {
+    background-color: rgba(241, 245, 249, 0.8);
+  }
+
+  html.light .auth-aether-page .bg-slate-950\/40,
+  html.light .auth-ambient-page .bg-slate-950\/40 {
+    background-color: rgba(241, 245, 249, 0.6);
+  }
+
+  /* Auth divider */
+  html.light .auth-aether-page .border-t.border-slate-800,
+  html.light .auth-ambient-page .border-t.border-slate-800 {
+    border-color: rgba(148, 163, 184, 0.25);
+  }
+
+  html.light .auth-aether-page .bg-slate-900\/90 {
+    background-color: rgba(255, 255, 255, 0.9);
+  }
+
+  /* Auth hero indicator dot */
+  html.light .auth-hero-panel .bg-cyan-400 {
+    background-color: #0891b2;
+    box-shadow: 0 0 12px rgba(8, 145, 178, 0.5);
+  }
+
+  /* Auth hero tagline colors */
+  html.light .auth-hero-panel .text-cyan-200\/80 {
+    color: #0e7490;
+  }
+
+  html.light .auth-hero-panel .text-violet-300\/70 {
+    color: #7c3aed;
+  }
+
+  html.light .auth-hero-panel--admin .text-cyan-200\/80 {
+    color: #0e7490;
+  }
+
+  html.light .auth-hero-panel--admin .text-cyan-300\/70 {
+    color: #0891b2;
+  }
+
+  /* Auth admin badge */
+  html.light .auth-aether-page .bg-cyan-500\/10 {
+    background-color: rgba(6, 182, 212, 0.08);
+  }
+
+  html.light .auth-aether-page .border-cyan-500\/20 {
+    border-color: rgba(6, 182, 212, 0.15);
+  }
+
+  html.light .auth-aether-page .text-cyan-300 {
+    color: #0891b2;
   }
 
   /* Custom scrollbar */

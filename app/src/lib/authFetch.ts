@@ -55,13 +55,16 @@ export async function authFetch(
   try {
     response = await fetch(fullUrl, requestOptions);
   } catch (error) {
-    // A dev backend restart can briefly interrupt the first request.
-    await new Promise((resolve) => setTimeout(resolve, 250));
+    // If connection failed, wait and retry once (helps with sleeping Render servers or quick restarts)
+    const isRender = fullUrl.includes('onrender.com');
+    const delay = isRender ? 1500 : 350;
+    await new Promise((resolve) => setTimeout(resolve, delay));
     try {
       response = await fetch(fullUrl, requestOptions);
     } catch {
       const reason = error instanceof Error ? error.message : 'Network connection failed';
-      throw new Error(`Could not reach the API at ${fullUrl}: ${reason}`);
+      const hint = isRender ? ' The server may be waking up from sleep (Render free tier).' : '';
+      throw new Error(`Could not reach the API at ${fullUrl}: ${reason}.${hint}`);
     }
   }
 

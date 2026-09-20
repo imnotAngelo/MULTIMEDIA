@@ -55,13 +55,12 @@ export function AdminLoginPage() {
   };
 
   return (
-    <div className="auth-aether-page min-h-screen flex relative overflow-hidden bg-slate-950">
+    <div className="auth-aether-page min-h-screen flex relative overflow-hidden">
       {/* Left Admin Hero Panel */}
-      <section className="relative hidden md:flex md:w-[46%] lg:w-1/2 min-h-screen overflow-hidden bg-[#071326] px-8 py-10 lg:px-14 lg:py-12 border-r border-white/5">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_20%_20%,rgba(6,182,212,0.18),transparent_50%),radial-gradient(ellipse_at_80%_80%,rgba(59,130,246,0.16),transparent_50%),radial-gradient(ellipse_at_50%_50%,rgba(99,102,241,0.10),transparent_60%)]" />
-        <div className="absolute -right-24 top-16 h-72 w-72 rounded-full border border-cyan-500/20 animate-pulse" />
-        <div className="absolute -bottom-32 -left-20 h-80 w-80 rounded-full border border-blue-500/15" />
-        <div className="absolute inset-x-10 bottom-10 h-px bg-gradient-to-r from-transparent via-cyan-400/30 to-transparent" />
+      <section className="auth-hero-panel--admin relative hidden md:flex md:w-[46%] lg:w-1/2 min-h-screen overflow-hidden px-8 py-10 lg:px-14 lg:py-12">
+        <div className="absolute -right-24 top-16 h-72 w-72 rounded-full auth-hero-ring--admin animate-pulse" />
+        <div className="absolute -bottom-32 -left-20 h-80 w-80 rounded-full auth-hero-ring--admin-secondary" />
+        <div className="absolute inset-x-10 bottom-10 h-px auth-hero-line--admin" />
         
         <div className="relative z-10 flex w-full flex-col justify-between">
           <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.3em] text-cyan-200/80">
@@ -75,7 +74,7 @@ export function AdminLoginPage() {
             </div>
 
             <div className="space-y-3 max-w-md pt-2">
-              <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3.5 backdrop-blur-md transition-all hover:bg-white/[0.06]">
+              <div className="flex items-start gap-3 rounded-xl p-3.5 auth-hero-feature">
                 <div className="rounded-lg bg-cyan-500/15 p-2 text-cyan-400 shrink-0">
                   <Users className="w-4 h-4" />
                 </div>
@@ -85,7 +84,7 @@ export function AdminLoginPage() {
                 </div>
               </div>
 
-              <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3.5 backdrop-blur-md transition-all hover:bg-white/[0.06]">
+              <div className="flex items-start gap-3 rounded-xl p-3.5 auth-hero-feature">
                 <div className="rounded-lg bg-blue-500/15 p-2 text-blue-400 shrink-0">
                   <ShieldCheck className="w-4 h-4" />
                 </div>
@@ -95,7 +94,7 @@ export function AdminLoginPage() {
                 </div>
               </div>
 
-              <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3.5 backdrop-blur-md transition-all hover:bg-white/[0.06]">
+              <div className="flex items-start gap-3 rounded-xl p-3.5 auth-hero-feature">
                 <div className="rounded-lg bg-indigo-500/15 p-2 text-indigo-400 shrink-0">
                   <KeyRound className="w-4 h-4" />
                 </div>
@@ -115,7 +114,7 @@ export function AdminLoginPage() {
       </section>
 
       {/* Right Admin Form */}
-      <main className="relative z-10 flex min-h-screen w-full items-center justify-center px-5 py-10 sm:px-10 md:w-[54%] lg:w-1/2 lg:px-16 bg-slate-950">
+      <main className="relative z-10 flex min-h-screen w-full items-center justify-center px-5 py-10 sm:px-10 md:w-[54%] lg:w-1/2 lg:px-16">
         <div className="w-full max-w-[440px] animate-fade-in">
           <div className="mb-8 md:hidden text-center">
             <div className="mx-auto mb-4 w-44"><AetherLogo compact /></div>

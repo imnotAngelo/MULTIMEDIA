@@ -35,9 +35,9 @@ export function ResetPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen auth-ambient-page flex items-center justify-center p-4 relative overflow-hidden">
       {/* Ambient background glow */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(139,92,246,0.15),transparent_50%),radial-gradient(ellipse_at_bottom,rgba(14,165,233,0.1),transparent_50%)]" />
+      <div className="absolute inset-0 auth-ambient-glow" />
       <div className="absolute -right-24 -top-24 h-96 w-96 rounded-full border border-violet-500/10 animate-pulse" />
       <div className="absolute -left-24 -bottom-24 h-96 w-96 rounded-full border border-fuchsia-500/10" />
 

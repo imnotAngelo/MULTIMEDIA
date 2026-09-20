@@ -488,7 +488,7 @@ export function SlideViewer({ lessonId, lessonTitle, lesson: initialLesson }: Sl
   const isLastSlide = currentSlide === slides.length - 1;
 
   return (
-    <div className="min-w-0 max-w-full space-y-4 overflow-x-hidden">
+    <div className="mx-auto w-full min-w-0 max-w-[1600px] space-y-4 overflow-x-hidden">
       {/* Media Switcher Tab Header (if video or tool attached) */}
       {(videoUrl || appLink) && (
         <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 pb-3">
@@ -603,7 +603,7 @@ export function SlideViewer({ lessonId, lessonTitle, lesson: initialLesson }: Sl
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Slide Viewer Canvas */}
           <div className={showDiscussion ? 'lg:col-span-2 space-y-4' : 'lg:col-span-3 space-y-4'}>
-            <Card className="min-w-0 bg-gradient-to-br from-slate-900/95 via-slate-900/90 to-slate-950 border-slate-800/90 p-4 sm:p-8 min-h-[18rem] sm:min-h-[30rem] flex flex-col justify-between shadow-2xl backdrop-blur-md">
+            <Card className="min-w-0 bg-gradient-to-br from-slate-900/95 via-slate-900/90 to-slate-950 border-slate-800/90 p-4 sm:p-8 min-h-[14rem] sm:min-h-[30rem] lg:min-h-[calc(100vh-18rem)] flex flex-col justify-between shadow-2xl backdrop-blur-md">
               {/* Header Bar */}
               <div className="pb-4 border-b border-slate-800/80">
                 <div className="flex flex-wrap items-center justify-between gap-3">

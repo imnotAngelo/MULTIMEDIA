@@ -5,15 +5,40 @@
  * Keep the deployed API only for explicit online / production builds.
  */
 const configuredApiUrl = import.meta.env.VITE_API_URL?.trim();
-const isLocalDevelopment = import.meta.env.MODE !== 'online' && !import.meta.env.PROD;
 const deployedApiUrl = 'https://multimedia-2-x7ol.onrender.com/api';
 const localDevApiUrl = 'http://127.0.0.1:3001/api';
 
-// Local development must always use the local backend so stale environment values
-// do not accidentally route requests to the old deployed API.
+// Check if user explicitly requested online mode via URL parameter (?api=online) or localStorage
+const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+const urlMode = searchParams?.get('api');
+if (urlMode === 'online' || urlMode === 'local') {
+  try {
+    localStorage.setItem('api_mode', urlMode);
+  } catch {}
+}
+const storedMode = typeof window !== 'undefined' ? localStorage.getItem('api_mode') : null;
+const forceOnline = storedMode === 'online' || urlMode === 'online' || import.meta.env.MODE === 'online' || Boolean(import.meta.env.VITE_ONLINE);
+
+const isLocalDevelopment = !forceOnline && !import.meta.env.PROD;
+
 export const API_BASE_URL = isLocalDevelopment
   ? localDevApiUrl
   : (configuredApiUrl || deployedApiUrl);
+
+export const IS_ONLINE_API = !isLocalDevelopment;
+
+/**
+ * Helper to switch between local backend and online Render API at runtime
+ */
+export function toggleApiMode(targetMode?: 'online' | 'local'): 'online' | 'local' {
+  const current = isLocalDevelopment ? 'local' : 'online';
+  const next = targetMode || (current === 'local' ? 'online' : 'local');
+  try {
+    localStorage.setItem('api_mode', next);
+  } catch {}
+  window.location.reload();
+  return next;
+}
 
 /**
  * Resolve a backend-relative path (e.g. "/uploads/announcements/x.pdf") to a

@@ -30,11 +30,11 @@ export function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen auth-ambient-page flex items-center justify-center p-4 relative overflow-hidden">
       {/* Ambient background glow */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(139,92,246,0.15),transparent_50%),radial-gradient(ellipse_at_bottom,rgba(14,165,233,0.1),transparent_50%)]" />
-      <div className="absolute -right-24 -top-24 h-96 w-96 rounded-full border border-violet-500/10 animate-pulse" />
-      <div className="absolute -left-24 -bottom-24 h-96 w-96 rounded-full border border-fuchsia-500/10" />
+      <div className="absolute inset-0 auth-ambient-glow" />
+      <div className="absolute -right-24 -top-24 h-96 w-96 rounded-full auth-ambient-ring animate-pulse" />
+      <div className="absolute -left-24 -bottom-24 h-96 w-96 rounded-full auth-ambient-ring--secondary" />
 
       <div className="w-full max-w-md relative z-10 animate-fade-in">
         <div className="text-center mb-6">
@@ -44,10 +44,10 @@ export function ForgotPasswordPage() {
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-violet-400">Account Recovery</p>
         </div>
 
-        <Card className="border border-slate-800/80 bg-slate-900/60 backdrop-blur-xl shadow-2xl shadow-black/40 rounded-2xl">
+        <Card className="auth-card-surface rounded-2xl">
           <CardContent className="p-6 sm:p-8 space-y-6">
             <div className="text-center space-y-2">
-              <div className="mx-auto w-12 h-12 rounded-2xl bg-violet-500/15 border border-violet-500/30 flex items-center justify-center text-violet-400 mb-3 shadow-lg shadow-violet-500/20">
+              <div className="mx-auto w-12 h-12 rounded-2xl auth-icon-badge flex items-center justify-center mb-3">
                 <KeyRound className="w-6 h-6" />
               </div>
               <h1 className="text-2xl font-bold tracking-tight text-white">Forgot password?</h1>

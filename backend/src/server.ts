@@ -41,19 +41,9 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin) {
-        return callback(null, true);
-      }
-
-      const isAllowedExactOrigin = allowedOrigins.includes(origin);
-      const isVercelPreview = /^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin);
-      const isLocalhost = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin);
-
-      if (isAllowedExactOrigin || isVercelPreview || isLocalhost) {
-        return callback(null, true);
-      }
-
-      return callback(new Error(`CORS blocked origin: ${origin}`));
+      // Allow all origins by reflecting the origin back (compatible with credentials: true)
+      // Requests with no origin (curl, mobile apps, server-to-server) pass through as true
+      callback(null, origin || true);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],

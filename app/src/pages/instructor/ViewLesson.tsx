@@ -84,8 +84,8 @@ export function ViewLesson({ unitId: providedUnitId, lessonId: providedLessonId,
 
   // Styling helpers
   const pageClass = isLightMode
-    ? 'min-h-screen min-w-0 overflow-x-hidden bg-gradient-to-br from-slate-50 via-cyan-50/40 to-emerald-50/30 p-3 sm:p-5 lg:p-7'
-    : 'min-h-screen min-w-0 overflow-x-hidden bg-gradient-to-br from-[#061b24] via-[#0a2430] to-[#081c26] p-3 sm:p-5 lg:p-7';
+    ? 'min-h-screen min-w-0 overflow-x-hidden bg-gradient-to-br from-slate-50 via-cyan-50/40 to-emerald-50/30 p-0 sm:p-2 lg:p-4'
+    : 'min-h-screen min-w-0 overflow-x-hidden bg-gradient-to-br from-[#061b24] via-[#0a2430] to-[#081c26] p-0 sm:p-2 lg:p-4';
   
   const panelClass = isLightMode
     ? 'min-w-0 rounded-2xl border border-slate-200/80 bg-white/95 p-4 sm:p-6 shadow-sm backdrop-blur-md'
@@ -95,8 +95,8 @@ export function ViewLesson({ unitId: providedUnitId, lessonId: providedLessonId,
   const mutedTextClass = isLightMode ? 'text-slate-600' : 'text-slate-400';
   
   const slidePanelClass = isLightMode
-    ? 'rounded-2xl border border-slate-200 bg-white p-4 sm:p-8 min-h-[18rem] sm:min-h-[26rem] flex flex-col shadow-sm'
-    : 'rounded-2xl border border-slate-800/90 bg-slate-900/90 p-4 sm:p-8 min-h-[18rem] sm:min-h-[26rem] flex flex-col shadow-2xl';
+    ? 'rounded-2xl border border-slate-200 bg-white p-4 sm:p-8 min-h-[14rem] sm:min-h-[26rem] lg:min-h-[calc(100vh-10rem)] flex flex-col shadow-sm'
+    : 'rounded-2xl border border-slate-800/90 bg-slate-900/90 p-4 sm:p-8 min-h-[14rem] sm:min-h-[26rem] lg:min-h-[calc(100vh-10rem)] flex flex-col shadow-2xl';
 
   useEffect(() => {
     if (!unitId || !lessonId) {
@@ -480,7 +480,7 @@ export function ViewLesson({ unitId: providedUnitId, lessonId: providedLessonId,
     const presentationUrl = resolveBackendAssetUrl(lesson.pdfUrl || '');
     return (
       <div className={pageClass}>
-        <div className="mx-auto w-full max-w-7xl min-w-0 space-y-6">
+        <div className="mx-auto w-full max-w-none min-w-0 space-y-6">
           <div className={`${panelClass} flex flex-col sm:flex-row sm:items-center justify-between gap-4`}>
             <div>
               <button
@@ -509,7 +509,7 @@ export function ViewLesson({ unitId: providedUnitId, lessonId: providedLessonId,
     const pdfViewerUrl = resolveBackendAssetUrl(lesson.pdfUrl || '');
     return (
       <div className={pageClass}>
-        <div className="mx-auto w-full max-w-7xl min-w-0 space-y-5">
+        <div className="mx-auto w-full max-w-none min-w-0 space-y-5">
           <div className={`${panelClass} flex flex-col sm:flex-row sm:items-center justify-between gap-4`}>
             <div>
               <button
@@ -568,7 +568,7 @@ export function ViewLesson({ unitId: providedUnitId, lessonId: providedLessonId,
             </div>
           )}
 
-          <div className="w-full min-w-0 overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/40 shadow-2xl">
+          <div className={`w-full min-w-0 rounded-2xl border shadow-2xl ${isLightMode ? 'border-slate-200/80 bg-white/90' : 'border-slate-800 bg-slate-950/40'}`}>
             <PDFViewer url={pdfViewerUrl} title={lesson.title} />
           </div>
         </div>
@@ -579,7 +579,7 @@ export function ViewLesson({ unitId: providedUnitId, lessonId: providedLessonId,
   // Interactive Slides View (with Theater Mode and Unified Media Tabs)
   return (
     <div className={pageClass}>
-      <div className="mx-auto w-full max-w-7xl min-w-0 space-y-6">
+      <div className="mx-auto w-full max-w-none min-w-0 space-y-6">
         {/* Top Header Card */}
         <div className={`${panelClass} flex flex-col gap-4 md:flex-row md:items-center md:justify-between`}>
           <div>
@@ -763,7 +763,7 @@ export function ViewLesson({ unitId: providedUnitId, lessonId: providedLessonId,
                 <p className="mt-2 text-sm text-slate-400">You can upload a presentation or add media using the toolbar above.</p>
               </div>
             ) : (
-              <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+              <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
                 {/* Slide Outline Drawer */}
                 <aside className="min-w-0">
                   <div className={`sticky top-6 rounded-2xl border border-slate-800/80 bg-slate-900/80 p-4 shadow-sm backdrop-blur-md`}>

@@ -13,7 +13,6 @@ interface DocumentViewerProps {
 }
 
 export function DocumentViewer({ lessonId, documentUrl, title, fileType }: DocumentViewerProps) {
-  const [error, setError] = useState('');
   const [resolvedUrl, setResolvedUrl] = useState(resolveBackendAssetUrl(documentUrl));
   const [migrating, setMigrating] = useState(false);
   const token = localStorage.getItem('access_token');
@@ -21,7 +20,6 @@ export function DocumentViewer({ lessonId, documentUrl, title, fileType }: Docum
 
   useEffect(() => {
     setResolvedUrl(resolveBackendAssetUrl(documentUrl));
-    setError('');
   }, [documentUrl]);
 
   useEffect(() => {
@@ -44,12 +42,12 @@ export function DocumentViewer({ lessonId, documentUrl, title, fileType }: Docum
   }
 
   if (fileType === 'pptx' && migrating) {
-    return <div className="flex min-h-[420px] items-center justify-center rounded-xl border border-slate-800 bg-slate-950 p-8 text-center text-slate-300">Preparing PowerPoint preview...</div>;
+    return <div className="flex min-h-[min(58vh,420px)] items-center justify-center rounded-xl border border-slate-800 bg-slate-950 p-8 text-center text-slate-300 sm:min-h-[min(72vh,820px)]">Preparing PowerPoint preview...</div>;
   }
 
   if (fileType === 'pptx' && isLocalDocument) {
     return (
-      <div className="flex min-h-[420px] flex-col items-center justify-center gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-8 text-center text-amber-200">
+      <div className="flex min-h-[min(58vh,420px)] flex-col items-center justify-center gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-8 text-center text-amber-200 sm:min-h-[min(72vh,820px)]">
         <AlertCircle className="h-5 w-5" />
         <span>PowerPoint preview requires a publicly reachable document URL. Download the file to view it locally.</span>
       </div>
@@ -58,7 +56,7 @@ export function DocumentViewer({ lessonId, documentUrl, title, fileType }: Docum
 
   if (!resolvedUrl) {
     return (
-      <div className="flex min-h-[420px] items-center justify-center gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-8 text-center text-amber-200">
+      <div className="flex min-h-[min(58vh,420px)] items-center justify-center gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-8 text-center text-amber-200 sm:min-h-[min(72vh,820px)]">
         <AlertCircle className="h-5 w-5 shrink-0" />
         <span>Document preview is not available.</span>
       </div>
@@ -66,7 +64,7 @@ export function DocumentViewer({ lessonId, documentUrl, title, fileType }: Docum
   }
 
   return (
-    <div className="glass-panel w-full overflow-hidden rounded-xl" style={{ minHeight: 'min(80vh, 600px)' }}>
+    <div className="glass-panel h-[min(58vh,420px)] w-full overflow-hidden rounded-xl sm:h-[min(72vh,820px)] lg:h-[min(calc(100vh-10rem),900px)]">
       <DocViewer
         documents={[{ uri: resolvedUrl, fileType, fileName: `${title}.${fileType}` }]}
         pluginRenderers={DocViewerRenderers}
@@ -76,10 +74,8 @@ export function DocumentViewer({ lessonId, documentUrl, title, fileType }: Docum
           pdfZoom: { defaultZoom: 1.0, zoomJump: 0.2 },
           pdfVerticalScrollByDefault: true,
         }}
-        style={{ height: 'min(80vh, 720px)', minHeight: '400px', width: '100%' }}
-        onError={() => setError('Document preview could not be loaded.')}
+        style={{ height: '100%', minHeight: 0, width: '100%' }}
       />
-      {error && <p className="p-4 text-center text-sm text-amber-200">{error}</p>}
     </div>
   );
 }

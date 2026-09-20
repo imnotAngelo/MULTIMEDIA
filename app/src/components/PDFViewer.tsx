@@ -118,7 +118,7 @@ export function PDFViewer({ url, title, onDownload }: PDFViewerProps) {
   useEffect(() => {
     let renderTask: any = null;
     const renderPage = async () => {
-      if (!pdfRef.current || !canvasRef.current) return;
+      if (!pdfRef.current || !canvasRef.current || canvasContainerWidth === 0) return;
 
       try {
         const page = await pdfRef.current.getPage(currentPage);
@@ -263,7 +263,7 @@ export function PDFViewer({ url, title, onDownload }: PDFViewerProps) {
 
   if (loading) {
     return (
-      <div className="flex h-96 w-full items-center justify-center rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/40">
+      <div className="flex min-h-[60vh] sm:min-h-[70vh] lg:min-h-[calc(100vh-12rem)] w-full items-center justify-center rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/40">
         <AetherLoader label="Rendering course document..." />
       </div>
     );
@@ -271,7 +271,7 @@ export function PDFViewer({ url, title, onDownload }: PDFViewerProps) {
 
   if (error) {
     return (
-      <div className="flex h-96 w-full flex-col items-center justify-center rounded-2xl border border-red-500/20 bg-red-500/5 p-6 text-center">
+      <div className="flex min-h-[60vh] sm:min-h-[70vh] lg:min-h-[calc(100vh-12rem)] w-full flex-col items-center justify-center rounded-2xl border border-red-500/20 bg-red-500/5 p-6 text-center">
         <AlertCircle className="mb-3 h-10 w-10 text-red-400" />
         <h4 className="text-base font-semibold text-red-400">Failed to load document</h4>
         <p className="mt-1 text-xs text-slate-400 max-w-sm">{error}</p>
@@ -422,8 +422,8 @@ export function PDFViewer({ url, title, onDownload }: PDFViewerProps) {
           isFullscreen
             ? 'flex flex-1 overflow-auto bg-[#060b11] p-4 sm:p-8 items-start justify-center'
             : isFitMode
-              ? 'overflow-hidden border border-slate-200/80 dark:border-slate-800/80 bg-slate-100/60 dark:bg-slate-950/60 p-1 sm:p-4 shadow-inner min-h-[40vh] sm:min-h-[580px]'
-              : 'overflow-auto border border-slate-200/80 dark:border-slate-800/80 bg-slate-100/60 dark:bg-slate-950/60 p-2 sm:p-4 shadow-inner min-h-[40vh] sm:min-h-[580px]'
+              ? 'overflow-hidden border border-slate-200/80 dark:border-slate-800/80 bg-slate-100/60 dark:bg-slate-950/60 p-1 sm:p-4 shadow-inner flex items-start justify-center min-h-[60vh] sm:min-h-[70vh] lg:min-h-[calc(100vh-12rem)]'
+              : 'overflow-auto border border-slate-200/80 dark:border-slate-800/80 bg-slate-100/60 dark:bg-slate-950/60 p-2 sm:p-4 shadow-inner flex items-start justify-center min-h-[60vh] sm:min-h-[70vh] lg:min-h-[calc(100vh-12rem)]'
         }`}
       >
         <div className={`${isFitMode ? 'w-full' : 'mx-auto'} flex items-start justify-center`}>

@@ -2,6 +2,8 @@ import { API_BASE_URL } from '@/lib/apiConfig';
 
 export { API_BASE_URL };
 
+const API_REQUEST_TIMEOUT_MS = 60000;
+
 function buildApiUrl(endpoint: string): string {
   const base = (API_BASE_URL || '/api').trim();
   const normalizedBase = base.endsWith('/') ? base.slice(0, -1) : base;
@@ -34,14 +36,22 @@ class ApiService {
   ): Promise<ApiResponse<T>> {
     try {
       const url = buildApiUrl(endpoint);
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), API_REQUEST_TIMEOUT_MS);
       
-      const response = await fetch(url, {
-        ...options,
-        headers: {
-          ...this.getHeaders(),
-          ...options.headers,
-        },
-      });
+      let response: Response;
+      try {
+        response = await fetch(url, {
+          ...options,
+          signal: options.signal ?? controller.signal,
+          headers: {
+            ...this.getHeaders(),
+            ...options.headers,
+          },
+        });
+      } finally {
+        window.clearTimeout(timeoutId);
+      }
 
 
       // Handle 401 - try to refresh token
@@ -81,8 +91,17 @@ class ApiService {
       let errorMessage = err.message || 'Network request failed';
       let errorCode = 'API_ERROR';
 
-      if (err.message.includes('Failed to fetch') || err.message.includes('Network')) {
-        errorMessage = `Cannot connect to the API at ${API_BASE_URL}. Start the backend on port 3001 with: npm run dev --prefix backend`;
+      if (err.name === 'AbortError') {
+        const isRender = API_BASE_URL.includes('onrender.com');
+        errorMessage = isRender
+          ? `The Render backend is waking up from sleep (free tier takes ~50s). Please wait a moment and try again.`
+          : `The API did not respond within ${API_REQUEST_TIMEOUT_MS / 1000} seconds. Please check if the server is running.`;
+        errorCode = 'API_TIMEOUT';
+      } else if (err.message.includes('Failed to fetch') || err.message.includes('Network')) {
+        const isRender = API_BASE_URL.includes('onrender.com');
+        errorMessage = isRender
+          ? `Cannot connect to the Render API (${API_BASE_URL}). The server is likely waking up from sleep. Please wait 30 seconds and try again.`
+          : `Cannot connect to the API at ${API_BASE_URL}. Start the backend on port 3001 with: npm run dev --prefix backend`;
         errorCode = 'CONNECTION_ERROR';
       }
 
