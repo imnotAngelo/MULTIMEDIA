@@ -23,7 +23,6 @@ import {
   Calendar,
   Eye,
   Check,
-  Lightbulb,
 } from 'lucide-react';
 import {
   Dialog,
@@ -34,9 +33,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Skeleton } from '@/components/ui/skeleton';
 import { AetherSpinner } from '@/components/AetherSpinner';
-import { SectionYearTargetPicker } from '@/components/SectionYearTargetPicker';
 import { useAuthStore } from '@/stores/authStore';
 import { useThemeStore } from '@/stores/themeStore';
 
@@ -66,7 +63,6 @@ interface Question {
   points: number;
   options: QuestionOption[];
   correctAnswer?: string;
-  explanation?: string;
 }
 
 const QUESTION_TYPE_LABELS: Record<QuizType, string> = {
@@ -124,7 +120,6 @@ export function AutoGenerateQuiz() {
   const [lessonScope, setLessonScope] = useState<'all' | 'selected'>('selected');
   const [generatedQuestions, setGeneratedQuestions] = useState<Question[]>([]);
   const [targetSections, setTargetSections] = useState<string[]>([]);
-  const [targetSectionInput, setTargetSectionInput] = useState('');
 
   // Duplicate Assessment Dialog
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
@@ -343,10 +338,11 @@ export function AutoGenerateQuiz() {
       const primaryLessonId = selectedLessons[0];
       const batchSize = Math.min(totalCount, 15);
       const batchesNeeded = Math.ceil(totalCount / batchSize);
+      const maxBatches = batchesNeeded + 3;
       let accumulatedQuestions: Question[] = [];
 
-      for (let batch = 0; batch < batchesNeeded; batch++) {
-        setGeneratingPhase(`Synthesizing assessment items (Batch ${batch + 1} of ${batchesNeeded})...`);
+      for (let batch = 0; batch < maxBatches && accumulatedQuestions.length < totalCount; batch++) {
+        setGeneratingPhase(`Synthesizing assessment items (Batch ${batch + 1} of up to ${maxBatches})...`);
 
         const questionsForThisBatch = Math.min(batchSize, totalCount - accumulatedQuestions.length);
         const batchQuestionCounts: Partial<Record<QuizType, number>> = {};
@@ -396,11 +392,14 @@ export function AutoGenerateQuiz() {
             points: Number(item.points) || formData.pointsByType[qType as QuizType] || 1,
             options,
             correctAnswer: item.correctAnswer || (options.find((o) => o.isCorrect)?.text ?? ''),
-            explanation: item.explanation || '',
           };
         });
 
-        accumulatedQuestions = [...accumulatedQuestions, ...normalizedBatch];
+        accumulatedQuestions = [...accumulatedQuestions, ...normalizedBatch].slice(0, totalCount);
+      }
+
+      if (accumulatedQuestions.length < totalCount) {
+        throw new Error(`AI generated ${accumulatedQuestions.length} of ${totalCount} valid questions after multiple attempts. Please try again.`);
       }
 
       setGeneratedQuestions(accumulatedQuestions);
@@ -459,7 +458,6 @@ export function AutoGenerateQuiz() {
         points: targetQ.points,
         options,
         correctAnswer: item.correctAnswer || (options.find((o) => o.isCorrect)?.text ?? ''),
-        explanation: item.explanation || '',
       };
 
       setGeneratedQuestions((prev) => {
@@ -490,7 +488,6 @@ export function AutoGenerateQuiz() {
         { id: `opt-4-${Date.now()}`, text: 'Option D', isCorrect: false },
       ],
       correctAnswer: 'Option A',
-      explanation: '',
     };
     setGeneratedQuestions((prev) => [...prev, newQ]);
     toast.success('Added new manual question at the end.');
@@ -525,7 +522,6 @@ export function AutoGenerateQuiz() {
           q.type === 'multiple-choice'
             ? q.options.find((o) => o.isCorrect)?.text || q.options[0]?.text
             : q.correctAnswer || undefined,
-        explanation: q.explanation || undefined,
       }));
 
       const payload = {
@@ -570,7 +566,7 @@ export function AutoGenerateQuiz() {
         throw new Error(err.message || `Server error ${res.status}`);
       }
 
-      toast.success('Assessment created and published successfully!');
+      toast.success(formData.visibility === 'private' ? 'Private exam saved for instructor review.' : 'Assessment created and published successfully!');
       navigate('/instructor/quizzes');
     } catch (err: any) {
       toast.error(`Failed to publish: ${err.message}`);
@@ -672,16 +668,9 @@ export function AutoGenerateQuiz() {
             </div>
 
             {loadingUnits ? (
-              <div className="space-y-4 py-4">
-                <div className="flex items-center gap-2">
-                  <AetherSpinner className="w-4 h-4 text-violet-500" />
-                  <span className={`text-xs ${mutedTextClass}`}>Loading curriculum units...</span>
-                </div>
-                <Skeleton className="h-11 w-full rounded-lg" />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <Skeleton className="h-20 rounded-lg" />
-                  <Skeleton className="h-20 rounded-lg" />
-                </div>
+              <div className="flex items-center justify-center py-12 gap-3">
+                <AetherSpinner className="w-6 h-6 text-violet-500" />
+                <span className={mutedTextClass}>Loading curriculum units...</span>
               </div>
             ) : units.length === 0 ? (
               <div className={nestedCardClass + ' text-center py-8 space-y-3'}>
@@ -774,20 +763,41 @@ export function AutoGenerateQuiz() {
 
                 {/* Target Audience */}
                 <div>
-                  <label className={`block text-sm mb-2 ${labelTextClass}`}>Target Sections (Optional)</label>
-                  <SectionYearTargetPicker
-                    sections={targetSections}
-                    yearLevels={[]}
-                    onSectionsChange={setTargetSections}
-                    onYearLevelsChange={() => {}}
-                    sectionInput={targetSectionInput}
-                    onSectionInputChange={setTargetSectionInput}
-                    showYearLevels={false}
-                    sectionOptions={user?.teaching_sections || []}
-                  />
+                  <label className={`block text-sm mb-2 ${labelTextClass}`}>Target Sections</label>
+                  <p className={`mb-3 text-xs ${mutedTextClass}`}>Choose the sections you handle. Leave all unchecked to show this quiz to all of your sections.</p>
+                  {(() => {
+                    const handledSections = Array.from(new Set([
+                      ...(user?.teaching_sections ?? []),
+                      ...(user?.section ? [user.section] : []),
+                    ].map((section) => section.trim()).filter(Boolean)));
+
+                    if (handledSections.length === 0) {
+                      return <p className={`rounded-lg border border-dashed p-3 text-sm ${isLightMode ? 'border-slate-300 text-slate-500' : 'border-slate-700 text-slate-400'}`}>No handled sections found.</p>;
+                    }
+
+                    return (
+                      <div className={`grid grid-cols-1 gap-2 rounded-lg border p-3 sm:grid-cols-2 ${isLightMode ? 'border-slate-200 bg-slate-50' : 'border-slate-800 bg-slate-900/30'}`}>
+                        {handledSections.map((section) => {
+                          const isChecked = targetSections.includes(section);
+                          return (
+                            <label key={section} className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 text-sm transition-colors ${isChecked ? 'border-violet-500 bg-violet-500/10 text-violet-600 dark:text-violet-300' : isLightMode ? 'border-slate-200 bg-white hover:border-slate-300' : 'border-slate-800 bg-slate-800/40 hover:border-slate-700'}`}>
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={(event) => setTargetSections((current) => event.target.checked ? [...current, section] : current.filter((item) => item !== section))}
+                                className="h-4 w-4 rounded text-violet-600 focus:ring-violet-500"
+                              />
+                              <span>{section}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
                 </div>
 
-                {/* Title & Description with Auto-Suggest */}
+                {/* Title & Description with A
+                uto-Suggest */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
@@ -826,9 +836,9 @@ export function AutoGenerateQuiz() {
                 <div className="flex justify-end pt-4 border-t border-slate-200 dark:border-slate-800">
                   <Button
                     onClick={handleProceedToStep2}
-                    className="bg-violet-600 hover:bg-violet-700 text-white flex items-center gap-2 px-8 py-2.5 rounded-xl font-semibold shadow-md shadow-violet-600/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    className="bg-violet-600 hover:bg-violet-700 text-white flex items-center gap-2 px-6"
                   >
-                    Next
+                    Next: Blueprint & Rules
                     <ChevronRight className="w-4 h-4" />
                   </Button>
                 </div>
@@ -1037,29 +1047,29 @@ export function AutoGenerateQuiz() {
             </div>
 
             {/* Navigation Buttons */}
-            <div className="flex items-center justify-between pt-4 border-t border-slate-200 dark:border-slate-800">
+            <div className="flex justify-between pt-4 border-t border-slate-200 dark:border-slate-800">
               <Button
                 variant="outline"
                 onClick={() => setCurrentStep(1)}
-                className="flex items-center gap-2 px-6 py-2.5 rounded-xl font-medium"
+                className="flex items-center gap-2"
               >
                 <ArrowLeft className="w-4 h-4" />
-                Back
+                Back to Scope
               </Button>
               <Button
                 onClick={handleGenerateQuestions}
                 disabled={generating}
-                className="bg-violet-600 hover:bg-violet-700 text-white flex items-center gap-2 px-8 py-2.5 rounded-xl font-semibold shadow-md shadow-violet-600/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                className="bg-violet-600 hover:bg-violet-700 text-white flex items-center gap-2 px-6 shadow-lg shadow-violet-600/30"
               >
                 {generating ? (
                   <>
                     <AetherSpinner className="w-4 h-4 text-white" />
-                    Generating...
+                    Generating Assessment...
                   </>
                 ) : (
                   <>
-                    Next
-                    <ChevronRight className="w-4 h-4" />
+                    <Sparkles className="w-4 h-4" />
+                    Generate Assessment with AI
                   </>
                 )}
               </Button>
@@ -1104,10 +1114,10 @@ export function AutoGenerateQuiz() {
                   variant="outline"
                   size="sm"
                   onClick={() => setCurrentStep(2)}
-                  className="flex items-center gap-1.5 rounded-lg"
+                  className="flex items-center gap-1.5"
                 >
                   <ArrowLeft className="w-4 h-4" />
-                  Back
+                  Edit Blueprint
                 </Button>
                 <Button
                   variant="outline"
@@ -1130,14 +1140,39 @@ export function AutoGenerateQuiz() {
                 </Button>
               </div>
 
-              <Button
-                onClick={() => handlePublishAssessment(false)}
-                disabled={loading}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2 px-6 shadow-lg shadow-emerald-600/30"
-              >
-                {loading ? <AetherSpinner className="w-4 h-4 text-white" /> : <Check className="w-4 h-4" />}
-                Publish Assessment
-              </Button>
+              <div className="flex flex-wrap items-center justify-end gap-3">
+                {formData.quizCategory === 'exam' && (
+                  <div className={`flex items-center gap-3 rounded-lg border px-3 py-2 text-xs ${isLightMode ? 'border-slate-200 bg-white' : 'border-slate-700 bg-slate-900'}`}>
+                    <span className={`font-semibold ${labelTextClass}`}>Student access</span>
+                    <label className="flex items-center gap-1.5">
+                      <input
+                        type="radio"
+                        name="generated-exam-visibility"
+                        checked={formData.visibility === 'public'}
+                        onChange={() => setFormData((prev) => ({ ...prev, visibility: 'public' }))}
+                      />
+                      Public
+                    </label>
+                    <label className="flex items-center gap-1.5">
+                      <input
+                        type="radio"
+                        name="generated-exam-visibility"
+                        checked={formData.visibility === 'private'}
+                        onChange={() => setFormData((prev) => ({ ...prev, visibility: 'private' }))}
+                      />
+                      Private
+                    </label>
+                  </div>
+                )}
+                <Button
+                  onClick={() => handlePublishAssessment(false)}
+                  disabled={loading}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2 px-6 shadow-lg shadow-emerald-600/30"
+                >
+                  {loading ? <AetherSpinner className="w-4 h-4 text-white" /> : <Check className="w-4 h-4" />}
+                  {formData.visibility === 'private' ? 'Save Private Exam' : 'Publish Assessment'}
+                </Button>
+              </div>
             </div>
 
             {/* Generated Question Cards */}
@@ -1347,28 +1382,6 @@ export function AutoGenerateQuiz() {
                         />
                       </div>
                     )}
-
-                    {/* Pedagogical Explanation / Rationale */}
-                    <div className="space-y-1.5 pt-2 border-t border-slate-200 dark:border-slate-800">
-                      <div className="flex items-center gap-1.5 text-xs text-amber-500 font-semibold">
-                        <Lightbulb className="w-3.5 h-3.5" />
-                        <span>Pedagogical Rationale / Explanation:</span>
-                      </div>
-                      <textarea
-                        rows={2}
-                        value={q.explanation || ''}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setGeneratedQuestions((prev) => {
-                            const copy = [...prev];
-                            copy[qIndex].explanation = val;
-                            return copy;
-                          });
-                        }}
-                        className={fieldClass}
-                        placeholder="Why is this answer correct? Explanation provided to students upon quiz review..."
-                      />
-                    </div>
                   </div>
                 );
               })}
@@ -1382,7 +1395,7 @@ export function AutoGenerateQuiz() {
                 className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2 px-8 py-3 text-base shadow-lg shadow-emerald-600/30"
               >
                 {loading ? <AetherSpinner className="w-5 h-5 text-white" /> : <CheckCircle2 className="w-5 h-5" />}
-                Confirm & Publish Assessment
+                {formData.visibility === 'private' ? 'Confirm Private Exam' : 'Confirm & Publish Assessment'}
               </Button>
             </div>
           </div>

@@ -549,9 +549,10 @@ export const getInstructorAssessments = async (req: AuthRequest, res: Response) 
         .eq('created_by', instructorId);
 
       if (req.query.includeArchived === 'true') {
-        query = query.in('status', ['published', 'archived']);
+        query = query.in('status', ['published', 'draft', 'archived']);
       } else {
-        query = query.eq('status', 'published');
+        // Instructors must see private drafts so they can publish them later.
+        query = query.in('status', ['published', 'draft']);
       }
 
       if (filter && filter !== 'all') {

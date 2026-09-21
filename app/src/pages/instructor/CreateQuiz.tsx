@@ -124,6 +124,7 @@ export function CreateQuiz() {
       'true-false': 10,
     } as Partial<Record<QuizType, number>>,
     allowLateSubmissions: false,
+    visibility: 'public' as 'public' | 'private',
     timeLimit: 60,
     passingScore: 70,
   });
@@ -352,6 +353,7 @@ export function CreateQuiz() {
           unitId: formData.unitId,
           lessonIds: formData.lessonIds,
           allowLateSubmissions: formData.allowLateSubmissions,
+          visibility: formData.quizCategory === 'exam' ? formData.visibility : 'public',
           type: 'quiz',
           quizCategory: formData.quizCategory,
           quizType: formData.quizTypes.length === 1 ? formData.quizTypes[0] : undefined,
@@ -472,6 +474,34 @@ export function CreateQuiz() {
                     )}
                   </div>
                 </div>
+                {formData.quizCategory === 'exam' && (
+                  <div className={`rounded-md border p-3 ${isLightMode ? 'border-slate-200 bg-slate-50' : 'border-slate-700 bg-slate-800/60'}`}>
+                    <Label className={labelTextClass}>Student Access</Label>
+                    <div className={`mt-2 flex flex-col gap-2 text-sm ${labelTextClass}`}>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="exam-visibility"
+                          checked={formData.visibility === 'public'}
+                          onChange={() => setFormData((prev) => ({ ...prev, visibility: 'public' }))}
+                        />
+                        Visible to students
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="exam-visibility"
+                          checked={formData.visibility === 'private'}
+                          onChange={() => setFormData((prev) => ({ ...prev, visibility: 'private' }))}
+                        />
+                        Private - instructor only
+                      </label>
+                    </div>
+                    <p className={`mt-2 text-xs ${secondaryTextClass}`}>
+                      Private exams stay hidden from students until you publish them.
+                    </p>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className={labelTextClass}>Unit</Label>

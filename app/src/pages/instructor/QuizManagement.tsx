@@ -15,6 +15,8 @@ import {
   Loader2,
   Download,
   KeyRound,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { AetherLoader } from '@/components/AetherLoader';
 import { toast } from 'sonner';
@@ -42,6 +44,7 @@ interface Quiz {
   createdAt: string;
   updatedAt: string;
   quiz_category?: string;
+  status?: string;
 }
 
 interface QuizSubmission {
@@ -161,6 +164,25 @@ export function QuizManagement() {
 
   const handleCreateQuiz = () => {
     navigate('/instructor/quiz/create');
+  };
+
+  const handleToggleVisibility = async (quiz: Quiz) => {
+    const nextStatus = quiz.status === 'published' ? 'draft' : 'published';
+    try {
+      const response = await authFetch(`/assessments/${quiz.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.success) {
+        throw new Error(data.error?.message || 'Failed to update exam visibility');
+      }
+      setQuizzes((current) => current.map((item) => item.id === quiz.id ? { ...item, status: nextStatus } : item));
+      toast.success(nextStatus === 'published' ? 'Students can now view this exam.' : 'Exam is now private.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to update exam visibility');
+    }
   };
 
   const handleConfirmDelete = async () => {
@@ -286,7 +308,7 @@ export function QuizManagement() {
         </div>
         <div className="flex gap-2">
           <Button
-            onClick={loadQuizzes}
+            onClick={() => { void loadQuizzes(); }}
             variant="outline"
             className="border-slate-700 text-slate-300 hover:bg-slate-800/50"
           >
@@ -310,7 +332,7 @@ export function QuizManagement() {
           {error.includes('expired') && (
             <div className="mt-3 flex gap-2">
               <Button
-                onClick={loadQuizzes}
+                onClick={() => { void loadQuizzes(); }}
                 className="bg-blue-600 hover:bg-blue-700 text-white text-sm"
               >
                 Retry
@@ -430,6 +452,17 @@ export function QuizManagement() {
                         </p>
                       </div>
                     </div>
+                    {quiz.quiz_category === 'exam' && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleToggleVisibility(quiz)}
+                        className="border-slate-700 text-slate-300 hover:bg-slate-800"
+                      >
+                        {quiz.status === 'published' ? <EyeOff className="w-4 h-4 mr-2" /> : <Eye className="w-4 h-4 mr-2" />}
+                        {quiz.status === 'published' ? 'Make Private' : 'Publish to Students'}
+                      </Button>
+                    )}
 
                     <div className="border-t border-slate-700 pt-4">
                       <div className="flex items-center justify-between mb-3">
