@@ -20,7 +20,7 @@ import {
   ChevronRight,
   Search,
   Filter,
-  Award,
+  ExternalLink,
   Sparkles,
   CheckCircle2,
 } from 'lucide-react';
@@ -71,6 +71,7 @@ export function LaboratorySubmissions() {
 
     Promise.all(
       fileSubs.map(async (submission) => {
+        if (submission.fileType === 'link') return [submission.id, submission.fileUrl] as const;
         try {
           const response = await authFetch(resolveBackendAssetUrl(submission.fileUrl));
           if (!response.ok) return null;
@@ -157,14 +158,6 @@ export function LaboratorySubmissions() {
   const totalCount = fileSubs.length;
   const gradedCount = fileSubs.filter((s) => s.grade !== null && s.grade !== undefined).length;
   const pendingCount = totalCount - gradedCount;
-  const averageGrade =
-    gradedCount > 0
-      ? Math.round(
-          fileSubs
-            .filter((s) => s.grade !== null && s.grade !== undefined)
-            .reduce((acc, s) => acc + Number(s.grade), 0) / gradedCount
-        )
-      : 0;
 
   const openGradeModal = (sub: FileSubmission) => {
     setGradeForm({
@@ -264,16 +257,6 @@ export function LaboratorySubmissions() {
           <p className="text-[11px] text-slate-500 mt-1">Reviewed with score &amp; feedback</p>
         </Card>
 
-        <Card className="bg-slate-900/60 border-slate-800 p-4 sm:p-5 rounded-2xl">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider">Average Grade</span>
-            <Award className="w-4 h-4 text-cyan-400" />
-          </div>
-          <div className="text-2xl sm:text-3xl font-extrabold text-cyan-400">
-            {averageGrade > 0 ? `${averageGrade}%` : 'N/A'}
-          </div>
-          <p className="text-[11px] text-slate-500 mt-1">Class average score</p>
-        </Card>
       </div>
 
       {/* Filter and Search Bar */}
@@ -467,7 +450,17 @@ export function LaboratorySubmissions() {
 
             <div className="p-6 space-y-4">
               <div className="rounded-2xl overflow-hidden border border-slate-700 bg-black flex items-center justify-center min-h-[220px]">
-                {viewingFile.fileType.startsWith('video/') ? (
+                {viewingFile.fileType === 'link' ? (
+                  <a
+                    href={viewingFile.fileUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-2 text-cyan-300 hover:text-cyan-200"
+                  >
+                    <ExternalLink className="w-5 h-5" />
+                    Open student submission
+                  </a>
+                ) : viewingFile.fileType.startsWith('video/') ? (
                   <video src={previewUrls[viewingFile.id]} controls className="w-full max-h-96 object-contain" />
                 ) : (
                   <img
@@ -590,7 +583,9 @@ export function LaboratorySubmissions() {
                                       className="relative w-full h-40 bg-slate-950 flex items-center justify-center cursor-pointer group overflow-hidden"
                                       onClick={() => setViewingFile(sub)}
                                     >
-                                      {sub.fileType.startsWith('video/') ? (
+                                      {sub.fileType === 'link' ? (
+                                        <ExternalLink className="w-8 h-8 text-cyan-400" />
+                                      ) : sub.fileType.startsWith('video/') ? (
                                         <video
                                           src={previewUrls[sub.id]}
                                           muted
@@ -609,12 +604,14 @@ export function LaboratorySubmissions() {
                                       </div>
                                       <div className="absolute top-2 left-2">
                                         <span className="bg-black/75 rounded-lg px-2 py-0.5 text-[10px] font-bold text-white flex items-center gap-1 backdrop-blur-sm">
-                                          {sub.fileType.startsWith('video/') ? (
+                                          {sub.fileType === 'link' ? (
+                                            <ExternalLink className="w-3 h-3 text-cyan-400" />
+                                          ) : sub.fileType.startsWith('video/') ? (
                                             <FileVideo className="w-3 h-3 text-cyan-400" />
                                           ) : (
                                             <ImageIcon className="w-3 h-3 text-emerald-400" />
                                           )}
-                                          {sub.fileType.startsWith('video/') ? 'Video' : 'Image'}
+                                          {sub.fileType === 'link' ? 'Link' : sub.fileType.startsWith('video/') ? 'Video' : 'Image'}
                                         </span>
                                       </div>
                                     </div>

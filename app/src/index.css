@@ -1371,58 +1371,24 @@
 
   .aether-loader__visual {
     position: relative;
-    width: 92px;
-    height: 92px;
+    width: 18px;
+    height: 18px;
     display: grid;
     place-items: center;
-    perspective: 500px;
   }
 
-  .aether-loader__ring {
-    position: absolute;
-    border: 1px solid rgba(103, 232, 249, 0.72);
+  .aether-loader__dot {
+    width: 10px;
+    height: 10px;
     border-radius: 999px;
-    box-shadow: 0 0 18px rgba(103, 232, 249, 0.2);
+    background: #67e8f9;
+    box-shadow: 0 0 8px rgba(103, 232, 249, 0.55);
   }
 
-  .aether-loader__ring--outer { inset: 6px; transform: rotateX(66deg) rotateZ(0deg); animation: loader-orbit 3.8s linear infinite; }
-  .aether-loader__ring--inner { inset: 18px; border-color: rgba(232, 121, 249, 0.75); transform: rotateY(66deg); animation: loader-orbit-reverse 2.7s linear infinite; }
-
-  .aether-loader__core {
-    z-index: 2;
-    width: 38px;
-    height: 38px;
-    display: grid;
-    place-items: center;
-    border: 1px solid rgba(255, 255, 255, 0.35);
-    border-radius: 14px;
-    color: #e0f2fe;
-    background: linear-gradient(135deg, rgba(34, 211, 238, 0.7), rgba(124, 58, 237, 0.85), rgba(232, 121, 249, 0.66));
-    box-shadow: 0 0 22px rgba(34, 211, 238, 0.42), inset 0 1px rgba(255, 255, 255, 0.5);
-    animation: loader-core 2s ease-in-out infinite;
-  }
-
-  .aether-loader__core svg { width: 18px; height: 18px; }
-  .aether-loader__beam { position: absolute; inset: 0; border-radius: 999px; background: linear-gradient(transparent 46%, rgba(103, 232, 249, 0.5) 50%, transparent 54%); animation: loader-scan 2.2s ease-in-out infinite; }
-  .aether-loader__copy { display: flex; flex-direction: column; align-items: center; gap: 0.7rem; font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: #a5b4fc; }
-  .aether-loader__bars { display: flex; align-items: end; gap: 3px; height: 12px; }
-  .aether-loader__bars i { width: 3px; height: 5px; border-radius: 2px; background: #67e8f9; animation: loader-bars 1s ease-in-out infinite; }
-  .aether-loader__bars i:nth-child(2) { animation-delay: 0.1s; }
-  .aether-loader__bars i:nth-child(3) { animation-delay: 0.2s; }
-  .aether-loader__bars i:nth-child(4) { animation-delay: 0.3s; }
-  .aether-loader__bars i:nth-child(5) { animation-delay: 0.4s; }
-  .aether-loader__fallback { display: none; }
+  .aether-loader__copy { display: flex; flex-direction: column; align-items: center; font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: #a5b4fc; }
   .aether-loader--compact { min-height: 90px; flex-direction: row; justify-content: flex-start; gap: 0.75rem; }
-  .aether-loader--compact .aether-loader__visual { width: 42px; height: 42px; }
-  .aether-loader--compact .aether-loader__core { width: 20px; height: 20px; border-radius: 7px; }
-  .aether-loader--compact .aether-loader__core svg { width: 10px; height: 10px; }
+  .aether-loader--compact .aether-loader__visual { width: 18px; height: 18px; }
   .aether-loader--compact .aether-loader__copy { align-items: flex-start; font-size: 0.7rem; }
-
-  @keyframes loader-orbit { to { transform: rotateX(66deg) rotateZ(360deg); } }
-  @keyframes loader-orbit-reverse { to { transform: rotateY(66deg) rotateZ(-360deg); } }
-  @keyframes loader-core { 0%, 100% { transform: scale(0.92) rotate(-5deg); } 50% { transform: scale(1.08) rotate(5deg); } }
-  @keyframes loader-scan { 0%, 100% { transform: rotate(0deg); opacity: 0.2; } 50% { transform: rotate(180deg); opacity: 0.85; } }
-  @keyframes loader-bars { 0%, 100% { height: 5px; opacity: 0.4; } 50% { height: 12px; opacity: 1; } }
 
   /* Compact inline spinner for buttons, badges, and tiny loading states */
   .aether-spinner {
@@ -1433,25 +1399,13 @@
     height: 1em;
     flex-shrink: 0;
   }
-  .aether-spinner__ring {
-    position: absolute;
-    inset: 0;
-    border-radius: 999px;
-    border: 1.5px solid rgba(103, 232, 249, 0.22);
-    border-top-color: #67e8f9;
-    border-right-color: rgba(232, 121, 249, 0.85);
-    animation: spinner-spin 0.7s linear infinite;
-  }
   .aether-spinner__dot {
-    width: 30%;
-    height: 30%;
+    width: 42%;
+    height: 42%;
     border-radius: 999px;
-    background: radial-gradient(circle, #e0f2fe, #67e8f9 70%);
+    background: #67e8f9;
     box-shadow: 0 0 6px rgba(103, 232, 249, 0.8);
-    animation: spinner-pulse 0.9s ease-in-out infinite;
   }
-  @keyframes spinner-spin { to { transform: rotate(360deg); } }
-  @keyframes spinner-pulse { 0%, 100% { transform: scale(0.75); opacity: 0.6; } 50% { transform: scale(1); opacity: 1; } }
 
   .aether-logo {
     position: relative;

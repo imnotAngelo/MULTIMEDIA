@@ -336,7 +336,7 @@ router.get(
 
       if (!supabase) return res.status(500).json({ error: "Database client not initialized" });
 
-      const { data, error } = await supabase
+      const { data: fileData, error } = await supabase
         .from("lab_file_submissions")
         .select(`
           id,
@@ -348,10 +348,7 @@ router.get(
           file_size,
           file_type,
           note,
-          submitted_at,
-          grade,
-          feedback,
-          status
+          submitted_at
         `)
         .order("submitted_at", { ascending: false });
 
@@ -365,15 +362,32 @@ router.get(
         throw error;
       }
 
-      const labIds = [...new Set((data ?? []).map((r: any) => r.lab_id).filter(Boolean))];
+      const fileRows = fileData ?? [];
+      const labIds = [...new Set(fileRows.map((r: any) => r.lab_id).filter(Boolean))];
       const { data: labs } = labIds.length
-        ? await supabase.from("laboratories").select("id, instructor_id, status").in("id", labIds)
+        ? await supabase.from("laboratories").select("id, instructor_id, title, status").in("id", labIds)
         : { data: [] };
-      const labById: Record<string, { instructorId: string | null; status?: string }> = Object.fromEntries(
-        (labs ?? []).map((lab: any) => [lab.id, { instructorId: lab.instructor_id ?? null, status: lab.status }])
+      const labById: Record<string, { instructorId: string | null; title?: string; status?: string }> = Object.fromEntries(
+        (labs ?? []).map((lab: any) => [lab.id, { instructorId: lab.instructor_id ?? null, title: lab.title, status: lab.status }])
       );
 
-      const studentIds = [...new Set((data ?? []).map((r: any) => r.student_id))];
+      const ownedLabIds = (labs ?? [])
+        .filter((lab: any) => lab.instructor_id === userId && lab.status !== 'archived')
+        .map((lab: any) => lab.id);
+      const { data: linkRows, error: linkError } = ownedLabIds.length
+        ? await supabase
+          .from("canva_submissions")
+          .select("id, laboratory_id, student_id, project_title, canva_url, submitted_at, grade, instructor_feedback, status")
+          .in("laboratory_id", ownedLabIds)
+          .order("submitted_at", { ascending: false })
+        : { data: [], error: null };
+      if (linkError) console.warn("Optional Canva submissions unavailable:", linkError.message);
+
+      const allStudentIds = [
+        ...fileRows.map((r: any) => r.student_id),
+        ...(linkError ? [] : (linkRows ?? []).map((r: any) => r.student_id)),
+      ];
+      const studentIds = [...new Set(allStudentIds.filter(Boolean))];
       const { data: users } = studentIds.length
         ? await supabase.from("users").select("id, email, full_name, section, teaching_sections").in("id", studentIds)
         : { data: [] };
@@ -381,7 +395,7 @@ router.get(
       const userMap: Record<string, any> = {};
       for (const u of users ?? []) userMap[u.id] = u;
 
-      const rows = (data ?? [])
+      const fileSubmissionRows = fileRows
         .filter((row: any) => {
           const lab = labById[row.lab_id];
           return lab?.instructorId === userId && lab.status !== 'archived';
@@ -401,10 +415,33 @@ router.get(
           fileSize: row.file_size,
           note: row.note ?? "",
           submittedAt: row.submitted_at,
-          grade: row.grade ?? null,
-          feedback: row.feedback ?? "",
-          status: row.status ?? "submitted",
+          grade: null,
+          feedback: "",
+          status: "submitted",
         }));
+
+      const linkSubmissionRows = (linkError ? [] : (linkRows ?? [])).map((row: any) => ({
+        id: row.id,
+        labId: row.laboratory_id,
+        labTitle: labById[row.laboratory_id]?.title ?? row.project_title ?? row.laboratory_id,
+        studentId: row.student_id,
+        studentEmail: userMap[row.student_id]?.email ?? row.student_id,
+        studentName: userMap[row.student_id]?.full_name ?? userMap[row.student_id]?.email ?? row.student_id,
+        studentSection: getStudentSection(userMap[row.student_id]),
+        section: getStudentSection(userMap[row.student_id]),
+        fileName: row.project_title ?? 'Link submission',
+        fileType: 'link',
+        fileUrl: row.canva_url ?? '',
+        fileSize: undefined,
+        note: '',
+        submittedAt: row.submitted_at,
+        grade: row.grade ?? null,
+        feedback: row.instructor_feedback ?? '',
+        status: row.status ?? 'submitted',
+      }));
+
+      const rows = [...fileSubmissionRows, ...linkSubmissionRows]
+        .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
 
       res.json(rows);
     } catch (err: any) {
@@ -429,13 +466,32 @@ router.patch(
 
       if (!supabase) return res.status(500).json({ error: "Database client not initialized" });
 
-      const { data: submission, error: submissionError } = await supabase
+      const { data: fileSubmission, error: fileSubmissionError } = await supabase
         .from("lab_file_submissions")
         .select("id, lab_id")
         .eq("id", id)
-        .single();
+        .maybeSingle();
 
-      if (submissionError || !submission) {
+      const { data: linkSubmission, error: linkSubmissionError } = !fileSubmission
+        ? await supabase
+          .from("canva_submissions")
+          .select("id, laboratory_id")
+          .eq("id", id)
+          .maybeSingle()
+        : { data: null, error: null };
+
+      if (fileSubmissionError && !/no rows|multiple rows/i.test(fileSubmissionError.message || '')) {
+        throw fileSubmissionError;
+      }
+      if (linkSubmissionError) throw linkSubmissionError;
+
+      const submission = fileSubmission
+        ? { id: fileSubmission.id, lab_id: fileSubmission.lab_id, table: 'lab_file_submissions' as const }
+        : linkSubmission
+          ? { id: linkSubmission.id, lab_id: linkSubmission.laboratory_id, table: 'canva_submissions' as const }
+          : null;
+
+      if (!submission) {
         return res.status(404).json({ error: "Submission not found" });
       }
 
@@ -457,7 +513,7 @@ router.patch(
       if (status !== undefined) updateData.status = status;
 
       const { data, error } = await supabase
-        .from("lab_file_submissions")
+        .from(submission.table)
         .update(updateData)
         .eq("id", id)
         .select()

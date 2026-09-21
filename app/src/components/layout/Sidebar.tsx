@@ -297,6 +297,7 @@ export function Sidebar({
           title: 'Evaluation & Quizzes',
           items: [
             { label: 'View All Students', href: '/instructor/student-performance', icon: Users },
+            { label: 'Laboratory Submissions', href: '/instructor/laboratory-submissions', icon: ClipboardCheck },
             {
               label: 'Quizzes',
               href: '/instructor/quizzes',

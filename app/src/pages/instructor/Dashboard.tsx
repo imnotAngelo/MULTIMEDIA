@@ -248,7 +248,7 @@ export function InstructorDashboard() {
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-xs font-semibold text-violet-300">
               <GraduationCap className="h-3.5 w-3.5" />
-              <span>Instructor Portal</span>
+              <span>Instructor</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
               {getGreeting()},{' '}
@@ -284,7 +284,7 @@ export function InstructorDashboard() {
             </span>
           </div>
           <div className="text-3xl font-extrabold text-white tracking-tight">{stats.totalLaboratories}</div>
-          <p className="text-xs font-medium text-slate-400 mt-1">Laboratories Created</p>
+          <p className="text-xs font-medium text-slate-400 mt-1">Laboratories</p>
         </button>
 
         <button
@@ -300,7 +300,7 @@ export function InstructorDashboard() {
             </span>
           </div>
           <div className="text-3xl font-extrabold text-white tracking-tight">{lessons.length}</div>
-          <p className="text-xs font-medium text-slate-400 mt-1">Total Lessons in {stats.totalUnits} Units</p>
+          <p className="text-xs font-medium text-slate-400 mt-1">Lessons in {stats.totalUnits} units</p>
         </button>
 
         <button
@@ -316,7 +316,7 @@ export function InstructorDashboard() {
             </span>
           </div>
           <div className="text-3xl font-extrabold text-white tracking-tight">{stats.totalQuizzes}</div>
-          <p className="text-xs font-medium text-slate-400 mt-1">Assessments Published</p>
+          <p className="text-xs font-medium text-slate-400 mt-1">Published quizzes</p>
         </button>
 
         <button
@@ -332,7 +332,7 @@ export function InstructorDashboard() {
             </span>
           </div>
           <div className="text-3xl font-extrabold text-white tracking-tight">{stats.totalSubmissions}</div>
-          <p className="text-xs font-medium text-slate-400 mt-1">Student Submissions</p>
+          <p className="text-xs font-medium text-slate-400 mt-1">Submissions</p>
         </button>
       </div>
 
@@ -340,7 +340,7 @@ export function InstructorDashboard() {
       <div className="rounded-3xl border border-slate-800/80 bg-slate-900/50 p-6 sm:p-7 shadow-xl">
         <h2 className="text-base font-bold text-white mb-4 flex items-center gap-2">
           <div className="w-1 h-4 bg-violet-500 rounded" />
-          Instructor Studio &amp; Quick Actions
+          Quick Actions
         </h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
@@ -356,7 +356,7 @@ export function InstructorDashboard() {
                 Auto-Generate AI Quiz
               </h4>
               <p className="text-xs text-slate-400 mt-1">
-                Instantly extract concepts from any lesson into structured questions.
+                Generate questions from a lesson.
               </p>
             </div>
           </button>
@@ -373,7 +373,7 @@ export function InstructorDashboard() {
                 Create Manual Quiz
               </h4>
               <p className="text-xs text-slate-400 mt-1">
-                Write custom questions, set time limits, points, and passing scores.
+                Write questions and set scoring.
               </p>
             </div>
           </button>
@@ -390,7 +390,7 @@ export function InstructorDashboard() {
                 Manage Laboratories
               </h4>
               <p className="text-xs text-slate-400 mt-1">
-                Assign hands-on experiments, Canva templates, and file tasks.
+                Create and assign lab work.
               </p>
             </div>
           </button>
@@ -407,7 +407,7 @@ export function InstructorDashboard() {
                 Course Outline &amp; Lessons
               </h4>
               <p className="text-xs text-slate-400 mt-1">
-                Upload new PPTX / PDF lessons and arrange course syllabus.
+                Upload and organize lessons.
               </p>
             </div>
           </button>
@@ -424,7 +424,7 @@ export function InstructorDashboard() {
                 View All Students
               </h4>
               <p className="text-xs text-slate-400 mt-1">
-                Complete student records: quiz scores, lab submissions, and grades.
+                Review scores and submissions.
               </p>
             </div>
           </button>
@@ -441,7 +441,7 @@ export function InstructorDashboard() {
                 Class Announcements
               </h4>
               <p className="text-xs text-slate-400 mt-1">
-                Broadcast reminders, schedules, and guidance to all sections.
+                Send updates to your sections.
               </p>
             </div>
           </button>
@@ -456,9 +456,9 @@ export function InstructorDashboard() {
             <div>
               <h3 className="text-base font-bold text-white flex items-center gap-2">
                 <BookOpen className="w-4 h-4 text-violet-400" />
-                Active Curriculum Units &amp; Lessons
+                Units &amp; Lessons
               </h3>
-              <p className="text-xs text-slate-400 mt-0.5">Quick access to view slides and presentation materials</p>
+              <p className="text-xs text-slate-400 mt-0.5">Course content</p>
             </div>
             <Button
               onClick={() => navigate('/instructor/courses')}
@@ -480,7 +480,7 @@ export function InstructorDashboard() {
                 size="sm"
                 className="mt-3 bg-violet-600 hover:bg-violet-700 text-white text-xs"
               >
-                Go to Course Outline
+                Create Unit
               </Button>
             </div>
           ) : (
@@ -499,7 +499,7 @@ export function InstructorDashboard() {
                         </span>
                         <div>
                           <h4 className="text-sm font-semibold text-white">{unit.title}</h4>
-                          <span className="text-[11px] text-slate-400">{unitLessons.length} lessons attached</span>
+                          <span className="text-[11px] text-slate-400">{unitLessons.length} lessons</span>
                         </div>
                       </div>
                       <Button
@@ -553,7 +553,7 @@ export function InstructorDashboard() {
             <div>
               <h3 className="text-base font-bold text-white flex items-center gap-2">
                 <Users className="w-4 h-4 text-emerald-400" />
-                Handled Students
+                Students
               </h3>
               <p className="text-xs text-slate-400 mt-0.5">
                 {stats.totalStudents} enrolled • {stats.activeStudents} active
@@ -565,7 +565,7 @@ export function InstructorDashboard() {
           {students.length === 0 ? (
             <div className="text-center py-10">
               <Users className="w-10 h-10 text-slate-600 mx-auto mb-2 opacity-50" />
-              <p className="text-xs text-slate-400">No student accounts assigned yet</p>
+              <p className="text-xs text-slate-400">No students yet</p>
             </div>
           ) : (
             <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
@@ -596,7 +596,7 @@ export function InstructorDashboard() {
             variant="outline"
             className="w-full border-slate-800 text-slate-300 hover:bg-slate-800 text-xs"
           >
-            View All Students (Quiz & Lab Records)
+            View Students
             <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
           </Button>
         </div>
