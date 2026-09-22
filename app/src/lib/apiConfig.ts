@@ -56,12 +56,17 @@ const forceOnline = storedMode === 'online' || urlMode === 'online' || import.me
 // Local development when running on localhost or any private LAN WiFi IP
 const isLocalDevelopment = !forceOnline && !import.meta.env.PROD && isLocalNetworkHost();
 
+// On Vercel / production: default to same-origin '/api' which eliminates CORS issues on mobile carriers,
+// while allowing direct remoteApiUrl fallback.
 export const API_BASE_URL = isLocalDevelopment
   ? getLocalDevApiUrl()
-  : (configuredApiUrl && !isLocalApiUrl(configuredApiUrl)
-    ? configuredApiUrl
-    : remoteApiUrl);
+  : (isVercelHost() || import.meta.env.PROD
+    ? '/api'
+    : (configuredApiUrl && !isLocalApiUrl(configuredApiUrl)
+      ? configuredApiUrl
+      : remoteApiUrl));
 
+export const FALLBACK_REMOTE_API_URL = remoteApiUrl;
 export const IS_ONLINE_API = !isLocalDevelopment;
 
 /**

@@ -64,18 +64,29 @@ export async function authFetch(
   try {
     response = await fetch(fullUrl, { ...requestOptions, signal: requestSignal });
   } catch (error) {
-    // If connection failed, wait and retry once (helps with sleeping Render servers or quick restarts)
-    const isRender = fullUrl.includes('onrender.com');
-    const delay = isRender ? 1500 : 350;
-    await new Promise((resolve) => setTimeout(resolve, delay));
+    // If /api proxy failed, try direct Render backend fallback
+    const isRelativeApi = fullUrl.startsWith('/api');
+    const retryUrl = isRelativeApi ? `https://multimedia-2-x7ol.onrender.com${fullUrl}` : fullUrl;
+    await new Promise((resolve) => setTimeout(resolve, 1000));
     try {
-      response = await fetch(fullUrl, { ...requestOptions, signal: requestSignal });
+      response = await fetch(retryUrl, { ...requestOptions, signal: requestSignal });
     } catch {
       const reason = error instanceof Error ? error.message : 'Network connection failed';
       throw new Error(`Could not reach the API at ${fullUrl}: ${reason}. The backend may be restarting or unavailable.`);
     }
   } finally {
     window.clearTimeout(timeoutId);
+  }
+
+  // Handle Vercel 502/504 gateway timeout by falling back to direct Render backend
+  if ((response.status === 502 || response.status === 504) && fullUrl.startsWith('/api')) {
+    try {
+      const directUrl = `https://multimedia-2-x7ol.onrender.com${fullUrl}`;
+      const directResponse = await fetch(directUrl, { ...requestOptions, signal: requestSignal });
+      if (directResponse.ok || directResponse.status === 400 || directResponse.status === 401 || directResponse.status === 403 || directResponse.status === 404) {
+        response = directResponse;
+      }
+    } catch {}
   }
 
   // If 401, attempt to refresh the token and retry once

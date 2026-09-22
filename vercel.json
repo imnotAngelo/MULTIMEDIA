@@ -20,7 +20,7 @@
       "destination": "https://multimedia-2-x7ol.onrender.com/uploads/$1"
     },
     {
-      "source": "/((?!api/).*)",
+      "source": "/((?!api/|uploads/).*)",
       "destination": "/index.html"
     }
   ]

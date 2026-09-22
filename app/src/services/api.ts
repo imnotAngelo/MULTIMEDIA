@@ -57,8 +57,43 @@ class ApiService {
             ...options.headers,
           },
         });
+      } catch (fetchErr) {
+        // If /api proxy failed, try direct Render backend fallback
+        if (url.startsWith('/api') && typeof window !== 'undefined') {
+          const directUrl = `https://multimedia-2-x7ol.onrender.com${url}`;
+          console.warn(`⚠️ /api request failed, retrying directly via: ${directUrl}`);
+          response = await fetch(directUrl, {
+            ...options,
+            signal: options.signal ?? controller.signal,
+            headers: {
+              ...this.getHeaders(),
+              ...options.headers,
+            },
+          });
+        } else {
+          throw fetchErr;
+        }
       } finally {
         window.clearTimeout(timeoutId);
+      }
+
+      // If Vercel proxy returned 502/504 (timeout while Render is waking up), retry direct
+      if ((response.status === 502 || response.status === 504) && url.startsWith('/api')) {
+        const directUrl = `https://multimedia-2-x7ol.onrender.com${url}`;
+        console.warn(`⚠️ Vercel proxy returned ${response.status}, retrying directly: ${directUrl}`);
+        try {
+          const directRes = await fetch(directUrl, {
+            ...options,
+            signal: options.signal ?? controller.signal,
+            headers: {
+              ...this.getHeaders(),
+              ...options.headers,
+            },
+          });
+          if (directRes.ok || directRes.status === 400 || directRes.status === 401 || directRes.status === 403 || directRes.status === 404) {
+            response = directRes;
+          }
+        } catch {}
       }
 
 
