@@ -5,7 +5,8 @@
  * Keep the deployed API only for explicit online / production builds.
  */
 const configuredApiUrl = import.meta.env.VITE_API_URL?.trim();
-const deployedApiUrl = '/api';
+const vercelApiUrl = '/api';
+const remoteApiUrl = 'https://multimedia-2-x7ol.onrender.com/api';
 const localDevApiUrl = 'http://127.0.0.1:3001/api';
 
 const isLocalApiUrl = (value?: string) => {
@@ -21,6 +22,11 @@ const isLocalApiUrl = (value?: string) => {
 const isLocalBrowserHost = () => {
   if (typeof window === 'undefined') return true;
   return ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname.toLowerCase());
+};
+
+const isVercelHost = () => {
+  if (typeof window === 'undefined') return false;
+  return window.location.hostname.toLowerCase().endsWith('.vercel.app');
 };
 
 // Check if user explicitly requested online mode via URL parameter (?api=online) or localStorage
@@ -40,7 +46,9 @@ const isLocalDevelopment = !forceOnline && !import.meta.env.PROD && isLocalBrows
 
 export const API_BASE_URL = isLocalDevelopment
   ? localDevApiUrl
-  : (configuredApiUrl && !isLocalApiUrl(configuredApiUrl) ? configuredApiUrl : deployedApiUrl);
+  : (configuredApiUrl && !isLocalApiUrl(configuredApiUrl)
+    ? configuredApiUrl
+    : (import.meta.env.PROD || isVercelHost() ? vercelApiUrl : remoteApiUrl));
 
 export const IS_ONLINE_API = !isLocalDevelopment;
 
