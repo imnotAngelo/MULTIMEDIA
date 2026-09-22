@@ -5,28 +5,41 @@
  * Keep the deployed API only for explicit online / production builds.
  */
 const configuredApiUrl = import.meta.env.VITE_API_URL?.trim();
-const vercelApiUrl = '/api';
 const remoteApiUrl = 'https://multimedia-2-x7ol.onrender.com/api';
-const localDevApiUrl = 'http://127.0.0.1:3001/api';
 
-const isLocalApiUrl = (value?: string) => {
+/**
+ * Check if a hostname is a local loopback or private LAN IP (e.g. 192.168.x, 10.x, 172.16-31.x, .local)
+ */
+export const isLocalNetworkHost = (): boolean => {
+  if (typeof window === 'undefined') return true;
+  const hostname = window.location.hostname.toLowerCase();
+  if (['localhost', '127.0.0.1', '[::1]', '0.0.0.0'].includes(hostname)) return true;
+  if (/^(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|127\.)/.test(hostname)) return true;
+  if (hostname.endsWith('.local')) return true;
+  return false;
+};
+
+export const getLocalDevApiUrl = (): string => {
+  if (typeof window === 'undefined') return 'http://127.0.0.1:3001/api';
+  const hostname = window.location.hostname || '127.0.0.1';
+  return `http://${hostname}:3001/api`;
+};
+
+const isVercelHost = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  return window.location.hostname.toLowerCase().endsWith('.vercel.app');
+};
+
+const isLocalApiUrl = (value?: string): boolean => {
   if (!value) return false;
   try {
     const hostname = new URL(value).hostname.toLowerCase();
-    return ['localhost', '127.0.0.1', '[::1]'].includes(hostname);
+    if (['localhost', '127.0.0.1', '[::1]', '0.0.0.0'].includes(hostname)) return true;
+    if (/^(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|127\.)/.test(hostname)) return true;
+    return false;
   } catch {
     return false;
   }
-};
-
-const isLocalBrowserHost = () => {
-  if (typeof window === 'undefined') return true;
-  return ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname.toLowerCase());
-};
-
-const isVercelHost = () => {
-  if (typeof window === 'undefined') return false;
-  return window.location.hostname.toLowerCase().endsWith('.vercel.app');
 };
 
 // Check if user explicitly requested online mode via URL parameter (?api=online) or localStorage
@@ -40,15 +53,14 @@ if (urlMode === 'online' || urlMode === 'local') {
 const storedMode = typeof window !== 'undefined' ? localStorage.getItem('api_mode') : null;
 const forceOnline = storedMode === 'online' || urlMode === 'online' || import.meta.env.MODE === 'online' || Boolean(import.meta.env.VITE_ONLINE);
 
-// A Vite server opened on another device cannot reach 127.0.0.1 on the host
-// computer, so use the deployed API for LAN/mobile visitors.
-const isLocalDevelopment = !forceOnline && !import.meta.env.PROD && isLocalBrowserHost();
+// Local development when running on localhost or any private LAN WiFi IP
+const isLocalDevelopment = !forceOnline && !import.meta.env.PROD && isLocalNetworkHost();
 
 export const API_BASE_URL = isLocalDevelopment
-  ? localDevApiUrl
+  ? getLocalDevApiUrl()
   : (configuredApiUrl && !isLocalApiUrl(configuredApiUrl)
     ? configuredApiUrl
-    : (import.meta.env.PROD || isVercelHost() ? vercelApiUrl : remoteApiUrl));
+    : remoteApiUrl);
 
 export const IS_ONLINE_API = !isLocalDevelopment;
 

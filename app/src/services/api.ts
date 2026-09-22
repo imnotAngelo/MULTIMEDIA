@@ -5,10 +5,18 @@ export { API_BASE_URL };
 const API_REQUEST_TIMEOUT_MS = 60000;
 
 function buildApiUrl(endpoint: string): string {
-  const base = (API_BASE_URL || '/api').trim();
-  const normalizedBase = base.endsWith('/') ? base.slice(0, -1) : base;
-  const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-  return `${normalizedBase}${normalizedEndpoint}`;
+  const trimmed = endpoint.trim();
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+  const base = (API_BASE_URL || 'http://127.0.0.1:3001/api').replace(/\/+$/, '');
+  let path = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+  if (base.endsWith('/api') && path.startsWith('/api/')) {
+    path = path.slice(4);
+  } else if (base.endsWith('/api') && path === '/api') {
+    path = '';
+  }
+  return `${base}${path}`;
 }
 
 interface ApiResponse<T> {

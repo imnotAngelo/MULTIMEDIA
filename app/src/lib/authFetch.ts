@@ -5,26 +5,21 @@ const LOCAL_3001_API = /^https?:\/\/(localhost|127\.0\.0\.1):3001\/api(?:\/|$)/;
 const AUTH_REQUEST_TIMEOUT_MS = 90000;
 
 const normalizeUrl = (url: string) => {
-  const baseUrl = (API_BASE || FALLBACK_API_BASE).replace(/\/$/, '');
-
-  if (LOCAL_3001_API.test(url)) {
-    const suffix = url.replace(/^https?:\/\/(localhost|127\.0\.0\.1):3001\/api/, '') || '/';
-    return `${baseUrl}${suffix.startsWith('/') ? suffix : `/${suffix}`}`;
+  const trimmed = url.trim();
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
   }
 
-  if (url.startsWith('http')) {
-    return url;
+  const base = (API_BASE || FALLBACK_API_BASE).replace(/\/+$/, '');
+  let path = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+
+  if (base.endsWith('/api') && path.startsWith('/api/')) {
+    path = path.slice(4);
+  } else if (base.endsWith('/api') && path === '/api') {
+    path = '';
   }
 
-  const path = url.startsWith('/') ? url : `/${url}`;
-
-  // Production uses the Vercel same-origin /api proxy. Some callers already
-  // provide /api/... while asset URLs use /uploads/..., so do not prefix them.
-  if (path === '/api' || path.startsWith('/api/') || path === '/uploads' || path.startsWith('/uploads/')) {
-    return path;
-  }
-
-  return `${baseUrl}${path}`;
+  return `${base}${path}`;
 };
 
 /**
