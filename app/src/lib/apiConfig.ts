@@ -5,7 +5,7 @@
  * Keep the deployed API only for explicit online / production builds.
  */
 const configuredApiUrl = import.meta.env.VITE_API_URL?.trim();
-const deployedApiUrl = 'https://multimedia-2-x7ol.onrender.com/api';
+const deployedApiUrl = '/api';
 const localDevApiUrl = 'http://127.0.0.1:3001/api';
 
 const isLocalApiUrl = (value?: string) => {

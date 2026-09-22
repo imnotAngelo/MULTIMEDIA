@@ -4,12 +4,16 @@
   "installCommand": "npm install --prefix app",
   "outputDirectory": "app/dist",
   "env": {
-    "VITE_API_URL": "https://multimedia-2-x7ol.onrender.com/api"
+    "VITE_API_URL": "/api"
   },
   "rewrites": [
     {
       "source": "/api/(.*)",
       "destination": "https://multimedia-2-x7ol.onrender.com/api/$1"
+    },
+    {
+      "source": "/uploads/(.*)",
+      "destination": "https://multimedia-2-x7ol.onrender.com/uploads/$1"
     },
     {
       "source": "/((?!api/).*)",

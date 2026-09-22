@@ -429,8 +429,6 @@ export const getStudentAssessments = async (req: AuthRequest, res: Response) => 
         .order('created_at', { ascending: false })
         .range(offset, offset + limitNum - 1);
 
-      console.log('📋 Query result - error:', error?.message || 'none', '- count:', assessments?.length || 0);
-
       if (error) {
         console.error('📋 Supabase query error:', error);
         if (isSupabaseTransientError(error)) {
