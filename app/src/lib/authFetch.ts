@@ -2,6 +2,7 @@ import { API_BASE_URL as API_BASE } from './apiConfig';
 
 const FALLBACK_API_BASE = 'http://127.0.0.1:3001/api';
 const LOCAL_3001_API = /^https?:\/\/(localhost|127\.0\.0\.1):3001\/api(?:\/|$)/;
+const AUTH_REQUEST_TIMEOUT_MS = 90000;
 
 const normalizeUrl = (url: string) => {
   const baseUrl = (API_BASE || FALLBACK_API_BASE).replace(/\/$/, '');
@@ -14,7 +15,16 @@ const normalizeUrl = (url: string) => {
   if (url.startsWith('http')) {
     return url;
   }
-  return `${baseUrl}${url.startsWith('/') ? url : `/${url}`}`;
+
+  const path = url.startsWith('/') ? url : `/${url}`;
+
+  // Production uses the Vercel same-origin /api proxy. Some callers already
+  // provide /api/... while asset URLs use /uploads/..., so do not prefix them.
+  if (path === '/api' || path.startsWith('/api/') || path === '/uploads' || path.startsWith('/uploads/')) {
+    return path;
+  }
+
+  return `${baseUrl}${path}`;
 };
 
 /**
@@ -51,21 +61,26 @@ export async function authFetch(
     headers: headers,
   };
 
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), AUTH_REQUEST_TIMEOUT_MS);
+  const requestSignal = options.signal ?? controller.signal;
+
   let response: Response;
   try {
-    response = await fetch(fullUrl, requestOptions);
+    response = await fetch(fullUrl, { ...requestOptions, signal: requestSignal });
   } catch (error) {
     // If connection failed, wait and retry once (helps with sleeping Render servers or quick restarts)
     const isRender = fullUrl.includes('onrender.com');
     const delay = isRender ? 1500 : 350;
     await new Promise((resolve) => setTimeout(resolve, delay));
     try {
-      response = await fetch(fullUrl, requestOptions);
+      response = await fetch(fullUrl, { ...requestOptions, signal: requestSignal });
     } catch {
       const reason = error instanceof Error ? error.message : 'Network connection failed';
-      const hint = isRender ? ' The server may be waking up from sleep (Render free tier).' : '';
-      throw new Error(`Could not reach the API at ${fullUrl}: ${reason}.${hint}`);
+      throw new Error(`Could not reach the API at ${fullUrl}: ${reason}. The backend may be restarting or unavailable.`);
     }
+  } finally {
+    window.clearTimeout(timeoutId);
   }
 
   // If 401, attempt to refresh the token and retry once
