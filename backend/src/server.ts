@@ -103,6 +103,16 @@ app.use((req, res, next) => {
 });
 
 // Base /api route
+app.get('/', (req: Request, res: Response) => {
+  res.json({
+    success: true,
+    service: 'interactive-learning-backend',
+    message: 'Backend is running. Use /api for API routes.',
+    health: '/api/health',
+    liveness: '/api/live',
+  });
+});
+
 app.get('/api', (req: Request, res: Response) => {
   res.json({
     success: true,
