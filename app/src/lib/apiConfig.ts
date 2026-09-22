@@ -18,6 +18,11 @@ const isLocalApiUrl = (value?: string) => {
   }
 };
 
+const isLocalBrowserHost = () => {
+  if (typeof window === 'undefined') return true;
+  return ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname.toLowerCase());
+};
+
 // Check if user explicitly requested online mode via URL parameter (?api=online) or localStorage
 const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
 const urlMode = searchParams?.get('api');
@@ -29,7 +34,9 @@ if (urlMode === 'online' || urlMode === 'local') {
 const storedMode = typeof window !== 'undefined' ? localStorage.getItem('api_mode') : null;
 const forceOnline = storedMode === 'online' || urlMode === 'online' || import.meta.env.MODE === 'online' || Boolean(import.meta.env.VITE_ONLINE);
 
-const isLocalDevelopment = !forceOnline && !import.meta.env.PROD;
+// A Vite server opened on another device cannot reach 127.0.0.1 on the host
+// computer, so use the deployed API for LAN/mobile visitors.
+const isLocalDevelopment = !forceOnline && !import.meta.env.PROD && isLocalBrowserHost();
 
 export const API_BASE_URL = isLocalDevelopment
   ? localDevApiUrl

@@ -92,16 +92,10 @@ class ApiService {
       let errorCode = 'API_ERROR';
 
       if (err.name === 'AbortError') {
-        const isRender = API_BASE_URL.includes('onrender.com');
-        errorMessage = isRender
-          ? `The Render backend is waking up from sleep (free tier takes ~50s). Please wait a moment and try again.`
-          : `The API did not respond within ${API_REQUEST_TIMEOUT_MS / 1000} seconds. Please check if the server is running.`;
+        errorMessage = `The API did not respond within ${API_REQUEST_TIMEOUT_MS / 1000} seconds. The backend may be restarting or unavailable; please try again.`;
         errorCode = 'API_TIMEOUT';
       } else if (err.message.includes('Failed to fetch') || err.message.includes('Network')) {
-        const isRender = API_BASE_URL.includes('onrender.com');
-        errorMessage = isRender
-          ? `Cannot connect to the Render API (${API_BASE_URL}). The server is likely waking up from sleep. Please wait 30 seconds and try again.`
-          : `Cannot connect to the API at ${API_BASE_URL}. Start the backend on port 3001 with: npm run dev --prefix backend`;
+        errorMessage = `Cannot connect to the API at ${API_BASE_URL}. The backend may be restarting or unavailable; please try again.`;
         errorCode = 'CONNECTION_ERROR';
       }
 

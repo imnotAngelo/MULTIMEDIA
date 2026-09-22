@@ -121,6 +121,11 @@ app.get('/api', (req: Request, res: Response) => {
   });
 });
 
+// Lightweight process liveness check for Render. This must not depend on Supabase.
+app.get('/api/live', (req: Request, res: Response) => {
+  res.json({ success: true, status: 'alive' });
+});
+
 // Routes
 console.log('🔧 Registering routes...');
 app.use('/api/auth', authRoutes);
@@ -191,25 +196,25 @@ async function startServer() {
       process.exit(1);
     }
 
-    console.log('🔄 Checking database...');
-    try {
-      const { error } = await supabase
-        .from('laboratory_phase_progress')
-        .select('id')
-        .limit(1);
-
-      if (!error) {
-        console.log('✅ laboratory_phase_progress table exists');
-      } else {
-        console.warn('⚠️ Could not verify laboratory_phase_progress:', error.message);
-      }
-    } catch (dbError: any) {
-      console.warn('⚠️ Could not verify table:', dbError.message);
-    }
-
     app.listen(PORT, HOST, () => {
       console.log(`✅ Server is running on port ${PORT}`);
       console.log(`🌐 CORS is forced open for all origins`);
+
+      // Do not delay liveness while Supabase is waking up or reconnecting.
+      void supabase
+        .from('laboratory_phase_progress')
+        .select('id')
+        .limit(1)
+        .then(({ error }) => {
+          if (!error) {
+            console.log('✅ laboratory_phase_progress table exists');
+          } else {
+            console.warn('⚠️ Could not verify laboratory_phase_progress:', error.message);
+          }
+        })
+        .catch((dbError: any) => {
+          console.warn('⚠️ Could not verify table:', dbError.message);
+        });
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);

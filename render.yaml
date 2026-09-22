@@ -3,7 +3,8 @@ services:
     name: multimedia-learning-backend
     runtime: node
     region: ohio
-    plan: standard
+    plan: starter
+    healthCheckPath: /api/live
     buildCommand: cd backend && npm ci && npm run build
     startCommand: cd backend && npx tsx src/server.ts
     envVars:
