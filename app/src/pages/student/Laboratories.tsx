@@ -17,6 +17,7 @@ import {
 import { authFetch } from '@/lib/authFetch';
 import { resolveBackendAssetUrl } from '@/lib/apiConfig';
 import { useAuthStore } from '@/stores/authStore';
+import { useThemeStore } from '@/stores/themeStore';
 import { usePageCache } from '@/stores/pageCacheStore';
 
 // --- Instructor-assigned labs (loaded from Supabase) ---
@@ -71,8 +72,26 @@ const getPlatformBadge = (p: string) =>
 
 export function Laboratories() {
   const { user } = useAuthStore();
+  const theme = useThemeStore((state) => state.theme);
+  const isLightMode = theme === 'light';
   const pageCache = usePageCache();
   const CACHE_KEY = `student-labs:${user?.id ?? 'anon'}`;
+
+  const shellCardClass = isLightMode
+    ? 'bg-white border border-slate-200 shadow-sm'
+    : 'bg-slate-900/60 border border-slate-800';
+  const headingTextClass = isLightMode ? 'text-slate-900' : 'text-white';
+  const secondaryTextClass = isLightMode ? 'text-slate-600' : 'text-slate-400';
+  const mutedPanelClass = isLightMode
+    ? 'bg-white border border-slate-200 shadow-sm'
+    : 'bg-slate-800/60 border border-slate-700';
+  const inputClass = isLightMode
+    ? 'bg-white border border-slate-200 text-slate-900 placeholder:text-slate-500'
+    : 'bg-slate-800/60 border border-slate-700 text-white placeholder:text-slate-500';
+  const modalBackdropClass = isLightMode ? 'bg-slate-900/40' : 'bg-black/80';
+  const secondaryButtonClass = isLightMode
+    ? 'border-slate-200 text-slate-700 hover:bg-slate-100'
+    : 'border-slate-700 text-slate-300 hover:bg-slate-800';
 
   const [labs, setLabs] = useState<InstructorLab[]>(() => {
     const cached = pageCache.get<InstructorLab[]>(CACHE_KEY);
@@ -273,36 +292,33 @@ export function Laboratories() {
         if (!lab) return null;
         const isVideo = selectedFile?.type.startsWith('video/');
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg shadow-2xl">
-              {/* Modal header */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
+          <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${modalBackdropClass} backdrop-blur-sm`}>
+            <div className={`${shellCardClass} rounded-2xl w-full max-w-lg shadow-2xl`}>
+              <div className={`flex items-center justify-between px-6 py-4 border-b ${isLightMode ? 'border-slate-200' : 'border-slate-800'}`}>
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center">
-                    <Upload className="w-4 h-4 text-emerald-400" />
+                    <Upload className="w-4 h-4 text-emerald-500" />
                   </div>
                   <div>
-                    <h2 className="text-base font-semibold text-white">Submit Work</h2>
-                    <p className="text-xs text-slate-400 truncate max-w-64">{lab.title}</p>
+                    <h2 className={`text-base font-semibold ${headingTextClass}`}>Submit Work</h2>
+                    <p className={`text-xs ${secondaryTextClass} truncate max-w-64`}>{lab.title}</p>
                   </div>
                 </div>
-                <button onClick={closeModal} className="text-slate-400 hover:text-white transition-colors">
+                <button onClick={closeModal} className={`${secondaryTextClass} hover:${isLightMode ? 'text-slate-900' : 'text-white'} transition-colors`}>
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              {/* Modal body */}
-              <div className="p-6 space-y-4">
+              <div className={`p-6 space-y-4 ${isLightMode ? 'bg-white' : 'bg-slate-900/60'}`}>
                 {submitError && (
                   <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
-                    <p className="text-red-400 text-sm">{submitError}</p>
+                    <p className="text-red-500 text-sm">{submitError}</p>
                   </div>
                 )}
 
-                {/* Drop zone / file picker */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                    Upload your work <span className="text-red-400">*</span>
+                  <label className={`block text-sm font-medium mb-1.5 ${isLightMode ? 'text-slate-700' : 'text-slate-300'}`}>
+                    Upload your work <span className="text-red-500">*</span>
                   </label>
                   <input
                     ref={fileInputRef}
@@ -314,30 +330,29 @@ export function Laboratories() {
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="w-full border-2 border-dashed border-slate-700 hover:border-emerald-500/50 rounded-xl p-6 flex flex-col items-center gap-3 transition-colors group"
+                    className={`w-full border-2 border-dashed rounded-xl p-6 flex flex-col items-center gap-3 transition-colors group ${isLightMode ? 'border-slate-300 hover:border-emerald-500/40 bg-emerald-50/40' : 'border-slate-700 hover:border-emerald-500/50 bg-slate-800/40'}`}
                   >
-                    <div className="w-12 h-12 rounded-xl bg-slate-800 group-hover:bg-emerald-500/10 flex items-center justify-center transition-colors">
-                      <FileUp className="w-6 h-6 text-slate-400 group-hover:text-emerald-400 transition-colors" />
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${isLightMode ? 'bg-white border border-emerald-100 group-hover:bg-emerald-500/10' : 'bg-slate-800 group-hover:bg-emerald-500/10'}`}>
+                      <FileUp className={`w-6 h-6 transition-colors ${isLightMode ? 'text-slate-500 group-hover:text-emerald-500' : 'text-slate-400 group-hover:text-emerald-400'}`} />
                     </div>
                     {selectedFile ? (
                       <div className="text-center">
-                        <p className="text-sm font-medium text-emerald-400">{selectedFile.name}</p>
-                        <p className="text-xs text-slate-500 mt-0.5">
+                        <p className="text-sm font-medium text-emerald-500">{selectedFile.name}</p>
+                        <p className={`text-xs mt-0.5 ${isLightMode ? 'text-slate-500' : 'text-slate-500'}`}>
                           {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
                         </p>
                       </div>
                     ) : (
                       <div className="text-center">
-                        <p className="text-sm text-slate-300">Click to choose a photo or video</p>
-                        <p className="text-xs text-slate-500 mt-0.5">PNG, JPG, GIF, MP4, MOV — max 500 MB</p>
+                        <p className={`text-sm ${isLightMode ? 'text-slate-700' : 'text-slate-300'}`}>Click to choose a photo or video</p>
+                        <p className={`text-xs mt-0.5 ${isLightMode ? 'text-slate-500' : 'text-slate-500'}`}>PNG, JPG, GIF, MP4, MOV — max 500 MB</p>
                       </div>
                     )}
                   </button>
                 </div>
 
-                {/* Preview */}
                 {previewUrl && (
-                  <div className="rounded-xl overflow-hidden border border-slate-700 bg-slate-800">
+                  <div className={`rounded-xl overflow-hidden border ${isLightMode ? 'border-slate-200 bg-white' : 'border-slate-700 bg-slate-800'}`}>
                     {isVideo ? (
                       <video src={previewUrl} controls className="w-full max-h-48 object-contain" />
                     ) : (
@@ -346,24 +361,23 @@ export function Laboratories() {
                   </div>
                 )}
 
-                {/* Notes */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                    Notes <span className="text-slate-500">(optional)</span>
+                  <label className={`block text-sm font-medium mb-1.5 ${isLightMode ? 'text-slate-700' : 'text-slate-300'}`}>
+                    Notes <span className={isLightMode ? 'text-slate-500' : 'text-slate-500'}>(optional)</span>
                   </label>
                   <textarea
                     value={submitNote}
                     onChange={e => setSubmitNote(e.target.value)}
                     placeholder="Any notes for your instructor..."
                     rows={2}
-                    className="w-full bg-slate-800/60 border border-slate-700 rounded-lg px-3 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500 text-sm resize-none"
+                    className={`w-full rounded-lg px-3 py-2.5 text-sm resize-none focus:outline-none focus:border-emerald-500 ${inputClass}`}
                   />
                 </div>
 
                 <div className="flex justify-end gap-3 pt-1">
                   <button
                     onClick={closeModal}
-                    className="px-4 py-2 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 text-sm transition-colors"
+                    className={`px-4 py-2 rounded-lg border text-sm transition-colors ${secondaryButtonClass}`}
                   >
                     Cancel
                   </button>
@@ -384,29 +398,29 @@ export function Laboratories() {
 
       {/* Preview Modal */}
       {viewingLabId && submissions[viewingLabId] && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-2xl shadow-2xl">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
-              <h2 className="text-base font-semibold text-white">Your Submission</h2>
-              <button onClick={() => setViewingLabId(null)} className="text-slate-400 hover:text-white">
+        <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${modalBackdropClass} backdrop-blur-sm`}>
+          <div className={`${shellCardClass} rounded-2xl w-full max-w-2xl shadow-2xl`}>
+            <div className={`flex items-center justify-between px-6 py-4 border-b ${isLightMode ? 'border-slate-200' : 'border-slate-800'}`}>
+              <h2 className={`text-base font-semibold ${headingTextClass}`}>Your Submission</h2>
+              <button onClick={() => setViewingLabId(null)} className={`${secondaryTextClass} hover:${isLightMode ? 'text-slate-900' : 'text-white'}`}>
                 <X className="w-5 h-5" />
               </button>
             </div>
             <div className="p-6 space-y-4">
-              <div className="rounded-xl overflow-hidden border border-slate-700 bg-slate-800">
+              <div className={`rounded-xl overflow-hidden border ${isLightMode ? 'border-slate-200 bg-white' : 'border-slate-700 bg-slate-800'}`}>
                 {submissions[viewingLabId].fileType.startsWith('video/') ? (
                   <video src={previewUrls[viewingLabId]} controls className="w-full max-h-96 object-contain" />
                 ) : (
                   <img src={previewUrls[viewingLabId]} alt="submission" className="w-full max-h-96 object-contain" />
                 )}
               </div>
-              <div className="flex items-center justify-between text-xs text-slate-400">
+              <div className={`flex items-center justify-between text-xs ${secondaryTextClass}`}>
                 <span>{submissions[viewingLabId].fileName}</span>
                 <span>Submitted {new Date(submissions[viewingLabId].submittedAt).toLocaleString()}</span>
               </div>
               {submissions[viewingLabId].note && (
-                <div className="bg-slate-800/60 rounded-lg p-3">
-                  <p className="text-xs text-slate-300">{submissions[viewingLabId].note}</p>
+                <div className={`${mutedPanelClass} rounded-lg p-3`}>
+                  <p className={`text-xs ${isLightMode ? 'text-slate-700' : 'text-slate-300'}`}>{submissions[viewingLabId].note}</p>
                 </div>
               )}
             </div>
@@ -418,14 +432,14 @@ export function Laboratories() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-white">Laboratories</h1>
-          <p className="text-slate-400 mt-1 text-sm">
+          <h1 className={`text-2xl font-semibold ${headingTextClass}`}>Laboratories</h1>
+          <p className={`${secondaryTextClass} mt-1 text-sm`}>
             Laboratories assigned by your instructor
           </p>
         </div>
         <button
           onClick={refresh}
-          className="flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800/50 transition-colors text-sm"
+          className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-colors ${secondaryButtonClass}`}
         >
           <RefreshCw className="w-4 h-4" />
           Refresh
@@ -434,41 +448,41 @@ export function Laboratories() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        <div className="bg-slate-900/60 border border-slate-800/60 rounded-xl p-5">
+        <div className={`${shellCardClass} rounded-xl p-5`}>
           <div className="w-9 h-9 rounded-lg bg-violet-500/10 flex items-center justify-center mb-2">
-            <Beaker className="w-4 h-4 text-violet-400" />
+            <Beaker className="w-4 h-4 text-violet-500" />
           </div>
-          <div className="text-2xl font-bold text-white">{labs.length}</div>
-          <p className="text-slate-500 text-xs mt-1">Total Laboratories</p>
+          <div className={`text-2xl font-bold ${headingTextClass}`}>{labs.length}</div>
+          <p className={`${secondaryTextClass} text-xs mt-1`}>Total Laboratories</p>
         </div>
-        <div className="bg-slate-900/60 border border-slate-800/60 rounded-xl p-5">
+        <div className={`${shellCardClass} rounded-xl p-5`}>
           <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center mb-2">
-            <Calendar className="w-4 h-4 text-amber-400" />
+            <Calendar className="w-4 h-4 text-amber-500" />
           </div>
-          <div className="text-2xl font-bold text-white">
+          <div className={`text-2xl font-bold ${headingTextClass}`}>
             {labs.filter(l => l.dueDate && new Date(l.dueDate).getTime() >= Date.now()).length}
           </div>
-          <p className="text-slate-500 text-xs mt-1">Upcoming</p>
+          <p className={`${secondaryTextClass} text-xs mt-1`}>Upcoming</p>
         </div>
-        <div className="bg-slate-900/60 border border-slate-800/60 rounded-xl p-5">
+        <div className={`${shellCardClass} rounded-xl p-5`}>
           <div className="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center mb-2">
-            <Zap className="w-4 h-4 text-emerald-400" />
+            <Zap className="w-4 h-4 text-emerald-500" />
           </div>
-          <div className="text-2xl font-bold text-white">
+          <div className={`text-2xl font-bold ${headingTextClass}`}>
             {new Set(labs.map(l => l.platform)).size}
           </div>
-          <p className="text-slate-500 text-xs mt-1">Platforms</p>
+          <p className={`${secondaryTextClass} text-xs mt-1`}>Platforms</p>
         </div>
       </div>
 
       {/* Lab List */}
       {labs.length === 0 ? (
-        <div className="bg-slate-900/40 border border-slate-800/60 rounded-xl p-12 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-slate-800/60 flex items-center justify-center mx-auto mb-4">
-            <Beaker className="w-7 h-7 text-slate-500" />
+        <div className={`${shellCardClass} rounded-xl p-12 text-center`}>
+          <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 ${isLightMode ? 'bg-white border border-slate-200 shadow-sm' : 'bg-slate-800/60'}`}>
+            <Beaker className={`w-7 h-7 ${isLightMode ? 'text-slate-500' : 'text-slate-500'}`} />
           </div>
-          <h2 className="text-xl font-semibold text-white mb-2">No Laboratories Yet</h2>
-          <p className="text-slate-400 max-w-md mx-auto">
+          <h2 className={`text-xl font-semibold mb-2 ${headingTextClass}`}>No Laboratories Yet</h2>
+          <p className={`${secondaryTextClass} max-w-md mx-auto`}>
             Your instructor hasn't posted any laboratories yet. Check back later!
           </p>
         </div>
@@ -484,7 +498,7 @@ export function Laboratories() {
             return (
               <div
                 key={lab.id}
-                className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 flex flex-col gap-4 hover:border-violet-500/30 transition-all"
+                className={`${shellCardClass} rounded-xl p-5 flex flex-col gap-4 hover:border-violet-500/30 transition-all`}
               >
                 {/* Icon + title */}
                 <div className="flex items-start gap-3">
@@ -492,7 +506,7 @@ export function Laboratories() {
                     <Beaker className="w-4 h-4" />
                   </div>
                   <div className="min-w-0">
-                    <h3 className="font-semibold text-white text-sm leading-tight mb-1">
+                    <h3 className={`font-semibold ${headingTextClass} text-sm leading-tight mb-1`}>
                       {lab.title}
                     </h3>
                     <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full border ${getPlatformBadge(lab.platform)}`}>
@@ -503,19 +517,19 @@ export function Laboratories() {
 
                 {/* Description */}
                 {lab.description && (
-                  <p className="text-slate-400 text-xs line-clamp-3">{lab.description}</p>
+                  <p className={`${secondaryTextClass} text-xs line-clamp-3`}>{lab.description}</p>
                 )}
 
                 {/* Meta */}
                 <div className="flex flex-wrap gap-3 text-xs">
                   {lab.unitName && (
-                    <span className="flex items-center gap-1 text-slate-400">
+                    <span className={`flex items-center gap-1 ${secondaryTextClass}`}>
                       <BookOpen className="w-3.5 h-3.5" />
                       {lab.unitName}
                     </span>
                   )}
                   {lab.lessonTitle && (
-                    <span className="flex items-center gap-1 text-slate-400">
+                    <span className={`flex items-center gap-1 ${secondaryTextClass}`}>
                       <BookOpen className="w-3.5 h-3.5" />
                       {lab.lessonTitle}
                     </span>
@@ -539,14 +553,14 @@ export function Laboratories() {
 
                 {/* Submitted badge */}
                 {submissions[lab.id] && (
-                  <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                    <p className="text-emerald-400 text-xs flex-1">
+                  <div className={`flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2 ${isLightMode ? 'shadow-sm' : ''}`}>
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                    <p className="text-emerald-600 dark:text-emerald-400 text-xs flex-1">
                       Submitted · {submissions[lab.id].fileName}
                     </p>
                     <button
                       onClick={() => setViewingLabId(lab.id)}
-                      className="text-emerald-400 hover:text-emerald-300 transition-colors"
+                      className="text-emerald-600 hover:text-emerald-500 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors"
                       title="Preview submission"
                     >
                       <Eye className="w-3.5 h-3.5" />
@@ -570,7 +584,9 @@ export function Laboratories() {
                     disabled={isClosed}
                     className={`flex items-center justify-center gap-2 flex-1 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                       isClosed
-                        ? 'bg-slate-800 border border-slate-700 text-slate-500 cursor-not-allowed'
+                        ? isLightMode
+                          ? 'bg-slate-100 border border-slate-200 text-slate-500 cursor-not-allowed'
+                          : 'bg-slate-800 border border-slate-700 text-slate-500 cursor-not-allowed'
                         : submissions[lab.id]
                         ? 'bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-600/30'
                         : 'bg-emerald-600 hover:bg-emerald-700 text-white'

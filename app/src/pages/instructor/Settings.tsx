@@ -15,6 +15,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useAuthStore } from '@/stores/authStore';
+import { useThemeStore } from '@/stores/themeStore';
 import { api } from '@/services/api';
 import { authFetch } from '@/lib/authFetch';
 
@@ -108,8 +109,37 @@ function ArchiveList<T extends { id: string }>({
 
 export function InstructorSettings() {
   const { user, setUser } = useAuthStore();
+  const theme = useThemeStore((state) => state.theme);
+  const isLightMode = theme === 'light';
   const navigate = useNavigate();
   const initialAvatar = user?.avatar_url ?? '';
+
+  const shellCardClass = isLightMode
+    ? 'rounded-2xl border border-slate-200 bg-white p-6 shadow-sm'
+    : 'rounded-2xl border border-white/10 bg-slate-900/60 p-6';
+  const sectionTitleClass = isLightMode ? 'text-slate-900' : 'text-white';
+  const secondaryTextClass = isLightMode ? 'text-slate-600' : 'text-slate-400';
+  const subtleTextClass = isLightMode ? 'text-slate-500' : 'text-slate-400';
+  const inputClass = isLightMode
+    ? 'w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/40 focus:border-violet-500/40'
+    : 'w-full rounded-lg border border-white/10 bg-slate-800/60 px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/40 focus:border-violet-500/40';
+  const subtlePanelClass = isLightMode
+    ? 'rounded-xl border border-slate-200 bg-slate-100'
+    : 'rounded-xl border border-white/5 bg-slate-800/40';
+  const pageHeaderClass = isLightMode ? 'text-slate-900' : 'text-white';
+  const pageSubtleTextClass = isLightMode ? 'text-slate-600' : 'text-slate-400';
+  const gradientCardClass = isLightMode
+    ? 'rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-6 mb-6 shadow-sm'
+    : 'rounded-2xl border border-white/10 bg-gradient-to-br from-amber-500/10 to-orange-500/10 p-6 mb-6';
+  const gradientCardBlueClass = isLightMode
+    ? 'rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50 to-cyan-50 p-6 mb-6 shadow-sm'
+    : 'rounded-2xl border border-white/10 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 p-6 mb-6';
+  const formSelectClass = isLightMode
+    ? 'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/40'
+    : 'w-full rounded-lg bg-slate-800/60 border border-white/10 px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/40';
+  const actionButtonClass = isLightMode
+    ? 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-100'
+    : 'border-white/15 bg-slate-800/40 hover:bg-slate-800/70 text-slate-200';
 
   const [fullName, setFullName] = useState(user?.full_name ?? '');
   const [avatarUrl, setAvatarUrl] = useState(initialAvatar);
@@ -492,33 +522,33 @@ export function InstructorSettings() {
           <GraduationCap className="w-5 h-5 text-white" />
         </div>
         <div>
-          <h1 className="text-white text-xl font-semibold leading-tight">Settings</h1>
-          <p className="text-slate-400 text-sm">
+          <h1 className={`${pageHeaderClass} text-xl font-semibold leading-tight`}>Settings</h1>
+          <p className={`${pageSubtleTextClass} text-sm`}>
             Manage your profile and avatar.
           </p>
         </div>
       </div>
 
       {/* Semester Update Card */}
-      <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-amber-500/10 to-orange-500/10 p-6 mb-6">
+      <div className={gradientCardClass}>
         <div className="flex items-center gap-2 mb-4">
           <RotateCcw className="w-4 h-4 text-amber-300" />
-          <h2 className="text-white text-sm font-semibold tracking-wide uppercase">
+          <h2 className={`${pageHeaderClass} text-sm font-semibold tracking-wide uppercase`}>
             Update Teaching Semester
           </h2>
         </div>
-        <p className="text-slate-300 text-sm mb-4">
+        <p className={`${pageSubtleTextClass} text-sm mb-4`}>
           Change your current teaching semester. Your previous semester content will be automatically archived.
         </p>
         <div className="flex flex-col sm:flex-row gap-3 items-end">
           <div className="flex-1">
-            <label className="block text-sm font-medium text-slate-300 mb-2">
+            <label className={`block text-sm font-medium ${pageSubtleTextClass} mb-2`}>
               Current Semester
             </label>
             <select
               value={newSemester}
               onChange={(e) => setNewSemester(Number(e.target.value) as 1 | 2 | 3)}
-              className="w-full rounded-lg bg-slate-800/60 border border-white/10 px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/40"
+              className={formSelectClass}
             >
               {ACADEMIC_YEAR_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -548,14 +578,14 @@ export function InstructorSettings() {
       </div>
 
       {/* Teaching Sections Card */}
-      <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 p-6 mb-6">
+      <div className={gradientCardBlueClass}>
         <div className="flex items-center gap-2 mb-4">
           <Plus className="w-4 h-4 text-blue-300" />
-          <h2 className="text-white text-sm font-semibold tracking-wide uppercase">
+          <h2 className={`${pageHeaderClass} text-sm font-semibold tracking-wide uppercase`}>
             Manage Teaching Sections
           </h2>
         </div>
-        <p className="text-slate-300 text-sm mb-4">
+        <p className={`${pageSubtleTextClass} text-sm mb-4`}>
           Add or manage the sections/classes you teach.
         </p>
         <div className="space-y-4">
@@ -566,7 +596,9 @@ export function InstructorSettings() {
               onChange={(e) => setNewSection(e.target.value.toUpperCase())}
               onKeyDown={(e) => e.key === 'Enter' && handleAddSection()}
               placeholder="e.g., Class A, Section 1, Period 3..."
-              className="flex-1 rounded-lg bg-slate-800/60 border border-white/10 px-3 py-2 text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/40"
+              className={isLightMode
+                ? 'flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/40'
+                : 'flex-1 rounded-lg bg-slate-800/60 border border-white/10 px-3 py-2 text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/40'}
             />
             <Button
               onClick={handleAddSection}
@@ -589,18 +621,20 @@ export function InstructorSettings() {
 
           {teachingSections.length > 0 && (
             <div className="space-y-2">
-              <p className="text-xs text-slate-400 font-medium">Current sections:</p>
+              <p className={`text-xs ${pageSubtleTextClass} font-medium`}>Current sections:</p>
               <div className="flex flex-wrap gap-2">
                 {teachingSections.map((section) => (
                   <div
                     key={section}
-                    className="inline-flex items-center gap-2 rounded-full bg-blue-500/15 border border-blue-500/30 px-3 py-1.5"
+                    className={isLightMode
+                      ? 'inline-flex items-center gap-2 rounded-full bg-blue-100 border border-blue-200 px-3 py-1.5'
+                      : 'inline-flex items-center gap-2 rounded-full bg-blue-500/15 border border-blue-500/30 px-3 py-1.5'}
                   >
-                    <span className="text-sm text-blue-200">{section}</span>
+                    <span className={isLightMode ? 'text-sm text-blue-700' : 'text-sm text-blue-200'}>{section}</span>
                     <button
                       onClick={() => handleRemoveSection(section)}
                       disabled={addingSectionId === `removing-${section}`}
-                      className="text-blue-400 hover:text-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className={isLightMode ? 'text-blue-600 hover:text-blue-500 disabled:opacity-50 disabled:cursor-not-allowed' : 'text-blue-400 hover:text-blue-300 disabled:opacity-50 disabled:cursor-not-allowed'}
                     >
                       {addingSectionId === `removing-${section}` ? (
                         <AetherSpinner className="w-4 h-4" />
@@ -617,7 +651,7 @@ export function InstructorSettings() {
       </div>
 
       {/* Archives Section - Always visible */}
-      <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-6 mb-6">
+      <div className={`${shellCardClass} mb-6`}>
         <div
           className="flex items-center justify-between cursor-pointer hover:opacity-80 transition-opacity"
           onClick={() => setShowArchives(!showArchives)}
@@ -627,13 +661,13 @@ export function InstructorSettings() {
               <Archive className="w-5 h-5 text-amber-400" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-white">Archives</h2>
+              <h2 className={`text-lg font-semibold ${sectionTitleClass}`}>Archives</h2>
               <p className="text-xs text-amber-400">
                 {archivedUnits.length + archivedLessons.length + archivedLaboratories.length + archivedQuizzes.length} item{archivedUnits.length + archivedLessons.length + archivedLaboratories.length + archivedQuizzes.length !== 1 ? 's' : ''}
               </p>
             </div>
           </div>
-          <ArrowRight className={`w-4 h-4 text-slate-600 transform transition-transform ${showArchives ? 'rotate-90' : ''}`} />
+          <ArrowRight className={`w-4 h-4 ${isLightMode ? 'text-slate-500' : 'text-slate-600'} transform transition-transform ${showArchives ? 'rotate-90' : ''}`} />
         </div>
 
         {showArchives && (
@@ -666,10 +700,10 @@ export function InstructorSettings() {
       </div>
 
       {/* Profile card */}
-      <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-6 mb-6">
+      <div className={`${shellCardClass} mb-6`}>
         <div className="flex items-center gap-2 mb-5">
-          <UserIcon className="w-4 h-4 text-violet-300" />
-          <h2 className="text-white text-sm font-semibold tracking-wide uppercase">
+          <UserIcon className="w-4 h-4 text-violet-500" />
+          <h2 className={`${sectionTitleClass} text-sm font-semibold tracking-wide uppercase`}>
             Profile
           </h2>
         </div>
@@ -680,7 +714,7 @@ export function InstructorSettings() {
               <img
                 src={avatarUrl}
                 alt={fullName || 'avatar'}
-                className="w-20 h-20 rounded-2xl object-cover border border-white/10 bg-slate-800"
+                className={`w-20 h-20 rounded-2xl object-cover border ${isLightMode ? 'border-slate-200 bg-slate-100' : 'border-white/10 bg-slate-800'}`}
                 onError={(e) => {
                   (e.currentTarget as HTMLImageElement).style.display = 'none';
                 }}
@@ -693,58 +727,45 @@ export function InstructorSettings() {
           </div>
 
           <div className="flex-1 min-w-0">
-            <div className="text-white text-lg font-semibold truncate">
+            <div className={`${sectionTitleClass} text-lg font-semibold truncate`}>
               {fullName || 'Unnamed instructor'}
             </div>
-            <div className="text-slate-400 text-sm truncate">{user?.email}</div>
+            <div className={`${secondaryTextClass} text-sm truncate`}>{user?.email}</div>
             <div className="mt-2 flex flex-wrap gap-2">
-              <span className="inline-flex items-center gap-1 rounded-full bg-violet-500/15 border border-violet-500/30 px-2.5 py-0.5 text-xs font-medium text-violet-200">
+              <span className="inline-flex items-center gap-1 rounded-full bg-violet-500/15 border border-violet-500/30 px-2.5 py-0.5 text-xs font-medium text-violet-600 dark:text-violet-200">
                 {roleLabel}
               </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-1 gap-3 mt-5 pt-5 border-t border-white/5">
-          <div className="rounded-xl bg-slate-800/40 border border-white/5 p-3">
-            <div className="flex items-center gap-1.5 text-sky-300 text-xs font-medium mb-1">
-              <Calendar className="w-3.5 h-3.5" />
-              Member since
-            </div>
-            <div className="text-white text-sm font-semibold">
-              {formatDate(user?.created_at)}
             </div>
           </div>
         </div>
       </div>
 
       {/* Editable fields */}
-      <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-6 space-y-6">
+      <div className={`${shellCardClass} space-y-6`}>
         <div className="flex items-center gap-2">
-          <ImageIcon className="w-4 h-4 text-violet-300" />
-          <h2 className="text-white text-sm font-semibold tracking-wide uppercase">
+          <ImageIcon className="w-4 h-4 text-violet-500" />
+          <h2 className={`${sectionTitleClass} text-sm font-semibold tracking-wide uppercase`}>
             Account details
           </h2>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-300 mb-1.5">Email</label>
+          <label className={`block text-sm font-medium mb-1.5 ${isLightMode ? 'text-slate-700' : 'text-slate-300'}`}>Email</label>
           <input
             type="email"
             value={user?.email ?? ''}
             disabled
-            className="w-full rounded-lg bg-slate-800/60 border border-white/10 px-3 py-2 text-slate-400 text-sm cursor-not-allowed"
+            className={`${isLightMode ? 'w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-slate-500 text-sm cursor-not-allowed' : 'w-full rounded-lg border border-white/10 bg-slate-800/60 px-3 py-2 text-slate-400 text-sm cursor-not-allowed'}`}
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-300 mb-1.5">Full name</label>
+          <label className={`block text-sm font-medium mb-1.5 ${isLightMode ? 'text-slate-700' : 'text-slate-300'}`}>Full name</label>
           <input
             type="text"
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
-            className="w-full rounded-lg bg-slate-800/60 border border-white/10 px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/40 focus:border-violet-500/40"
+            className={inputClass}
           />
         </div>
 
@@ -779,7 +800,7 @@ export function InstructorSettings() {
                 variant="outline"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploadingAvatar}
-                className="border-white/15 bg-slate-800/40 hover:bg-slate-800/70 text-slate-200"
+                className={actionButtonClass}
               >
                 {uploadingAvatar ? (
                   <>
@@ -793,7 +814,7 @@ export function InstructorSettings() {
                   </>
                 )}
               </Button>
-              <p className="mt-2 text-xs text-slate-500">
+              <p className={`mt-2 text-xs ${isLightMode ? 'text-slate-500' : 'text-slate-500'}`}>
                 JPEG, PNG, WEBP, or GIF · up to 5 MB.
               </p>
             </div>
@@ -823,18 +844,18 @@ export function InstructorSettings() {
 
       {/* Semester Change Confirmation Dialog */}
       <AlertDialog open={showSemesterConfirm} onOpenChange={setShowSemesterConfirm}>
-        <AlertDialogContent className="bg-slate-900 border-slate-800 text-white">
+        <AlertDialogContent className={isLightMode ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-900 border-slate-800 text-white'}>
           <AlertDialogHeader>
             <AlertDialogTitle>Change Teaching Semester</AlertDialogTitle>
             <AlertDialogDescription asChild>
-              <div className="text-sm text-slate-400 space-y-2">
+              <div className={`text-sm ${isLightMode ? 'text-slate-600' : 'text-slate-400'} space-y-2`}>
                 <p>
                   Are you sure you want to change your teaching semester to{' '}
-                  <span className="font-semibold text-amber-300">
+                  <span className={isLightMode ? 'font-semibold text-amber-600' : 'font-semibold text-amber-300'}>
                     {ACADEMIC_YEAR_OPTIONS.find((o) => o.value === newSemester)?.label}
                   </span>?
                 </p>
-                <ul className="text-xs text-slate-400 list-disc list-inside space-y-1">
+                <ul className={`text-xs ${isLightMode ? 'text-slate-600' : 'text-slate-400'} list-disc list-inside space-y-1`}>
                   <li>Updates your active teaching semester</li>
                   <li>Archives your previous semester's curriculum content</li>
                   <li>Archived units, lessons, and submissions remain safe in the Archives section</li>
@@ -843,7 +864,7 @@ export function InstructorSettings() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700">
+            <AlertDialogCancel className={isLightMode ? 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100' : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'}>
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction

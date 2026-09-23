@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { AetherSpinner } from '@/components/AetherSpinner';
 import { toast } from 'sonner';
+import { useThemeStore } from '@/stores/themeStore';
 
 interface FileSubmission {
   id: string;
@@ -47,6 +48,22 @@ interface FileSubmission {
 }
 
 export function LaboratorySubmissions() {
+  const theme = useThemeStore((state) => state.theme);
+  const isLightMode = theme === 'light';
+  const surfaceClass = isLightMode ? 'bg-white border-slate-200' : 'bg-slate-900/60 border-slate-800';
+  const sectionHeaderClass = isLightMode
+    ? 'bg-slate-50 hover:bg-slate-100 text-slate-900'
+    : 'bg-slate-800/80 hover:bg-slate-800 text-slate-100';
+  const sectionBodyClass = isLightMode ? 'bg-slate-50' : 'bg-slate-950/40';
+  const nestedHeaderClass = isLightMode
+    ? 'bg-white hover:bg-slate-50 text-slate-800'
+    : 'bg-slate-900/90 hover:bg-slate-800/70 text-slate-200';
+  const nestedBodyClass = isLightMode ? 'bg-white' : 'bg-slate-950/20';
+  const submissionCardClass = isLightMode
+    ? 'bg-white border-slate-200'
+    : 'bg-slate-900/80 border-slate-800';
+  const thumbnailClass = isLightMode ? 'bg-slate-100' : 'bg-slate-950';
+
   const [error, setError] = useState<string | null>(null);
 
   // File submissions from instructor-assigned labs
@@ -502,7 +519,7 @@ export function LaboratorySubmissions() {
       )}
 
       {/* Main Submissions Grouped View */}
-      <Card className="bg-slate-900/60 border-slate-800 p-5 rounded-3xl shadow-xl">
+      <Card className={`${surfaceClass} p-5 rounded-3xl shadow-xl`}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
             <Beaker className="w-5 h-5 text-emerald-400" />
@@ -512,7 +529,7 @@ export function LaboratorySubmissions() {
         </div>
 
         {!loadingFileSubs && filteredSubmissions.length === 0 && (
-          <div className="text-sm text-slate-400 py-12 text-center rounded-2xl border border-dashed border-slate-800 bg-slate-950/20">
+          <div className={`text-sm ${isLightMode ? 'text-slate-600 border-slate-200 bg-slate-50' : 'text-slate-400 border-slate-800 bg-slate-950/20'} py-12 text-center rounded-2xl border border-dashed`}>
             <Beaker className="w-8 h-8 text-slate-600 mx-auto mb-2 opacity-50" />
             <p className="font-medium text-slate-300">No matching submissions found</p>
             <p className="text-xs text-slate-500 mt-1">Try adjusting your search query or filter settings.</p>
@@ -528,16 +545,16 @@ export function LaboratorySubmissions() {
             );
 
             return (
-              <div key={section} className="border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+              <div key={section} className={`border ${isLightMode ? 'border-slate-200' : 'border-slate-800'} rounded-2xl overflow-hidden shadow-sm`}>
                 <button
                   type="button"
                   onClick={() => setExpandedSections((current) => ({ ...current, [section]: !sectionExpanded }))}
-                  className="w-full flex items-center justify-between gap-3 px-5 py-3.5 bg-slate-800/80 hover:bg-slate-800 text-left transition-colors"
+                  className={`w-full flex items-center justify-between gap-3 px-5 py-3.5 ${sectionHeaderClass} text-left transition-colors`}
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <User className="w-4 h-4 text-cyan-400 shrink-0" />
-                    <span className="font-bold text-slate-100 text-sm">Section {section}</span>
-                    <span className="text-xs bg-slate-700/60 text-slate-300 px-2 py-0.5 rounded-full font-medium">
+                    <span className="font-bold text-sm">Section {section}</span>
+                    <span className={`text-xs ${isLightMode ? 'bg-slate-200 text-slate-700' : 'bg-slate-700/60 text-slate-300'} px-2 py-0.5 rounded-full font-medium`}>
                       {sectionSubmissionCount} submission{sectionSubmissionCount !== 1 ? 's' : ''}
                     </span>
                   </div>
@@ -545,21 +562,21 @@ export function LaboratorySubmissions() {
                 </button>
 
                 {sectionExpanded && (
-                  <div className="space-y-3 p-4 bg-slate-950/40">
+                  <div className={`space-y-3 p-4 ${sectionBodyClass}`}>
                     {[...labGroups.entries()].map(([labId, group]) => {
                       const expanded = expandedLabs[`${section}:${labId}`] ?? true;
                       return (
-                        <div key={labId} className="border border-slate-800/90 rounded-xl overflow-hidden">
+                        <div key={labId} className={`border ${isLightMode ? 'border-slate-200' : 'border-slate-800/90'} rounded-xl overflow-hidden`}>
                           <button
                             type="button"
                             onClick={() =>
                               setExpandedLabs((current) => ({ ...current, [`${section}:${labId}`]: !expanded }))
                             }
-                            className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-slate-900/90 hover:bg-slate-800/70 text-left transition-colors"
+                            className={`w-full flex items-center justify-between gap-3 px-4 py-3 ${nestedHeaderClass} text-left transition-colors`}
                           >
                             <div className="flex items-center gap-2 min-w-0">
                               <Beaker className="w-4 h-4 text-emerald-400 shrink-0" />
-                              <span className="font-semibold text-slate-200 text-xs sm:text-sm truncate">
+                              <span className="font-semibold text-xs sm:text-sm truncate">
                                 {group.title || labId}
                               </span>
                               <span className="text-[11px] text-slate-400">
@@ -570,17 +587,17 @@ export function LaboratorySubmissions() {
                           </button>
 
                           {expanded && (
-                            <div className="grid gap-4 p-4 sm:grid-cols-2 xl:grid-cols-3 bg-slate-950/20">
+                            <div className={`grid gap-4 p-4 sm:grid-cols-2 xl:grid-cols-3 ${nestedBodyClass}`}>
                               {group.submissions.map((sub) => {
                                 const isGraded = sub.grade !== null && sub.grade !== undefined;
                                 return (
                                   <div
                                     key={sub.id}
-                                    className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden hover:border-emerald-500/40 transition-all flex flex-col justify-between shadow-md"
+                                    className={`${submissionCardClass} border rounded-2xl overflow-hidden hover:border-emerald-500/40 transition-all flex flex-col justify-between shadow-md`}
                                   >
                                     {/* Thumbnail */}
                                     <div
-                                      className="relative w-full h-40 bg-slate-950 flex items-center justify-center cursor-pointer group overflow-hidden"
+                                      className={`relative w-full h-40 ${thumbnailClass} flex items-center justify-center cursor-pointer group overflow-hidden`}
                                       onClick={() => setViewingFile(sub)}
                                     >
                                       {sub.fileType === 'link' ? (
@@ -620,7 +637,7 @@ export function LaboratorySubmissions() {
                                     <div className="p-4 space-y-2.5 flex-1 flex flex-col justify-between">
                                       <div className="space-y-1.5">
                                         <div className="flex items-start justify-between gap-2">
-                                          <h4 className="font-bold text-white text-xs sm:text-sm truncate">
+                                          <h4 className={`font-bold ${isLightMode ? 'text-slate-900' : 'text-white'} text-xs sm:text-sm truncate`}>
                                             {sub.studentName}
                                           </h4>
                                           <div className="flex items-center gap-1.5 shrink-0">
@@ -645,7 +662,7 @@ export function LaboratorySubmissions() {
                                         </div>
 
                                         {sub.note && (
-                                          <p className="text-xs text-slate-300 line-clamp-2 italic bg-slate-950/40 p-2 rounded-lg">
+                                          <p className={`text-xs ${isLightMode ? 'text-slate-700 bg-slate-50' : 'text-slate-300 bg-slate-950/40'} line-clamp-2 italic p-2 rounded-lg`}>
                                             "{sub.note}"
                                           </p>
                                         )}
@@ -657,11 +674,11 @@ export function LaboratorySubmissions() {
                                         )}
                                       </div>
 
-                                      <div className="flex gap-2 pt-2 border-t border-slate-800/80">
+                                      <div className={`flex gap-2 pt-2 border-t ${isLightMode ? 'border-slate-200' : 'border-slate-800/80'}`}>
                                         <Button
                                           size="sm"
                                           variant="outline"
-                                          className="flex-1 border-slate-700 text-slate-300 hover:bg-slate-800 text-xs h-8"
+                                          className={`flex-1 ${isLightMode ? 'border-slate-200 text-slate-700 hover:bg-slate-100' : 'border-slate-700 text-slate-300 hover:bg-slate-800'} text-xs h-8`}
                                           onClick={() => setViewingFile(sub)}
                                         >
                                           <Eye className="w-3.5 h-3.5 mr-1" />
