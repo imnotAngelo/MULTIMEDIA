@@ -63,6 +63,18 @@ export function LaboratorySubmissions() {
     ? 'bg-white border-slate-200'
     : 'bg-slate-900/80 border-slate-800';
   const thumbnailClass = isLightMode ? 'bg-slate-100' : 'bg-slate-950';
+  const modalPanelClass = isLightMode
+    ? 'bg-white border-slate-200'
+    : 'bg-slate-900 border-slate-700';
+  const modalHeaderClass = isLightMode
+    ? 'border-slate-200 bg-slate-50'
+    : 'border-slate-800 bg-slate-950/40';
+  const modalHeadingClass = isLightMode ? 'text-slate-900' : 'text-white';
+  const modalMutedTextClass = isLightMode ? 'text-slate-600' : 'text-slate-400';
+  const modalLabelClass = isLightMode ? 'text-slate-700' : 'text-slate-300';
+  const modalFieldClass = isLightMode
+    ? 'w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-slate-900 text-sm focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10'
+    : 'w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500';
 
   const [error, setError] = useState<string | null>(null);
 
@@ -112,7 +124,7 @@ export function LaboratorySubmissions() {
 
   // Load file submissions
   useEffect(() => {
-    authFetch('/laboratory-submissions/all-files')
+    authFetch('/laboratory-submissions/all-files', { cache: 'no-store' })
       .then(async (r) => {
         if (!r.ok) {
           const body = await r.json().catch(() => ({}));
@@ -129,6 +141,11 @@ export function LaboratorySubmissions() {
               row.grade === null || row.grade === undefined || (row.grade as any) === ''
                 ? null
                 : Number(row.grade),
+            status:
+              row.grade !== null && row.grade !== undefined &&
+              (row.status === 'pending' || row.status === 'submitted' || !row.status)
+                ? 'reviewed'
+                : row.status || 'submitted',
           }))
         )
       )
@@ -202,10 +219,18 @@ export function LaboratorySubmissions() {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error ?? `Failed to save grade (${res.status})`);
       }
+      const savedSubmission = await res.json().catch(() => ({}));
       setFileSubs((prev) =>
         prev.map((s) =>
           s.id === gradingFile.id
-            ? { ...s, grade: gradeForm.grade, feedback: gradeForm.feedback, status: gradeForm.status }
+            ? {
+                ...s,
+                grade: savedSubmission.grade !== null && savedSubmission.grade !== undefined
+                  ? Number(savedSubmission.grade)
+                  : gradeForm.grade,
+                feedback: savedSubmission.feedback ?? gradeForm.feedback,
+                status: savedSubmission.status || gradeForm.status,
+              }
             : s
         )
       );
@@ -230,10 +255,10 @@ export function LaboratorySubmissions() {
       {/* Top Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+          <h1 className={`text-2xl sm:text-3xl font-bold tracking-tight ${isLightMode ? 'text-slate-900' : 'text-white'}`}>
             Laboratory Submissions
           </h1>
-          <p className="text-sm text-slate-400 mt-1">
+          <p className={`text-sm mt-1 ${isLightMode ? 'text-slate-500' : 'text-slate-400'}`}>
             Evaluate hands-on student laboratory work, inspect uploaded media, and provide rubric feedback.
           </p>
         </div>
@@ -247,44 +272,44 @@ export function LaboratorySubmissions() {
 
       {/* KPI Stats Overview */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-slate-900/60 border-slate-800 p-4 sm:p-5 rounded-2xl">
+        <Card className={`${surfaceClass} p-4 sm:p-5 rounded-2xl`}>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Submissions</span>
+            <span className={`text-xs font-semibold uppercase tracking-wider ${isLightMode ? 'text-slate-500' : 'text-slate-400'}`}>Total Submissions</span>
             <Beaker className="w-4 h-4 text-emerald-400" />
           </div>
-          <div className="text-2xl sm:text-3xl font-extrabold text-white">{totalCount}</div>
-          <p className="text-[11px] text-slate-500 mt-1">Across all assigned labs</p>
+          <div className={`text-2xl sm:text-3xl font-extrabold ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{totalCount}</div>
+          <p className={`text-[11px] mt-1 ${isLightMode ? 'text-slate-500' : 'text-slate-500'}`}>Across all assigned labs</p>
         </Card>
 
-        <Card className="bg-slate-900/60 border-slate-800 p-4 sm:p-5 rounded-2xl">
+        <Card className={`${surfaceClass} p-4 sm:p-5 rounded-2xl`}>
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold text-amber-400 uppercase tracking-wider">Pending Review</span>
             <Clock className="w-4 h-4 text-amber-400" />
           </div>
           <div className="text-2xl sm:text-3xl font-extrabold text-amber-400">{pendingCount}</div>
-          <p className="text-[11px] text-slate-500 mt-1">Awaiting instructor evaluation</p>
+          <p className={`text-[11px] mt-1 ${isLightMode ? 'text-slate-500' : 'text-slate-500'}`}>Awaiting instructor evaluation</p>
         </Card>
 
-        <Card className="bg-slate-900/60 border-slate-800 p-4 sm:p-5 rounded-2xl">
+        <Card className={`${surfaceClass} p-4 sm:p-5 rounded-2xl`}>
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wider">Graded</span>
             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
           </div>
           <div className="text-2xl sm:text-3xl font-extrabold text-emerald-400">{gradedCount}</div>
-          <p className="text-[11px] text-slate-500 mt-1">Reviewed with score &amp; feedback</p>
+          <p className={`text-[11px] mt-1 ${isLightMode ? 'text-slate-500' : 'text-slate-500'}`}>Reviewed with score &amp; feedback</p>
         </Card>
 
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-900/60 border border-slate-800 p-3.5 rounded-2xl">
+      <div className={`flex flex-col sm:flex-row items-center justify-between gap-3 ${isLightMode ? 'bg-white border-slate-200' : 'bg-slate-900/60 border-slate-800'} border p-3.5 rounded-2xl`}>
         <div className="relative w-full sm:w-80">
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search student, lab, or section..."
-            className="w-full pl-10 pr-4 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs outline-none focus:border-violet-500"
+            className={`w-full pl-10 pr-4 py-2 rounded-xl border text-xs outline-none focus:border-violet-500 ${isLightMode ? 'bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400' : 'bg-slate-950 border-slate-800 text-white'}`}
           />
         </div>
 
@@ -294,7 +319,7 @@ export function LaboratorySubmissions() {
             className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
               statusFilter === 'all'
                 ? 'bg-violet-600 text-white shadow-sm'
-                : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                : isLightMode ? 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
             }`}
           >
             All ({totalCount})
@@ -304,7 +329,7 @@ export function LaboratorySubmissions() {
             className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
               statusFilter === 'pending'
                 ? 'bg-amber-600 text-white shadow-sm'
-                : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                : isLightMode ? 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
             }`}
           >
             Pending ({pendingCount})
@@ -314,7 +339,7 @@ export function LaboratorySubmissions() {
             className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
               statusFilter === 'graded'
                 ? 'bg-emerald-600 text-white shadow-sm'
-                : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                : isLightMode ? 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
             }`}
           >
             Graded ({gradedCount})
@@ -325,21 +350,21 @@ export function LaboratorySubmissions() {
       {/* Grading Modal */}
       {gradingFile && (
         <div
-          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 animate-in fade-in duration-150"
+          className={`fixed inset-0 ${isLightMode ? 'bg-slate-900/35' : 'bg-black/80'} z-50 flex items-center justify-center p-4 animate-in fade-in duration-150`}
           onClick={() => setGradingFile(null)}
         >
           <div
-            className="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden"
+            className={`${modalPanelClass} border rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden`}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/40">
+            <div className={`flex items-center justify-between px-6 py-4 border-b ${modalHeaderClass}`}>
               <div>
-                <h2 className="text-base font-bold text-white">Grade Student Submission</h2>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <h2 className={`${modalHeadingClass} text-base font-bold`}>Grade Student Submission</h2>
+                <p className={`${modalMutedTextClass} text-xs mt-0.5`}>
                   {gradingFile.studentName} · {gradingFile.labTitle}
                 </p>
               </div>
-              <button onClick={() => setGradingFile(null)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setGradingFile(null)} className={`${modalMutedTextClass} hover:${isLightMode ? 'text-slate-900' : 'text-white'}`}>
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -347,7 +372,7 @@ export function LaboratorySubmissions() {
             <div className="p-6 space-y-5">
               {/* Quick Presets */}
               <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                <label className={`block text-xs font-semibold ${modalMutedTextClass} uppercase tracking-wider mb-2`}>
                   Quick Grade Presets
                 </label>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -384,7 +409,7 @@ export function LaboratorySubmissions() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1.5">Score (0 – 100)</label>
+                  <label className={`block text-xs font-medium ${modalLabelClass} mb-1.5`}>Score (0 – 100)</label>
                   <input
                     type="number"
                     min={0}
@@ -393,15 +418,15 @@ export function LaboratorySubmissions() {
                     onChange={(e) =>
                       setGradeForm((f) => ({ ...f, grade: Math.min(100, Math.max(0, Number(e.target.value))) }))
                     }
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500 font-bold"
+                    className={`${modalFieldClass} font-bold`}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1.5">Status</label>
+                  <label className={`block text-xs font-medium ${modalLabelClass} mb-1.5`}>Status</label>
                   <select
                     value={gradeForm.status}
                     onChange={(e) => setGradeForm((f) => ({ ...f, status: e.target.value }))}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500"
+                    className={modalFieldClass}
                   >
                     <option value="reviewed">Reviewed</option>
                     <option value="approved">Approved</option>
@@ -411,20 +436,20 @@ export function LaboratorySubmissions() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1.5">Rubric &amp; Student Feedback</label>
+                <label className={`block text-xs font-medium ${modalLabelClass} mb-1.5`}>Rubric &amp; Student Feedback</label>
                 <textarea
                   rows={3}
                   value={gradeForm.feedback}
                   onChange={(e) => setGradeForm((f) => ({ ...f, feedback: e.target.value }))}
                   placeholder="Provide constructive feedback the student will see in their portfolio..."
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white text-xs resize-none focus:outline-none focus:border-emerald-500 placeholder:text-slate-500 leading-relaxed"
+                  className={`${modalFieldClass} text-xs resize-none placeholder:text-slate-400 leading-relaxed`}
                 />
               </div>
 
               <div className="flex gap-3 pt-2">
                 <Button
                   variant="outline"
-                  className="flex-1 border-slate-700 text-slate-300"
+                  className={`flex-1 ${isLightMode ? 'border-slate-200 text-slate-700 hover:bg-slate-100' : 'border-slate-700 text-slate-300 hover:bg-slate-800'}`}
                   onClick={() => setGradingFile(null)}
                 >
                   Cancel

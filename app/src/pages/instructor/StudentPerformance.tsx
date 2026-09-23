@@ -70,7 +70,7 @@ interface LabRecord {
   fileName: string | null;
   fileUrl: string | null;
   submittedAt: string | null;
-  status: 'reviewed' | 'approved' | 'rejected' | 'pending' | 'missing';
+  status: 'reviewed' | 'approved' | 'rejected' | 'pending' | 'submitted' | 'missing';
   note?: string | null;
 }
 
@@ -154,7 +154,7 @@ export function StudentPerformance() {
       const [quizzesRes, labsRes, labSubmissionsRes] = await Promise.all([
         authFetch('/assessments/instructor/all?filter=quiz&limit=100'),
         authFetch('/laboratories'),
-        authFetch('/laboratory-submissions/all-files'),
+        authFetch('/laboratory-submissions/all-files', { cache: 'no-store' }),
       ]);
 
       const quizzesJson = quizzesRes.ok ? await quizzesRes.json() : { data: [] };
@@ -250,16 +250,19 @@ export function StudentPerformance() {
             };
           }
 
+          const hasGrade = myLabSub.grade !== null && myLabSub.grade !== undefined;
+          const savedStatus = myLabSub.status || (hasGrade ? 'reviewed' : 'pending');
+
           return {
             submissionId: myLabSub.id,
             labId: lab.id,
             title: lab.title,
-            grade: myLabSub.grade !== null && myLabSub.grade !== undefined ? Number(myLabSub.grade) : null,
+            grade: hasGrade ? Number(myLabSub.grade) : null,
             feedback: myLabSub.feedback || null,
             fileName: myLabSub.fileName || null,
             fileUrl: myLabSub.fileUrl || null,
             submittedAt: myLabSub.submittedAt || null,
-            status: myLabSub.status || (myLabSub.grade !== null ? 'reviewed' : 'pending'),
+            status: hasGrade && (savedStatus === 'pending' || savedStatus === 'submitted') ? 'reviewed' : savedStatus,
             note: myLabSub.note || null,
           };
         });
@@ -319,10 +322,6 @@ export function StudentPerformance() {
 
   useEffect(() => {
     const cached = pageCache.get<StudentRecord[]>(CACHE_KEY);
-    if (cached.fresh) {
-      setLoading(false);
-      return;
-    }
     loadData(cached.data !== null);
   }, [user?.id]);
 
@@ -451,7 +450,11 @@ export function StudentPerformance() {
     setGradingLab(lab);
     setGradeValue(lab.grade ?? 90);
     setFeedbackValue(lab.feedback || '');
-    setStatusValue(lab.status === 'missing' || lab.status === 'pending' ? 'reviewed' : lab.status);
+    setStatusValue(
+      lab.status === 'missing' || lab.status === 'pending' || String(lab.status) === 'submitted'
+        ? 'reviewed'
+        : lab.status
+    );
   };
 
   const handleSaveLabGrade = async () => {
@@ -516,6 +519,7 @@ export function StudentPerformance() {
           return updatedStudent;
         })
       );
+      pageCache.invalidate(CACHE_KEY);
 
       setGradingLab(null);
     } catch (e: any) {

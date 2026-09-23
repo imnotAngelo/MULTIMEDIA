@@ -146,6 +146,10 @@ router.get(
       const map: Record<string, object> = {};
       for (const row of data ?? []) {
         if (!activeLabIds.has(row.lab_id)) continue;
+        const hasGrade = row.grade !== null && row.grade !== undefined;
+        const status = hasGrade && (row.status === "pending" || row.status === "submitted" || !row.status)
+          ? "reviewed"
+          : row.status ?? "submitted";
         map[row.lab_id] = {
           id: row.id,
           labId: row.lab_id,
@@ -156,7 +160,7 @@ router.get(
           submittedAt: row.submitted_at,
           grade: row.grade ?? null,
           feedback: row.feedback ?? "",
-          status: row.status ?? "submitted",
+          status,
         };
       }
       res.json(map);
@@ -376,7 +380,10 @@ router.get(
           file_size,
           file_type,
           note,
-          submitted_at
+          submitted_at,
+          grade,
+          feedback,
+          status
         `)
         .order("submitted_at", { ascending: false });
 
@@ -443,9 +450,11 @@ router.get(
           fileSize: row.file_size,
           note: row.note ?? "",
           submittedAt: row.submitted_at,
-          grade: null,
-          feedback: "",
-          status: "submitted",
+          grade: row.grade !== null && row.grade !== undefined ? Number(row.grade) : null,
+          feedback: row.feedback ?? "",
+          status: row.grade !== null && row.grade !== undefined && (row.status === "pending" || row.status === "submitted" || !row.status)
+            ? "reviewed"
+            : row.status ?? "submitted",
         }));
 
       const linkSubmissionRows = (linkError ? [] : (linkRows ?? [])).map((row: any) => ({
@@ -468,7 +477,19 @@ router.get(
         status: row.status ?? 'submitted',
       }));
 
-      const rows = [...fileSubmissionRows, ...linkSubmissionRows]
+      const rowsByStudentAndLab = new Map<string, any>();
+      for (const row of [...fileSubmissionRows, ...linkSubmissionRows]) {
+        const key = `${row.studentId}:${row.labId}`;
+        const existing = rowsByStudentAndLab.get(key);
+        const rowHasGrade = row.grade !== null && row.grade !== undefined;
+        const existingHasGrade = existing?.grade !== null && existing?.grade !== undefined;
+        if (!existing || (rowHasGrade && !existingHasGrade) ||
+          (rowHasGrade === existingHasGrade && new Date(row.submittedAt).getTime() > new Date(existing.submittedAt).getTime())) {
+          rowsByStudentAndLab.set(key, row);
+        }
+      }
+
+      const rows = [...rowsByStudentAndLab.values()]
         .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
 
       res.json(rows);
@@ -538,7 +559,13 @@ router.patch(
       const updateData: any = { updated_at: new Date().toISOString() };
       if (grade !== undefined) updateData.grade = grade;
       if (feedback !== undefined) updateData.feedback = feedback;
-      if (status !== undefined) updateData.status = status;
+      if (status !== undefined) {
+        updateData.status = grade !== undefined && (status === "submitted" || status === "pending")
+          ? "reviewed"
+          : status;
+      } else if (grade !== undefined) {
+        updateData.status = "reviewed";
+      }
 
       const { data, error } = await supabase
         .from(submission.table)

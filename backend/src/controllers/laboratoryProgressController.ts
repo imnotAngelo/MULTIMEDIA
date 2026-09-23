@@ -130,26 +130,12 @@ export const updatePhaseProgress = async (req: AuthRequest, res: Response) => {
 
     if (error) {
       if (error.code === 'PGRST205') {
-        // Tables not created yet - return mock success so user can proceed through levels
-        console.warn('⚠️ [SETUP NEEDED] laboratory_phase_progress table missing. Run: cd backend && npm run setup');
-        return res.json({
-          success: true,
-          data: {
-            id: `temp-${Date.now()}`,
-            user_id: userId,
-            module_id: moduleId,
-            unit_id: unitId,
-            phase,
-            lesson_id: lessonId || null,
-            status: status || 'completed',
-            xp_earned: xpEarned || 0,
-            interaction_count: interactionCount || 0,
-            time_spent_seconds: timeSpentSeconds || 0,
-            started_at: new Date().toISOString(),
-            completed_at: status === 'completed' ? new Date().toISOString() : null,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          }
+        return res.status(503).json({
+          success: false,
+          error: {
+            code: 'LABORATORY_PROGRESS_NOT_CONFIGURED',
+            message: 'The laboratory progress tables are missing. Run backend/create-laboratory-progress.sql in the Supabase SQL Editor, then reload the schema.',
+          },
         });
       }
       console.error('❌ Supabase error in updatePhaseProgress:', JSON.stringify(error));

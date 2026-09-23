@@ -29,9 +29,16 @@ CREATE TABLE IF NOT EXISTS lab_file_submissions (
   file_size     INTEGER,
   file_type     TEXT,
   note          TEXT,
+  grade         NUMERIC,
+  feedback      TEXT,
+  status        TEXT DEFAULT 'submitted',
   submitted_at  TIMESTAMPTZ  DEFAULT NOW(),
   updated_at    TIMESTAMPTZ  DEFAULT NOW()
 );
+
+ALTER TABLE lab_file_submissions ADD COLUMN IF NOT EXISTS grade NUMERIC;
+ALTER TABLE lab_file_submissions ADD COLUMN IF NOT EXISTS feedback TEXT;
+ALTER TABLE lab_file_submissions ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'submitted';
 
 CREATE INDEX IF NOT EXISTS idx_lab_file_sub_student  ON lab_file_submissions(student_id);
 CREATE INDEX IF NOT EXISTS idx_lab_file_sub_lab      ON lab_file_submissions(lab_id);
