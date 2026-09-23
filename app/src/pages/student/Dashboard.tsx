@@ -4,18 +4,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useThemeStore } from '@/stores/themeStore';
 import { usePageCache } from '@/stores/pageCacheStore';
 import { authFetch } from '@/lib/authFetch';
-import { Button } from '@/components/ui/button';
-import {
-  RefreshCw,
-  Beaker,
-  CheckCircle2,
-  ClipboardList,
-  ArrowRight,
-  Sparkles,
-  Trophy,
-  GraduationCap,
-  TrendingUp,
-} from 'lucide-react';
+import { RefreshCw, Beaker, CheckCircle2, ClipboardList, Sparkles } from 'lucide-react';
 import { AetherLoader } from '@/components/AetherLoader';
 
 interface DashboardStats {
@@ -165,21 +154,11 @@ export function Dashboard() {
             <h1 className={`text-3xl font-bold tracking-tight ${headingColor}`}>
               {getGreeting()}, <span className="bg-gradient-to-r from-violet-500 to-sky-500 bg-clip-text text-transparent">{user?.full_name}</span>!
             </h1>
-            <p className={`text-sm ${mutedText}`}>
-              Welcome to your digital learning workspace. Review your lessons, explore virtual labs, and track your assessment scores.
-            </p>
-            {(user?.section || user?.year_level) && (
+            {user?.section && (
               <div className="flex items-center gap-2 pt-1 text-xs">
-                {user?.year_level && (
-                  <span className="px-2.5 py-0.5 rounded-md bg-slate-200/60 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
-                    Year Level {user.year_level}
-                  </span>
-                )}
-                {user?.section && (
-                  <span className="px-2.5 py-0.5 rounded-md bg-slate-200/60 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
-                    Section {user.section}
-                  </span>
-                )}
+                <span className="px-2.5 py-0.5 rounded-md bg-slate-200/60 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
+                  Section {user.section}
+                </span>
               </div>
             )}
           </div>
@@ -275,63 +254,6 @@ export function Dashboard() {
           <p className={`text-xs ${mutedText} mt-2`}>Total Term Performance</p>
         </div>
 
-        {/* Achievement / Learning Status */}
-        <div className={cardClass}>
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500">
-              <Trophy className="w-5 h-5" />
-            </div>
-            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500">
-              Status
-            </span>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className={`text-xl font-bold ${headingColor}`}>Active Learner</span>
-          </div>
-          <div className="flex items-center gap-1.5 mt-3 text-xs text-amber-500 font-medium">
-            <TrendingUp className="w-3.5 h-3.5" />
-            <span>On track with curriculum</span>
-          </div>
-          <p className={`text-xs ${mutedText} mt-2`}>Ready for next unit</p>
-        </div>
-      </div>
-
-      {/* Quick Access Action Hub */}
-      <div className="space-y-4">
-        <h2 className={`text-lg font-bold ${headingColor}`}>Quick Navigation Hub</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div
-            onClick={() => navigate('/quizzes')}
-            className={`${cardClass} cursor-pointer group hover:border-sky-500 transition-all flex items-center justify-between`}
-          >
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-sky-500/10 flex items-center justify-center text-sky-500 group-hover:scale-110 transition-transform">
-                <GraduationCap className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className={`font-bold text-base ${headingColor}`}>Assessments & Quizzes</h3>
-                <p className={`text-xs ${mutedText}`}>Take quizzes and review your performance</p>
-              </div>
-            </div>
-            <ArrowRight className="w-5 h-5 text-slate-400 group-hover:text-sky-500 group-hover:translate-x-1 transition-all" />
-          </div>
-
-          <div
-            onClick={() => navigate('/laboratories')}
-            className={`${cardClass} cursor-pointer group hover:border-emerald-500 transition-all flex items-center justify-between`}
-          >
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 group-hover:scale-110 transition-transform">
-                <Beaker className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className={`font-bold text-base ${headingColor}`}>Virtual Laboratories</h3>
-                <p className={`text-xs ${mutedText}`}>Complete interactive assignments and design tasks</p>
-              </div>
-            </div>
-            <ArrowRight className="w-5 h-5 text-slate-400 group-hover:text-emerald-500 group-hover:translate-x-1 transition-all" />
-          </div>
-        </div>
       </div>
 
       {loading && <AetherLoader label="Updating your learning stats..." />}
