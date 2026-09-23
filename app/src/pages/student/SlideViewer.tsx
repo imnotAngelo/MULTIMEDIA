@@ -153,7 +153,7 @@ export function SlideViewer({ lessonId, lessonTitle, lesson: initialLesson }: Sl
       });
       const j = await r.json();
       if (!j?.success) throw new Error(j?.error?.message || 'Failed to save');
-      toast.success('🎉 Lesson marked as completed! Excellent work!');
+      toast.success('Lesson marked as completed! Excellent work!');
     } catch (err: any) {
       console.error('Save lesson progress failed:', err);
       toast.error('Saved locally, but couldn’t reach the server');

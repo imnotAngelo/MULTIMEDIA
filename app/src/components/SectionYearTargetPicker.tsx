@@ -71,7 +71,7 @@ export function SectionYearTargetPicker({
   return (
     <div className={containerClass}>
       {showYearLevels && <div className="space-y-2">
-        <Label className={labelClass}>Year levels</Label>
+        <Label className={labelClass}>Levels</Label>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {YEAR_LEVEL_OPTIONS.map((level) => (
             <label
@@ -90,7 +90,7 @@ export function SectionYearTargetPicker({
                 onChange={() => toggleYear(level)}
                 className={checkboxClass}
               />
-              Year {level}
+              Level {level}
             </label>
           ))}
         </div>

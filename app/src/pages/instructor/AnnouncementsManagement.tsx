@@ -111,7 +111,7 @@ export function AnnouncementsManagement() {
       }
       const data = await res.json();
       if (!data?.sent) {
-        throw new Error(data?.error?.message || data?.error || 'No students matched your assigned sections and year levels.');
+        throw new Error(data?.error?.message || data?.error || 'No students matched your assigned sections and levels.');
       }
 
       // Toast for the instructor + add to their own bell list

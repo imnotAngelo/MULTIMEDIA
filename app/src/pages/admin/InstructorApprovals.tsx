@@ -151,7 +151,7 @@ export function InstructorApprovals() {
                     <p className="mt-1 text-xs text-slate-500">
                       Sections: {(instructor.teaching_sections?.length ? instructor.teaching_sections.join(', ') : instructor.section) || 'Not assigned'}
                       {' | '}
-                      Teaching years: {instructor.teaching_year_levels?.join(', ') || 'Not assigned'}
+                      Teaching levels: {instructor.teaching_year_levels?.join(', ') || 'Not assigned'}
                     </p>
                   </div>
                   <span className={`w-fit rounded-full border px-2.5 py-1 text-xs ${instructor.instructor_approved === false ? 'border-amber-500/30 bg-amber-500/10 text-amber-300' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'}`}>

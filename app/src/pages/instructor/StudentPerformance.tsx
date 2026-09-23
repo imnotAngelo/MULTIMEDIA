@@ -404,7 +404,7 @@ export function StudentPerformance() {
       'Student Name',
       'Email',
       'Section',
-      'Year Level',
+      'Level',
       'Quizzes Taken',
       'Quiz Average (%)',
       'Labs Submitted',
