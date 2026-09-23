@@ -575,7 +575,6 @@ export function StudentPerformance() {
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-violet-500/10 text-violet-600 dark:text-violet-300 border border-violet-500/20">
-              <Users className="w-3.5 h-3.5" />
               <span>Student Performance Ledger &amp; Records</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
@@ -626,9 +625,6 @@ export function StudentPerformance() {
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Handled Students
             </span>
-            <div className="p-2 rounded-xl bg-violet-500/10 text-violet-500">
-              <Users className="w-4 h-4" />
-            </div>
           </div>
           <div className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
             {stats.total}
@@ -641,9 +637,6 @@ export function StudentPerformance() {
             <span className="text-xs font-bold uppercase tracking-wider text-sky-500 dark:text-sky-400">
               Class Quiz Average
             </span>
-            <div className="p-2 rounded-xl bg-sky-500/10 text-sky-500">
-              <GraduationCap className="w-4 h-4" />
-            </div>
           </div>
           <div className="text-3xl font-extrabold text-sky-600 dark:text-sky-400 tracking-tight">
             {stats.avgQuiz}%
@@ -656,9 +649,6 @@ export function StudentPerformance() {
             <span className="text-xs font-bold uppercase tracking-wider text-teal-500 dark:text-teal-400">
               Class Lab Average
             </span>
-            <div className="p-2 rounded-xl bg-teal-500/10 text-teal-500">
-              <Beaker className="w-4 h-4" />
-            </div>
           </div>
           <div className="text-3xl font-extrabold text-teal-600 dark:text-teal-400 tracking-tight">
             {stats.avgLab} <span className="text-sm font-semibold text-slate-400">/ 100</span>
@@ -671,9 +661,6 @@ export function StudentPerformance() {
             <span className="text-xs font-bold uppercase tracking-wider text-emerald-500 dark:text-emerald-400">
               Passing Rate
             </span>
-            <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-500">
-              <Award className="w-4 h-4" />
-            </div>
           </div>
           <div className="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight">
             {stats.passRate}%

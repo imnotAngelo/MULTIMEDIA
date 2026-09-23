@@ -212,11 +212,6 @@ export function Lessons() {
             {activeLesson ? activeLesson.title : 'Course Lessons'}
           </h1>
 
-          {user?.year_level && user.section && (
-            <p className="text-slate-500 dark:text-slate-400 text-xs font-medium">
-              Year {user.year_level} • Section {user.section}
-            </p>
-          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
