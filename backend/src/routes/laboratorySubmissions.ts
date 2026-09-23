@@ -24,6 +24,32 @@ const labUpload = multer({
 
 const router: ReturnType<typeof Router> = Router();
 const backendRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+const LAB_SUBMISSIONS_BUCKET = "lab-submissions";
+
+async function ensureLabSubmissionBucket() {
+  if (!supabase) return false;
+
+  const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+  if (listError) {
+    console.warn("⚠️ Could not list storage buckets:", listError.message);
+    return false;
+  }
+
+  if (buckets?.some((bucket: any) => bucket.name === LAB_SUBMISSIONS_BUCKET)) {
+    return true;
+  }
+
+  const { error: createError } = await supabase.storage.createBucket(LAB_SUBMISSIONS_BUCKET, {
+    public: false,
+    allowedMimeTypes: ["image/*", "video/*"],
+  });
+
+  if (createError && !/already exists|duplicate/i.test(createError.message || "")) {
+    throw createError;
+  }
+
+  return true;
+}
 
 function getStudentSection(user: any): string {
   const directSection = typeof user?.section === 'string'
@@ -66,7 +92,7 @@ router.get("/file/:submissionId", authMiddleware, async (req: AuthRequest, res: 
 
     if (supabase) {
       const { data: file, error: storageError } = await supabase.storage
-        .from("lab-submissions")
+        .from(LAB_SUBMISSIONS_BUCKET)
         .download(submission.file_path);
       if (!storageError && file) {
         res.setHeader('Content-Type', file.type || 'application/octet-stream');
@@ -196,11 +222,13 @@ router.post("/upload-file", authMiddleware, async (req: AuthRequest, res: Respon
       return res.status(403).json({ error: "This laboratory is not assigned to your section and year level" });
     }
 
+    await ensureLabSubmissionBucket();
+
     const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}${path.extname(file.originalname)}`;
-    const filePath = `lab-submissions/${fileName}`;
+    const filePath = `${LAB_SUBMISSIONS_BUCKET}/${fileName}`;
 
     const { error: storageError } = await supabase.storage
-      .from("lab-submissions")
+      .from(LAB_SUBMISSIONS_BUCKET)
       .upload(filePath, file.buffer, { contentType: file.mimetype, upsert: false });
     if (storageError) throw storageError;
 
@@ -212,7 +240,7 @@ router.post("/upload-file", authMiddleware, async (req: AuthRequest, res: Respon
       .maybeSingle();
 
     if (existing) {
-      await supabase.storage.from("lab-submissions").remove([existing.file_path]);
+      await supabase.storage.from(LAB_SUBMISSIONS_BUCKET).remove([existing.file_path]);
       const oldPath = path.join(process.cwd(), "uploads", existing.file_path);
       if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
       await supabase.from("lab_file_submissions").delete().eq("id", existing.id);
