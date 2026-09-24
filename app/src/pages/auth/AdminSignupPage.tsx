@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
-import { Eye, EyeOff, Mail, Lock, User, ShieldCheck, ArrowLeft, KeyRound, Users, ShieldAlert } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, ArrowLeft, ShieldAlert } from 'lucide-react';
 import { AetherSpinner } from '@/components/AetherSpinner';
 import { AetherLogo } from '@/components/AetherLogo';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -63,37 +63,6 @@ export function AdminSignupPage() {
               <AetherLogo />
             </div>
 
-            <div className="space-y-3 max-w-md pt-2">
-              <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3.5 backdrop-blur-md transition-all hover:bg-white/[0.06]">
-                <div className="rounded-lg bg-cyan-500/15 p-2 text-cyan-400 shrink-0">
-                  <Users className="w-4 h-4" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-semibold text-white">Instructor Approvals</h4>
-                  <p className="text-xs text-slate-400 mt-0.5">Review, verify, and approve instructor onboarding requests securely.</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3.5 backdrop-blur-md transition-all hover:bg-white/[0.06]">
-                <div className="rounded-lg bg-blue-500/15 p-2 text-blue-400 shrink-0">
-                  <ShieldCheck className="w-4 h-4" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-semibold text-white">System Governance</h4>
-                  <p className="text-xs text-slate-400 mt-0.5">Role management, curriculum access enforcement, and security auditing.</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3.5 backdrop-blur-md transition-all hover:bg-white/[0.06]">
-                <div className="rounded-lg bg-indigo-500/15 p-2 text-indigo-400 shrink-0">
-                  <KeyRound className="w-4 h-4" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-semibold text-white">Protected Access</h4>
-                  <p className="text-xs text-slate-400 mt-0.5">Dual-factor admin secret verification protects core educational assets.</p>
-                </div>
-              </div>
-            </div>
           </div>
 
           <div className="max-w-sm">
