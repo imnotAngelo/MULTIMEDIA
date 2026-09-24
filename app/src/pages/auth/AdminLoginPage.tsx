@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
-import { Eye, EyeOff, Mail, Lock, ArrowLeft, ShieldAlert } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, ShieldCheck, ArrowLeft, KeyRound, ShieldAlert } from 'lucide-react';
 import { AetherSpinner } from '@/components/AetherSpinner';
 import { AetherLogo } from '@/components/AetherLogo';
 import { ThemeToggle } from '@/components/ThemeToggle';
