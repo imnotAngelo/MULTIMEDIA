@@ -19,6 +19,11 @@ interface Announcement {
   created_at: string;
 }
 
+interface ContextOption {
+  id: string;
+  name: string;
+}
+
 function formatTime(value: string) {
   return new Date(value).toLocaleString(undefined, {
     month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
@@ -73,10 +78,10 @@ export function AnnouncementGroup({ canPost = false }: { canPost?: boolean }) {
   }, [canPost, contextType, unitId]);
 
   const contextOptions = useMemo(() => {
-    if (contextType === 'laboratory') {
-      return units.map((unit) => ({ id: unit.id, name: `${unit.title} Laboratory` }));
-    }
-    return lessons;
+    const options: ContextOption[] = contextType === 'laboratory'
+      ? units.map((unit) => ({ id: unit.id, name: `${unit.title} Laboratory` }))
+      : lessons.map((lesson) => ({ id: lesson.id, name: lesson.title }));
+    return options;
   }, [contextType, lessons, units]);
 
   const selectedContext = contextOptions.find((option) => option.id === contextId);
@@ -93,7 +98,7 @@ export function AnnouncementGroup({ canPost = false }: { canPost?: boolean }) {
       if (selectedContext) {
         form.append('contextType', contextType);
         form.append('contextId', selectedContext.id);
-        form.append('contextName', selectedContext.name || selectedContext.title);
+        form.append('contextName', selectedContext.name);
       }
       const response = await authFetch('/notifications/announcement', { method: 'POST', body: form });
       if (!response.ok) throw new Error(await response.text());

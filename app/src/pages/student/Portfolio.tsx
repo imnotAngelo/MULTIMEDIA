@@ -35,11 +35,17 @@ interface LabSubmission {
   status: string;
 }
 
+interface LaboratorySummary {
+  id: string;
+  title: string;
+}
+
 export function Portfolio() {
   const { user } = useAuthStore();
   const [categoryTab, setCategoryTab] = useState<'all' | 'labs'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [labSubmissions, setLabSubmissions] = useState<LabSubmission[]>([]);
+  const [laboratories, setLaboratories] = useState<LaboratorySummary[]>([]);
   const [labsLoading, setLabsLoading] = useState(true);
   const [viewingSub, setViewingSub] = useState<LabSubmission | null>(null);
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
@@ -96,6 +102,15 @@ export function Portfolio() {
                 .map((laboratory: any) => laboratory.id)
             )
           : null;
+        const activeLaboratories = laboratoriesData
+          ? (laboratoriesData.data ?? [])
+            .filter((laboratory: any) => laboratory.status !== 'archived')
+            .map((laboratory: any) => ({
+              id: String(laboratory.id),
+              title: laboratory.title || laboratory.name || `Laboratory ${laboratory.id}`,
+            }))
+          : [];
+        setLaboratories(activeLaboratories);
         const normalized = Object.values(map)
           .filter((row: any) => !activeLaboratoryIds || activeLaboratoryIds.has(row.labId))
           .map((row: any) => ({
@@ -230,6 +245,61 @@ export function Portfolio() {
           </button>
         </div>
       </div>
+
+      {/* ── Section: Laboratory Results ─────────────────────────────────── */}
+      <Card className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60 p-0">
+        <div className="border-b border-slate-800 px-5 py-4">
+          <h2 className="flex items-center gap-2 text-lg font-bold text-white">
+            <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+            Laboratory Results
+          </h2>
+          <p className="mt-1 text-xs text-slate-500">Your laboratory progress and results</p>
+        </div>
+        {labsLoading ? (
+          <div className="flex items-center gap-2 px-5 py-8 text-sm text-slate-400">
+            <AetherSpinner className="h-4 w-4 text-emerald-400" /> Loading laboratory results...
+          </div>
+        ) : laboratories.length === 0 ? (
+          <p className="px-5 py-8 text-sm text-slate-500">No laboratories available yet.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-max text-left text-sm">
+              <thead className="bg-slate-950/60 text-xs uppercase text-slate-500">
+                <tr>
+                  <th className="px-5 py-3">Student</th>
+                  {laboratories.map((laboratory) => (
+                    <th key={laboratory.id} className="min-w-40 px-5 py-3">{laboratory.title}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="text-slate-300">
+                  <td className="px-5 py-4">
+                    <div className="font-medium text-white">{user?.full_name || 'Student'}</div>
+                    <div className="text-xs text-slate-500">{user?.email || ''}</div>
+                  </td>
+                  {laboratories.map((laboratory) => {
+                    const submission = labSubmissions.find((item) => item.labId === laboratory.id);
+                    const finished = Boolean(submission);
+                    return (
+                      <td key={laboratory.id} className="px-5 py-4">
+                        <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs ${finished
+                          ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+                          : 'border-slate-600 bg-slate-800/80 text-slate-300'}`}>
+                          {finished ? 'Finished' : 'Untaken'}
+                        </span>
+                        {submission && submission.grade !== null && submission.grade !== undefined && (
+                          <div className="mt-1 font-semibold text-emerald-400">{submission.grade}/100</div>
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
 
       {/* ── Section: Laboratory Submissions ─────────────────────────────── */}
       {(categoryTab === 'all' || categoryTab === 'labs') && (

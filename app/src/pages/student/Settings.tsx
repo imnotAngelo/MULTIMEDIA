@@ -175,6 +175,7 @@ export function StudentSettings() {
       setUser(updatedUser);
       console.log(`✅ [SEMESTER UPDATE] Auth store updated with new user data`);
       
+      const semesterLabel = ACADEMIC_YEAR_OPTIONS.find((option) => option.value === newSemester)?.label || `Semester ${newSemester}`;
       toast.success(`Semester updated to ${semesterLabel}! Previous content has been archived.`);
       console.log(`✅ [SEMESTER UPDATE] Toast shown, loading archives...`);
       

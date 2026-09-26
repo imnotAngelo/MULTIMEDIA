@@ -23,6 +23,7 @@ import {
   PanelLeftOpen,
   Folder,
   Sparkles,
+  Trophy,
   Trash2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -256,13 +257,20 @@ export function Sidebar({
           items: [
             { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
             { label: 'Units & Lessons', href: '/lessons', icon: BookOpen, subItems: courseOutline },
-            { label: 'Laboratories', href: '/laboratories', icon: Layers },
           ],
         },
         {
           title: 'Assessment & Result',
           items: [
-            { label: 'Quizzes', href: '/quizzes', icon: Zap },
+            {
+              label: 'Quizzes',
+              href: '/quizzes',
+              icon: Zap,
+              subItems: [
+                { label: 'Quiz Result', href: '/quizzes#quiz-result', icon: Trophy },
+              ],
+            },
+            { label: 'Laboratories', href: '/laboratories', icon: Layers },
             { label: 'Portfolio', href: '/portfolio', icon: Image },
           ],
         },

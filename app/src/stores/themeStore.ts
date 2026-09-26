@@ -30,8 +30,7 @@ export const useThemeStore = create<ThemeStore>()(
     }),
     {
       name: 'theme-store',
-      onRehydrate: (state) => {
-        // Apply saved theme on hydration
+      onRehydrateStorage: () => (state) => {
         const html = document.documentElement;
         const theme = state?.theme ?? 'dark';
         html.classList.toggle('dark', theme === 'dark');

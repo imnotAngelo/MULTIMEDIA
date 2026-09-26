@@ -2,6 +2,7 @@ export interface LessonFormatRecord {
   pdfUrl?: unknown;
   originalFormat?: unknown;
   slides?: unknown;
+  slideCount?: unknown;
 }
 
 export const isPdfLessonRecord = (lesson: LessonFormatRecord): boolean => {

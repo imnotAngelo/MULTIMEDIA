@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { usePageCache } from '@/stores/pageCacheStore';
 import { authFetch } from '@/lib/authFetch';
@@ -46,6 +46,7 @@ interface Quiz {
 
 export function StudentQuizzes() {
   const { user } = useAuthStore();
+  const location = useLocation();
   const navigate = useNavigate();
   const pageCache = usePageCache();
   const CACHE_KEY = `student-quizzes:${user?.id ?? 'anon'}`;
@@ -168,6 +169,7 @@ export function StudentQuizzes() {
   const currentQuizzes = quizzes.filter((quiz) => !missedIds.has(quiz.id) && !completedIds.has(quiz.id));
   const [showMissed, setShowMissed] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
+  const showQuizResult = location.hash === '#quiz-result';
 
   const getRawScoreDisplay = (quiz: Quiz) => {
     const totalPoints = Number(quiz.total_points || (Array.isArray(quiz.questions_data)
@@ -244,6 +246,65 @@ export function StudentQuizzes() {
     );
   };
 
+  const renderQuizResult = () => (
+    <div id="quiz-result" className="overflow-hidden rounded-xl border border-slate-800/60 bg-slate-900/60">
+      <div className="border-b border-slate-800 px-5 py-4">
+        <h2 className="text-base font-semibold text-white">Quiz Result</h2>
+        <p className="mt-1 text-xs text-slate-500">Your quiz results</p>
+      </div>
+      {loading ? (
+        <div className="flex items-center gap-2 px-5 py-8 text-sm text-slate-400">
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading quiz results...
+        </div>
+      ) : quizzes.length === 0 ? (
+        <p className="px-5 py-8 text-sm text-slate-500">No quiz results available yet.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-max text-left text-sm">
+            <thead className="bg-slate-900/80 text-xs uppercase text-slate-500">
+              <tr>
+                <th className="px-5 py-3">Student</th>
+                {quizzes.map((quiz) => (
+                  <th key={quiz.id} className="min-w-40 px-5 py-3">{quiz.title}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="text-slate-300">
+                <td className="px-5 py-4">
+                  <div className="font-medium text-white">{user?.full_name || 'Student'}</div>
+                  <div className="text-xs text-slate-500">{user?.email || ''}</div>
+                </td>
+                {quizzes.map((quiz) => {
+                  const finished = isSubmitted(quiz);
+                  const rawScore = getRawScoreDisplay(quiz);
+                  return (
+                    <td key={quiz.id} className="px-5 py-4">
+                      <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs ${finished
+                        ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+                        : 'border-slate-600 bg-slate-800/80 text-slate-300'}`}>
+                        {finished ? 'Finished' : 'Untaken'}
+                      </span>
+                      {finished && quiz.submission?.score !== null && quiz.submission?.score !== undefined && (
+                        <div className="mt-1 font-semibold text-emerald-400">
+                          {rawScore.earnedPoints}/{rawScore.totalPoints || 0}
+                        </div>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+
+  if (showQuizResult) {
+    return <div className="space-y-6">{renderQuizResult()}</div>;
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -255,7 +316,7 @@ export function StudentQuizzes() {
           </p>
         </div>
         <Button
-          onClick={loadQuizzes}
+          onClick={() => { void loadQuizzes(); }}
           variant="outline"
           className="border-slate-700 text-slate-300 hover:bg-slate-800/50"
         >

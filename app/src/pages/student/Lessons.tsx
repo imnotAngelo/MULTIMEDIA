@@ -198,7 +198,7 @@ export function Lessons() {
             )}
             {activeLesson && (
               <span className="text-xs font-medium text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 px-2.5 py-0.5 rounded-full">
-                {activeLesson.pdf_url || activeLesson.pdfUrl ? 'PDF Document' : 'Interactive Presentation'}
+                {activeLesson.pdfUrl ? 'PDF Document' : 'Interactive Presentation'}
               </span>
             )}
             {activeLesson?.createdAt && (
@@ -236,7 +236,7 @@ export function Lessons() {
           </Button>
 
           <Button
-            onClick={loadData}
+            onClick={() => { void loadData(); }}
             variant="outline"
             size="sm"
             className="border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs h-9 rounded-xl"
