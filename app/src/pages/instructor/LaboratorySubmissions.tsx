@@ -49,6 +49,19 @@ interface FileSubmission {
   status: string;
 }
 
+interface LaboratorySummary {
+  id: string;
+  title: string;
+}
+
+interface StudentSummary {
+  id: string;
+  full_name?: string;
+  email?: string;
+  section?: string | null;
+  teaching_sections?: string[] | null;
+}
+
 export function LaboratorySubmissions() {
   const location = useLocation();
   const showLaboratoryResults = location.hash === '#lab-results';
@@ -84,6 +97,8 @@ export function LaboratorySubmissions() {
 
   // File submissions from instructor-assigned labs
   const [fileSubs, setFileSubs] = useState<FileSubmission[]>([]);
+  const [laboratories, setLaboratories] = useState<LaboratorySummary[]>([]);
+  const [handledStudents, setHandledStudents] = useState<StudentSummary[]>([]);
   const [loadingFileSubs, setLoadingFileSubs] = useState(true);
   const [viewingFile, setViewingFile] = useState<FileSubmission | null>(null);
   const [gradingFile, setGradingFile] = useState<FileSubmission | null>(null);
@@ -157,6 +172,35 @@ export function LaboratorySubmissions() {
       .finally(() => setLoadingFileSubs(false));
   }, []);
 
+  useEffect(() => {
+    Promise.all([
+      authFetch('/laboratories', { cache: 'no-store' }),
+      authFetch('/instructor/handled-students', { cache: 'no-store' }),
+    ])
+      .then(async ([laboratoriesResponse, studentsResponse]) => {
+        const laboratoriesData = await laboratoriesResponse.json().catch(() => ({}));
+        const studentsData = await studentsResponse.json().catch(() => ({}));
+        const laboratoryRows = Array.isArray(laboratoriesData?.data)
+          ? laboratoriesData.data
+          : Array.isArray(laboratoriesData)
+            ? laboratoriesData
+            : [];
+        const studentRows = Array.isArray(studentsData?.data)
+          ? studentsData.data
+          : Array.isArray(studentsData)
+            ? studentsData
+            : [];
+        setLaboratories(laboratoryRows.map((laboratory: any) => ({
+          id: String(laboratory.id),
+          title: laboratory.title || laboratory.name || `Laboratory ${laboratory.id}`,
+        })));
+        setHandledStudents(studentRows);
+      })
+      .catch(() => {
+        // The submissions response remains usable if roster metadata is unavailable.
+      });
+  }, []);
+
   // Filtered submissions
   const filteredSubmissions = useMemo(() => {
     return fileSubs.filter((sub) => {
@@ -189,30 +233,36 @@ export function LaboratorySubmissions() {
       }
       groups.set(section, sectionGroups);
     }
-    return [...groups.entries()];
-  }, [filteredSubmissions]);
-
-  const exportSection = (section: string, labGroups: Map<string, { title: string; submissions: FileSubmission[] }>) => {
-    const labs = [...labGroups.entries()];
-    const students = new Map<string, FileSubmission>();
-    for (const [, group] of labs) {
-      for (const submission of group.submissions) {
-        students.set(submission.studentId, submission);
-      }
+    if (showLaboratoryResults) {
+      handledStudents.forEach((student) => {
+        const section = student.section?.trim()
+          || student.teaching_sections?.find((item) => item?.trim())?.trim()
+          || 'Unassigned';
+        if (!groups.has(section)) groups.set(section, new Map());
+      });
     }
+    return [...groups.entries()];
+  }, [filteredSubmissions, handledStudents, showLaboratoryResults]);
+
+  const exportSection = (
+    section: string,
+    labGroups: Map<string, { title: string; submissions: FileSubmission[] }>,
+    students: Array<{ studentId: string; studentName: string; studentEmail: string }>
+  ) => {
+    const labs = [...labGroups.entries()];
 
     const escapeCsv = (value: string | number | null) => `"${String(value ?? '').replace(/"/g, '""')}"`;
     const headers = ['Student', 'Email', 'Section', ...labs.map(([, group]) => group.title)];
-    const rows = [...students.values()].map((student) => [
+    const rows = students.map((student) => [
       student.studentName,
       student.studentEmail,
       section,
       ...labs.map(([labId]) => {
         const submission = labGroups.get(labId)?.submissions.find((item) => item.studentId === student.studentId);
-        if (!submission) return 'Not Submitted';
+        if (!submission) return 'Untaken';
         return submission.grade !== null && submission.grade !== undefined
-          ? `${submission.grade}/100 - Graded`
-          : 'Submitted - Pending';
+          ? `${submission.grade}/100 - Finished`
+          : 'Finished';
       }),
     ]);
     const csv = [headers, ...rows].map((row) => row.map(escapeCsv).join(',')).join('\r\n');
@@ -606,6 +656,35 @@ export function LaboratorySubmissions() {
 
         <div className="space-y-4">
           {groupedFileSubs.map(([section, labGroups]) => {
+            const resultLabGroups = new Map(labGroups);
+            laboratories.forEach((laboratory) => {
+              if (!resultLabGroups.has(laboratory.id)) {
+                resultLabGroups.set(laboratory.id, { title: laboratory.title, submissions: [] });
+              }
+            });
+            const resultStudents = [
+              ...new Map(
+                [
+                  ...handledStudents
+                    .filter((student) => {
+                      const studentSection = student.section?.trim()
+                        || student.teaching_sections?.find((item) => item?.trim())?.trim()
+                        || 'Unassigned';
+                      return studentSection === section;
+                    })
+                    .map((student) => [student.id, {
+                      studentId: student.id,
+                      studentName: student.full_name || 'Unknown student',
+                      studentEmail: student.email || 'No email',
+                    }] as const),
+                  ...[...labGroups.values()].flatMap((group) => group.submissions).map((submission) => [submission.studentId, {
+                    studentId: submission.studentId,
+                    studentName: submission.studentName,
+                    studentEmail: submission.studentEmail,
+                  }] as const),
+                ]
+              ).values(),
+            ];
             const sectionExpanded = expandedSections[section] ?? true;
             const sectionSubmissionCount = [...labGroups.values()].reduce(
               (total, group) => total + group.submissions.length,
@@ -641,7 +720,7 @@ export function LaboratorySubmissions() {
                           type="button"
                           size="sm"
                           variant="outline"
-                          onClick={() => exportSection(section, labGroups)}
+                          onClick={() => exportSection(section, resultLabGroups, resultStudents)}
                           className={`${isLightMode ? 'border-slate-200 text-slate-700 hover:bg-slate-100' : 'border-slate-700 text-slate-300 hover:bg-slate-800'}`}
                         >
                           <Download className="mr-2 h-3.5 w-3.5" />
@@ -653,21 +732,19 @@ export function LaboratorySubmissions() {
                           <thead className={`${isLightMode ? 'bg-slate-50 text-slate-500' : 'bg-slate-950/60 text-slate-500'} text-xs uppercase`}>
                             <tr>
                               <th className="px-4 py-3">Student</th>
-                              {[...labGroups.values()].map((group) => (
+                              {[...resultLabGroups.values()].map((group) => (
                                 <th key={group.title} className="min-w-40 px-4 py-3">{group.title}</th>
                               ))}
                             </tr>
                           </thead>
                           <tbody className={`divide-y ${isLightMode ? 'divide-slate-200' : 'divide-slate-800'}`}>
-                            {[...new Map(
-                              [...labGroups.values()].flatMap((group) => group.submissions).map((submission) => [submission.studentId, submission])
-                            ).values()].map((student) => (
+                            {resultStudents.map((student) => (
                               <tr key={student.studentId} className={`${isLightMode ? 'text-slate-700 hover:bg-slate-50' : 'text-slate-300 hover:bg-slate-800/40'} transition-colors`}>
                                 <td className="px-4 py-3">
                                   <div className={`font-medium ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{student.studentName}</div>
                                   <div className="text-xs text-slate-500">{student.studentEmail}</div>
                                 </td>
-                                {[...labGroups.entries()].map(([labId, group]) => {
+                                  {[...resultLabGroups.entries()].map(([labId, group]) => {
                                   const submission = group.submissions.find((item) => item.studentId === student.studentId);
                                   const isGraded = submission?.grade !== null && submission?.grade !== undefined;
                                   return (
@@ -677,7 +754,7 @@ export function LaboratorySubmissions() {
                                         : submission
                                           ? 'border-amber-500/30 bg-amber-500/10 text-amber-300'
                                           : 'border-slate-600 bg-slate-800/80 text-slate-300'}`}>
-                                        {isGraded ? 'Finished' : submission ? 'Submitted' : 'Not Submitted'}
+                                        {submission ? 'Finished' : 'Untaken'}
                                       </span>
                                       {isGraded && <div className="mt-1 font-semibold text-emerald-400">{submission?.grade}/100</div>}
                                     </td>
