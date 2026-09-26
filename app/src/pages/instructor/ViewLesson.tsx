@@ -10,8 +10,6 @@ import {
   Upload,
   Video,
   X,
-  Sparkles,
-  FlaskConical,
   Download,
   Copy,
   Check,
@@ -413,25 +411,6 @@ export function ViewLesson({ unitId: providedUnitId, lessonId: providedLessonId,
   // Quick Action Toolbar Component
   const actionToolbar = (
     <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
-      <Button
-        onClick={() => navigate('/instructor/quiz/create-auto', { state: { lessonId: lesson.id, lessonTitle: lesson.title } })}
-        size="sm"
-        className="flex-1 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-md shadow-violet-500/20 gap-1.5 sm:flex-none"
-      >
-        <Sparkles className="h-3.5 w-3.5" />
-        <span>Generate AI Quiz</span>
-      </Button>
-
-      <Button
-        onClick={() => navigate('/instructor/laboratories')}
-        size="sm"
-        variant="outline"
-        className={`flex-1 gap-1.5 ${isLightMode ? 'border-slate-300 text-slate-700 hover:bg-slate-100' : 'border-slate-700 text-slate-200 hover:bg-slate-800'} sm:flex-none`}
-      >
-        <FlaskConical className="h-3.5 w-3.5 text-emerald-400" />
-        <span>Laboratories</span>
-      </Button>
-
       {hasSlides && (
         <Button
           onClick={handleDownloadPDF}

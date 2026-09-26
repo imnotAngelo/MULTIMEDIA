@@ -77,7 +77,7 @@ export function Sidebar({
   section,
 }: SidebarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [expandedItems, setExpandedItems] = useState<string[]>(['Laboratories', 'Units & Lessons', 'Lessons']);
+  const [expandedItems, setExpandedItems] = useState<string[]>(['Laboratories', 'Units & Lessons']);
   const [courseOutline, setCourseOutline] = useState<NavItem[]>([]);
   const [expandedCourseUnits, setExpandedCourseUnits] = useState<string[]>([]);
   const location = useLocation();
@@ -202,7 +202,7 @@ export function Sidebar({
     if (userRole === 'instructor') {
       setExpandedItems((prev) => (prev.includes('Units & Lessons') ? prev : [...prev, 'Units & Lessons']));
     } else if (userRole === 'student') {
-      setExpandedItems((prev) => (prev.includes('Lessons') ? prev : [...prev, 'Lessons']));
+      setExpandedItems((prev) => (prev.includes('Units & Lessons') ? prev : [...prev, 'Units & Lessons']));
     }
   }, [userRole, authUser?.id]);
 
@@ -255,19 +255,19 @@ export function Sidebar({
           title: 'Academic & Learning',
           items: [
             { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-            { label: 'Lessons', href: '/lessons', icon: BookOpen, subItems: courseOutline },
+            { label: 'Units & Lessons', href: '/lessons', icon: BookOpen, subItems: courseOutline },
             { label: 'Laboratories', href: '/laboratories', icon: Layers },
           ],
         },
         {
-          title: 'Assessments & Work',
+          title: 'Assessment & Result',
           items: [
             { label: 'Quizzes', href: '/quizzes', icon: Zap },
             { label: 'Portfolio', href: '/portfolio', icon: Image },
           ],
         },
         {
-          title: 'Communication',
+          title: 'Announcements & Communication',
           items: [
             { label: 'Messages', href: '/chatbox', icon: MessageSquare },
           ],
@@ -282,22 +282,19 @@ export function Sidebar({
           items: [
             { label: 'Dashboard', href: '/instructor/dashboard', icon: LayoutDashboard },
             { label: 'Units & Lessons', href: '/instructor/courses', icon: BookOpen, subItems: courseOutline },
-            {
-              label: 'Laboratories',
-              href: '/instructor/laboratories',
-              icon: Layers,
-              subItems: [
-                { label: 'All Laboratories', href: '/instructor/laboratories', icon: Eye },
-                { label: 'Create Laboratory', href: '/instructor/laboratories/create', icon: Plus },
-              ],
-            },
+          ],
+        },
+        {
+          title: 'Laboratory & Submissions',
+          items: [
+            { label: 'Laboratories', href: '/instructor/laboratories', icon: Layers },
+            { label: 'Laboratory Submissions', href: '/instructor/laboratory-submissions', icon: ClipboardCheck },
           ],
         },
         {
           title: 'Evaluation & Quizzes',
           items: [
             { label: 'View All Students', href: '/instructor/student-performance', icon: Users },
-            { label: 'Laboratory Submissions', href: '/instructor/laboratory-submissions', icon: ClipboardCheck },
             {
               label: 'Quizzes',
               href: '/instructor/quizzes',
@@ -310,7 +307,7 @@ export function Sidebar({
           ],
         },
         {
-          title: 'Students & Updates',
+          title: 'Announcements & Communication',
           items: [
             { label: 'Student Approvals', href: '/instructor/student-approvals', icon: UserCheck },
             { label: 'Announcements', href: '/instructor/announcements', icon: MessageSquare },
@@ -381,7 +378,7 @@ export function Sidebar({
               const isExpanded = expandedItems.includes(item.label);
               const isCourseOutlineItem =
                 (item.label === 'Units & Lessons' && userRole === 'instructor') ||
-                (item.label === 'Lessons' && userRole === 'student');
+                (item.label === 'Units & Lessons' && userRole === 'student');
               const hasSubItems = Boolean((item.subItems && item.subItems.length > 0) || isCourseOutlineItem);
 
               const currentPath = location.pathname;
