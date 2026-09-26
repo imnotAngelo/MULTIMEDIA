@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { authFetch } from '@/lib/authFetch';
@@ -20,6 +21,7 @@ import {
   ChevronRight,
   Search,
   Filter,
+  Download,
   ExternalLink,
   Sparkles,
   CheckCircle2,
@@ -48,6 +50,8 @@ interface FileSubmission {
 }
 
 export function LaboratorySubmissions() {
+  const location = useLocation();
+  const showLaboratoryResults = location.hash === '#lab-results';
   const theme = useThemeStore((state) => state.theme);
   const isLightMode = theme === 'light';
   const surfaceClass = isLightMode ? 'bg-white border-slate-200' : 'bg-slate-900/60 border-slate-800';
@@ -188,6 +192,39 @@ export function LaboratorySubmissions() {
     return [...groups.entries()];
   }, [filteredSubmissions]);
 
+  const exportSection = (section: string, labGroups: Map<string, { title: string; submissions: FileSubmission[] }>) => {
+    const labs = [...labGroups.entries()];
+    const students = new Map<string, FileSubmission>();
+    for (const [, group] of labs) {
+      for (const submission of group.submissions) {
+        students.set(submission.studentId, submission);
+      }
+    }
+
+    const escapeCsv = (value: string | number | null) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+    const headers = ['Student', 'Email', 'Section', ...labs.map(([, group]) => group.title)];
+    const rows = [...students.values()].map((student) => [
+      student.studentName,
+      student.studentEmail,
+      section,
+      ...labs.map(([labId]) => {
+        const submission = labGroups.get(labId)?.submissions.find((item) => item.studentId === student.studentId);
+        if (!submission) return 'Not Submitted';
+        return submission.grade !== null && submission.grade !== undefined
+          ? `${submission.grade}/100 - Graded`
+          : 'Submitted - Pending';
+      }),
+    ]);
+    const csv = [headers, ...rows].map((row) => row.map(escapeCsv).join(',')).join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `laboratory-results-${section.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() || 'unassigned'}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   // Quick stats
   const totalCount = fileSubs.length;
   const gradedCount = fileSubs.filter((s) => s.grade !== null && s.grade !== undefined).length;
@@ -252,6 +289,7 @@ export function LaboratorySubmissions() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-10">
+      {!showLaboratoryResults && <>
       {/* Top Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -263,13 +301,15 @@ export function LaboratorySubmissions() {
           </p>
         </div>
       </div>
+      </>}
 
-      {error && (
+      {!showLaboratoryResults && error && (
         <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
           {error}
         </div>
       )}
 
+      {!showLaboratoryResults && <>
       {/* KPI Stats Overview */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className={`${surfaceClass} p-4 sm:p-5 rounded-2xl`}>
@@ -300,7 +340,9 @@ export function LaboratorySubmissions() {
         </Card>
 
       </div>
+      </>}
 
+      {!showLaboratoryResults && <>
       {/* Filter and Search Bar */}
       <div className={`flex flex-col sm:flex-row items-center justify-between gap-3 ${isLightMode ? 'bg-white border-slate-200' : 'bg-slate-900/60 border-slate-800'} border p-3.5 rounded-2xl`}>
         <div className="relative w-full sm:w-80">
@@ -346,6 +388,7 @@ export function LaboratorySubmissions() {
           </button>
         </div>
       </div>
+      </>}
 
       {/* Grading Modal */}
       {gradingFile && (
@@ -544,16 +587,16 @@ export function LaboratorySubmissions() {
       )}
 
       {/* Main Submissions Grouped View */}
-      <Card className={`${surfaceClass} p-5 rounded-3xl shadow-xl`}>
-        <div className="flex items-center justify-between mb-4">
+      <Card className={`${surfaceClass} p-5 rounded-3xl shadow-xl ${showLaboratoryResults ? 'p-0 bg-transparent border-0 shadow-none' : ''}`}>
+        {!showLaboratoryResults && <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
             <Beaker className="w-5 h-5 text-emerald-400" />
             Assigned Lab Files &amp; Media
           </h2>
           {loadingFileSubs && <AetherSpinner className="w-4 h-4 text-slate-400" />}
-        </div>
+        </div>}
 
-        {!loadingFileSubs && filteredSubmissions.length === 0 && (
+        {!showLaboratoryResults && !loadingFileSubs && filteredSubmissions.length === 0 && (
           <div className={`text-sm ${isLightMode ? 'text-slate-600 border-slate-200 bg-slate-50' : 'text-slate-400 border-slate-800 bg-slate-950/20'} py-12 text-center rounded-2xl border border-dashed`}>
             <Beaker className="w-8 h-8 text-slate-600 mx-auto mb-2 opacity-50" />
             <p className="font-medium text-slate-300">No matching submissions found</p>
@@ -588,7 +631,66 @@ export function LaboratorySubmissions() {
 
                 {sectionExpanded && (
                   <div className={`space-y-3 p-4 ${sectionBodyClass}`}>
-                    {[...labGroups.entries()].map(([labId, group]) => {
+                    {showLaboratoryResults && <div id="lab-results" className={`overflow-hidden rounded-xl border ${isLightMode ? 'border-slate-200 bg-white' : 'border-slate-800/90 bg-slate-900/70'}`}>
+                      <div className="flex items-center justify-between gap-3 border-b border-slate-800 px-4 py-3">
+                        <div>
+                          <h3 className={`text-sm font-semibold ${isLightMode ? 'text-slate-900' : 'text-white'}`}>Laboratory Results</h3>
+                          <p className="mt-1 text-xs text-slate-500">One row per student</p>
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => exportSection(section, labGroups)}
+                          className={`${isLightMode ? 'border-slate-200 text-slate-700 hover:bg-slate-100' : 'border-slate-700 text-slate-300 hover:bg-slate-800'}`}
+                        >
+                          <Download className="mr-2 h-3.5 w-3.5" />
+                          Export Section
+                        </Button>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm">
+                          <thead className={`${isLightMode ? 'bg-slate-50 text-slate-500' : 'bg-slate-950/60 text-slate-500'} text-xs uppercase`}>
+                            <tr>
+                              <th className="px-4 py-3">Student</th>
+                              {[...labGroups.values()].map((group) => (
+                                <th key={group.title} className="min-w-40 px-4 py-3">{group.title}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody className={`divide-y ${isLightMode ? 'divide-slate-200' : 'divide-slate-800'}`}>
+                            {[...new Map(
+                              [...labGroups.values()].flatMap((group) => group.submissions).map((submission) => [submission.studentId, submission])
+                            ).values()].map((student) => (
+                              <tr key={student.studentId} className={`${isLightMode ? 'text-slate-700 hover:bg-slate-50' : 'text-slate-300 hover:bg-slate-800/40'} transition-colors`}>
+                                <td className="px-4 py-3">
+                                  <div className={`font-medium ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{student.studentName}</div>
+                                  <div className="text-xs text-slate-500">{student.studentEmail}</div>
+                                </td>
+                                {[...labGroups.entries()].map(([labId, group]) => {
+                                  const submission = group.submissions.find((item) => item.studentId === student.studentId);
+                                  const isGraded = submission?.grade !== null && submission?.grade !== undefined;
+                                  return (
+                                    <td key={labId} className="px-4 py-3">
+                                      <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs ${isGraded
+                                        ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+                                        : submission
+                                          ? 'border-amber-500/30 bg-amber-500/10 text-amber-300'
+                                          : 'border-slate-600 bg-slate-800/80 text-slate-300'}`}>
+                                        {isGraded ? 'Finished' : submission ? 'Submitted' : 'Not Submitted'}
+                                      </span>
+                                      {isGraded && <div className="mt-1 font-semibold text-emerald-400">{submission?.grade}/100</div>}
+                                    </td>
+                                  );
+                                })}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>}
+
+                    {!showLaboratoryResults && [...labGroups.entries()].map(([labId, group]) => {
                       const expanded = expandedLabs[`${section}:${labId}`] ?? true;
                       return (
                         <div key={labId} className={`border ${isLightMode ? 'border-slate-200' : 'border-slate-800/90'} rounded-xl overflow-hidden`}>

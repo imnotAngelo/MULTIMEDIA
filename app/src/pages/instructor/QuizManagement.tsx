@@ -1,5 +1,5 @@
 import { Fragment, useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { usePageCache } from '@/stores/pageCacheStore';
 import { authFetch } from '@/lib/authFetch';
@@ -65,8 +65,24 @@ interface QuizStats {
   totalSubmissions: number;
 }
 
+interface StudentQuizResult {
+  quizId: string;
+  score: number | null;
+  status: 'Finished' | 'Not Taken';
+  submittedAt: string;
+}
+
+interface StudentScore {
+  id: string;
+  studentName: string;
+  studentEmail: string;
+  section: string;
+  results: Record<string, StudentQuizResult>;
+}
+
 export function QuizManagement() {
   const { user } = useAuthStore();
+  const location = useLocation();
   const navigate = useNavigate();
   const pageCache = usePageCache();
   const CACHE_KEY = `quiz-management:${user?.id ?? 'anon'}`;
@@ -87,8 +103,11 @@ export function QuizManagement() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [submissions, setSubmissions] = useState<Record<string, QuizSubmission[]>>({});
   const [submissionsLoading, setSubmissionsLoading] = useState<string | null>(null);
+  const [studentScores, setStudentScores] = useState<StudentScore[]>([]);
+  const [studentScoresLoading, setStudentScoresLoading] = useState(false);
   const [quizToDelete, setQuizToDelete] = useState<Quiz | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const showQuizResult = location.hash === '#quiz-result';
 
   useEffect(() => {
     const token = localStorage.getItem('access_token');
@@ -97,10 +116,16 @@ export function QuizManagement() {
       setLoading(false);
       return;
     }
-    const cached = pageCache.get(CACHE_KEY);
-    if (cached.fresh) { setLoading(false); return; }
+    const cached = pageCache.get<{ quizzes: Quiz[]; stats: QuizStats }>(CACHE_KEY);
+    if (cached.fresh) {
+      setLoading(false);
+      if (showQuizResult) {
+        void loadAllStudentScores(cached.data?.quizzes ?? []);
+      }
+      return;
+    }
     loadQuizzes(cached.data !== null);
-  }, [user?.id]);
+  }, [user?.id, location.hash]);
 
   const loadQuizzes = async (silent = false) => {
     try {
@@ -136,6 +161,9 @@ export function QuizManagement() {
           }));
         setQuizzes(quizList);
         calculateStats(quizList, true); // pass true to also save to cache
+        if (showQuizResult) {
+          void loadAllStudentScores(quizList);
+        }
         setError('');
       } else {
         setQuizzes([]);
@@ -145,6 +173,89 @@ export function QuizManagement() {
       setError('Failed to load quizzes: ' + String(error));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadAllStudentScores = async (quizList: Quiz[]) => {
+    setStudentScoresLoading(true);
+    try {
+      const resultQuizzes = quizList.filter((quiz) => quiz.status !== 'archived' && quiz.status !== 'draft');
+      let students: any[] = [];
+      try {
+        const studentsResponse = await authFetch('/instructor/handled-students');
+        const studentsData = await studentsResponse.json();
+        if (studentsResponse.ok && studentsData.success && Array.isArray(studentsData.data)) {
+          students = studentsData.data;
+        }
+      } catch {
+        // Use submitted students when the handled-students endpoint is unavailable.
+      }
+
+      const submissionGroups = await Promise.all(
+        resultQuizzes.map(async (quiz) => {
+          try {
+            const response = await authFetch(`/assessments/${quiz.id}/submissions`);
+            const data = await response.json();
+            if (!response.ok || !data.success || !Array.isArray(data.data)) return [];
+            return data.data.map((submission: QuizSubmission) => ({ quiz, submission }));
+          } catch {
+            return [];
+          }
+        })
+      );
+
+      const studentMap = new Map<string, StudentScore>();
+      const addStudent = (id: string, student: any, submission?: QuizSubmission) => {
+        if (!id) return;
+        if (!studentMap.has(id)) {
+          const section = student?.section?.trim()
+            || student?.teaching_sections?.find((item: string) => item?.trim())?.trim()
+            || (submission ? getSubmissionSection(submission) : 'Unassigned');
+          studentMap.set(id, {
+            id,
+            studentName: student?.full_name || submission?.student?.full_name || 'Unknown student',
+            studentEmail: student?.email || submission?.student?.email || 'No email',
+            section,
+            results: {},
+          });
+        }
+      };
+
+      students.forEach((student) => addStudent(student.id, student));
+      submissionGroups.flat().forEach(({ quiz, submission }) => {
+        const studentId = (submission as any).student?.id || (submission as any).user_id;
+        addStudent(studentId, (submission as any).student, submission);
+        const studentScore = studentMap.get(studentId);
+        if (studentScore) {
+          studentScore.results[quiz.id] = {
+            quizId: quiz.id,
+            score: submission.score,
+            status: 'Finished',
+            submittedAt: submission.submitted_at || '',
+          };
+        }
+      });
+
+      const results = [...studentMap.values()].map((student) => ({
+        ...student,
+        results: Object.fromEntries(
+          resultQuizzes.map((quiz) => [
+            quiz.id,
+            student.results[quiz.id] || {
+              quizId: quiz.id,
+              score: null,
+              status: 'Not Taken' as const,
+              submittedAt: '',
+            },
+          ])
+        ),
+      }));
+
+      setStudentScores(
+        results.sort((first, second) => first.studentName.localeCompare(second.studentName))
+      );
+    } finally {
+      setStudentScoresLoading(false);
     }
   };
 
@@ -298,6 +409,124 @@ export function QuizManagement() {
     return [...groups.entries()];
   };
 
+  const resultQuizzes = quizzes.filter((quiz) => quiz.status !== 'archived' && quiz.status !== 'draft');
+
+  const exportSection = (section: string, sectionStudents: StudentScore[]) => {
+    const escapeCsv = (value: string | number | null) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+    const headers = ['Student', 'Email', 'Section', ...resultQuizzes.map((quiz) => quiz.title)];
+    const rows = sectionStudents.map((student) => [
+      student.studentName,
+      student.studentEmail,
+      section,
+      ...resultQuizzes.map((quiz) => {
+        const result = student.results[quiz.id];
+        return result?.status === 'Finished'
+          ? `${result.score ?? 'Not graded'} - Finished`
+          : 'Not Taken';
+      }),
+    ]);
+    const csv = [headers, ...rows].map((row) => row.map(escapeCsv).join(',')).join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `quiz-results-${section.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() || 'unassigned'}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const renderStudentScores = () => {
+    const sectionGroups = Array.from(
+      studentScores.reduce((groups, student) => {
+        const sectionStudents = groups.get(student.section) || [];
+        sectionStudents.push(student);
+        groups.set(student.section, sectionStudents);
+        return groups;
+      }, new Map<string, StudentScore[]>())
+    );
+
+    return (
+      <div id="quiz-result" className="space-y-5">
+        <div>
+          <h2 className="text-base font-semibold text-white">Quiz Result</h2>
+          <p className="text-xs text-slate-500 mt-1">Scores from every quiz submission</p>
+        </div>
+
+        {studentScoresLoading ? (
+          <div className="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/60 px-5 py-8 text-sm text-slate-400">
+            <Loader2 className="w-4 h-4 animate-spin" /> Loading student scores...
+          </div>
+        ) : studentScores.length === 0 ? (
+          <div className="rounded-xl border border-slate-800 bg-slate-900/60 px-5 py-8 text-sm text-slate-500">
+            No student scores available yet.
+          </div>
+        ) : (
+          sectionGroups.map(([section, sectionStudents]) => (
+            <div key={section} className="overflow-hidden rounded-xl border border-slate-800/60 bg-slate-900/60">
+              <div className="flex items-center justify-between gap-4 border-b border-slate-800 px-5 py-4">
+                <div>
+                  <h3 className="text-sm font-semibold text-white">Section {section}</h3>
+                  <p className="mt-1 text-xs text-slate-500">{sectionStudents.length} student{sectionStudents.length !== 1 ? 's' : ''}</p>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => exportSection(section, sectionStudents)}
+                  className="border-slate-700 text-slate-300 hover:bg-slate-800"
+                >
+                  <Download className="mr-2 h-3.5 w-3.5" />
+                  Export Section
+                </Button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-slate-900/80 text-xs uppercase text-slate-500">
+                    <tr>
+                      <th className="px-5 py-3">Student</th>
+                      {resultQuizzes.map((quiz) => (
+                        <th key={quiz.id} className="min-w-40 px-5 py-3">{quiz.title}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800">
+                    {sectionStudents.map((studentScore) => (
+                      <tr key={studentScore.id} className="text-slate-300 hover:bg-slate-800/40 transition-colors">
+                        <td className="px-5 py-3">
+                          <div className="font-medium text-white">{studentScore.studentName}</div>
+                          <div className="text-xs text-slate-500">{studentScore.studentEmail}</div>
+                        </td>
+                        {resultQuizzes.map((quiz) => {
+                          const result = studentScore.results[quiz.id];
+                          return (
+                            <td key={quiz.id} className="px-5 py-3">
+                              <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs ${result?.status === 'Finished'
+                                ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+                                : 'border-slate-600 bg-slate-800/80 text-slate-300'}`}>
+                                {result?.status || 'Not Taken'}
+                              </span>
+                              {result?.status === 'Finished' && result.score !== null && (
+                                <div className="mt-1 font-semibold text-emerald-400">{result.score}</div>
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    );
+  };
+
+  if (showQuizResult) {
+    return <div className="space-y-6">{renderStudentScores()}</div>;
+  }
+
   return (
     <div className="space-y-6">
       {/* Header Section */}
@@ -375,6 +604,7 @@ export function QuizManagement() {
           <p className="text-slate-500 text-xs mt-1">Total Submissions</p>
         </div>
       </div>
+
       {loading && (
         <AetherLoader label="Calibrating your quiz library" />
       )}

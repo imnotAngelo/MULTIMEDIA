@@ -288,7 +288,14 @@ export function Sidebar({
           title: 'Laboratory & Submissions',
           items: [
             { label: 'Laboratories', href: '/instructor/laboratories', icon: Layers },
-            { label: 'Laboratory Submissions', href: '/instructor/laboratory-submissions', icon: ClipboardCheck },
+            {
+              label: 'Laboratory Submissions',
+              href: '/instructor/laboratory-submissions',
+              icon: ClipboardCheck,
+              subItems: [
+                { label: 'Laboratory Results', href: '/instructor/laboratory-submissions#lab-results', icon: ClipboardCheck },
+              ],
+            },
           ],
         },
         {
@@ -300,8 +307,7 @@ export function Sidebar({
               href: '/instructor/quizzes',
               icon: Zap,
               subItems: [
-                { label: 'All Quizzes', href: '/instructor/quizzes', icon: Eye },
-                { label: 'Create Quiz', href: '/instructor/quiz/create', icon: Plus },
+                { label: 'Quiz Result', href: '/instructor/quizzes#quiz-result', icon: ClipboardCheck },
               ],
             },
           ],
