@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { getSubmissions, updateSubmission } from "@/lib/laboratorySubmissionService";
 import "./InstructorReview.css";
+import { AetherLoader } from "@/components/AetherLoader";
 
 interface InstructorReviewProps {
   submissionId: string;
@@ -85,8 +86,8 @@ export const InstructorReview: React.FC<InstructorReviewProps> = ({
 
   if (isLoading) {
     return (
-      <div className="instructor-review loading">
-        <p>Loading submission...</p>
+      <div className="instructor-review p-6">
+        <AetherLoader variant="compact" label="Loading submission review..." />
       </div>
     );
   }

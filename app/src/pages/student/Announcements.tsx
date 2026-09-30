@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Megaphone, RefreshCw, FileText } from 'lucide-react';
-import { AetherSpinner } from '@/components/AetherSpinner';
+import { AetherLoader } from '@/components/AetherLoader';
 import { Button } from '@/components/ui/button';
 import { authFetch } from '@/lib/authFetch';
 import { resolveBackendAssetUrl } from '@/lib/apiConfig';
@@ -122,9 +122,7 @@ export function Announcements() {
 
       {/* Loading */}
       {loading && items.length === 0 ? (
-        <div className="flex items-center justify-center py-20">
-          <AetherSpinner className="w-8 h-8 text-slate-500" />
-        </div>
+        <AetherLoader variant="list" count={4} label="Loading announcements..." />
       ) : items.length === 0 ? (
         <div className="bg-slate-900/40 border border-slate-800 border-dashed rounded-xl p-12 text-center">
           <Megaphone className="w-12 h-12 text-slate-600 mx-auto mb-3" />

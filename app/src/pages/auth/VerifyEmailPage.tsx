@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { CheckCircle2, XCircle } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -55,7 +56,7 @@ export function VerifyEmailPage() {
                   ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400 shadow-emerald-500/20'
                   : 'bg-red-500/15 border-red-500/30 text-red-400 shadow-red-500/20'
               }`}>
-                {status === 'verifying' && <Loader2 className="w-8 h-8 animate-spin" />}
+                {status === 'verifying' && <Skeleton className="w-8 h-8 rounded-full bg-violet-400/80" />}
                 {status === 'success' && <CheckCircle2 className="w-8 h-8" />}
                 {status === 'error' && <XCircle className="w-8 h-8" />}
               </div>

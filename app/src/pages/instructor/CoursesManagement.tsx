@@ -46,6 +46,7 @@ import { cn } from '@/lib/utils';
 import { AetherLoader } from '@/components/AetherLoader';
 import { SectionYearTargetPicker } from '@/components/SectionYearTargetPicker';
 import { useCourseTreeStore } from '@/stores/courseTreeStore';
+import { getNextLessonTitle } from '@/lib/lessonNaming';
 
 interface Unit {
   id: string;
@@ -341,6 +342,24 @@ export function CoursesManagement() {
   const [lessonTitle, setLessonTitle] = useState('');
   const [lessonFile, setLessonFile] = useState<File | null>(null);
   const [uploadingLesson, setUploadingLesson] = useState(false);
+
+  // Auto-name lesson (e.g. Lesson I, Lesson II, Lesson III) when upload dialog opens or target unit changes
+  useEffect(() => {
+    if (!showUploadDialog) return;
+    const targetUnitId = selectedUnitForUpload || units[0]?.id;
+    if (!targetUnitId) return;
+
+    const unitLessons = lessons.filter((l) => l.unitId === targetUnitId);
+    const autoTitle = getNextLessonTitle(unitLessons);
+
+    setLessonTitle((current) => {
+      // Auto-populate if title is empty or follows the auto-generated Lesson number format
+      if (!current || /^Lesson\s+[IVXLCDM\d]+/i.test(current.trim())) {
+        return autoTitle;
+      }
+      return current;
+    });
+  }, [showUploadDialog, selectedUnitForUpload, units, lessons]);
 
   const [showCreateUnitDialog, setShowCreateUnitDialog] = useState(false);
   const [newUnitTitle, setNewUnitTitle] = useState('');
@@ -815,7 +834,11 @@ export function CoursesManagement() {
   };
 
   const handleUploadLesson = async () => {
-    if (!lessonTitle.trim()) {
+    const targetUnitId = selectedUnitForUpload || units[0]?.id;
+    const unitLessons = targetUnitId ? lessons.filter((l) => l.unitId === targetUnitId) : [];
+    const finalLessonTitle = lessonTitle.trim() || getNextLessonTitle(unitLessons);
+
+    if (!finalLessonTitle) {
       toast.error('Lesson title is required');
       return;
     }
@@ -830,11 +853,11 @@ export function CoursesManagement() {
 
     try {
       setUploadingLesson(true);
-      console.log('[UPLOAD_START] Uploading lesson:', lessonTitle);
+      console.log('[UPLOAD_START] Uploading lesson:', finalLessonTitle);
 
       const formData = new FormData();
       formData.append('file', lessonFile);
-      formData.append('title', lessonTitle.trim());
+      formData.append('title', finalLessonTitle);
       formData.append('moduleId', selectedUnitForUpload);
       formData.append('targetSections', JSON.stringify(lessonTargetSections));
 
@@ -903,8 +926,8 @@ export function CoursesManagement() {
   const activeLesson = lessons.find(l => l.id === activeLessonId);
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-12">
-        <AetherLoader label="Arranging your courses" />
+      <div className="space-y-6 max-w-7xl mx-auto p-4 sm:p-6">
+        <AetherLoader variant="cards" label="Arranging your courses" />
       </div>
     );
   }
@@ -1319,10 +1342,13 @@ export function CoursesManagement() {
               </select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="lessonTitle" className="text-slate-700 font-medium">Lesson Title</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="lessonTitle" className="text-slate-700 font-medium">Lesson Title</Label>
+                <span className="text-xs text-violet-600 font-medium">Auto-named sequentially</span>
+              </div>
               <Input
                 id="lessonTitle"
-                placeholder="Enter lesson title"
+                placeholder={selectedUnitForUpload ? getNextLessonTitle(lessons.filter(l => l.unitId === selectedUnitForUpload)) : 'e.g. Lesson I'}
                 value={lessonTitle}
                 onChange={(e) => setLessonTitle(e.target.value)}
                 className="bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-400"

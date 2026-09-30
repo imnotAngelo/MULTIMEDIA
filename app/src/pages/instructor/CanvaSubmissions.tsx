@@ -9,6 +9,7 @@ import {
 } from '@/lib/laboratorySubmissionService';
 import { ExternalLink, Save } from 'lucide-react';
 import { AetherSpinner } from '@/components/AetherSpinner';
+import { AetherLoader } from '@/components/AetherLoader';
 
 type Unit = { id: string; title?: string; name?: string };
 
@@ -112,23 +113,19 @@ export function CanvaSubmissions() {
           <h2 className="text-lg font-semibold text-slate-100">
             {selectedUnit ? (selectedUnit.title ?? selectedUnit.name ?? 'Selected Unit') : 'Submissions'}
           </h2>
-          {loadingSubs && (
-            <div className="flex items-center gap-2 text-slate-400 text-sm">
-              <AetherSpinner className="w-4 h-4" />
-              Loading…
-            </div>
-          )}
         </div>
 
-        {!loadingSubs && submissions.length === 0 && (
+        {loadingSubs ? (
+          <AetherLoader variant="cards" count={3} label="Loading submissions..." />
+        ) : submissions.length === 0 ? (
           <div className="text-sm text-slate-400">No submissions yet.</div>
+        ) : (
+          <div className="space-y-4">
+            {submissions.map((s) => (
+              <SubmissionCard key={s.id} submission={s} onSave={handleSave} />
+            ))}
+          </div>
         )}
-
-        <div className="space-y-4">
-          {submissions.map((s) => (
-            <SubmissionCard key={s.id} submission={s} onSave={handleSave} />
-          ))}
-        </div>
       </Card>
     </div>
   );

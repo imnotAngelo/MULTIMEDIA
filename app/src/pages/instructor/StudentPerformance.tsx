@@ -743,7 +743,7 @@ export function StudentPerformance() {
 
       {/* Main Records Display */}
       {loading ? (
-        <AetherLoader label="Consolidating quiz scores and laboratory submissions..." />
+        <AetherLoader variant="table" count={5} label="Consolidating quiz scores and laboratory submissions..." />
       ) : filteredStudents.length === 0 ? (
         <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-12 text-center shadow-sm">
           <Users className="mx-auto h-12 w-12 text-slate-400 dark:text-slate-600" />

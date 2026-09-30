@@ -137,6 +137,10 @@ export function Dashboard() {
   const headingColor = isLightMode ? 'text-slate-900' : 'text-white';
   const mutedText = isLightMode ? 'text-slate-500' : 'text-slate-400';
 
+  if (loading && stats.unitsCount === 0 && stats.totalLaboratories === 0 && stats.totalQuizzes === 0) {
+    return <AetherLoader variant="dashboard" label="Organizing your learning dashboard..." />;
+  }
+
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-12">
       {/* Welcome Banner */}
@@ -256,7 +260,7 @@ export function Dashboard() {
 
       </div>
 
-      {loading && <AetherLoader label="Updating your learning stats..." />}
+      {loading && <AetherLoader variant="compact" label="Updating your learning stats..." className="mt-4" />}
     </div>
   );
 }

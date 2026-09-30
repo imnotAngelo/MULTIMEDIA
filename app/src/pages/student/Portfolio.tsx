@@ -14,6 +14,7 @@ import {
   FolderArchive,
 } from 'lucide-react';
 import { AetherSpinner } from '@/components/AetherSpinner';
+import { AetherLoader } from '@/components/AetherLoader';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -256,8 +257,8 @@ export function Portfolio() {
           <p className="mt-1 text-xs text-slate-500">Your laboratory progress and results</p>
         </div>
         {labsLoading ? (
-          <div className="flex items-center gap-2 px-5 py-8 text-sm text-slate-400">
-            <AetherSpinner className="h-4 w-4 text-emerald-400" /> Loading laboratory results...
+          <div className="p-5">
+            <AetherLoader variant="table" count={3} label="Loading laboratory results..." />
           </div>
         ) : laboratories.length === 0 ? (
           <p className="px-5 py-8 text-sm text-slate-500">No laboratories available yet.</p>
@@ -315,9 +316,7 @@ export function Portfolio() {
           </div>
 
           {labsLoading ? (
-            <div className="flex items-center gap-2 text-slate-400 text-sm py-8 justify-center">
-              <AetherSpinner className="w-5 h-5 text-emerald-400" /> Loading laboratory submissions…
-            </div>
+            <AetherLoader variant="cards" count={3} label="Loading laboratory submissions..." />
           ) : filteredLabs.length === 0 ? (
             <Card className="bg-slate-900/50 border-slate-800 p-8 text-center rounded-2xl">
               <Beaker className="w-8 h-8 text-slate-600 mx-auto mb-2 opacity-50" />

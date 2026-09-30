@@ -12,6 +12,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import "./SubmissionsList.css";
+import { AetherLoader } from "@/components/AetherLoader";
 
 interface SubmissionsListProps {
   laboratoryId: string;
@@ -104,7 +105,11 @@ export const SubmissionsList: React.FC<SubmissionsListProps> = ({
   };
 
   if (isLoading) {
-    return <div className="submissions-list loading">Loading submissions...</div>;
+    return (
+      <div className="p-4">
+        <AetherLoader variant="list" count={3} label="Loading submissions..." />
+      </div>
+    );
   }
 
   if (error) {

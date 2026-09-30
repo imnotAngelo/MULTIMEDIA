@@ -175,8 +175,8 @@ export function Lessons() {
 
   if (loading && units.length === 0) {
     return (
-      <div className="flex items-center justify-center p-12">
-        <AetherLoader label="Arranging your lessons" />
+      <div className="space-y-6 max-w-7xl mx-auto p-4 sm:p-6">
+        <AetherLoader variant="cards" label="Arranging your lessons" />
       </div>
     );
   }

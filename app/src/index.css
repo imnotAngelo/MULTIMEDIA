@@ -1,4 +1,4 @@
-﻿@tailwind base;
+@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
@@ -1195,35 +1195,78 @@
   html.light .aether-shell .bg-slate-900\/70,
   html.light .aether-shell .bg-slate-900\/80,
   html.light .aether-shell .bg-slate-900 {
-    background: linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(241, 245, 249, 0.84)) !important;
-    border-color: rgba(59, 130, 246, 0.16) !important;
-    box-shadow: inset 0 1px rgba(255, 255, 255, 0.9), 0 14px 36px rgba(15, 23, 42, 0.08);
+    background: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05) !important;
   }
 
+  html.light .aether-shell .bg-slate-950,
+  html.light .aether-shell .bg-slate-950\/40,
+  html.light .aether-shell .bg-slate-950\/50,
+  html.light .aether-shell .bg-slate-950\/60,
+  html.light .aether-shell .bg-slate-950\/80,
   html.light .aether-shell .bg-slate-800,
+  html.light .aether-shell .bg-slate-800\/30,
   html.light .aether-shell .bg-slate-800\/40,
   html.light .aether-shell .bg-slate-800\/50,
   html.light .aether-shell .bg-slate-800\/60,
-  html.light .aether-shell .bg-slate-800\/70 {
-    background: rgba(226, 232, 240, 0.72) !important;
-    border-color: rgba(100, 116, 139, 0.3) !important;
+  html.light .aether-shell .bg-slate-800\/70,
+  html.light .aether-shell .bg-slate-800\/80 {
+    background: #f8fafc !important;
+    border-color: #e2e8f0 !important;
   }
 
   html.light .aether-shell .border-dashed {
-    background: rgba(255, 255, 255, 0.7) !important;
+    background: rgba(255, 255, 255, 0.85) !important;
+    border-color: #cbd5e1 !important;
   }
 
   html.light .aether-shell .text-slate-100,
   html.light .aether-shell .text-slate-200,
   html.light .aether-shell .text-slate-300,
   html.light .aether-shell .text-white {
-    color: #172033;
+    color: #0f172a !important;
   }
 
-  html.light .aether-shell .text-slate-400,
-  html.light .aether-shell .text-slate-500,
+  html.light .aether-shell .text-slate-400 {
+    color: #334155 !important;
+  }
+
+  html.light .aether-shell .text-slate-500 {
+    color: #475569 !important;
+  }
+
   html.light .aether-shell .text-slate-600 {
-    color: #475569;
+    color: #1e293b !important;
+  }
+
+  /* Modals, Popovers, and Dialogs in Light Mode */
+  html.light [data-radix-portal] .bg-slate-900,
+  html.light [data-radix-portal] .bg-slate-950,
+  html.light [data-radix-portal] [role="dialog"],
+  html.light [data-radix-portal] [role="alertdialog"],
+  html.light .fixed.bg-slate-950 {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    color: #0f172a !important;
+  }
+
+  html.light [data-radix-portal] h1,
+  html.light [data-radix-portal] h2,
+  html.light [data-radix-portal] h3,
+  html.light [data-radix-portal] [data-slot="dialog-title"],
+  html.light [data-radix-portal] [data-slot="alert-dialog-title"],
+  html.light .fixed.bg-slate-950 h1,
+  html.light .fixed.bg-slate-950 h2,
+  html.light .fixed.bg-slate-950 h3 {
+    color: #0f172a !important;
+  }
+
+  html.light [data-radix-portal] p,
+  html.light [data-radix-portal] [data-slot="dialog-description"],
+  html.light [data-radix-portal] [data-slot="alert-dialog-description"],
+  html.light .fixed.bg-slate-950 p {
+    color: #475569 !important;
   }
 
   /* Instructor workflow pages use explicit dark utility classes. */

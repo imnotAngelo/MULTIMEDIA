@@ -228,7 +228,7 @@ export function InstructorDashboard() {
   };
 
   if (loading && units.length === 0) {
-    return <AetherLoader label="Organizing your instructor command center" />;
+    return <AetherLoader variant="dashboard" label="Organizing your instructor command center" />;
   }
 
   return (

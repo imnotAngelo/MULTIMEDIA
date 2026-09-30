@@ -185,21 +185,21 @@ export function Assessments() {
       {/* Welcome Section */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-white">Assessments</h1>
-          <p className="text-slate-400 mt-1 text-sm">View and complete your assignments, quizzes, and laboratories</p>
+          <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">Assessments</h1>
+          <p className="text-slate-600 dark:text-slate-400 mt-1 text-sm">View and complete your assignments, quizzes, and laboratories</p>
         </div>
         <div className="flex items-center gap-3">
           {isAutoRefreshing && (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800/50 border border-slate-700">
-              <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
-              <span className="text-sm text-slate-400">Auto-syncing...</span>
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+              <span className="text-sm text-slate-600 dark:text-slate-400">Auto-syncing...</span>
             </div>
           )}
           <Button
             onClick={loadAssessments}
             disabled={isAutoRefreshing}
             variant="outline"
-            className="border-slate-700 text-slate-300 hover:bg-slate-800/50 disabled:opacity-50"
+            className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/50 disabled:opacity-50"
           >
             <RefreshCw className={`w-4 h-4 mr-2 ${isAutoRefreshing ? 'animate-spin' : ''}`} />
             Refresh
@@ -209,64 +209,64 @@ export function Assessments() {
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="group bg-slate-900/60 border border-slate-800/60 rounded-xl p-5 hover:border-blue-500/30 transition-all">
+        <div className="group bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/60 rounded-xl p-5 hover:border-blue-500/30 transition-all shadow-sm">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center">
-              <FileText className="w-4.5 h-4.5 text-blue-400" />
+              <FileText className="w-4.5 h-4.5 text-blue-600 dark:text-blue-400" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-white">{stats.totalAssignments}</div>
-          <p className="text-slate-500 text-xs mt-1">Assignments</p>
+          <div className="text-2xl font-bold text-slate-900 dark:text-white">{stats.totalAssignments}</div>
+          <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">Assignments</p>
         </div>
-        <div className="group bg-slate-900/60 border border-slate-800/60 rounded-xl p-5 hover:border-amber-500/30 transition-all">
+        <div className="group bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/60 rounded-xl p-5 hover:border-amber-500/30 transition-all shadow-sm">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center">
-              <ClipboardList className="w-4.5 h-4.5 text-amber-400" />
+              <ClipboardList className="w-4.5 h-4.5 text-amber-600 dark:text-amber-400" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-white">{stats.totalQuizzes}</div>
-          <p className="text-slate-500 text-xs mt-1">Quizzes</p>
+          <div className="text-2xl font-bold text-slate-900 dark:text-white">{stats.totalQuizzes}</div>
+          <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">Quizzes</p>
         </div>
-        <div className="group bg-slate-900/60 border border-slate-800/60 rounded-xl p-5 hover:border-purple-500/30 transition-all">
+        <div className="group bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/60 rounded-xl p-5 hover:border-purple-500/30 transition-all shadow-sm">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-9 h-9 rounded-lg bg-purple-500/10 flex items-center justify-center">
-              <Beaker className="w-4.5 h-4.5 text-purple-400" />
+              <Beaker className="w-4.5 h-4.5 text-purple-600 dark:text-purple-400" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-white">{stats.totalLaboratories}</div>
-          <p className="text-slate-500 text-xs mt-1">Laboratories</p>
+          <div className="text-2xl font-bold text-slate-900 dark:text-white">{stats.totalLaboratories}</div>
+          <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">Laboratories</p>
         </div>
-        <div className="group bg-slate-900/60 border border-slate-800/60 rounded-xl p-5 hover:border-emerald-500/30 transition-all">
+        <div className="group bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/60 rounded-xl p-5 hover:border-emerald-500/30 transition-all shadow-sm">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-              <CheckCircle2 className="w-4.5 h-4.5 text-emerald-400" />
+              <CheckCircle2 className="w-4.5 h-4.5 text-emerald-600 dark:text-emerald-400" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-white">
+          <div className="text-2xl font-bold text-slate-900 dark:text-white">
             {stats.averageScore > 0 ? stats.averageScore.toFixed(1) : 'N/A'}
           </div>
-          <p className="text-slate-500 text-xs mt-1">Average Score</p>
+          <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">Average Score</p>
         </div>
       </div>
 
       {/* Progress Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-gradient-to-br from-emerald-600/20 to-emerald-800/20 border border-emerald-500/30 rounded-xl p-6">
+        <div className="bg-gradient-to-br from-emerald-500/10 to-emerald-600/10 dark:from-emerald-600/20 dark:to-emerald-800/20 border border-emerald-500/30 rounded-xl p-6 shadow-sm">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-slate-400 text-sm mb-1">Completed</p>
-              <div className="text-3xl font-bold text-emerald-400">{stats.completedAssessments}</div>
+              <p className="text-slate-600 dark:text-slate-400 text-sm mb-1">Completed</p>
+              <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{stats.completedAssessments}</div>
             </div>
-            <CheckCircle2 className="w-8 h-8 text-emerald-400/50" />
+            <CheckCircle2 className="w-8 h-8 text-emerald-500/50" />
           </div>
         </div>
-        <div className="bg-gradient-to-br from-yellow-600/20 to-yellow-800/20 border border-yellow-500/30 rounded-xl p-6">
+        <div className="bg-gradient-to-br from-amber-500/10 to-amber-600/10 dark:from-yellow-600/20 dark:to-yellow-800/20 border border-amber-500/30 rounded-xl p-6 shadow-sm">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-slate-400 text-sm mb-1">Pending</p>
-              <div className="text-3xl font-bold text-yellow-400">{stats.pendingAssessments}</div>
+              <p className="text-slate-600 dark:text-slate-400 text-sm mb-1">Pending</p>
+              <div className="text-3xl font-bold text-amber-600 dark:text-yellow-400">{stats.pendingAssessments}</div>
             </div>
-            <AlertCircle className="w-8 h-8 text-yellow-400/50" />
+            <AlertCircle className="w-8 h-8 text-amber-500/50" />
           </div>
         </div>
       </div>
@@ -278,7 +278,7 @@ export function Assessments() {
           className={`px-4 py-2 rounded-lg font-medium transition-colors ${
             filter === 'all'
               ? 'bg-violet-600 text-white'
-              : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+              : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-transparent'
           }`}
         >
           All Assessments
@@ -288,7 +288,7 @@ export function Assessments() {
           className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
             filter === 'assignment'
               ? 'bg-blue-600 text-white'
-              : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+              : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-transparent'
           }`}
         >
           <FileText className="w-4 h-4" />
@@ -299,7 +299,7 @@ export function Assessments() {
           className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
             filter === 'quiz'
               ? 'bg-orange-600 text-white'
-              : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+              : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-transparent'
           }`}
         >
           <ClipboardList className="w-4 h-4" />
@@ -310,7 +310,7 @@ export function Assessments() {
           className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
             filter === 'laboratory'
               ? 'bg-purple-600 text-white'
-              : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+              : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-transparent'
           }`}
         >
           <Beaker className="w-4 h-4" />
@@ -320,16 +320,16 @@ export function Assessments() {
 
       {/* Assessments List */}
       {loading ? (
-        <AetherLoader label="Preparing your assessments" />
+        <AetherLoader variant="cards" label="Preparing your assessments" />
       ) : (
         <>
           {filteredAssessments.length === 0 ? (
-            <div className="bg-slate-900/40 border border-slate-800/60 rounded-xl p-12 text-center">
-              <div className="w-16 h-16 rounded-2xl bg-slate-800/60 flex items-center justify-center mx-auto mb-4">
-                <ClipboardList className="w-7 h-7 text-slate-500" />
+            <div className="bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/60 rounded-xl p-12 text-center shadow-sm">
+              <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-800/60 flex items-center justify-center mx-auto mb-4">
+                <ClipboardList className="w-7 h-7 text-slate-400 dark:text-slate-500" />
               </div>
-              <h2 className="text-xl font-semibold text-white mb-2">No Assessments Found</h2>
-              <p className="text-slate-400 mb-6 max-w-md mx-auto">
+              <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">No Assessments Found</h2>
+              <p className="text-slate-600 dark:text-slate-400 mb-6 max-w-md mx-auto">
                 {filter === 'all'
                   ? 'No assessments available yet. Check back soon!'
                   : `No ${filter}s available yet.`}
@@ -351,7 +351,7 @@ export function Assessments() {
               <button
                 key={assessment.id}
                 onClick={() => navigate(`/assessment/${assessment.id}`)}
-                className="w-full group bg-gradient-to-r from-slate-900/60 to-slate-900/30 border border-slate-800 hover:border-violet-500/50 rounded-lg p-6 text-left transition-all hover:bg-slate-900/50"
+                className="w-full group bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-violet-500/50 dark:hover:border-violet-500/50 rounded-xl p-6 text-left transition-all hover:bg-slate-50 dark:hover:bg-slate-900/50 shadow-sm"
               >
                 <div className="flex items-start justify-between gap-4">
                   {/* Left Section - Icon and Title */}
@@ -361,10 +361,10 @@ export function Assessments() {
                         {getAssessmentIcon(assessment.type)}
                       </div>
                       <div>
-                        <h3 className="font-semibold text-white text-lg group-hover:text-violet-300 transition-colors line-clamp-1">
+                        <h3 className="font-semibold text-slate-900 dark:text-white text-lg group-hover:text-violet-600 dark:group-hover:text-violet-300 transition-colors line-clamp-1">
                           {assessment.title}
                         </h3>
-                        <p className="text-slate-400 text-sm line-clamp-1">
+                        <p className="text-slate-600 dark:text-slate-400 text-sm line-clamp-1">
                           {assessment.description}
                         </p>
                         {assessment.type === 'quiz' && assessment.questions_data && assessment.questions_data.length > 0 && (
@@ -380,16 +380,16 @@ export function Assessments() {
                   <div className="flex items-center gap-6 ml-4 flex-shrink-0">
                     {/* Due Date */}
                     <div className="flex items-center gap-2 min-w-max">
-                      <Calendar className="w-4 h-4 text-slate-500" />
+                      <Calendar className="w-4 h-4 text-slate-400 dark:text-slate-500" />
                       <div className="text-right">
-                        <p className="text-xs text-slate-500">Due</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Due</p>
                         <p
                           className={`text-sm font-medium ${
                             isOverdue
-                              ? 'text-red-400'
+                              ? 'text-red-500 dark:text-red-400'
                               : isDueSoon
-                                ? 'text-yellow-400'
-                                : 'text-slate-300'
+                                ? 'text-amber-600 dark:text-yellow-400'
+                                : 'text-slate-700 dark:text-slate-300'
                           }`}
                         >
                           {isOverdue
@@ -402,8 +402,8 @@ export function Assessments() {
                     {/* Score */}
                     {assessment.score !== undefined && (
                       <div className="text-right min-w-fit">
-                        <p className="text-xs text-slate-500">Score</p>
-                        <p className="text-lg font-bold text-emerald-400">
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Score</p>
+                        <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
                           {assessment.score}/{assessment.maxScore || 100}
                         </p>
                       </div>
@@ -413,15 +413,15 @@ export function Assessments() {
                     <div className="flex items-center gap-2 min-w-fit">
                       {getStatusIcon(assessment.status)}
                       <div className="text-right">
-                        <p className="text-xs text-slate-500">Status</p>
-                        <p className="text-sm font-medium text-slate-300 capitalize">
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Status</p>
+                        <p className="text-sm font-medium text-slate-700 dark:text-slate-300 capitalize">
                           {assessment.status}
                         </p>
                       </div>
                     </div>
 
                     {/* Arrow */}
-                    <ArrowRight className="w-5 h-5 text-slate-500 group-hover:text-violet-400 transition-colors flex-shrink-0" />
+                    <ArrowRight className="w-5 h-5 text-slate-400 dark:text-slate-500 group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors flex-shrink-0" />
                   </div>
                 </div>
               </button>
@@ -429,7 +429,7 @@ export function Assessments() {
             } catch {
               return (
                 <div key={assessment.id} className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
-                  <p className="text-red-400 text-sm">Error rendering assessment: {assessment.title}</p>
+                  <p className="text-red-500 dark:text-red-400 text-sm">Error rendering assessment: {assessment.title}</p>
                 </div>
               );
             }
@@ -439,9 +439,9 @@ export function Assessments() {
 
           {/* CTA Section */}
           {filteredAssessments.length > 0 && (
-            <div className="bg-gradient-to-r from-violet-600/20 to-emerald-600/20 border border-violet-500/30 rounded-xl p-6 text-center">
-              <h3 className="text-lg font-semibold text-white mb-2">Stay on Track</h3>
-              <p className="text-slate-400 mb-4">
+            <div className="bg-gradient-to-r from-violet-500/10 to-emerald-500/10 dark:from-violet-600/20 dark:to-emerald-600/20 border border-violet-500/20 dark:border-violet-500/30 rounded-xl p-6 text-center shadow-sm">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Stay on Track</h3>
+              <p className="text-slate-600 dark:text-slate-400 mb-4">
                 Complete your assessments on time to keep your learning progress moving.
               </p>
               <Button className="bg-violet-600 hover:bg-violet-700 text-white">

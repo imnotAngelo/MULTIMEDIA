@@ -96,9 +96,41 @@ export function SectionYearTargetPicker({
         </div>
       </div>}
       <div className="space-y-2">
-        <Label className={labelClass}>Sections</Label>
+        <div className="flex items-center justify-between">
+          <Label className={labelClass}>Sections</Label>
+          {sectionOptions.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                if (sections.length === sectionOptions.length) {
+                  onSectionsChange([]);
+                } else {
+                  onSectionsChange([...sectionOptions]);
+                }
+              }}
+              className="text-xs font-medium text-violet-500 hover:text-violet-400 transition-colors"
+            >
+              {sections.length === sectionOptions.length ? 'Deselect All' : 'Select All'}
+            </button>
+          )}
+        </div>
         {sectionOptions.length > 0 ? (
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-2 cursor-pointer font-medium border-r border-slate-300 dark:border-slate-700 pr-3">
+              <input
+                type="checkbox"
+                checked={sectionOptions.length > 0 && sections.length === sectionOptions.length}
+                onChange={(event) => {
+                  if (event.target.checked) {
+                    onSectionsChange([...sectionOptions]);
+                  } else {
+                    onSectionsChange([]);
+                  }
+                }}
+                className={checkboxClass}
+              />
+              <span className="text-xs font-semibold text-violet-600 dark:text-violet-400">Select All</span>
+            </label>
             {sectionOptions.map((section) => (
               <label key={section} className="flex items-center gap-2 cursor-pointer">
                 <input

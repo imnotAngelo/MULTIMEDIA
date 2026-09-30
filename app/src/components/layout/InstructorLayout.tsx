@@ -13,7 +13,7 @@ export function InstructorLayout() {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-slate-950 aether-shell">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 aether-shell text-slate-900 dark:text-slate-100">
       <Sidebar
         userRole="instructor"
         userName={user.full_name}

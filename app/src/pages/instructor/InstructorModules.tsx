@@ -18,6 +18,7 @@ import { UploadLesson } from './UploadLesson';
 import { notificationService } from '@/services/notificationService';
 import { authFetch } from '@/lib/authFetch';
 import { API_BASE_URL } from '@/lib/apiConfig';
+import { AetherLoader } from '@/components/AetherLoader';
 
 interface Unit {
   id: string;
@@ -137,8 +138,8 @@ export function InstructorModules() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-12">
-        <p className="text-slate-400">Loading units...</p>
+      <div className="space-y-6 max-w-7xl mx-auto p-4 sm:p-6">
+        <AetherLoader variant="cards" label="Loading units and modules..." />
       </div>
     );
   }
@@ -147,12 +148,12 @@ export function InstructorModules() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-white">Upload Lessons</h1>
-        <p className="text-slate-400">Upload PDF lessons to your units</p>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Upload Lessons</h1>
+        <p className="text-slate-600 dark:text-slate-400">Upload PDF lessons to your units</p>
       </div>
 
       {error && (
-        <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-200">
+        <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-600 dark:text-red-200">
           {error}
         </div>
       )}
@@ -160,14 +161,14 @@ export function InstructorModules() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Units List */}
         <div className="lg:col-span-1">
-          <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4">
-            <h2 className="text-lg font-semibold text-slate-200 mb-4">Your Units</h2>
+          <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-200 mb-4">Your Units</h2>
             <div className="space-y-2 max-h-96 overflow-y-auto">
               {units.length === 0 ? (
                 <div className="text-center p-4">
-                  <BookOpen className="w-8 h-8 text-slate-600 mx-auto mb-2" />
-                  <p className="text-sm text-slate-500">No units yet</p>
-                  <p className="text-xs text-slate-600 mt-1">Create units in Units Management</p>
+                  <BookOpen className="w-8 h-8 text-slate-400 dark:text-slate-600 mx-auto mb-2" />
+                  <p className="text-sm text-slate-500 dark:text-slate-400">No units yet</p>
+                  <p className="text-xs text-slate-400 dark:text-slate-600 mt-1">Create units in Units Management</p>
                 </div>
               ) : (
                 units.map(unit => (
@@ -177,7 +178,7 @@ export function InstructorModules() {
                     className={`w-full text-left p-3 rounded-lg transition-colors ${
                       selectedUnit?.id === unit.id
                         ? 'bg-violet-600 text-white'
-                        : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                        : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-transparent'
                     }`}
                   >
                     <div className="font-medium text-sm">{unit.title}</div>
@@ -200,14 +201,14 @@ export function InstructorModules() {
                   <div className="flex items-center gap-2 mb-4">
                     <button
                       onClick={() => setShowUpload(false)}
-                      className="text-violet-400 hover:text-violet-300 text-sm font-medium"
+                      className="text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 text-sm font-medium"
                     >
                       ← Back to Lessons
                     </button>
                   </div>
-                  <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6">
-                    <h2 className="text-xl font-semibold text-white mb-1">Upload Lesson to {selectedUnit.title}</h2>
-                    <p className="text-slate-400 mb-6">Upload a PDF file to generate presentation slides</p>
+                  <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
+                    <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-1">Upload Lesson to {selectedUnit.title}</h2>
+                    <p className="text-slate-600 dark:text-slate-400 mb-6">Upload a PDF file to generate presentation slides</p>
                     <UploadLesson
                       unitId={selectedUnit.id}
                       onSuccess={handleUploadSuccess}
@@ -217,11 +218,11 @@ export function InstructorModules() {
               ) : (
                 <>
                   {/* Unit Header */}
-                  <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-6">
-                    <h2 className="text-2xl font-semibold text-white mb-2">
+                  <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
+                    <h2 className="text-2xl font-semibold text-slate-900 dark:text-white mb-2">
                       {selectedUnit.title}
                     </h2>
-                    <p className="text-slate-400 mb-4">{selectedUnit.description || 'No description'}</p>
+                    <p className="text-slate-600 dark:text-slate-400 mb-4">{selectedUnit.description || 'No description'}</p>
                     <Button
                       onClick={() => setShowUpload(true)}
                       className="bg-violet-600 hover:bg-violet-700 text-white"
@@ -233,13 +234,13 @@ export function InstructorModules() {
 
                   {/* Lessons List */}
                   <div>
-                    <h3 className="text-lg font-semibold text-slate-200 mb-4">
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-200 mb-4">
                       Lessons ({lessons.length})
                     </h3>
                     {lessons.length === 0 ? (
-                      <Card className="p-8 text-center bg-slate-900/60 border-slate-800">
-                        <FileText className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-                        <p className="text-slate-400 mb-4">No lessons in this unit yet</p>
+                      <Card className="p-8 text-center bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 shadow-sm">
+                        <FileText className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-3" />
+                        <p className="text-slate-600 dark:text-slate-400 mb-4">No lessons in this unit yet</p>
                         <Button
                           onClick={() => setShowUpload(true)}
                           className="bg-violet-600 hover:bg-violet-700 text-white"
@@ -254,11 +255,11 @@ export function InstructorModules() {
                           <Card
                             key={lesson.id}
                             onClick={() => handleViewLesson(lesson)}
-                            className="p-4 bg-slate-900/60 border-slate-800 hover:border-slate-700 transition-colors cursor-pointer"
+                            className="p-4 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition-colors cursor-pointer shadow-sm"
                           >
                             <div className="flex items-start justify-between">
                               <div className="flex-1">
-                                <h4 className="font-semibold text-slate-200 mb-1">
+                                <h4 className="font-semibold text-slate-900 dark:text-slate-200 mb-1">
                                   {lesson.title}
                                 </h4>
                                 <p className="text-sm text-slate-500 mb-2">
@@ -272,7 +273,7 @@ export function InstructorModules() {
                                     handleViewLesson(lesson);
                                   }}
                                   title="View lesson"
-                                  className="p-2 hover:bg-slate-800 rounded-lg transition-colors text-slate-400 hover:text-blue-400"
+                                  className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-400 hover:text-blue-600 dark:hover:text-blue-400"
                                 >
                                   <Eye className="w-4 h-4" />
                                 </button>
@@ -282,7 +283,7 @@ export function InstructorModules() {
                                     setLessonToDelete(lesson);
                                   }}
                                   title="Delete lesson"
-                                  className="p-2 hover:bg-red-500/20 rounded-lg transition-colors text-red-400 hover:text-red-300"
+                                  className="p-2 hover:bg-red-50 dark:hover:bg-red-500/20 rounded-lg transition-colors text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300"
                                 >
                                   <Trash2 className="w-4 h-4" />
                                 </button>
@@ -297,9 +298,9 @@ export function InstructorModules() {
               )}
             </>
           ) : (
-            <Card className="p-12 text-center bg-slate-900/60 border-slate-800">
-              <BookOpen className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-              <p className="text-slate-400">Select a unit to manage lessons</p>
+            <Card className="p-12 text-center bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 shadow-sm">
+              <BookOpen className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-3" />
+              <p className="text-slate-600 dark:text-slate-400">Select a unit to manage lessons</p>
               {units.length === 0 && (
                 <p className="text-slate-500 text-sm mt-2">Create a unit in Units Management first</p>
               )}
@@ -310,15 +311,15 @@ export function InstructorModules() {
 
       {/* Delete Lesson Confirmation Dialog */}
       <AlertDialog open={Boolean(lessonToDelete)} onOpenChange={(open) => !open && setLessonToDelete(null)}>
-        <AlertDialogContent className="bg-slate-900 border-slate-800 text-white">
+        <AlertDialogContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Lesson</AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-400">
-              Are you sure you want to delete <span className="font-semibold text-slate-200">"{lessonToDelete?.title}"</span>? This action cannot be undone.
+            <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
+              Are you sure you want to delete <span className="font-semibold text-slate-800 dark:text-slate-200">"{lessonToDelete?.title}"</span>? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700">Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmDeleteLesson} className="bg-rose-600 hover:bg-rose-700 text-white">
               Delete Lesson
             </AlertDialogAction>

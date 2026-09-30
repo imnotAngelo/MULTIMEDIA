@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GraduationCap, Save, User as UserIcon, Image as ImageIcon, Upload, RotateCcw, Archive, ArrowRight } from 'lucide-react';
 import { AetherSpinner } from '@/components/AetherSpinner';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -372,8 +373,8 @@ export function StudentSettings() {
         {showArchives && (
           <div className="mt-4">
             {loadingArchives && (
-              <div className="flex justify-center py-8">
-                <AetherSpinner className="w-6 h-6" />
+              <div className="py-2">
+                <SkeletonList count={2} />
               </div>
             )}
             

@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { usePageCache } from '@/stores/pageCacheStore';
@@ -19,7 +19,6 @@ import {
   ChevronDown,
   ChevronUp,
   Monitor,
-  Layers,
   ChevronRight,
   ArrowLeft,
   Check,
@@ -404,14 +403,14 @@ export function LaboratoriesManagement() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-white">Laboratories</h1>
-          <p className="text-slate-400 mt-1 text-sm">Create and manage student laboratory activities</p>
+          <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">Laboratories</h1>
+          <p className="text-slate-600 dark:text-slate-400 mt-1 text-sm">Create and manage student laboratory activities</p>
         </div>
         <div className="flex gap-2">
           <Button
             onClick={() => { pageCache.invalidate(CACHE_KEY); loadData(false); }}
             variant="outline"
-            className="border-slate-700 text-slate-300 hover:bg-slate-800/50"
+            className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/50"
           >
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh
@@ -428,36 +427,36 @@ export function LaboratoriesManagement() {
 
       {/* Stats Row */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        <div className="bg-slate-900/60 border border-slate-800/60 rounded-xl p-5">
+        <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/60 rounded-xl p-5 shadow-sm">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-9 h-9 rounded-lg bg-violet-500/10 flex items-center justify-center">
               <Beaker className="w-4 h-4 text-violet-400" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-white">{laboratories.length}</div>
-          <p className="text-slate-500 text-xs mt-1">Total Laboratories</p>
+          <div className="text-2xl font-bold text-slate-900 dark:text-white">{laboratories.length}</div>
+          <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">Total Laboratories</p>
         </div>
-        <div className="bg-slate-900/60 border border-slate-800/60 rounded-xl p-5">
+        <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/60 rounded-xl p-5 shadow-sm">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-9 h-9 rounded-lg bg-cyan-500/10 flex items-center justify-center">
               <Monitor className="w-4 h-4 text-cyan-400" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-white">
+          <div className="text-2xl font-bold text-slate-900 dark:text-white">
             {new Set(laboratories.map(l => l.platform)).size}
           </div>
-          <p className="text-slate-500 text-xs mt-1">Platforms Used</p>
+          <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">Platforms Used</p>
         </div>
-        <div className="bg-slate-900/60 border border-slate-800/60 rounded-xl p-5">
+        <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/60 rounded-xl p-5 shadow-sm">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center">
               <Layers className="w-4 h-4 text-emerald-400" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-white">
+          <div className="text-2xl font-bold text-slate-900 dark:text-white">
             {new Set(laboratories.filter(l => l.unitId).map(l => l.unitId)).size}
           </div>
-          <p className="text-slate-500 text-xs mt-1">Units Covered</p>
+          <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">Units Covered</p>
         </div>
       </div>
 
@@ -465,7 +464,7 @@ export function LaboratoriesManagement() {
       {showCreateForm && (
         isCreateRoute ? (
           /* ─── FULL-PAGE WIZARD (Create mode) ─────────────────────────── */
-          <div className="fixed inset-0 z-50 bg-slate-950 overflow-y-auto">
+          <div className="fixed inset-0 z-50 bg-slate-50 dark:bg-slate-950 overflow-y-auto">
             <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
 
               {/* Top nav */}
@@ -473,18 +472,18 @@ export function LaboratoriesManagement() {
                 <button
                   type="button"
                   onClick={handleCloseForm}
-                  className="flex items-center gap-2 text-violet-400 hover:text-violet-300 text-sm font-medium transition-colors"
+                  className="flex items-center gap-2 text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 text-sm font-medium transition-colors"
                 >
                   <ArrowLeft className="w-4 h-4" />
                   Back to Laboratories
                 </button>
-                <div className="text-xs px-2.5 py-1 rounded-full bg-violet-500/10 text-violet-400 font-medium border border-violet-500/20">
+                <div className="text-xs px-2.5 py-1 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 font-medium border border-violet-500/20">
                   Laboratory Studio
                 </div>
               </div>
 
               {/* Step indicator */}
-              <div className="bg-slate-900/70 border border-slate-800 rounded-xl px-6 py-4">
+              <div className="bg-white dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 rounded-xl px-6 py-4 shadow-sm">
                 <div className="flex items-center justify-between max-w-lg mx-auto">
                   {[
                     { n: 1, label: 'Lab Details' },
@@ -498,16 +497,16 @@ export function LaboratoriesManagement() {
                             ? 'bg-violet-600 text-white shadow-lg shadow-violet-600/30'
                             : wizardStep === n
                             ? 'bg-violet-600 text-white shadow-lg shadow-violet-600/30'
-                            : 'bg-slate-800 text-slate-400'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
                         }`}>
                           {wizardStep > n ? <Check className="w-4 h-4" /> : n}
                         </div>
-                        <span className={`text-sm font-semibold hidden sm:block ${wizardStep === n ? 'text-violet-400' : 'text-slate-500'}`}>
+                        <span className={`text-sm font-semibold hidden sm:block ${wizardStep === n ? 'text-violet-600 dark:text-violet-400' : 'text-slate-500 dark:text-slate-400'}`}>
                           {label}
                         </span>
                       </div>
                       {idx < arr.length - 1 && (
-                        <ChevronRight className="w-5 h-5 text-slate-600 ml-2" />
+                        <ChevronRight className="w-5 h-5 text-slate-400 dark:text-slate-600 ml-2" />
                       )}
                     </div>
                   ))}
@@ -517,59 +516,59 @@ export function LaboratoriesManagement() {
               {/* Error banner */}
               {formError && (
                 <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3">
-                  <p className="text-red-400 text-sm">{formError}</p>
+                  <p className="text-red-500 dark:text-red-400 text-sm">{formError}</p>
                 </div>
               )}
 
               {/* ── STEP 1: Lab Details ── */}
               {wizardStep === 1 && (
-                <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-6 space-y-6">
-                  <div className="flex items-center gap-3 border-b border-slate-800 pb-4">
-                    <div className="p-2.5 rounded-lg bg-violet-500/10 text-violet-400">
+                <div className="bg-white dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 rounded-xl p-6 space-y-6 shadow-sm">
+                  <div className="flex items-center gap-3 border-b border-slate-200 dark:border-slate-800 pb-4">
+                    <div className="p-2.5 rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-400">
                       <Beaker className="w-5 h-5" />
                     </div>
                     <div>
-                      <h2 className="text-lg font-bold text-white">Step 1: Lab Details</h2>
-                      <p className="text-xs text-slate-400 mt-0.5">Name your laboratory and link it to an instructional unit and lesson.</p>
+                      <h2 className="text-lg font-bold text-slate-900 dark:text-white">Step 1: Lab Details</h2>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Name your laboratory and link it to an instructional unit and lesson.</p>
                     </div>
                   </div>
 
                   {/* Title */}
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                      Laboratory Title <span className="text-red-400">*</span>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                      Laboratory Title <span className="text-red-500 dark:text-red-400">*</span>
                     </label>
                     <input
                       type="text"
                       value={formData.title}
                       onChange={e => setFormData(f => ({ ...f, title: e.target.value }))}
                       placeholder="e.g. Logo Design using Canva"
-                      className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder:text-slate-500 focus:border-violet-500 focus:ring-1 focus:ring-violet-500 focus:outline-none transition-all text-sm"
+                      className="w-full px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-violet-500 focus:ring-1 focus:ring-violet-500 focus:outline-none transition-all text-sm"
                     />
                   </div>
 
                   {/* Description */}
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1.5">Description</label>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Description</label>
                     <textarea
                       value={formData.description}
                       onChange={e => setFormData(f => ({ ...f, description: e.target.value }))}
                       placeholder="Instructions or objectives for this laboratory..."
                       rows={3}
-                      className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder:text-slate-500 focus:border-violet-500 focus:ring-1 focus:ring-violet-500 focus:outline-none transition-all text-sm resize-none"
+                      className="w-full px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-violet-500 focus:ring-1 focus:ring-violet-500 focus:outline-none transition-all text-sm resize-none"
                     />
                   </div>
 
                   {/* Unit */}
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                       <BookOpen className="w-3.5 h-3.5 inline mr-1" />
-                      Link to Unit <span className="text-slate-500 font-normal">(optional)</span>
+                      Link to Unit <span className="text-slate-400 dark:text-slate-500 font-normal">(optional)</span>
                     </label>
                     <select
                       value={formData.unitId}
                       onChange={e => setFormData(f => ({ ...f, unitId: e.target.value, lessonId: '' }))}
-                      className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white focus:border-violet-500 focus:outline-none text-sm"
+                      className="w-full px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:border-violet-500 focus:outline-none text-sm"
                     >
                       <option value="">— No unit —</option>
                       {units.map(u => <option key={u.id} value={u.id}>{u.title}</option>)}
@@ -578,15 +577,15 @@ export function LaboratoriesManagement() {
 
                   {/* Lesson */}
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                       <BookOpen className="w-3.5 h-3.5 inline mr-1" />
-                      Link to Lesson <span className="text-slate-500 font-normal">(optional)</span>
+                      Link to Lesson <span className="text-slate-400 dark:text-slate-500 font-normal">(optional)</span>
                     </label>
                     <select
                       value={formData.lessonId}
                       onChange={e => setFormData(f => ({ ...f, lessonId: e.target.value }))}
                       disabled={!formData.unitId || lessonsLoading}
-                      className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white focus:border-violet-500 focus:outline-none text-sm disabled:opacity-50"
+                      className="w-full px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:border-violet-500 focus:outline-none text-sm disabled:opacity-50"
                     >
                       <option value="">
                         {!formData.unitId ? 'Choose a unit first' : lessonsLoading ? 'Loading lessons...' : lessons.length === 0 ? 'No lessons in this unit' : '— No lesson —'}
@@ -614,20 +613,20 @@ export function LaboratoriesManagement() {
 
               {/* ── STEP 2: Platform & Link ── */}
               {wizardStep === 2 && (
-                <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-6 space-y-6">
-                  <div className="flex items-center gap-3 border-b border-slate-800 pb-4">
-                    <div className="p-2.5 rounded-lg bg-cyan-500/10 text-cyan-400">
+                <div className="bg-white dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 rounded-xl p-6 space-y-6 shadow-sm">
+                  <div className="flex items-center gap-3 border-b border-slate-200 dark:border-slate-800 pb-4">
+                    <div className="p-2.5 rounded-lg bg-cyan-500/10 text-cyan-600 dark:text-cyan-400">
                       <Monitor className="w-5 h-5" />
                     </div>
                     <div>
-                      <h2 className="text-lg font-bold text-white">Step 2: Platform & Link</h2>
-                      <p className="text-xs text-slate-400 mt-0.5">Choose the tool students will use and paste the activity link.</p>
+                      <h2 className="text-lg font-bold text-slate-900 dark:text-white">Step 2: Platform & Link</h2>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Choose the tool students will use and paste the activity link.</p>
                     </div>
                   </div>
 
                   {/* Platform Cards */}
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-3">Select Platform / Tool <span className="text-red-400">*</span></label>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">Select Platform / Tool <span className="text-red-500 dark:text-red-400">*</span></label>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                       {PLATFORM_OPTIONS.map(p => (
                         <button
@@ -644,7 +643,7 @@ export function LaboratoriesManagement() {
                           className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border text-sm font-medium text-left transition-all ${
                             formData.platform === p.value
                               ? `${p.color} ring-2 ring-violet-500`
-                              : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:bg-slate-800'
+                              : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
                           }`}
                         >
                           {formData.platform === p.value && <Check className="w-3.5 h-3.5 flex-shrink-0" />}
@@ -656,25 +655,25 @@ export function LaboratoriesManagement() {
 
                   {/* Platform URL */}
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                      Activity / Platform Link <span className="text-red-400">*</span>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                      Activity / Platform Link <span className="text-red-500 dark:text-red-400">*</span>
                     </label>
                     <div className="relative">
-                      <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                      <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
                       <input
                         type="url"
                         value={formData.platformUrl}
                         onChange={e => setFormData(f => ({ ...f, platformUrl: e.target.value }))}
                         placeholder="https://www.canva.com/design/..."
-                        className="w-full pl-10 pr-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder:text-slate-500 focus:border-violet-500 focus:ring-1 focus:ring-violet-500 focus:outline-none transition-all text-sm"
+                        className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-violet-500 focus:ring-1 focus:ring-violet-500 focus:outline-none transition-all text-sm"
                       />
                     </div>
-                    <p className="text-slate-500 text-xs mt-1">Paste the direct link to the platform or a specific activity template.</p>
+                    <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">Paste the direct link to the platform or a specific activity template.</p>
                   </div>
 
                   {/* Nav */}
                   <div className="flex justify-between pt-2">
-                    <Button type="button" variant="outline" onClick={() => { setFormError(''); setWizardStep(1); }} className="border-slate-700 text-slate-300 hover:bg-slate-800">
+                    <Button type="button" variant="outline" onClick={() => { setFormError(''); setWizardStep(1); }} className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">
                       <ArrowLeft className="w-4 h-4 mr-1" /> Back
                     </Button>
                     <Button
@@ -694,32 +693,32 @@ export function LaboratoriesManagement() {
 
               {/* ── STEP 3: Schedule & Audience ── */}
               {wizardStep === 3 && (
-                <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-6 space-y-6">
-                  <div className="flex items-center gap-3 border-b border-slate-800 pb-4">
-                    <div className="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-400">
+                <div className="bg-white dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 rounded-xl p-6 space-y-6 shadow-sm">
+                  <div className="flex items-center gap-3 border-b border-slate-200 dark:border-slate-800 pb-4">
+                    <div className="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
                       <Calendar className="w-5 h-5" />
                     </div>
                     <div>
-                      <h2 className="text-lg font-bold text-white">Step 3: Schedule & Audience</h2>
-                      <p className="text-xs text-slate-400 mt-0.5">Set the due date, points, and which sections can access this lab.</p>
+                      <h2 className="text-lg font-bold text-slate-900 dark:text-white">Step 3: Schedule & Audience</h2>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Set the due date, points, and which sections can access this lab.</p>
                     </div>
                   </div>
 
                   {/* Due Date + Points */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                         <Calendar className="w-3.5 h-3.5 inline mr-1" />Due Date
                       </label>
                       <input
                         type="date"
                         value={formData.dueDate}
                         onChange={e => setFormData(f => ({ ...f, dueDate: e.target.value }))}
-                        className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white focus:border-violet-500 focus:outline-none text-sm"
+                        className="w-full px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:border-violet-500 focus:outline-none text-sm"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                         <Award className="w-3.5 h-3.5 inline mr-1" />Points
                       </label>
                       <input
@@ -728,9 +727,9 @@ export function LaboratoriesManagement() {
                         max={1000}
                         value={formData.points}
                         onChange={e => setFormData(f => ({ ...f, points: Math.max(1, parseInt(e.target.value) || 1) }))}
-                        className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white focus:border-violet-500 focus:outline-none text-sm"
+                        className="w-full px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:border-violet-500 focus:outline-none text-sm"
                       />
-                      <p className="text-slate-500 text-xs mt-1">Max score for this lab</p>
+                      <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">Max score for this lab</p>
                     </div>
                   </div>
 
@@ -738,21 +737,54 @@ export function LaboratoriesManagement() {
                   <label className="flex items-center gap-3 cursor-pointer">
                     <div
                       onClick={() => setFormData(f => ({ ...f, allowLateSubmissions: !f.allowLateSubmissions }))}
-                      className={`w-10 h-5 rounded-full transition-colors ${formData.allowLateSubmissions ? 'bg-violet-600' : 'bg-slate-700'} relative flex-shrink-0`}
+                      className={`w-10 h-5 rounded-full transition-colors ${formData.allowLateSubmissions ? 'bg-violet-600' : 'bg-slate-300 dark:bg-slate-700'} relative flex-shrink-0`}
                     >
                       <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${formData.allowLateSubmissions ? 'translate-x-5' : 'translate-x-0.5'}`} />
                     </div>
-                    <span className="text-sm text-slate-300">Allow late submissions after the due date</span>
+                    <span className="text-sm text-slate-700 dark:text-slate-300">Allow late submissions after the due date</span>
                   </label>
 
                   {/* Section picker */}
                   {user?.teaching_sections && user.teaching_sections.length > 0 && (
-                    <div className="bg-slate-800/50 border border-slate-700/60 rounded-lg p-4 space-y-3">
-                      <div>
-                        <h4 className="text-sm font-semibold text-slate-200">Assign to Sections</h4>
-                        <p className="text-xs text-slate-400 mt-0.5">Select which sections can access this laboratory.</p>
+                    <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 rounded-lg p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Assign to Sections</h4>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Select which sections can access this laboratory.</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const allSelected = user.teaching_sections!.length > 0 && user.teaching_sections!.every((s: string) => formData.targetSections.includes(s));
+                            setFormData(f => ({
+                              ...f,
+                              targetSections: allSelected ? [] : [...user.teaching_sections!],
+                            }));
+                          }}
+                          className="text-xs font-medium text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 hover:underline transition-colors shrink-0"
+                        >
+                          {user.teaching_sections.every((s: string) => formData.targetSections.includes(s)) ? 'Deselect All' : 'Select All'}
+                        </button>
                       </div>
                       <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const allSelected = user.teaching_sections!.length > 0 && user.teaching_sections!.every((s: string) => formData.targetSections.includes(s));
+                            setFormData(f => ({
+                              ...f,
+                              targetSections: allSelected ? [] : [...user.teaching_sections!],
+                            }));
+                          }}
+                          className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-all ${
+                            user.teaching_sections.length > 0 && user.teaching_sections.every((s: string) => formData.targetSections.includes(s))
+                              ? 'bg-violet-600 text-white border-violet-500 shadow-sm'
+                              : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-violet-600 dark:text-violet-400 hover:border-violet-500/50'
+                          }`}
+                        >
+                          {user.teaching_sections.length > 0 && user.teaching_sections.every((s: string) => formData.targetSections.includes(s)) && <Check className="w-3 h-3 inline mr-1" />}
+                          Select All ({user.teaching_sections.length})
+                        </button>
                         {user.teaching_sections.map((section: string) => {
                           const isSelected = formData.targetSections.includes(section);
                           return (
@@ -767,8 +799,8 @@ export function LaboratoriesManagement() {
                               }))}
                               className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-all ${
                                 isSelected
-                                  ? 'bg-violet-600/20 border-violet-500/50 text-violet-300'
-                                  : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-violet-500/30'
+                                  ? 'bg-violet-600/20 border-violet-500/50 text-violet-700 dark:text-violet-300'
+                                  : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-400 hover:border-violet-500/50'
                               }`}
                             >
                               {isSelected && <Check className="w-3 h-3 inline mr-1" />}
@@ -781,19 +813,19 @@ export function LaboratoriesManagement() {
                   )}
 
                   {/* Summary card */}
-                  <div className="bg-slate-800/50 border border-slate-700/60 rounded-lg p-4 space-y-2">
-                    <h4 className="text-sm font-semibold text-slate-200 mb-3">Summary</h4>
+                  <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 rounded-lg p-4 space-y-2">
+                    <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3">Summary</h4>
                     <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div><span className="text-slate-500">Title:</span> <span className="text-slate-200 font-medium">{formData.title || '—'}</span></div>
-                      <div><span className="text-slate-500">Platform:</span> <span className="text-slate-200 font-medium">{formData.platform}</span></div>
-                      <div><span className="text-slate-500">Points:</span> <span className="text-slate-200 font-medium">{formData.points}</span></div>
-                      <div><span className="text-slate-500">Due:</span> <span className="text-slate-200 font-medium">{formData.dueDate || 'No date set'}</span></div>
+                      <div><span className="text-slate-500 dark:text-slate-400">Title:</span> <span className="text-slate-800 dark:text-slate-200 font-medium">{formData.title || '—'}</span></div>
+                      <div><span className="text-slate-500 dark:text-slate-400">Platform:</span> <span className="text-slate-800 dark:text-slate-200 font-medium">{formData.platform}</span></div>
+                      <div><span className="text-slate-500 dark:text-slate-400">Points:</span> <span className="text-slate-800 dark:text-slate-200 font-medium">{formData.points}</span></div>
+                      <div><span className="text-slate-500 dark:text-slate-400">Due:</span> <span className="text-slate-800 dark:text-slate-200 font-medium">{formData.dueDate || 'No date set'}</span></div>
                     </div>
                   </div>
 
                   {/* Nav */}
                   <div className="flex justify-between pt-2">
-                    <Button type="button" variant="outline" onClick={() => { setFormError(''); setWizardStep(2); }} className="border-slate-700 text-slate-300 hover:bg-slate-800">
+                    <Button type="button" variant="outline" onClick={() => { setFormError(''); setWizardStep(2); }} className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">
                       <ArrowLeft className="w-4 h-4 mr-1" /> Back
                     </Button>
                     <Button
@@ -813,16 +845,16 @@ export function LaboratoriesManagement() {
         ) : (
           /* ─── MODAL (Edit mode) ───────────────────────────────────────── */
           <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-3 sm:p-4 bg-black/60 backdrop-blur-sm">
-            <div className="my-3 sm:my-6 bg-slate-900 border border-slate-700 rounded-xl w-full max-w-lg max-h-[calc(100vh-1.5rem)] sm:max-h-[calc(100vh-3rem)] shadow-2xl flex flex-col overflow-hidden">
+            <div className="my-3 sm:my-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl w-full max-w-lg max-h-[calc(100vh-1.5rem)] sm:max-h-[calc(100vh-3rem)] shadow-2xl flex flex-col overflow-hidden">
               {/* Modal Header */}
-              <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-slate-800 shrink-0">
+              <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-slate-200 dark:border-slate-800 shrink-0">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-lg bg-violet-500/15 flex items-center justify-center">
-                    <Beaker className="w-4 h-4 text-violet-400" />
+                    <Beaker className="w-4 h-4 text-violet-600 dark:text-violet-400" />
                   </div>
-                  <h2 className="text-lg font-semibold text-white">Edit Laboratory</h2>
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Edit Laboratory</h2>
                 </div>
-                <button onClick={handleCloseForm} className="text-slate-400 hover:text-white transition-colors">
+                <button onClick={handleCloseForm} className="text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -832,74 +864,113 @@ export function LaboratoriesManagement() {
                 <div className="p-5 sm:p-6 space-y-4">
                   {formError && (
                     <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
-                      <p className="text-red-400 text-sm">{formError}</p>
+                      <p className="text-red-500 dark:text-red-400 text-sm">{formError}</p>
                     </div>
                   )}
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1.5">Laboratory Title <span className="text-red-400">*</span></label>
-                    <input type="text" value={formData.title} onChange={e => setFormData(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Logo Design using Canva" className="w-full bg-slate-800/60 border border-slate-700 rounded-lg px-3 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:border-violet-500 text-sm" />
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Laboratory Title <span className="text-red-500 dark:text-red-400">*</span></label>
+                    <input type="text" value={formData.title} onChange={e => setFormData(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Logo Design using Canva" className="w-full bg-white dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2.5 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-violet-500 text-sm" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1.5">Description</label>
-                    <textarea value={formData.description} onChange={e => setFormData(f => ({ ...f, description: e.target.value }))} placeholder="Instructions or objectives..." rows={3} className="w-full bg-slate-800/60 border border-slate-700 rounded-lg px-3 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:border-violet-500 text-sm resize-none" />
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Description</label>
+                    <textarea value={formData.description} onChange={e => setFormData(f => ({ ...f, description: e.target.value }))} placeholder="Instructions or objectives..." rows={3} className="w-full bg-white dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2.5 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-violet-500 text-sm resize-none" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1.5">Platform / Tool</label>
-                    <select value={formData.platform} onChange={e => { const p = e.target.value; setFormData(f => ({ ...f, platform: p, platformUrl: !f.platformUrl || Object.values(PLATFORM_URLS).includes(f.platformUrl) ? (PLATFORM_URLS[p] ?? '') : f.platformUrl })); }} className="w-full bg-slate-800/60 border border-slate-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-violet-500 text-sm">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Platform / Tool</label>
+                    <select value={formData.platform} onChange={e => { const p = e.target.value; setFormData(f => ({ ...f, platform: p, platformUrl: !f.platformUrl || Object.values(PLATFORM_URLS).includes(f.platformUrl) ? (PLATFORM_URLS[p] ?? '') : f.platformUrl })); }} className="w-full bg-white dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-violet-500 text-sm">
                       {PLATFORM_OPTIONS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1.5">Platform Link <span className="text-red-400">*</span></label>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Platform Link <span className="text-red-500 dark:text-red-400">*</span></label>
                     <div className="relative">
-                      <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                      <input type="url" value={formData.platformUrl} onChange={e => setFormData(f => ({ ...f, platformUrl: e.target.value }))} placeholder="https://..." className="w-full bg-slate-800/60 border border-slate-700 rounded-lg pl-9 pr-3 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:border-violet-500 text-sm" />
+                      <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
+                      <input type="url" value={formData.platformUrl} onChange={e => setFormData(f => ({ ...f, platformUrl: e.target.value }))} placeholder="https://..." className="w-full bg-white dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 rounded-lg pl-9 pr-3 py-2.5 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-violet-500 text-sm" />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1.5">Link to Unit</label>
-                    <select value={formData.unitId} onChange={e => setFormData(f => ({ ...f, unitId: e.target.value, lessonId: '' }))} className="w-full bg-slate-800/60 border border-slate-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-violet-500 text-sm">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Link to Unit</label>
+                    <select value={formData.unitId} onChange={e => setFormData(f => ({ ...f, unitId: e.target.value, lessonId: '' }))} className="w-full bg-white dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-violet-500 text-sm">
                       <option value="">— No unit —</option>
                       {units.map(u => <option key={u.id} value={u.id}>{u.title}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1.5">Link to Lesson</label>
-                    <select value={formData.lessonId} onChange={e => setFormData(f => ({ ...f, lessonId: e.target.value }))} disabled={!formData.unitId || lessonsLoading} className="w-full bg-slate-800/60 border border-slate-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-violet-500 text-sm disabled:opacity-60">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Link to Lesson</label>
+                    <select value={formData.lessonId} onChange={e => setFormData(f => ({ ...f, lessonId: e.target.value }))} disabled={!formData.unitId || lessonsLoading} className="w-full bg-white dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-violet-500 text-sm disabled:opacity-60">
                       <option value="">{!formData.unitId ? 'Choose a unit first' : lessonsLoading ? 'Loading...' : lessons.length === 0 ? 'No lessons' : '— No lesson —'}</option>
                       {lessons.map(l => <option key={l.id} value={l.id}>{l.title}</option>)}
                     </select>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm font-medium text-slate-300 mb-1.5">Due Date</label>
-                      <input type="date" value={formData.dueDate} onChange={e => setFormData(f => ({ ...f, dueDate: e.target.value }))} className="w-full bg-slate-800/60 border border-slate-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-violet-500 text-sm" />
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Due Date</label>
+                      <input type="date" value={formData.dueDate} onChange={e => setFormData(f => ({ ...f, dueDate: e.target.value }))} className="w-full bg-white dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-violet-500 text-sm" />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-300 mb-1.5">Points</label>
-                      <input type="number" min={1} max={1000} value={formData.points} onChange={e => setFormData(f => ({ ...f, points: Math.max(1, parseInt(e.target.value) || 1) }))} className="w-full bg-slate-800/60 border border-slate-700 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-violet-500 text-sm" />
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Points</label>
+                      <input type="number" min={1} max={1000} value={formData.points} onChange={e => setFormData(f => ({ ...f, points: Math.max(1, parseInt(e.target.value) || 1) }))} className="w-full bg-white dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-violet-500 text-sm" />
                     </div>
                   </div>
-                  <label className="flex items-center gap-2 text-sm text-slate-300">
-                    <input type="checkbox" checked={formData.allowLateSubmissions} onChange={e => setFormData(f => ({ ...f, allowLateSubmissions: e.target.checked }))} className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-violet-500" />
+                  <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+                    <input type="checkbox" checked={formData.allowLateSubmissions} onChange={e => setFormData(f => ({ ...f, allowLateSubmissions: e.target.checked }))} className="h-4 w-4 rounded border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-violet-600" />
                     Allow late submissions
                   </label>
                   {user?.teaching_sections && user.teaching_sections.length > 0 && (
-                    <div className="rounded-lg border border-slate-800 bg-slate-950/40 p-3 space-y-3">
-                      <h4 className="text-sm font-semibold text-slate-200">Assign to Sections</h4>
+                    <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 p-3 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Assign to Sections</h4>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const allSelected = user.teaching_sections!.length > 0 && user.teaching_sections!.every((s: string) => formData.targetSections.includes(s));
+                            setFormData(f => ({
+                              ...f,
+                              targetSections: allSelected ? [] : [...user.teaching_sections!],
+                            }));
+                          }}
+                          className="text-xs font-medium text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 hover:underline transition-colors shrink-0"
+                        >
+                          {user.teaching_sections.every((s: string) => formData.targetSections.includes(s)) ? 'Deselect All' : 'Select All'}
+                        </button>
+                      </div>
                       <div className="flex flex-wrap gap-3">
+                        <label className="flex items-center gap-2 cursor-pointer font-medium text-violet-600 dark:text-violet-400">
+                          <input
+                            type="checkbox"
+                            checked={user.teaching_sections.length > 0 && user.teaching_sections.every((s: string) => formData.targetSections.includes(s))}
+                            onChange={(ev) => {
+                              setFormData(f => ({
+                                ...f,
+                                targetSections: ev.target.checked ? [...user.teaching_sections!] : [],
+                              }));
+                            }}
+                            className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-violet-600 focus:ring-violet-500 cursor-pointer"
+                          />
+                          <span className="text-xs font-semibold">Select All ({user.teaching_sections.length})</span>
+                        </label>
                         {user.teaching_sections.map((section: string) => (
                           <label key={section} className="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" checked={formData.targetSections.includes(section)} onChange={(ev) => setFormData(f => ({ ...f, targetSections: ev.target.checked ? [...f.targetSections, section] : f.targetSections.filter(s => s !== section) }))} className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-violet-500" />
-                            <span className="text-sm text-slate-300">{section}</span>
+                            <input
+                              type="checkbox"
+                              checked={formData.targetSections.includes(section)}
+                              onChange={(ev) => setFormData(f => ({
+                                ...f,
+                                targetSections: ev.target.checked
+                                  ? [...f.targetSections, section]
+                                  : f.targetSections.filter(s => s !== section)
+                              }))}
+                              className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-violet-600 focus:ring-violet-500 cursor-pointer"
+                            />
+                            <span className="text-sm text-slate-700 dark:text-slate-300">{section}</span>
                           </label>
                         ))}
                       </div>
                     </div>
                   )}
                 </div>
-                <div className="sticky bottom-0 flex justify-end gap-3 px-5 sm:px-6 py-4 bg-slate-900 border-t border-slate-800">
-                  <Button type="button" variant="outline" onClick={handleCloseForm} className="border-slate-700 text-slate-300 hover:bg-slate-800">Cancel</Button>
+                <div className="sticky bottom-0 flex justify-end gap-3 px-5 sm:px-6 py-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800">
+                  <Button type="button" variant="outline" onClick={handleCloseForm} className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">Cancel</Button>
                   <Button type="submit" className="bg-violet-600 hover:bg-violet-700 text-white">Save Changes</Button>
                 </div>
               </form>
@@ -910,14 +981,14 @@ export function LaboratoriesManagement() {
 
       {/* List */}
       {loading ? (
-        <AetherLoader label="Opening your laboratory network" />
+        <AetherLoader variant="cards" label="Opening your laboratory network" />
       ) : laboratories.length === 0 ? (
-        <div className="bg-slate-900/40 border border-slate-800/60 rounded-xl p-12 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-slate-800/60 flex items-center justify-center mx-auto mb-4">
-            <Beaker className="w-7 h-7 text-slate-500" />
+        <div className="bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/60 rounded-xl p-12 text-center shadow-sm">
+          <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-800/60 flex items-center justify-center mx-auto mb-4">
+            <Beaker className="w-7 h-7 text-slate-400 dark:text-slate-500" />
           </div>
-          <h2 className="text-xl font-semibold text-white mb-2">No Laboratories Yet</h2>
-          <p className="text-slate-400 mb-6 max-w-md mx-auto">
+          <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">No Laboratories Yet</h2>
+          <p className="text-slate-600 dark:text-slate-400 mb-6 max-w-md mx-auto">
             Create your first laboratory activity and link it to a platform like Canva, Figma, or Adobe.
           </p>
           <Button
@@ -937,7 +1008,7 @@ export function LaboratoriesManagement() {
             return (
               <div
                 key={`${lab.id || 'laboratory'}-${index}`}
-                className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-[0_18px_40px_rgba(15,23,42,0.45)] backdrop-blur-xl transition-all hover:border-cyan-400/40 hover:bg-white/10"
+                className="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 shadow-sm dark:shadow-[0_18px_40px_rgba(15,23,42,0.45)] backdrop-blur-xl transition-all hover:border-cyan-500/40 dark:hover:border-cyan-400/40 hover:bg-slate-50/80 dark:hover:bg-white/10"
               >
                 {/* Row Header */}
                 <div className="flex items-start gap-4 p-5">
@@ -949,12 +1020,12 @@ export function LaboratoriesManagement() {
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2 mb-1">
-                      <h3 className="font-semibold text-white text-base leading-tight">{lab.title}</h3>
+                      <h3 className="font-semibold text-slate-900 dark:text-white text-base leading-tight">{lab.title}</h3>
                       <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${getPlatformColor(lab.platform)}`}>
                         {lab.platform}
                       </span>
                     </div>
-                    <div className="flex flex-wrap items-center gap-3 text-sm text-slate-400">
+                    <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
                       {lab.unitName && (
                         <span className="flex items-center gap-1">
                           <BookOpen className="w-3.5 h-3.5" />
@@ -968,13 +1039,13 @@ export function LaboratoriesManagement() {
                         </span>
                       )}
                       {lab.dueDate && (
-                        <span className={`flex items-center gap-1 ${daysLabel?.color ?? 'text-slate-400'}`}>
+                        <span className={`flex items-center gap-1 ${daysLabel?.color ?? 'text-slate-600 dark:text-slate-400'}`}>
                           <Calendar className="w-3.5 h-3.5" />
                           {formatDate(lab.dueDate)}
                           {daysLabel && <span className="ml-1 text-xs">({daysLabel.text})</span>}
                         </span>
                       )}
-                      <span className="flex items-center gap-1 text-amber-400 font-medium">
+                      <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-medium">
                         {lab.points ?? 100} pts
                       </span>
                     </div>
@@ -987,25 +1058,25 @@ export function LaboratoriesManagement() {
                       target="_blank"
                       rel="noopener noreferrer"
                       title="Open platform"
-                      className="p-2 rounded-lg text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10 transition-colors"
+                      className="p-2 rounded-lg text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-cyan-500/10 transition-colors"
                     >
                       <ExternalLink className="w-4 h-4" />
                     </a>
                     <button
                       onClick={() => handleOpenEdit(lab)}
-                      className="p-2 rounded-lg text-slate-400 hover:text-violet-400 hover:bg-violet-500/10 transition-colors"
+                      className="p-2 rounded-lg text-slate-400 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-500/10 transition-colors"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => setLabToDelete(lab)}
-                      className="p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                      className="p-2 rounded-lg text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-500/10 transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => setExpandedId(isExpanded ? null : lab.id)}
-                      className="p-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
+                      className="p-2 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                     >
                       {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                     </button>
@@ -1014,20 +1085,20 @@ export function LaboratoriesManagement() {
 
                 {/* Expanded Details */}
                 {isExpanded && (
-                  <div className="px-5 pb-5 pt-0 border-t border-slate-800/60 mt-1 space-y-4">
+                  <div className="px-5 pb-5 pt-0 border-t border-slate-200 dark:border-slate-800/60 mt-1 space-y-4">
                     {lab.description && (
                       <div>
-                        <p className="text-xs text-slate-500 mb-1 uppercase tracking-wide font-medium">Description</p>
-                        <p className="text-slate-300 text-sm">{lab.description}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wide font-medium">Description</p>
+                        <p className="text-slate-700 dark:text-slate-300 text-sm">{lab.description}</p>
                       </div>
                     )}
                     <div>
-                      <p className="text-xs text-slate-500 mb-1 uppercase tracking-wide font-medium">Platform Link</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wide font-medium">Platform Link</p>
                       <a
                         href={lab.platformUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-2 text-cyan-400 hover:text-cyan-300 text-sm break-all group"
+                        className="flex items-center gap-2 text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 text-sm break-all group"
                       >
                         <Link className="w-3.5 h-3.5 shrink-0" />
                         <span className="group-hover:underline">{lab.platformUrl}</span>
@@ -1035,8 +1106,8 @@ export function LaboratoriesManagement() {
                       </a>
                     </div>
                     <div>
-                      <p className="text-xs text-slate-500 mb-1 uppercase tracking-wide font-medium">Created</p>
-                      <p className="text-slate-400 text-sm">{formatDate(lab.createdAt)}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wide font-medium">Created</p>
+                      <p className="text-slate-600 dark:text-slate-400 text-sm">{formatDate(lab.createdAt)}</p>
                     </div>
                   </div>
                 )}
@@ -1048,15 +1119,15 @@ export function LaboratoriesManagement() {
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={Boolean(labToDelete)} onOpenChange={(open) => !open && setLabToDelete(null)}>
-        <AlertDialogContent className="bg-slate-900 border-slate-800 text-white">
+        <AlertDialogContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Laboratory</AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-400">
-              Are you sure you want to delete <span className="font-semibold text-slate-200">"{labToDelete?.title}"</span>? This will permanently remove the laboratory activity. This action cannot be undone.
+            <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
+              Are you sure you want to delete <span className="font-semibold text-slate-800 dark:text-slate-200">"{labToDelete?.title}"</span>? This will permanently remove the laboratory activity. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting} className="bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700">
+            <AlertDialogCancel disabled={isDeleting} className="bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction

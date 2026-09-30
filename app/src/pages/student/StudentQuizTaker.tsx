@@ -441,8 +441,10 @@ export function StudentQuizTaker() {
 
   if (loading) {
     return (
-      <div className={`flex items-center justify-center min-h-screen ${pageBackgroundClass}`}>
-        <AetherLoader label="Loading your quiz" />
+      <div className={`min-h-screen ${pageBackgroundClass} p-6 sm:p-10 flex flex-col items-center`}>
+        <div className="max-w-4xl w-full">
+          <AetherLoader variant="document" label="Loading your quiz" />
+        </div>
       </div>
     );
   }

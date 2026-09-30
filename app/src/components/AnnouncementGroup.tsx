@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { FileText, FlaskConical, Megaphone, RefreshCw, Send, Tag } from 'lucide-react';
-import { AetherSpinner } from './AetherSpinner';
+import { AetherLoader } from './AetherLoader';
 import { Button } from '@/components/ui/button';
 import { authFetch } from '@/lib/authFetch';
 import { resolveBackendAssetUrl } from '@/lib/apiConfig';
@@ -240,9 +240,7 @@ export function AnnouncementGroup({ canPost = false }: { canPost?: boolean }) {
 
         <div className="max-h-[360px] overflow-y-auto p-5 space-y-3">
           {loading ? (
-            <div className={`text-sm flex items-center gap-2 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-              <AetherSpinner className="w-4 h-4" /> Loading announcements...
-            </div>
+            <AetherLoader variant="list" count={3} label="Loading announcements..." />
           ) : items.length === 0 ? (
             <p className={`text-sm ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>No announcements yet.</p>
           ) : (

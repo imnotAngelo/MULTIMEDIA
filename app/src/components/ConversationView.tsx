@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { MessageSquare, Send, Search, RefreshCw } from 'lucide-react';
 import { AetherSpinner } from './AetherSpinner';
+import { SkeletonChat, SkeletonList } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/stores/authStore';
 import { useThemeStore } from '@/stores/themeStore';
@@ -303,8 +304,8 @@ export function ConversationView({
           </div>
           <div className="flex-1 overflow-y-auto">
             {contactsLoading ? (
-              <div className={`flex items-center justify-center h-32 text-sm ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                <AetherSpinner className="w-4 h-4 mr-2" /> Loading...
+              <div className="p-3 space-y-2">
+                <SkeletonList count={4} />
               </div>
             ) : contactsError ? (
               <div className="p-4 text-rose-500 text-sm">{contactsError}</div>
@@ -394,9 +395,7 @@ export function ConversationView({
 
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
                 {threadLoading ? (
-                  <div className={`flex items-center justify-center h-24 text-sm ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                    <AetherSpinner className="w-4 h-4 mr-2" /> Loading messages...
-                  </div>
+                  <SkeletonChat />
                 ) : threadError ? (
                   <div className="text-rose-500 text-sm">{threadError}</div>
                 ) : messages.length === 0 ? (

@@ -27,6 +27,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { AetherSpinner } from '@/components/AetherSpinner';
+import { AetherLoader } from '@/components/AetherLoader';
 import { toast } from 'sonner';
 import { useThemeStore } from '@/stores/themeStore';
 
@@ -643,8 +644,11 @@ export function LaboratorySubmissions() {
             <Beaker className="w-5 h-5 text-emerald-400" />
             Assigned Lab Files &amp; Media
           </h2>
-          {loadingFileSubs && <AetherSpinner className="w-4 h-4 text-slate-400" />}
         </div>}
+
+        {!showLaboratoryResults && loadingFileSubs && (
+          <AetherLoader variant="cards" count={3} label="Loading student lab submissions..." />
+        )}
 
         {!showLaboratoryResults && !loadingFileSubs && filteredSubmissions.length === 0 && (
           <div className={`text-sm ${isLightMode ? 'text-slate-600 border-slate-200 bg-slate-50' : 'text-slate-400 border-slate-800 bg-slate-950/20'} py-12 text-center rounded-2xl border border-dashed`}>

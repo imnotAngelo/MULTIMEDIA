@@ -28,6 +28,7 @@ import { DocumentViewer } from '@/components/DocumentViewer';
 import { PDFViewer } from '@/components/PDFViewer';
 import { downloadLessonAsPDF } from '@/lib/downloadUtils';
 import { useThemeStore } from '@/stores/themeStore';
+import { AetherLoader } from '@/components/AetherLoader';
 import { toast } from 'sonner';
 
 interface ViewLessonProps {
@@ -371,11 +372,8 @@ export function ViewLesson({ unitId: providedUnitId, lessonId: providedLessonId,
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-violet-500 border-t-transparent" />
-          <p className="text-sm font-medium text-slate-400">Loading lesson workspace...</p>
-        </div>
+      <div className="p-6 sm:p-10 max-w-7xl mx-auto space-y-6">
+        <AetherLoader variant="document" label="Loading lesson workspace..." />
       </div>
     );
   }

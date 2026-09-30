@@ -712,6 +712,87 @@ async function generateSummary(slides: any[], pdfText?: string): Promise<string>
   return buildFallbackSummary(slides, pdfText);
 }
 
+function toRoman(num: number): string {
+  if (num <= 0 || !Number.isInteger(num)) return 'I';
+  const romanMap: [number, string][] = [
+    [1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'],
+    [100, 'C'], [90, 'XC'], [50, 'L'], [40, 'XL'],
+    [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I'],
+  ];
+  let result = '';
+  let n = num;
+  for (const [val, sym] of romanMap) {
+    while (n >= val) {
+      result += sym;
+      n -= val;
+    }
+  }
+  return result;
+}
+
+function fromRoman(roman: string): number | null {
+  const str = roman.toUpperCase().trim();
+  if (!str) return null;
+  if (!/^(M{0,3})(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$/i.test(str)) {
+    return null;
+  }
+  const map: Record<string, number> = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 };
+  let total = 0;
+  for (let i = 0; i < str.length; i++) {
+    const curr = map[str[i]];
+    const next = map[str[i + 1]];
+    if (!curr) return null;
+    if (next && curr < next) {
+      total += next - curr;
+      i++;
+    } else {
+      total += curr;
+    }
+  }
+  return total > 0 ? total : null;
+}
+
+function extractLessonNumber(title: string): number | null {
+  if (!title) return null;
+  const clean = title.trim();
+  const lessonPattern = /\blessons?\s*[:#-]?\s*([ivxlcdm]+|\d+)\b/i;
+  const match = clean.match(lessonPattern);
+  if (match) {
+    const val = match[1];
+    if (/^\d+$/.test(val)) {
+      const num = parseInt(val, 10);
+      if (num > 0) return num;
+    } else {
+      const romanVal = fromRoman(val);
+      if (romanVal) return romanVal;
+    }
+  }
+  const startPattern = /^([ivxlcdm]+|\d+)[\.\s:–-]/i;
+  const startMatch = clean.match(startPattern);
+  if (startMatch) {
+    const val = startMatch[1];
+    if (/^\d+$/.test(val)) {
+      const num = parseInt(val, 10);
+      if (num > 0) return num;
+    } else {
+      const romanVal = fromRoman(val);
+      if (romanVal) return romanVal;
+    }
+  }
+  return null;
+}
+
+function getNextLessonTitle(existingTitles: string[]): string {
+  if (!existingTitles || existingTitles.length === 0) return 'Lesson I';
+  let maxFound = 0;
+  for (const t of existingTitles) {
+    const num = extractLessonNumber(t);
+    if (num !== null && num > maxFound) maxFound = num;
+  }
+  if (maxFound > 0) return `Lesson ${toRoman(maxFound + 1)}`;
+  return `Lesson ${toRoman(existingTitles.length + 1)}`;
+}
+
 // Upload and process PDF
 router.post(
   '/upload-pdf',
@@ -768,12 +849,32 @@ router.post(
         });
       }
 
-      if (!title || !lessonModuleId) {
+      if (!lessonModuleId) {
         if (uploadedFile && fs.existsSync(uploadedFile.path)) fs.unlinkSync(uploadedFile.path);
         return res.status(400).json({
           success: false,
-          error: { code: 'MISSING_FIELDS', message: 'Title and moduleId/unitId are required' },
+          error: { code: 'MISSING_FIELDS', message: 'moduleId/unitId is required' },
         });
+      }
+
+      let resolvedTitle = String(title || '').trim();
+      if (!resolvedTitle) {
+        try {
+          if (supabase) {
+            const { data: existingLessons } = await supabase
+              .from('lessons')
+              .select('title')
+              .eq('module_id', lessonModuleId);
+            const titles = (existingLessons || []).map((l: any) => l.title);
+            resolvedTitle = getNextLessonTitle(titles);
+          } else {
+            const localLessons = listLocalLessonsByModuleIdForInstructor(lessonModuleId, userId);
+            const titles = localLessons.map((l: any) => l.title);
+            resolvedTitle = getNextLessonTitle(titles);
+          }
+        } catch {
+          resolvedTitle = 'Lesson I';
+        }
       }
 
       // Validate that lessonModuleId is a valid UUID (v4 format)
@@ -790,7 +891,7 @@ router.post(
         });
       }
 
-      const persistedGraphicUrl = uploadedGraphic ? await persistGraphicAsset(uploadedGraphic, title) : normalizedGraphicUrl;
+      const persistedGraphicUrl = uploadedGraphic ? await persistGraphicAsset(uploadedGraphic, resolvedTitle) : normalizedGraphicUrl;
 
       // Keep the original PDF untouched instead of converting it into a slide deck.
       const fileName = createUniqueStorageName('.pdf', 'lesson');
@@ -865,7 +966,7 @@ router.post(
 
       const lessonData = buildOriginalPdfLessonRecord({
         lessonId,
-        title,
+        title: resolvedTitle,
         description,
         moduleId: lessonModuleId,
         fileName,
@@ -894,7 +995,7 @@ router.post(
               id: lessonId,
               moduleId: lessonModuleId,
               instructorId: userId,
-              title,
+              title: resolvedTitle,
               content: lessonData.content,
               slides: [],
               slideCount: lessonData.slideCount,
@@ -922,7 +1023,7 @@ router.post(
             const insertPayload: any = {
               id: lessonId,
               module_id: lessonModuleId,
-              title,
+              title: resolvedTitle,
               content: lessonData.content,
               slides: [],
               slide_count: lessonData.slideCount,
@@ -964,7 +1065,7 @@ router.post(
                 id: lessonId,
                 moduleId: lessonModuleId,
                 instructorId: userId,
-                title,
+                title: resolvedTitle,
                 content: lessonData.content,
                 slides: [],
                 slideCount: lessonData.slideCount,

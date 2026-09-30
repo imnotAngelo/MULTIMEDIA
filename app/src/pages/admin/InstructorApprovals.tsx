@@ -103,7 +103,9 @@ export function InstructorApprovals() {
         </CardHeader>
         <CardContent className="p-0">
           {loading ? (
-            <AetherLoader compact label="Scanning instructor requests" />
+            <div className="p-4">
+              <AetherLoader variant="table" count={3} label="Scanning instructor requests" />
+            </div>
           ) : requests.length === 0 ? (
             <div className="flex flex-col items-center justify-center p-14 text-center">
               <UserCheck className="h-10 w-10 text-emerald-400" />

@@ -318,8 +318,8 @@ export function PDFViewer({ url, title, onDownload }: PDFViewerProps) {
 
   if (loading) {
     return (
-      <div className="flex min-h-[60vh] sm:min-h-[70vh] lg:min-h-[calc(100vh-12rem)] w-full items-center justify-center rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/40">
-        <AetherLoader label="Rendering course document..." />
+      <div className="w-full p-4 sm:p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/40">
+        <AetherLoader variant="document" label="Rendering course document..." />
       </div>
     );
   }

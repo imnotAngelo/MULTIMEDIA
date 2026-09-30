@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { AetherSpinner } from '@/components/AetherSpinner';
+import { AetherLoader } from '@/components/AetherLoader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { authFetch } from '@/lib/authFetch';
 import { notificationService } from '@/services/notificationService';
 import { SectionYearTargetPicker } from '@/components/SectionYearTargetPicker';
+import { useAuthStore } from '@/stores/authStore';
 import { toast } from 'sonner';
 
 interface Unit {
@@ -20,6 +22,7 @@ interface Unit {
 
 export function CreateAssessment() {
   const navigate = useNavigate();
+  const { user } = useAuthStore();
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -90,46 +93,45 @@ export function CreateAssessment() {
     <div className="p-6">
       <div className="max-w-2xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-2xl font-semibold text-white">Create Assessment</h1>
-          <p className="text-sm text-slate-400 mt-1">Create a new assessment for your students</p>
+          <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">Create Assessment</h1>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Create a new assessment for your students</p>
         </div>
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-16 gap-3">
-            <AetherSpinner className="w-6 h-6 text-violet-400" />
-            <p className="text-slate-400">Loading units...</p>
+          <div className="py-6">
+            <AetherLoader variant="cards" count={2} label="Loading units..." />
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-6">
-            <Card className="p-6 bg-slate-900/60 border-slate-800/60">
+            <Card className="p-6 bg-white dark:bg-slate-900/60 border-slate-200 dark:border-slate-800/60 shadow-sm">
               <div className="space-y-4">
                 <div>
-                  <Label className="text-slate-300">Assessment Title</Label>
+                  <Label className="text-slate-700 dark:text-slate-300 font-medium">Assessment Title</Label>
                   <Input
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                     placeholder="Enter assessment title"
-                    className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 mt-1"
+                    className="bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 mt-1"
                   />
                 </div>
                 <div>
-                  <Label className="text-slate-300">Description</Label>
+                  <Label className="text-slate-700 dark:text-slate-300 font-medium">Description</Label>
                   <Textarea
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     placeholder="Enter assessment description"
-                    className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 mt-1"
+                    className="bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 mt-1"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-slate-300">Unit</Label>
+                    <Label className="text-slate-700 dark:text-slate-300 font-medium">Unit</Label>
                     <Select value={formData.unitId} onValueChange={(value) => setFormData({ ...formData, unitId: value })}>
-                      <SelectTrigger className="bg-slate-800 border-slate-700 text-white mt-1">
+                      <SelectTrigger className="bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white mt-1">
                         <SelectValue placeholder="Select a unit" />
                       </SelectTrigger>
-                      <SelectContent className="bg-slate-800 border-slate-700">
+                      <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
                         {units.map(unit => (
-                          <SelectItem key={unit.id} value={unit.id} className="text-white">
+                          <SelectItem key={unit.id} value={unit.id} className="text-slate-900 dark:text-white">
                             {unit.title}
                           </SelectItem>
                         ))}
@@ -137,26 +139,26 @@ export function CreateAssessment() {
                     </Select>
                   </div>
                   <div>
-                    <Label className="text-slate-300">Type</Label>
+                    <Label className="text-slate-700 dark:text-slate-300 font-medium">Type</Label>
                     <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
-                      <SelectTrigger className="bg-slate-800 border-slate-700 text-white mt-1">
+                      <SelectTrigger className="bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white mt-1">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="bg-slate-800 border-slate-700">
-                        <SelectItem value="assignment">Assignment</SelectItem>
-                        <SelectItem value="quiz">Quiz</SelectItem>
-                        <SelectItem value="lab">Lab</SelectItem>
+                      <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                        <SelectItem value="assignment" className="text-slate-900 dark:text-white">Assignment</SelectItem>
+                        <SelectItem value="quiz" className="text-slate-900 dark:text-white">Quiz</SelectItem>
+                        <SelectItem value="lab" className="text-slate-900 dark:text-white">Lab</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
                 <div>
-                  <Label className="text-slate-300">Due Date</Label>
+                  <Label className="text-slate-700 dark:text-slate-300 font-medium">Due Date</Label>
                   <Input
                     type="date"
                     value={formData.dueDate}
                     onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
-                    className="bg-slate-800 border-slate-700 text-white mt-1"
+                    className="bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white mt-1"
                   />
                 </div>
                 <SectionYearTargetPicker
@@ -166,11 +168,12 @@ export function CreateAssessment() {
                   onSectionsChange={setTargetSections}
                   sectionInput={sectionInput}
                   onSectionInputChange={setSectionInput}
+                  sectionOptions={user?.teaching_sections ?? []}
                 />
               </div>
             </Card>
             <div className="flex gap-3 justify-end pt-4">
-              <Button type="button" onClick={() => navigate('/instructor/assessments')} variant="outline" className="border-slate-700 text-slate-300">
+              <Button type="button" onClick={() => navigate('/instructor/assessments')} variant="outline" className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">
                 Cancel
               </Button>
               <Button type="submit" disabled={submitting} className="bg-violet-600 hover:bg-violet-700 text-white">

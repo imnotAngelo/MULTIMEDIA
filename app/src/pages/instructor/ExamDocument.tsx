@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Download, Loader2 } from 'lucide-react';
+import { ArrowLeft, Download } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { Button } from '@/components/ui/button';
 import { authFetch } from '@/lib/authFetch';
+import { AetherLoader } from '@/components/AetherLoader';
 
 interface ExamQuestion {
   id?: string | number;
@@ -110,7 +111,15 @@ export function ExamDocument() {
     pdf.save(filename || 'exam.pdf');
   };
 
-  if (loading) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-300"><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Loading exam...</div>;
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-950 p-6 sm:p-10 flex flex-col items-center">
+        <div className="max-w-4xl w-full">
+          <AetherLoader variant="document" label="Loading exam document..." />
+        </div>
+      </div>
+    );
+  }
   if (error || !exam) return <div className="min-h-screen bg-slate-950 p-8 text-red-300">{error || 'Exam not found'}</div>;
 
   return (

@@ -329,7 +329,11 @@ export function SlideViewer({ lessonId, lessonTitle, lesson: initialLesson }: Sl
   };
 
   if (loading) {
-    return <AetherLoader label="Projecting your lesson slides" />;
+    return (
+      <div className="p-4 sm:p-6 max-w-7xl mx-auto">
+        <AetherLoader variant="document" label="Projecting your lesson slides" />
+      </div>
+    );
   }
 
   if (error) {

@@ -448,32 +448,30 @@ export function QuizManagement() {
     return (
       <div id="quiz-result" className="space-y-5">
         <div>
-          <h2 className="text-base font-semibold text-white">Quiz Result</h2>
-          <p className="text-xs text-slate-500 mt-1">Scores from every quiz submission</p>
+          <h2 className="text-base font-semibold text-slate-900 dark:text-white">Quiz Result</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Scores from every quiz submission</p>
         </div>
 
         {studentScoresLoading ? (
-          <div className="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/60 px-5 py-8 text-sm text-slate-400">
-            <Loader2 className="w-4 h-4 animate-spin" /> Loading student scores...
-          </div>
+          <AetherLoader variant="table" count={3} label="Loading student scores..." />
         ) : studentScores.length === 0 ? (
-          <div className="rounded-xl border border-slate-800 bg-slate-900/60 px-5 py-8 text-sm text-slate-500">
+          <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 px-5 py-8 text-sm text-slate-500 dark:text-slate-400 shadow-sm">
             No student scores available yet.
           </div>
         ) : (
           sectionGroups.map(([section, sectionStudents]) => (
-            <div key={section} className="overflow-hidden rounded-xl border border-slate-800/60 bg-slate-900/60">
-              <div className="flex items-center justify-between gap-4 border-b border-slate-800 px-5 py-4">
+            <div key={section} className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800/60 bg-white dark:bg-slate-900/60 shadow-sm">
+              <div className="flex items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 px-5 py-4">
                 <div>
-                  <h3 className="text-sm font-semibold text-white">Section {section}</h3>
-                  <p className="mt-1 text-xs text-slate-500">{sectionStudents.length} student{sectionStudents.length !== 1 ? 's' : ''}</p>
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Section {section}</h3>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{sectionStudents.length} student{sectionStudents.length !== 1 ? 's' : ''}</p>
                 </div>
                 <Button
                   type="button"
                   size="sm"
                   variant="outline"
                   onClick={() => exportSection(section, sectionStudents)}
-                  className="border-slate-700 text-slate-300 hover:bg-slate-800"
+                  className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
                 >
                   <Download className="mr-2 h-3.5 w-3.5" />
                   Export Section
@@ -481,7 +479,7 @@ export function QuizManagement() {
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
-                  <thead className="bg-slate-900/80 text-xs uppercase text-slate-500">
+                  <thead className="bg-slate-50 dark:bg-slate-900/80 text-xs uppercase text-slate-500 dark:text-slate-400">
                     <tr>
                       <th className="px-5 py-3">Student</th>
                       {resultQuizzes.map((quiz) => (
@@ -489,24 +487,24 @@ export function QuizManagement() {
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800">
+                  <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                     {sectionStudents.map((studentScore) => (
-                      <tr key={studentScore.id} className="text-slate-300 hover:bg-slate-800/40 transition-colors">
+                      <tr key={studentScore.id} className="text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
                         <td className="px-5 py-3">
-                          <div className="font-medium text-white">{studentScore.studentName}</div>
-                          <div className="text-xs text-slate-500">{studentScore.studentEmail}</div>
+                          <div className="font-medium text-slate-900 dark:text-white">{studentScore.studentName}</div>
+                          <div className="text-xs text-slate-500 dark:text-slate-400">{studentScore.studentEmail}</div>
                         </td>
                         {resultQuizzes.map((quiz) => {
                           const result = studentScore.results[quiz.id];
                           return (
                             <td key={quiz.id} className="px-5 py-3">
                               <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs ${result?.status === 'Finished'
-                                ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
-                                : 'border-slate-600 bg-slate-800/80 text-slate-300'}`}>
+                                ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300'
+                                : 'border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300'}`}>
                                 {result?.status || 'Not Taken'}
                               </span>
                               {result?.status === 'Finished' && result.score !== null && (
-                                <div className="mt-1 font-semibold text-emerald-400">{result.score}</div>
+                                <div className="mt-1 font-semibold text-emerald-600 dark:text-emerald-400">{result.score}</div>
                               )}
                             </td>
                           );
@@ -532,14 +530,14 @@ export function QuizManagement() {
       {/* Header Section */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-white">Quiz Management</h1>
-          <p className="text-slate-400 mt-1 text-sm">Create and manage student quizzes</p>
+          <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">Quiz Management</h1>
+          <p className="text-slate-600 dark:text-slate-400 mt-1 text-sm">Create and manage student quizzes</p>
         </div>
         <div className="flex gap-2">
           <Button
             onClick={() => { void loadQuizzes(); }}
             variant="outline"
-            className="border-slate-700 text-slate-300 hover:bg-slate-800/50"
+            className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/50"
           >
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh
@@ -557,7 +555,7 @@ export function QuizManagement() {
       {/* Error Display */}
       {error && (
         <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
-          <p className="text-red-400">{error}</p>
+          <p className="text-red-500 dark:text-red-400">{error}</p>
           {error.includes('expired') && (
             <div className="mt-3 flex gap-2">
               <Button
@@ -573,7 +571,7 @@ export function QuizManagement() {
                   localStorage.removeItem('auth-storage');
                   navigate('/login');
                 }}
-                className="bg-slate-700 hover:bg-slate-600 text-white text-sm"
+                className="bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-800 dark:text-white text-sm"
               >
                 Log in Again
               </Button>
@@ -584,24 +582,24 @@ export function QuizManagement() {
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-2 gap-4">
-        <div className="group bg-slate-900/60 border border-slate-800/60 rounded-xl p-5 hover:border-violet-500/30 transition-all">
+        <div className="group bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/60 rounded-xl p-5 hover:border-violet-500/30 transition-all shadow-sm">
           <div className="flex items-center justify-between mb-3">
             <div className="w-9 h-9 rounded-lg bg-violet-500/10 flex items-center justify-center">
-              <ClipboardList className="w-4.5 h-4.5 text-violet-400" />
+              <ClipboardList className="w-4.5 h-4.5 text-violet-600 dark:text-violet-400" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-white">{stats.totalQuizzes}</div>
-          <p className="text-slate-500 text-xs mt-1">Total Quizzes</p>
+          <div className="text-2xl font-bold text-slate-900 dark:text-white">{stats.totalQuizzes}</div>
+          <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">Total Quizzes</p>
         </div>
 
-        <div className="group bg-slate-900/60 border border-slate-800/60 rounded-xl p-5 hover:border-blue-500/30 transition-all">
+        <div className="group bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/60 rounded-xl p-5 hover:border-blue-500/30 transition-all shadow-sm">
           <div className="flex items-center justify-between mb-3">
             <div className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center">
-              <Users className="w-4.5 h-4.5 text-blue-400" />
+              <Users className="w-4.5 h-4.5 text-blue-600 dark:text-blue-400" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-white">{stats.totalSubmissions}</div>
-          <p className="text-slate-500 text-xs mt-1">Total Submissions</p>
+          <div className="text-2xl font-bold text-slate-900 dark:text-white">{stats.totalSubmissions}</div>
+          <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">Total Submissions</p>
         </div>
       </div>
 
@@ -611,9 +609,9 @@ export function QuizManagement() {
 
       {/* Quizzes List */}
       {!loading && quizzes.length === 0 && !error && (
-        <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-12 text-center">
-          <ClipboardList className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-          <p className="text-slate-400 mb-4">No quizzes created yet</p>
+        <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl p-12 text-center shadow-sm">
+          <ClipboardList className="w-16 h-16 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
+          <p className="text-slate-600 dark:text-slate-400 mb-4">No quizzes created yet</p>
           <Button
             onClick={handleCreateQuiz}
             className="bg-violet-600 hover:bg-violet-700 text-white"
@@ -633,17 +631,17 @@ export function QuizManagement() {
             return (
               <div
                 key={quiz.id}
-                className="bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden hover:border-violet-500/30 transition-colors"
+                className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden hover:border-violet-500/30 transition-colors shadow-sm"
               >
                 <button
                   onClick={() => toggleQuiz(quiz.id)}
-                  className="w-full p-6 flex items-center justify-between hover:bg-slate-800/30 transition-colors text-left"
+                  className="w-full p-6 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors text-left"
                 >
                   <div className="flex-1">
                     <div className="flex items-start justify-between gap-4">
                       <div>
-                        <h3 className="text-lg font-semibold text-white">{quiz.title}</h3>
-                        <p className="text-sm text-slate-400 mt-1">{quiz.description}</p>
+                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{quiz.title}</h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{quiz.description}</p>
                       </div>
                       <span className={`inline-flex items-center px-2.5 py-1 rounded-full border text-xs font-medium ${status.tone}`}>
                         {status.label}
@@ -651,33 +649,33 @@ export function QuizManagement() {
                     </div>
 
                     <div className="flex gap-4 mt-3 flex-wrap">
-                      <span className="inline-flex items-center gap-1 text-sm text-slate-300">
+                      <span className="inline-flex items-center gap-1 text-sm text-slate-600 dark:text-slate-300">
                         <Users className="w-4 h-4" />
                         {quiz.submissions} submissions
                       </span>
-                      <span className="inline-flex items-center gap-1 text-sm text-slate-300">
+                      <span className="inline-flex items-center gap-1 text-sm text-slate-600 dark:text-slate-300">
                         <Calendar className="w-4 h-4" />
                         {quiz.totalPoints} points
                       </span>
                     </div>
                   </div>
                   <ChevronDown
-                    className={`w-5 h-5 text-slate-400 transition-transform ${
+                    className={`w-5 h-5 text-slate-400 dark:text-slate-500 transition-transform ${
                       expandedId === quiz.id ? 'transform rotate-180' : ''
                     }`}
                   />
                 </button>
 
                 {expandedId === quiz.id && (
-                  <div className="border-t border-slate-800 p-6 bg-slate-800/20 space-y-4">
+                  <div className="border-t border-slate-200 dark:border-slate-800 p-6 bg-slate-50/60 dark:bg-slate-800/20 space-y-4">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <div>
-                        <p className="text-xs text-slate-500 uppercase">Unit</p>
-                        <p className="text-sm text-slate-300">{quiz.unitName}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 uppercase">Unit</p>
+                        <p className="text-sm text-slate-800 dark:text-slate-300">{quiz.unitName}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-slate-500 uppercase">Created</p>
-                        <p className="text-sm text-slate-300">
+                        <p className="text-xs text-slate-500 dark:text-slate-400 uppercase">Created</p>
+                        <p className="text-sm text-slate-800 dark:text-slate-300">
                           {new Date(quiz.createdAt).toLocaleDateString()}
                         </p>
                       </div>
@@ -687,37 +685,37 @@ export function QuizManagement() {
                         variant="outline"
                         size="sm"
                         onClick={() => handleToggleVisibility(quiz)}
-                        className="border-slate-700 text-slate-300 hover:bg-slate-800"
+                        className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
                       >
                         {quiz.status === 'published' ? <EyeOff className="w-4 h-4 mr-2" /> : <Eye className="w-4 h-4 mr-2" />}
                         {quiz.status === 'published' ? 'Make Private' : 'Publish to Students'}
                       </Button>
                     )}
 
-                    <div className="border-t border-slate-700 pt-4">
+                    <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
                       <div className="flex items-center justify-between mb-3">
-                        <h4 className="text-sm font-semibold text-white">Student Submissions</h4>
+                        <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Student Submissions</h4>
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
                           onClick={() => loadSubmissions(quiz.id)}
-                          className="text-slate-400 hover:text-white"
+                          className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                         >
                           <RefreshCw className={`w-3.5 h-3.5 mr-2 ${submissionsLoading === quiz.id ? 'animate-spin' : ''}`} />
                           Refresh
                         </Button>
                       </div>
                       {submissionsLoading === quiz.id && !submissions[quiz.id] ? (
-                        <div className="flex items-center gap-2 text-sm text-slate-400 py-4">
-                          <Loader2 className="w-4 h-4 animate-spin" /> Loading submissions...
+                        <div className="py-2">
+                          <AetherLoader variant="compact" count={2} label="Loading submissions..." />
                         </div>
                       ) : !submissions[quiz.id]?.length ? (
-                        <p className="text-sm text-slate-500 py-3">No students have submitted this quiz yet.</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 py-3">No students have submitted this quiz yet.</p>
                       ) : (
-                        <div className="overflow-x-auto rounded-lg border border-slate-700">
+                        <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
                           <table className="w-full text-left text-sm">
-                            <thead className="bg-slate-900/80 text-xs uppercase text-slate-500">
+                            <thead className="bg-slate-100 dark:bg-slate-900/80 text-xs uppercase text-slate-600 dark:text-slate-400">
                               <tr>
                                 <th className="px-3 py-2">Student</th>
                                 <th className="px-3 py-2">Score</th>
@@ -725,37 +723,37 @@ export function QuizManagement() {
                                 <th className="px-3 py-2">Submitted</th>
                               </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-800">
+                            <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                               {groupSubmissionsBySection(quiz.id).map(([section, sectionSubmissions]) => (
                                 <Fragment key={section}>
-                                  <tr className="bg-slate-800/60">
-                                    <td colSpan={4} className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-cyan-300">
+                                  <tr className="bg-slate-100/80 dark:bg-slate-800/60">
+                                    <td colSpan={4} className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-violet-700 dark:text-cyan-300">
                                       Section {section} · {sectionSubmissions.length} submission{sectionSubmissions.length !== 1 ? 's' : ''}
                                     </td>
                                   </tr>
                                   {sectionSubmissions.map((submission) => (
-                                    <tr key={submission.id} className="text-slate-300 hover:bg-slate-800/40 transition-colors">
+                                    <tr key={submission.id} className="text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
                                       <td className="px-3 py-3">
-                                        <div className="font-medium text-white">{submission.student?.full_name || 'Unknown student'}</div>
-                                        <div className="text-xs text-slate-500">{submission.student?.email || 'No email'}</div>
+                                        <div className="font-medium text-slate-900 dark:text-white">{submission.student?.full_name || 'Unknown student'}</div>
+                                        <div className="text-xs text-slate-500 dark:text-slate-400">{submission.student?.email || 'No email'}</div>
                                       </td>
                                       <td className="px-3 py-3">
                                         {submission.score === null || submission.score === undefined ? (
-                                          <span className="inline-flex items-center rounded-full border border-slate-600 bg-slate-800/80 px-2 py-0.5 text-xs text-slate-300">
+                                          <span className="inline-flex items-center rounded-full border border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-800/80 px-2 py-0.5 text-xs text-slate-600 dark:text-slate-300">
                                             Not graded
                                           </span>
                                         ) : (
-                                          <span className="font-semibold text-emerald-400">{submission.score}</span>
+                                          <span className="font-semibold text-emerald-600 dark:text-emerald-400">{submission.score}</span>
                                         )}
                                       </td>
                                       <td className="px-3 py-3">
                                         <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs capitalize ${submission.status === 'submitted'
-                                          ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
-                                          : 'border-slate-600 bg-slate-800/80 text-slate-300'}`}>
+                                          ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300'
+                                          : 'border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300'}`}>
                                           {submission.status || 'submitted'}
                                         </span>
                                       </td>
-                                      <td className="px-3 py-3 text-xs text-slate-400">
+                                      <td className="px-3 py-3 text-xs text-slate-500 dark:text-slate-400">
                                         {submission.submitted_at ? new Date(submission.submitted_at).toLocaleString() : 'Unknown'}
                                       </td>
                                     </tr>
@@ -768,7 +766,7 @@ export function QuizManagement() {
                       )}
                     </div>
 
-                    <div className="flex gap-2 pt-4 border-t border-slate-700">
+                    <div className="flex gap-2 pt-4 border-t border-slate-200 dark:border-slate-700">
                       {quiz.quiz_category === 'exam' && (
                         <>
                           <Button
@@ -804,15 +802,15 @@ export function QuizManagement() {
       )}
 
       <AlertDialog open={Boolean(quizToDelete)} onOpenChange={(open) => !open && setQuizToDelete(null)}>
-        <AlertDialogContent className="bg-slate-900 border-slate-800 text-white">
+        <AlertDialogContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Quiz</AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-400">
-              Are you sure you want to delete <span className="font-semibold text-slate-200">"{quizToDelete?.title}"</span>? This will permanently remove the quiz and all associated student submissions. This action cannot be undone.
+            <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
+              Are you sure you want to delete <span className="font-semibold text-slate-800 dark:text-slate-200">"{quizToDelete?.title}"</span>? This will permanently remove the quiz and all associated student submissions. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting} className="bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700">Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting} className="bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700">Cancel</AlertDialogCancel>
             <AlertDialogAction
               disabled={isDeleting}
               onClick={(e) => {

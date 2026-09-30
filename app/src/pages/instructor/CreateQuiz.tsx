@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { AetherSpinner } from '@/components/AetherSpinner';
+import { AetherLoader } from '@/components/AetherLoader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -387,9 +388,8 @@ export function CreateQuiz() {
           <p className={`text-sm mt-1 ${secondaryTextClass}`}>Create a new quiz for your students</p>
         </div>
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-16 gap-3">
-            <AetherSpinner className="w-6 h-6 text-violet-400" />
-            <p className={secondaryTextClass}>Loading units...</p>
+          <div className="py-6">
+            <AetherLoader variant="cards" count={2} label="Loading units..." />
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -596,9 +596,39 @@ export function CreateQuiz() {
             {/* Teaching Sections Selection */}
             {user?.teaching_sections && user.teaching_sections.length > 0 && (
               <Card className={cardClass}>
-                <h2 className={`text-lg font-semibold mb-4 ${headingTextClass}`}>Assign to Sections</h2>
+                <div className="flex items-center justify-between mb-2">
+                  <h2 className={`text-lg font-semibold ${headingTextClass}`}>Assign to Sections</h2>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (user.teaching_sections.every(s => targetSections.includes(s))) {
+                        setTargetSections([]);
+                      } else {
+                        setTargetSections([...user.teaching_sections]);
+                      }
+                    }}
+                    className="text-xs font-semibold text-violet-500 hover:text-violet-400 transition-colors"
+                  >
+                    {user.teaching_sections.every(s => targetSections.includes(s)) ? 'Deselect All' : 'Select All'}
+                  </button>
+                </div>
                 <p className={`text-sm mb-4 ${secondaryTextClass}`}>Select which sections can access this quiz (leave unchecked for all sections)</p>
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-wrap items-center gap-3">
+                  <label className="flex items-center gap-2 cursor-pointer font-medium border-r border-slate-300 dark:border-slate-700 pr-3">
+                    <input
+                      type="checkbox"
+                      checked={user.teaching_sections.length > 0 && user.teaching_sections.every(s => targetSections.includes(s))}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setTargetSections([...user.teaching_sections]);
+                        } else {
+                          setTargetSections([]);
+                        }
+                      }}
+                      className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-violet-500 focus:ring-violet-500 cursor-pointer"
+                    />
+                    <span className="text-xs font-semibold text-violet-600 dark:text-violet-400">Select All ({user.teaching_sections.length})</span>
+                  </label>
                   {user.teaching_sections.map((section) => (
                     <label key={section} className="flex items-center gap-2 cursor-pointer">
                       <input

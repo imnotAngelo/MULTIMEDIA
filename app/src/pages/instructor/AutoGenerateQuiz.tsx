@@ -34,6 +34,7 @@ import {
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { AetherSpinner } from '@/components/AetherSpinner';
+import { AetherLoader } from '@/components/AetherLoader';
 import { useAuthStore } from '@/stores/authStore';
 import { useThemeStore } from '@/stores/themeStore';
 
@@ -668,9 +669,8 @@ export function AutoGenerateQuiz() {
             </div>
 
             {loadingUnits ? (
-              <div className="flex items-center justify-center py-12 gap-3">
-                <AetherSpinner className="w-6 h-6 text-violet-500" />
-                <span className={mutedTextClass}>Loading curriculum units...</span>
+              <div className="py-4">
+                <AetherLoader variant="cards" count={2} label="Loading curriculum units..." />
               </div>
             ) : units.length === 0 ? (
               <div className={nestedCardClass + ' text-center py-8 space-y-3'}>
@@ -763,7 +763,32 @@ export function AutoGenerateQuiz() {
 
                 {/* Target Audience */}
                 <div>
-                  <label className={`block text-sm mb-2 ${labelTextClass}`}>Target Sections</label>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className={`block text-sm ${labelTextClass}`}>Target Sections</label>
+                    {(() => {
+                      const handledSections = Array.from(new Set([
+                        ...(user?.teaching_sections ?? []),
+                        ...(user?.section ? [user.section] : []),
+                      ].map((section) => section.trim()).filter(Boolean)));
+                      if (handledSections.length === 0) return null;
+                      const allSelected = handledSections.length > 0 && handledSections.every((s) => targetSections.includes(s));
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (allSelected) {
+                              setTargetSections([]);
+                            } else {
+                              setTargetSections([...handledSections]);
+                            }
+                          }}
+                          className="text-xs font-semibold text-violet-500 hover:text-violet-400 transition-colors"
+                        >
+                          {allSelected ? 'Deselect All' : 'Select All'}
+                        </button>
+                      );
+                    })()}
+                  </div>
                   <p className={`mb-3 text-xs ${mutedTextClass}`}>Choose the sections you handle. Leave all unchecked to show this quiz to all of your sections.</p>
                   {(() => {
                     const handledSections = Array.from(new Set([
@@ -775,22 +800,44 @@ export function AutoGenerateQuiz() {
                       return <p className={`rounded-lg border border-dashed p-3 text-sm ${isLightMode ? 'border-slate-300 text-slate-500' : 'border-slate-700 text-slate-400'}`}>No handled sections found.</p>;
                     }
 
+                    const allSelected = handledSections.length > 0 && handledSections.every((s) => targetSections.includes(s));
+
                     return (
-                      <div className={`grid grid-cols-1 gap-2 rounded-lg border p-3 sm:grid-cols-2 ${isLightMode ? 'border-slate-200 bg-slate-50' : 'border-slate-800 bg-slate-900/30'}`}>
-                        {handledSections.map((section) => {
-                          const isChecked = targetSections.includes(section);
-                          return (
-                            <label key={section} className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 text-sm transition-colors ${isChecked ? 'border-violet-500 bg-violet-500/10 text-violet-600 dark:text-violet-300' : isLightMode ? 'border-slate-200 bg-white hover:border-slate-300' : 'border-slate-800 bg-slate-800/40 hover:border-slate-700'}`}>
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                onChange={(event) => setTargetSections((current) => event.target.checked ? [...current, section] : current.filter((item) => item !== section))}
-                                className="h-4 w-4 rounded text-violet-600 focus:ring-violet-500"
-                              />
-                              <span>{section}</span>
-                            </label>
-                          );
-                        })}
+                      <div className="space-y-2">
+                        <label className={`flex cursor-pointer items-center justify-between rounded-lg border p-3 text-sm transition-colors font-medium ${allSelected ? 'border-violet-500 bg-violet-500/10 text-violet-600 dark:text-violet-300' : isLightMode ? 'border-slate-200 bg-white hover:border-slate-300' : 'border-slate-800 bg-slate-800/40 hover:border-slate-700'}`}>
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="checkbox"
+                              checked={allSelected}
+                              onChange={(event) => {
+                                if (event.target.checked) {
+                                  setTargetSections([...handledSections]);
+                                } else {
+                                  setTargetSections([]);
+                                }
+                              }}
+                              className="h-4 w-4 rounded text-violet-600 focus:ring-violet-500"
+                            />
+                            <span>Select All Sections ({handledSections.length})</span>
+                          </div>
+                          <span className="text-xs opacity-75">{allSelected ? 'All Selected' : `${targetSections.length} selected`}</span>
+                        </label>
+                        <div className={`grid grid-cols-1 gap-2 rounded-lg border p-3 sm:grid-cols-2 ${isLightMode ? 'border-slate-200 bg-slate-50' : 'border-slate-800 bg-slate-900/30'}`}>
+                          {handledSections.map((section) => {
+                            const isChecked = targetSections.includes(section);
+                            return (
+                              <label key={section} className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 text-sm transition-colors ${isChecked ? 'border-violet-500 bg-violet-500/10 text-violet-600 dark:text-violet-300' : isLightMode ? 'border-slate-200 bg-white hover:border-slate-300' : 'border-slate-800 bg-slate-800/40 hover:border-slate-700'}`}>
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={(event) => setTargetSections((current) => event.target.checked ? [...current, section] : current.filter((item) => item !== section))}
+                                  className="h-4 w-4 rounded text-violet-600 focus:ring-violet-500"
+                                />
+                                <span>{section}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
                       </div>
                     );
                   })()}

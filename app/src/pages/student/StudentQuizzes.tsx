@@ -212,30 +212,30 @@ export function StudentQuizzes() {
     return (
       <div
         key={quiz.id}
-        className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.45)] backdrop-blur-xl transition-all hover:border-cyan-400/40 hover:bg-white/10 flex items-start gap-4"
+        className="group relative overflow-hidden rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-5 shadow-sm dark:shadow-[0_18px_40px_rgba(15,23,42,0.45)] backdrop-blur-xl transition-all hover:border-cyan-500/40 dark:hover:border-cyan-400/40 hover:bg-slate-50 dark:hover:bg-white/10 flex items-start gap-4"
       >
         <div className="w-10 h-10 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center shrink-0">
-          <Zap className="w-5 h-5 text-violet-400" />
+          <Zap className="w-5 h-5 text-violet-600 dark:text-violet-400" />
         </div>
 
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-white text-base leading-tight mb-1">{quiz.title}</h3>
-          {quiz.description && <p className="text-slate-400 text-sm line-clamp-2 mb-2">{quiz.description}</p>}
+          <h3 className="font-semibold text-slate-900 dark:text-white text-base leading-tight mb-1">{quiz.title}</h3>
+          {quiz.description && <p className="text-slate-600 dark:text-slate-400 text-sm line-clamp-2 mb-2">{quiz.description}</p>}
           <div className="flex flex-wrap items-center gap-3 text-sm">
-            {quiz.due_date && <span className={`flex items-center gap-1 ${daysLabel?.color ?? 'text-slate-400'}`}><Calendar className="w-3.5 h-3.5" />{formatDate(quiz.due_date)}{daysLabel && <span className="ml-1 text-xs">({daysLabel.text})</span>}</span>}
-            {quiz.time_limit && <span className="flex items-center gap-1 text-slate-400"><Clock className="w-3.5 h-3.5" />{quiz.time_limit} min</span>}
-            {qCount !== null && <span className="flex items-center gap-1 text-slate-400"><BookOpen className="w-3.5 h-3.5" />{qCount} question{qCount !== 1 ? 's' : ''}</span>}
-            {quiz.total_points > 0 && <span className="flex items-center gap-1 text-slate-400"><Trophy className="w-3.5 h-3.5" />{quiz.total_points} pts</span>}
+            {quiz.due_date && <span className={`flex items-center gap-1 ${daysLabel?.color ?? 'text-slate-500 dark:text-slate-400'}`}><Calendar className="w-3.5 h-3.5" />{formatDate(quiz.due_date)}{daysLabel && <span className="ml-1 text-xs">({daysLabel.text})</span>}</span>}
+            {quiz.time_limit && <span className="flex items-center gap-1 text-slate-500 dark:text-slate-400"><Clock className="w-3.5 h-3.5" />{quiz.time_limit} min</span>}
+            {qCount !== null && <span className="flex items-center gap-1 text-slate-500 dark:text-slate-400"><BookOpen className="w-3.5 h-3.5" />{qCount} question{qCount !== 1 ? 's' : ''}</span>}
+            {quiz.total_points > 0 && <span className="flex items-center gap-1 text-slate-500 dark:text-slate-400"><Trophy className="w-3.5 h-3.5" />{quiz.total_points} pts</span>}
           </div>
         </div>
 
         <div className="flex flex-col items-end gap-2 shrink-0">
           {isSubmitted(quiz) ? (
-            <span className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"><CheckCircle2 className="w-3 h-3" />Completed{quiz.submission?.score !== null && quiz.submission?.score !== undefined ? ` · ${rawScore.earnedPoints}/${rawScore.totalPoints || 0}` : ''}</span>
+            <span className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400"><CheckCircle2 className="w-3 h-3" />Completed{quiz.submission?.score !== null && quiz.submission?.score !== undefined ? ` · ${rawScore.earnedPoints}/${rawScore.totalPoints || 0}` : ''}</span>
           ) : isOverdue ? (
-            <span className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-400"><AlertCircle className="w-3 h-3" />Missed</span>
+            <span className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-500 dark:text-red-400"><AlertCircle className="w-3 h-3" />Missed</span>
           ) : (
-            <span className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"><CheckCircle2 className="w-3 h-3" />Open</span>
+            <span className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400"><CheckCircle2 className="w-3 h-3" />Open</span>
           )}
           <Button onClick={() => handleTakeQuiz(quiz)} disabled={isClosed} size="sm" className="bg-violet-600 hover:bg-violet-700 text-white flex items-center gap-1.5">
             {isSubmitted(quiz) ? 'Review Submission' : isClosed ? 'Closed' : 'Take Quiz'}
@@ -247,21 +247,21 @@ export function StudentQuizzes() {
   };
 
   const renderQuizResult = () => (
-    <div id="quiz-result" className="overflow-hidden rounded-xl border border-slate-800/60 bg-slate-900/60">
-      <div className="border-b border-slate-800 px-5 py-4">
-        <h2 className="text-base font-semibold text-white">Quiz Result</h2>
-        <p className="mt-1 text-xs text-slate-500">Your quiz results</p>
+    <div id="quiz-result" className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800/60 bg-white dark:bg-slate-900/60 shadow-sm">
+      <div className="border-b border-slate-200 dark:border-slate-800 px-5 py-4">
+        <h2 className="text-base font-semibold text-slate-900 dark:text-white">Quiz Result</h2>
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Your quiz results</p>
       </div>
       {loading ? (
-        <div className="flex items-center gap-2 px-5 py-8 text-sm text-slate-400">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading quiz results...
+        <div className="p-5">
+          <AetherLoader variant="table" count={3} label="Loading quiz results..." />
         </div>
       ) : quizzes.length === 0 ? (
-        <p className="px-5 py-8 text-sm text-slate-500">No quiz results available yet.</p>
+        <p className="px-5 py-8 text-sm text-slate-500 dark:text-slate-400">No quiz results available yet.</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-max text-left text-sm">
-            <thead className="bg-slate-900/80 text-xs uppercase text-slate-500">
+            <thead className="bg-slate-50 dark:bg-slate-900/80 text-xs uppercase text-slate-500 dark:text-slate-400">
               <tr>
                 <th className="px-5 py-3">Student</th>
                 {quizzes.map((quiz) => (
@@ -270,10 +270,10 @@ export function StudentQuizzes() {
               </tr>
             </thead>
             <tbody>
-              <tr className="text-slate-300">
+              <tr className="text-slate-700 dark:text-slate-300">
                 <td className="px-5 py-4">
-                  <div className="font-medium text-white">{user?.full_name || 'Student'}</div>
-                  <div className="text-xs text-slate-500">{user?.email || ''}</div>
+                  <div className="font-medium text-slate-900 dark:text-white">{user?.full_name || 'Student'}</div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400">{user?.email || ''}</div>
                 </td>
                 {quizzes.map((quiz) => {
                   const finished = isSubmitted(quiz);
@@ -281,12 +281,12 @@ export function StudentQuizzes() {
                   return (
                     <td key={quiz.id} className="px-5 py-4">
                       <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs ${finished
-                        ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
-                        : 'border-slate-600 bg-slate-800/80 text-slate-300'}`}>
+                        ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300'
+                        : 'border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300'}`}>
                         {finished ? 'Finished' : 'Untaken'}
                       </span>
                       {finished && quiz.submission?.score !== null && quiz.submission?.score !== undefined && (
-                        <div className="mt-1 font-semibold text-emerald-400">
+                        <div className="mt-1 font-semibold text-emerald-600 dark:text-emerald-400">
                           {rawScore.earnedPoints}/{rawScore.totalPoints || 0}
                         </div>
                       )}
@@ -310,15 +310,15 @@ export function StudentQuizzes() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-white">Quizzes</h1>
-          <p className="text-slate-400 mt-1 text-sm">
+          <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">Quizzes</h1>
+          <p className="text-slate-600 dark:text-slate-400 mt-1 text-sm">
             Quizzes assigned by your instructor
           </p>
         </div>
         <Button
           onClick={() => { void loadQuizzes(); }}
           variant="outline"
-          className="border-slate-700 text-slate-300 hover:bg-slate-800/50"
+          className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/50"
         >
           <RefreshCw className="w-4 h-4 mr-2" />
           Refresh
@@ -327,48 +327,48 @@ export function StudentQuizzes() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        <div className="bg-slate-900/60 border border-slate-800/60 rounded-xl p-5">
+        <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/60 rounded-xl p-5 shadow-sm">
           <div className="w-9 h-9 rounded-lg bg-violet-500/10 flex items-center justify-center mb-2">
-            <Zap className="w-4 h-4 text-violet-400" />
+            <Zap className="w-4 h-4 text-violet-600 dark:text-violet-400" />
           </div>
-          <div className="text-2xl font-bold text-white">{quizzes.length}</div>
-          <p className="text-slate-500 text-xs mt-1">Total Quizzes</p>
+          <div className="text-2xl font-bold text-slate-900 dark:text-white">{quizzes.length}</div>
+          <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">Total Quizzes</p>
         </div>
         <button
           type="button"
           onClick={() => setShowMissed(true)}
           aria-label="View due and missed quizzes"
-          className="w-full text-left bg-slate-900/60 border border-slate-800/60 rounded-xl p-5 hover:border-red-500/40 hover:bg-slate-900/80 transition-all"
+          className="w-full text-left bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/60 rounded-xl p-5 hover:border-red-500/40 hover:bg-slate-50 dark:hover:bg-slate-900/80 transition-all shadow-sm"
         >
           <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center mb-2">
-            <AlertCircle className="w-4 h-4 text-red-400" />
+            <AlertCircle className="w-4 h-4 text-red-500 dark:text-red-400" />
           </div>
-          <div className="text-2xl font-bold text-white">
+          <div className="text-2xl font-bold text-slate-900 dark:text-white">
             {missedQuizzes.length}
           </div>
-          <p className="text-slate-500 text-xs mt-1">Due Quizzes</p>
+          <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">Due Quizzes</p>
         </button>
         <button
           type="button"
           onClick={() => setShowCompleted(true)}
           aria-label="View completed quizzes"
-          className="w-full text-left bg-slate-900/60 border border-slate-800/60 rounded-xl p-5 hover:border-emerald-500/40 hover:bg-slate-900/80 transition-all"
+          className="w-full text-left bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/60 rounded-xl p-5 hover:border-emerald-500/40 hover:bg-slate-50 dark:hover:bg-slate-900/80 transition-all shadow-sm"
         >
           <div className="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center mb-2">
-            <Trophy className="w-4 h-4 text-emerald-400" />
+            <Trophy className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
           </div>
-          <div className="text-2xl font-bold text-white">
+          <div className="text-2xl font-bold text-slate-900 dark:text-white">
             {completedQuizzes.length}
           </div>
-          <p className="text-slate-500 text-xs mt-1">Completed Quizzes</p>
+          <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">Completed Quizzes</p>
         </button>
       </div>
 
       {/* Error */}
       {error && (
         <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 flex items-center gap-3">
-          <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
-          <p className="text-red-400 text-sm">{error}</p>
+          <AlertCircle className="w-5 h-5 text-red-500 dark:text-red-400 shrink-0" />
+          <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>
         </div>
       )}
 
@@ -376,12 +376,12 @@ export function StudentQuizzes() {
       {loading ? (
         <AetherLoader label="Preparing your quizzes" />
       ) : quizzes.length === 0 ? (
-        <div className="bg-slate-900/40 border border-slate-800/60 rounded-xl p-12 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-slate-800/60 flex items-center justify-center mx-auto mb-4">
-            <ClipboardList className="w-7 h-7 text-slate-500" />
+        <div className="bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/60 rounded-xl p-12 text-center shadow-sm">
+          <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-800/60 flex items-center justify-center mx-auto mb-4">
+            <ClipboardList className="w-7 h-7 text-slate-400 dark:text-slate-500" />
           </div>
-          <h2 className="text-xl font-semibold text-white mb-2">No Quizzes Yet</h2>
-          <p className="text-slate-400 max-w-md mx-auto">
+          <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">No Quizzes Yet</h2>
+          <p className="text-slate-600 dark:text-slate-400 max-w-md mx-auto">
             Your instructor hasn't published any quizzes yet. Check back later!
           </p>
         </div>
@@ -390,10 +390,10 @@ export function StudentQuizzes() {
           {missedQuizzes.length > 0 && (
             <section className="space-y-3">
               <button type="button" onClick={() => setShowMissed((visible) => !visible)} className="flex w-full items-center gap-2 text-left">
-                {showMissed ? <ChevronDown className="w-5 h-5 text-red-400" /> : <ChevronRight className="w-5 h-5 text-red-400" />}
-                <AlertCircle className="w-5 h-5 text-red-400" />
-                <h2 className="text-lg font-semibold text-white">Missed &amp; Due Quizzes</h2>
-                <span className="rounded-full bg-red-500/10 border border-red-500/20 px-2 py-0.5 text-xs text-red-300">{missedQuizzes.length}</span>
+                {showMissed ? <ChevronDown className="w-5 h-5 text-red-500 dark:text-red-400" /> : <ChevronRight className="w-5 h-5 text-red-500 dark:text-red-400" />}
+                <AlertCircle className="w-5 h-5 text-red-500 dark:text-red-400" />
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Missed &amp; Due Quizzes</h2>
+                <span className="rounded-full bg-red-500/10 border border-red-500/20 px-2 py-0.5 text-xs text-red-600 dark:text-red-300">{missedQuizzes.length}</span>
               </button>
               {showMissed && <div className="space-y-3">{missedQuizzes.map(renderQuiz)}</div>}
             </section>
@@ -401,17 +401,17 @@ export function StudentQuizzes() {
           {completedQuizzes.length > 0 && (
             <section className="space-y-3">
               <button type="button" onClick={() => setShowCompleted((visible) => !visible)} className="flex w-full items-center gap-2 text-left">
-                {showCompleted ? <ChevronDown className="w-5 h-5 text-emerald-400" /> : <ChevronRight className="w-5 h-5 text-emerald-400" />}
-                <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                <h2 className="text-lg font-semibold text-white">Completed Quizzes</h2>
-                <span className="rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-xs text-emerald-300">{completedQuizzes.length}</span>
+                {showCompleted ? <ChevronDown className="w-5 h-5 text-emerald-500 dark:text-emerald-400" /> : <ChevronRight className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />}
+                <CheckCircle2 className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Completed Quizzes</h2>
+                <span className="rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-xs text-emerald-600 dark:text-emerald-300">{completedQuizzes.length}</span>
               </button>
               {showCompleted && <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">{completedQuizzes.map(renderQuiz)}</div>}
             </section>
           )}
           {currentQuizzes.length > 0 && (
             <section className="space-y-3">
-              <h2 className="text-lg font-semibold text-white">Active Quizzes</h2>
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Active Quizzes</h2>
               <div className="space-y-3">{currentQuizzes.map(renderQuiz)}</div>
             </section>
           )}

@@ -220,7 +220,9 @@ export function StudentApprovals() {
         </CardHeader>
         <CardContent className="p-0">
           {loading ? (
-            <AetherLoader compact label="Scanning student requests" />
+            <div className="p-4">
+              <AetherLoader variant="table" count={4} label="Scanning student requests" />
+            </div>
           ) : filteredRequests.length === 0 ? (
             <div className="flex flex-col items-center justify-center p-12 text-center">
               <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 mb-3">
