@@ -569,20 +569,21 @@ export function QuizManagement() {
                   Export Section
                 </Button>
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-slate-50 dark:bg-slate-900/80 text-xs uppercase text-slate-500 dark:text-slate-400">
+              {/* Desktop Table View */}
+              <div className="hidden sm:block overflow-x-auto max-h-[70vh] overflow-y-auto relative">
+                <table className="w-full text-left text-sm border-separate border-spacing-0">
+                  <thead className="bg-slate-50 dark:bg-slate-900 sticky top-0 z-20 shadow-[0_1px_0_0_rgba(0,0,0,0.08)] text-xs uppercase text-slate-500 dark:text-slate-400">
                     <tr>
-                      <th className="px-5 py-3">Student</th>
+                      <th className="sticky top-0 left-0 z-30 bg-slate-50 dark:bg-slate-900 px-5 py-3 shadow-[1px_0_0_0_rgba(0,0,0,0.06)]">Student</th>
                       {resultQuizzes.map((quiz) => (
-                        <th key={quiz.id} className="min-w-40 px-5 py-3">{quiz.title}</th>
+                        <th key={quiz.id} className="min-w-40 px-5 py-3 sticky top-0 bg-slate-50 dark:bg-slate-900">{quiz.title}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                     {sectionStudents.map((studentScore) => (
                       <tr key={studentScore.id} className="text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                        <td className="px-5 py-3">
+                        <td className="sticky left-0 z-10 bg-white dark:bg-slate-900 px-5 py-3 shadow-[1px_0_0_0_rgba(0,0,0,0.06)]">
                           <div className="font-medium text-slate-900 dark:text-white">{studentScore.studentName}</div>
                           <div className="text-xs text-slate-500 dark:text-slate-400">{studentScore.studentEmail}</div>
                         </td>
@@ -605,6 +606,66 @@ export function QuizManagement() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+
+              {/* Mobile Card-based View */}
+              <div className="block sm:hidden p-3 space-y-3">
+                {sectionStudents.map((studentScore) => {
+                  const completedCount = resultQuizzes.filter(
+                    (quiz) => studentScore.results[quiz.id]?.status === 'Finished'
+                  ).length;
+
+                  return (
+                    <div
+                      key={studentScore.id}
+                      className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/40 space-y-3"
+                    >
+                      <div className="sticky top-0 z-10 p-2 -mx-2 -mt-1 rounded-lg bg-white/95 dark:bg-slate-900/95 backdrop-blur-md flex items-center justify-between gap-2 shadow-sm border border-slate-100 dark:border-slate-800">
+                        <div className="min-w-0">
+                          <h4 className="font-semibold text-sm text-slate-900 dark:text-white truncate">
+                            {studentScore.studentName}
+                          </h4>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                            {studentScore.studentEmail}
+                          </p>
+                        </div>
+                        <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0 border ${
+                          completedCount === resultQuizzes.length && resultQuizzes.length > 0
+                            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400'
+                            : 'bg-violet-500/10 border-violet-500/20 text-violet-600 dark:text-violet-400'
+                        }`}>
+                          {completedCount}/{resultQuizzes.length} Finished
+                        </span>
+                      </div>
+
+                      <div className="space-y-1.5 pt-2 border-t border-slate-200/80 dark:border-slate-800/80">
+                        {resultQuizzes.map((quiz) => {
+                          const result = studentScore.results[quiz.id];
+                          const isFinished = result?.status === 'Finished';
+                          return (
+                            <div key={quiz.id} className="flex items-center justify-between gap-2 text-xs py-1">
+                              <span className="truncate text-xs text-slate-700 dark:text-slate-300">
+                                {quiz.title}
+                              </span>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${isFinished
+                                  ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300'
+                                  : 'border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'}`}>
+                                  {result?.status || 'Not Taken'}
+                                </span>
+                                {isFinished && result.score !== null && (
+                                  <span className="font-bold text-emerald-600 dark:text-emerald-400 text-xs">
+                                    {result.score}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           ))
@@ -832,56 +893,102 @@ export function QuizManagement() {
                           No submissions match "{submissionSearch[quiz.id]}".
                         </p>
                       ) : (
-                        <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
-                          <table className="w-full text-left text-sm">
-                            <thead className="bg-slate-100 dark:bg-slate-900/80 text-xs uppercase text-slate-600 dark:text-slate-400">
-                              <tr>
-                                <th className="px-3 py-2">Student</th>
-                                <th className="px-3 py-2">Score</th>
-                                <th className="px-3 py-2">Status</th>
-                                <th className="px-3 py-2">Submitted</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                              {groupSubmissionsBySection(quiz.id).map(([section, sectionSubmissions]) => (
-                                <Fragment key={section}>
-                                  <tr className="bg-slate-100/80 dark:bg-slate-800/60">
-                                    <td colSpan={4} className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-violet-700 dark:text-cyan-300">
-                                      Section {section} · {sectionSubmissions.length} submission{sectionSubmissions.length !== 1 ? 's' : ''}
-                                    </td>
-                                  </tr>
-                                  {sectionSubmissions.map((submission) => (
-                                    <tr key={submission.id} className="text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                                      <td className="px-3 py-3">
-                                        <div className="font-medium text-slate-900 dark:text-white">{submission.student?.full_name || 'Unknown student'}</div>
-                                        <div className="text-xs text-slate-500 dark:text-slate-400">{submission.student?.email || 'No email'}</div>
+                        <>
+                          {/* Desktop Table View */}
+                          <div className="hidden sm:block overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
+                            <table className="w-full text-left text-sm">
+                              <thead className="bg-slate-100 dark:bg-slate-900/80 text-xs uppercase text-slate-600 dark:text-slate-400">
+                                <tr>
+                                  <th className="px-3 py-2">Student</th>
+                                  <th className="px-3 py-2">Score</th>
+                                  <th className="px-3 py-2">Status</th>
+                                  <th className="px-3 py-2">Submitted</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                                {groupSubmissionsBySection(quiz.id).map(([section, sectionSubmissions]) => (
+                                  <Fragment key={section}>
+                                    <tr className="bg-slate-100/80 dark:bg-slate-800/60">
+                                      <td colSpan={4} className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-violet-700 dark:text-cyan-300">
+                                        Section {section} · {sectionSubmissions.length} submission{sectionSubmissions.length !== 1 ? 's' : ''}
                                       </td>
-                                      <td className="px-3 py-3">
+                                    </tr>
+                                    {sectionSubmissions.map((submission) => (
+                                      <tr key={submission.id} className="text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                                        <td className="px-3 py-3">
+                                          <div className="font-medium text-slate-900 dark:text-white">{submission.student?.full_name || 'Unknown student'}</div>
+                                          <div className="text-xs text-slate-500 dark:text-slate-400">{submission.student?.email || 'No email'}</div>
+                                        </td>
+                                        <td className="px-3 py-3">
+                                          {submission.score === null || submission.score === undefined ? (
+                                            <span className="inline-flex items-center rounded-full border border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-800/80 px-2 py-0.5 text-xs text-slate-600 dark:text-slate-300">
+                                              Not graded
+                                            </span>
+                                          ) : (
+                                            <span className="font-semibold text-emerald-600 dark:text-emerald-400">{submission.score}</span>
+                                          )}
+                                        </td>
+                                        <td className="px-3 py-3">
+                                          <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs capitalize ${submission.status === 'submitted'
+                                            ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300'
+                                            : 'border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300'}`}>
+                                            {submission.status || 'submitted'}
+                                          </span>
+                                        </td>
+                                        <td className="px-3 py-3 text-xs text-slate-500 dark:text-slate-400">
+                                          {submission.submitted_at ? new Date(submission.submitted_at).toLocaleString() : 'Unknown'}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </Fragment>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+
+                          {/* Mobile Cards View */}
+                          <div className="block sm:hidden space-y-3">
+                            {groupSubmissionsBySection(quiz.id).map(([section, sectionSubmissions]) => (
+                              <div key={section} className="space-y-2">
+                                <div className="text-xs font-semibold uppercase tracking-wide text-violet-700 dark:text-cyan-300 px-1">
+                                  Section {section} · {sectionSubmissions.length} submission{sectionSubmissions.length !== 1 ? 's' : ''}
+                                </div>
+                                {sectionSubmissions.map((submission) => (
+                                  <div
+                                    key={submission.id}
+                                    className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/70 space-y-2 shadow-sm"
+                                  >
+                                    <div className="flex items-start justify-between gap-2">
+                                      <div className="min-w-0">
+                                        <div className="font-medium text-xs text-slate-900 dark:text-white truncate">
+                                          {submission.student?.full_name || 'Unknown student'}
+                                        </div>
+                                        <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                                          {submission.student?.email || 'No email'}
+                                        </div>
+                                      </div>
+                                      <div className="text-right shrink-0">
                                         {submission.score === null || submission.score === undefined ? (
-                                          <span className="inline-flex items-center rounded-full border border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-800/80 px-2 py-0.5 text-xs text-slate-600 dark:text-slate-300">
+                                          <span className="inline-flex items-center rounded-full border border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] text-slate-600 dark:text-slate-300">
                                             Not graded
                                           </span>
                                         ) : (
-                                          <span className="font-semibold text-emerald-600 dark:text-emerald-400">{submission.score}</span>
+                                          <span className="font-bold text-xs text-emerald-600 dark:text-emerald-400">
+                                            {submission.score} pts
+                                          </span>
                                         )}
-                                      </td>
-                                      <td className="px-3 py-3">
-                                        <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs capitalize ${submission.status === 'submitted'
-                                          ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300'
-                                          : 'border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300'}`}>
-                                          {submission.status || 'submitted'}
-                                        </span>
-                                      </td>
-                                      <td className="px-3 py-3 text-xs text-slate-500 dark:text-slate-400">
-                                        {submission.submitted_at ? new Date(submission.submitted_at).toLocaleString() : 'Unknown'}
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </Fragment>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-800/80">
+                                      <span className="capitalize">{submission.status || 'submitted'}</span>
+                                      <span>{submission.submitted_at ? new Date(submission.submitted_at).toLocaleDateString() : 'Unknown'}</span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ))}
+                          </div>
+                        </>
                       )}
                     </div>
 

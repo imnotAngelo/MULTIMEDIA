@@ -302,44 +302,98 @@ export function StudentQuizzes() {
           No quiz results match "{quizResultSearchQuery}"
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-max text-left text-sm">
-            <thead className="bg-slate-50 dark:bg-slate-900/80 text-xs uppercase text-slate-500 dark:text-slate-400">
-              <tr>
-                <th className="px-5 py-3">Student</th>
-                {filteredQuizzes.map((quiz) => (
-                  <th key={quiz.id} className="min-w-40 px-5 py-3">{quiz.title}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="text-slate-700 dark:text-slate-300">
-                <td className="px-5 py-4">
-                  <div className="font-medium text-slate-900 dark:text-white">{user?.full_name || 'Student'}</div>
-                  <div className="text-xs text-slate-500 dark:text-slate-400">{user?.email || ''}</div>
-                </td>
-                {filteredQuizzes.map((quiz) => {
-                  const finished = isSubmitted(quiz);
-                  const rawScore = getRawScoreDisplay(quiz);
-                  return (
-                    <td key={quiz.id} className="px-5 py-4">
-                      <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs ${finished
+        <>
+          {/* Desktop Table View */}
+          <div className="hidden sm:block overflow-x-auto max-h-[70vh] overflow-y-auto relative">
+            <table className="w-full min-w-max text-left text-sm border-separate border-spacing-0">
+              <thead className="bg-slate-50 dark:bg-slate-900 sticky top-0 z-20 shadow-[0_1px_0_0_rgba(0,0,0,0.08)] text-xs uppercase text-slate-500 dark:text-slate-400">
+                <tr>
+                  <th className="sticky top-0 left-0 z-30 bg-slate-50 dark:bg-slate-900 px-5 py-3 shadow-[1px_0_0_0_rgba(0,0,0,0.06)]">Student</th>
+                  {filteredQuizzes.map((quiz) => (
+                    <th key={quiz.id} className="min-w-40 px-5 py-3 sticky top-0 bg-slate-50 dark:bg-slate-900">{quiz.title}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="text-slate-700 dark:text-slate-300">
+                  <td className="sticky left-0 z-10 bg-white dark:bg-slate-900 px-5 py-4 shadow-[1px_0_0_0_rgba(0,0,0,0.06)]">
+                    <div className="font-medium text-slate-900 dark:text-white">{user?.full_name || 'Student'}</div>
+                    <div className="text-xs text-slate-500 dark:text-slate-400">{user?.email || ''}</div>
+                  </td>
+                  {filteredQuizzes.map((quiz) => {
+                    const finished = isSubmitted(quiz);
+                    const rawScore = getRawScoreDisplay(quiz);
+                    return (
+                      <td key={quiz.id} className="px-5 py-4">
+                        <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs ${finished
+                          ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300'
+                          : 'border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300'}`}>
+                          {finished ? 'Finished' : 'Untaken'}
+                        </span>
+                        {finished && quiz.submission?.score !== null && quiz.submission?.score !== undefined && (
+                          <div className="mt-1 font-semibold text-emerald-600 dark:text-emerald-400">
+                            {rawScore.earnedPoints}/{rawScore.totalPoints || 0}
+                          </div>
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile Touch Cards View */}
+          <div className="block sm:hidden p-4 space-y-3">
+            <div className="sticky top-0 z-10 p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md flex items-center justify-between shadow-sm">
+              <div>
+                <p className="font-semibold text-sm text-slate-900 dark:text-white">{user?.full_name || 'Student'}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{user?.email || ''}</p>
+              </div>
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-full border border-violet-500/20 bg-violet-500/10 text-violet-600 dark:text-violet-400">
+                {filteredQuizzes.filter(isSubmitted).length}/{filteredQuizzes.length} Completed
+              </span>
+            </div>
+
+            <div className="space-y-2">
+              {filteredQuizzes.map((quiz) => {
+                const finished = isSubmitted(quiz);
+                const rawScore = getRawScoreDisplay(quiz);
+
+                return (
+                  <div
+                    key={quiz.id}
+                    className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/70 flex items-center justify-between gap-3 shadow-sm transition-colors"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <h4 className="font-medium text-xs text-slate-900 dark:text-white truncate">
+                        {quiz.title}
+                      </h4>
+                      {quiz.submission?.submitted_at && (
+                        <p className="text-[11px] text-slate-400 mt-0.5">
+                          Submitted {new Date(quiz.submission.submitted_at).toLocaleDateString()}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${finished
                         ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300'
                         : 'border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300'}`}>
                         {finished ? 'Finished' : 'Untaken'}
                       </span>
                       {finished && quiz.submission?.score !== null && quiz.submission?.score !== undefined && (
-                        <div className="mt-1 font-semibold text-emerald-600 dark:text-emerald-400">
+                        <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
                           {rawScore.earnedPoints}/{rawScore.totalPoints || 0}
-                        </div>
+                        </span>
                       )}
-                    </td>
-                  );
-                })}
-              </tr>
-            </tbody>
-          </table>
-        </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

@@ -290,42 +290,100 @@ export function Portfolio() {
             No laboratories match "{searchQuery}"
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-max text-left text-sm">
-              <thead className={cn('text-xs uppercase', isLightMode ? 'bg-slate-50 text-slate-600 border-b border-slate-100' : 'bg-slate-950/60 text-slate-500')}>
-                <tr>
-                  <th className="px-5 py-3">Student</th>
-                  {filteredLaboratories.map((laboratory) => (
-                    <th key={laboratory.id} className="min-w-40 px-5 py-3">{laboratory.title}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className={cn('divide-y', isLightMode ? 'divide-slate-100' : 'divide-slate-800/60')}>
-                <tr className={isLightMode ? 'text-slate-700' : 'text-slate-300'}>
-                  <td className="px-5 py-4">
-                    <div className={cn('font-medium', isLightMode ? 'text-slate-900' : 'text-white')}>{user?.full_name || 'Student'}</div>
-                    <div className="text-xs text-slate-500">{user?.email || ''}</div>
-                  </td>
-                  {filteredLaboratories.map((laboratory) => {
-                    const submission = labSubmissions.find((item) => item.labId === laboratory.id);
-                    const finished = Boolean(submission);
-                    return (
-                      <td key={laboratory.id} className="px-5 py-4">
-                        <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs ${finished
-                          ? (isLightMode ? 'border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300')
+          <>
+            {/* Desktop Table View */}
+            <div className="hidden sm:block overflow-x-auto max-h-[70vh] overflow-y-auto relative">
+              <table className="w-full min-w-max text-left text-sm border-separate border-spacing-0">
+                <thead className={cn('text-xs uppercase sticky top-0 z-20 shadow-[0_1px_0_0_rgba(0,0,0,0.08)]', isLightMode ? 'bg-slate-50 text-slate-600' : 'bg-slate-900 text-slate-400')}>
+                  <tr>
+                    <th className={cn("sticky top-0 left-0 z-30 px-5 py-3 shadow-[1px_0_0_0_rgba(0,0,0,0.06)]", isLightMode ? "bg-slate-50" : "bg-slate-900")}>Student</th>
+                    {filteredLaboratories.map((laboratory) => (
+                      <th key={laboratory.id} className={cn("min-w-40 px-5 py-3 sticky top-0", isLightMode ? "bg-slate-50" : "bg-slate-900")}>{laboratory.title}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className={cn('divide-y', isLightMode ? 'divide-slate-100' : 'divide-slate-800/60')}>
+                  <tr className={isLightMode ? 'text-slate-700' : 'text-slate-300'}>
+                    <td className={cn("sticky left-0 z-10 px-5 py-4 shadow-[1px_0_0_0_rgba(0,0,0,0.06)]", isLightMode ? "bg-white" : "bg-slate-900")}>
+                      <div className={cn('font-medium', isLightMode ? 'text-slate-900' : 'text-white')}>{user?.full_name || 'Student'}</div>
+                      <div className="text-xs text-slate-500">{user?.email || ''}</div>
+                    </td>
+                    {filteredLaboratories.map((laboratory) => {
+                      const submission = labSubmissions.find((item) => item.labId === laboratory.id);
+                      const finished = Boolean(submission);
+                      return (
+                        <td key={laboratory.id} className="px-5 py-4">
+                          <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs ${finished
+                            ? (isLightMode ? 'border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300')
+                            : (isLightMode ? 'border-slate-300 bg-slate-100 text-slate-600' : 'border-slate-600 bg-slate-800/80 text-slate-300')}`}>
+                            {finished ? 'Finished' : 'Untaken'}
+                          </span>
+                          {submission && submission.grade !== null && submission.grade !== undefined && (
+                            <div className={cn('mt-1 font-semibold', isLightMode ? 'text-emerald-700' : 'text-emerald-400')}>{submission.grade}/100</div>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Touch Cards View */}
+            <div className="block sm:hidden p-4 space-y-3">
+              <div className={cn('sticky top-0 z-10 p-3 rounded-xl border flex items-center justify-between backdrop-blur-md shadow-sm', isLightMode ? 'bg-white/95 border-slate-200' : 'bg-slate-900/95 border-slate-800')}>
+                <div>
+                  <p className={cn('font-semibold text-sm', isLightMode ? 'text-slate-900' : 'text-white')}>{user?.full_name || 'Student'}</p>
+                  <p className="text-xs text-slate-500">{user?.email || ''}</p>
+                </div>
+                <span className={cn('text-xs font-semibold px-2 py-0.5 rounded-full border', isLightMode ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400')}>
+                  {labSubmissions.length}/{filteredLaboratories.length} Completed
+                </span>
+              </div>
+
+              <div className="space-y-2">
+                {filteredLaboratories.map((laboratory) => {
+                  const submission = labSubmissions.find((item) => item.labId === laboratory.id);
+                  const finished = Boolean(submission);
+                  const isGraded = submission?.grade !== null && submission?.grade !== undefined;
+
+                  return (
+                    <div
+                      key={laboratory.id}
+                      className={cn(
+                        'p-3.5 rounded-xl border flex items-center justify-between gap-3 transition-colors',
+                        isLightMode ? 'bg-white border-slate-200' : 'bg-slate-900/60 border-slate-800'
+                      )}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <h4 className={cn('font-medium text-xs truncate', isLightMode ? 'text-slate-900' : 'text-white')}>
+                          {laboratory.title}
+                        </h4>
+                        {submission?.submittedAt && (
+                          <p className="text-[11px] text-slate-400 mt-0.5">
+                            Submitted {new Date(submission.submittedAt).toLocaleDateString()}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${finished
+                          ? (isLightMode ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300')
                           : (isLightMode ? 'border-slate-300 bg-slate-100 text-slate-600' : 'border-slate-600 bg-slate-800/80 text-slate-300')}`}>
                           {finished ? 'Finished' : 'Untaken'}
                         </span>
-                        {submission && submission.grade !== null && submission.grade !== undefined && (
-                          <div className={cn('mt-1 font-semibold', isLightMode ? 'text-emerald-700' : 'text-emerald-400')}>{submission.grade}/100</div>
+                        {isGraded && (
+                          <span className={cn('text-xs font-bold', isLightMode ? 'text-emerald-700' : 'text-emerald-400')}>
+                            {submission.grade}/100
+                          </span>
                         )}
-                      </td>
-                    );
-                  })}
-                </tr>
-              </tbody>
-            </table>
-          </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </>
         )}
       </Card>
 

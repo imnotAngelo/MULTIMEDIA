@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Check, RefreshCw, Trash2, UserCheck, Users, Search } from 'lucide-react';
+import { Check, RefreshCw, Trash2, UserCheck, Users, Search, CheckSquare, CheckCheck } from 'lucide-react';
 import { AetherSpinner } from '@/components/AetherSpinner';
 import { authFetch } from '@/lib/authFetch';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AetherLoader } from '@/components/AetherLoader';
 import { toast } from 'sonner';
 import { useThemeStore } from '@/stores/themeStore';
+import { cn } from '@/lib/utils';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,6 +43,11 @@ export function StudentApprovals() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [sectionFilter, setSectionFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Multi-select bulk state
+  const [selectedRequestIds, setSelectedRequestIds] = useState<Set<string>>(new Set());
+  const [isBulkProcessing, setIsBulkProcessing] = useState(false);
+  const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false);
 
   const loadRequests = async () => {
     setLoading(true);
@@ -139,6 +145,94 @@ export function StudentApprovals() {
     }
   };
 
+  const handleToggleSelect = (id: string) => {
+    setSelectedRequestIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleToggleSelectAll = () => {
+    if (selectedRequestIds.size === filteredRequests.length && filteredRequests.length > 0) {
+      setSelectedRequestIds(new Set());
+    } else {
+      setSelectedRequestIds(new Set(filteredRequests.map((r) => r.id)));
+    }
+  };
+
+  const isAllSelected = filteredRequests.length > 0 && selectedRequestIds.size === filteredRequests.length;
+
+  const handleBulkApprove = async () => {
+    if (selectedRequestIds.size === 0) return;
+    setIsBulkProcessing(true);
+    const idsToApprove = Array.from(selectedRequestIds);
+    try {
+      const results = await Promise.allSettled(
+        idsToApprove.map((id) => authFetch(`/instructor/student-requests/${id}/approve`, { method: 'PATCH' }))
+      );
+      const successfulIds = new Set<string>();
+      results.forEach((res, idx) => {
+        if (res.status === 'fulfilled' && res.value.ok) {
+          successfulIds.add(idsToApprove[idx]);
+        }
+      });
+
+      if (successfulIds.size > 0) {
+        const approved = requests.filter((r) => successfulIds.has(r.id));
+        setRequests((curr) => curr.filter((r) => !successfulIds.has(r.id)));
+        setStudents((curr) => [
+          ...approved.map((s) => ({ ...s, student_approved: true })),
+          ...curr,
+        ]);
+        setSelectedRequestIds((curr) => {
+          const next = new Set(curr);
+          successfulIds.forEach((id) => next.delete(id));
+          return next;
+        });
+        toast.success(`Approved ${successfulIds.size} student${successfulIds.size !== 1 ? 's' : ''}`);
+      }
+
+      if (successfulIds.size < idsToApprove.length) {
+        toast.error(`Could not approve ${idsToApprove.length - successfulIds.size} students`);
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Error processing bulk approval');
+    } finally {
+      setIsBulkProcessing(false);
+    }
+  };
+
+  const handleBulkReject = async () => {
+    if (selectedRequestIds.size === 0) return;
+    setIsBulkProcessing(true);
+    const idsToDelete = Array.from(selectedRequestIds);
+    try {
+      const results = await Promise.allSettled(
+        idsToDelete.map((id) => authFetch(`/instructor/student-requests/${id}`, { method: 'DELETE' }))
+      );
+      const successfulIds = new Set<string>();
+      results.forEach((res, idx) => {
+        if (res.status === 'fulfilled' && res.value.ok) {
+          successfulIds.add(idsToDelete[idx]);
+        }
+      });
+
+      if (successfulIds.size > 0) {
+        setRequests((curr) => curr.filter((r) => !successfulIds.has(r.id)));
+        setStudents((curr) => curr.filter((s) => !successfulIds.has(s.id)));
+        setSelectedRequestIds(new Set());
+        toast.success(`Rejected ${successfulIds.size} student registration${successfulIds.size !== 1 ? 's' : ''}`);
+      }
+      setBulkDeleteConfirmOpen(false);
+    } catch (err: any) {
+      toast.error(err?.message || 'Error processing bulk rejection');
+    } finally {
+      setIsBulkProcessing(false);
+    }
+  };
+
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -208,16 +302,79 @@ export function StudentApprovals() {
         isLight ? 'border-slate-200 bg-white shadow-sm' : 'border-slate-800 bg-slate-900/70'
       }`}>
         <CardHeader className={`border-b ${isLight ? 'border-slate-100 bg-slate-50/50' : 'border-slate-800'}`}>
-          <CardTitle className={`flex items-center gap-3 text-base font-semibold ${isLight ? 'text-slate-900' : 'text-white'}`}>
-            <div className="w-8 h-8 rounded-lg bg-violet-500/15 flex items-center justify-center">
-              <Users className="h-4 w-4 text-violet-500" />
-            </div>
-            Pending Approval Requests
-            <span className="rounded-full bg-violet-500/15 px-2.5 py-0.5 text-xs font-semibold text-violet-500">
-              {filteredRequests.length}
-            </span>
-          </CardTitle>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <CardTitle className={`flex items-center gap-3 text-base font-semibold ${isLight ? 'text-slate-900' : 'text-white'}`}>
+              <div className="w-8 h-8 rounded-lg bg-violet-500/15 flex items-center justify-center">
+                <Users className="h-4 w-4 text-violet-500" />
+              </div>
+              Pending Approval Requests
+              <span className="rounded-full bg-violet-500/15 px-2.5 py-0.5 text-xs font-semibold text-violet-500">
+                {filteredRequests.length}
+              </span>
+            </CardTitle>
+
+            {filteredRequests.length > 0 && (
+              <div className="flex items-center gap-2">
+                <label className="flex items-center gap-2 text-xs font-medium cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={isAllSelected}
+                    onChange={handleToggleSelectAll}
+                    className="w-4 h-4 rounded text-violet-600 focus:ring-violet-500 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 cursor-pointer"
+                  />
+                  <span className={isLight ? 'text-slate-600' : 'text-slate-400'}>
+                    Select All ({filteredRequests.length})
+                  </span>
+                </label>
+              </div>
+            )}
+          </div>
         </CardHeader>
+
+        {/* Bulk Action Banner */}
+        {selectedRequestIds.size > 0 && (
+          <div className={cn(
+            'flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-3 border-b transition-all animate-in fade-in',
+            isLight ? 'bg-violet-50/90 border-violet-100 text-violet-900' : 'bg-violet-950/40 border-violet-800/60 text-violet-200'
+          )}>
+            <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold">
+              <CheckSquare className="w-4 h-4 text-violet-500" />
+              <span>{selectedRequestIds.size} student{selectedRequestIds.size !== 1 ? 's' : ''} selected</span>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setSelectedRequestIds(new Set())}
+                disabled={isBulkProcessing}
+                className={cn('text-xs h-8', isLight ? 'text-slate-600 hover:text-slate-900' : 'text-slate-400 hover:text-white')}
+              >
+                Clear
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setBulkDeleteConfirmOpen(true)}
+                disabled={isBulkProcessing}
+                className="h-8 text-xs gap-1.5 border-rose-500/30 text-rose-500 hover:bg-rose-500/10 hover:text-rose-600"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Bulk Reject ({selectedRequestIds.size})
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleBulkApprove}
+                disabled={isBulkProcessing}
+                className="bg-emerald-600 hover:bg-emerald-500 text-white h-8 text-xs gap-1.5 shadow-sm"
+              >
+                {isBulkProcessing ? <AetherSpinner className="w-3.5 h-3.5" /> : <Check className="w-3.5 h-3.5" />}
+                Bulk Approve ({selectedRequestIds.size})
+              </Button>
+            </div>
+          </div>
+        )}
+
         <CardContent className="p-0">
           {loading ? (
             <div className="p-4">
@@ -235,51 +392,67 @@ export function StudentApprovals() {
             </div>
           ) : (
             <div className={`divide-y ${isLight ? 'divide-slate-100' : 'divide-slate-800'}`}>
-              {filteredRequests.map((request) => (
-                <div key={request.id} className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex items-center gap-4">
-                    <img
-                      src={getAvatarUrl(request)}
-                      alt={`${request.full_name} profile`}
-                      className={`h-11 w-11 shrink-0 rounded-full border object-cover shadow-sm ${
-                        isLight ? 'border-slate-200 bg-slate-100' : 'border-slate-700 bg-slate-800'
-                      }`}
-                    />
-                    <div>
-                      <h3 className={`font-medium ${isLight ? 'text-slate-900' : 'text-white'}`}>{request.full_name}</h3>
-                      <p className={`text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>{request.email}</p>
-                      <div className="mt-1.5 flex items-center gap-2 flex-wrap">
-                        <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium border ${
-                          isLight ? 'bg-slate-100 text-slate-700 border-slate-200' : 'bg-slate-800 text-slate-300 border-slate-700'
-                        }`}>
-                          Section {request.section}
-                        </span>
-                        <span className={`text-[11px] ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
-                          Requested {new Date(request.created_at).toLocaleDateString()}
-                        </span>
+              {filteredRequests.map((request) => {
+                const isSelected = selectedRequestIds.has(request.id);
+                return (
+                  <div
+                    key={request.id}
+                    className={cn(
+                      'flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between transition-colors',
+                      isSelected ? (isLight ? 'bg-violet-50/40' : 'bg-violet-950/20') : ''
+                    )}
+                  >
+                    <div className="flex items-center gap-3.5">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => handleToggleSelect(request.id)}
+                        className="w-4 h-4 rounded text-violet-600 focus:ring-violet-500 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 cursor-pointer shrink-0"
+                      />
+                      <img
+                        src={getAvatarUrl(request)}
+                        alt={`${request.full_name} profile`}
+                        className={`h-11 w-11 shrink-0 rounded-full border object-cover shadow-sm ${
+                          isLight ? 'border-slate-200 bg-slate-100' : 'border-slate-700 bg-slate-800'
+                        }`}
+                      />
+                      <div>
+                        <h3 className={`font-medium ${isLight ? 'text-slate-900' : 'text-white'}`}>{request.full_name}</h3>
+                        <p className={`text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>{request.email}</p>
+                        <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+                          <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium border ${
+                            isLight ? 'bg-slate-100 text-slate-700 border-slate-200' : 'bg-slate-800 text-slate-300 border-slate-700'
+                          }`}>
+                            Section {request.section}
+                          </span>
+                          <span className={`text-[11px] ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
+                            Requested {new Date(request.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
                       </div>
                     </div>
+                    <div className="flex items-center gap-2 pl-7 sm:pl-0">
+                      <Button
+                        onClick={() => approveRequest(request.id)}
+                        disabled={approvingId === request.id || isBulkProcessing}
+                        className="bg-emerald-600 text-white hover:bg-emerald-500 shadow-sm"
+                      >
+                        {approvingId === request.id ? <AetherSpinner className="mr-2 h-4 w-4" /> : <Check className="mr-2 h-4 w-4" />}
+                        Approve
+                      </Button>
+                      <Button
+                        onClick={() => setStudentToDelete(request)}
+                        variant="outline"
+                        disabled={isBulkProcessing}
+                        className="border-rose-500/30 text-rose-500 hover:bg-rose-500/10 hover:text-rose-600"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Reject
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      onClick={() => approveRequest(request.id)}
-                      disabled={approvingId === request.id}
-                      className="bg-emerald-600 text-white hover:bg-emerald-500 shadow-sm"
-                    >
-                      {approvingId === request.id ? <AetherSpinner className="mr-2 h-4 w-4" /> : <Check className="mr-2 h-4 w-4" />}
-                      Approve
-                    </Button>
-                    <Button
-                      onClick={() => setStudentToDelete(request)}
-                      variant="outline"
-                      className="border-rose-500/30 text-rose-500 hover:bg-rose-500/10 hover:text-rose-600"
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Reject
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
@@ -379,6 +552,33 @@ export function StudentApprovals() {
               className="bg-rose-600 hover:bg-rose-700 text-white"
             >
               {isDeleting ? 'Removing...' : 'Confirm Remove'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Reject Students Confirmation Modal */}
+      <AlertDialog open={bulkDeleteConfirmOpen} onOpenChange={setBulkDeleteConfirmOpen}>
+        <AlertDialogContent className={cn('border', isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-900 border-slate-800 text-white')}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Bulk Reject Registrations</AlertDialogTitle>
+            <AlertDialogDescription className={isLight ? 'text-slate-600' : 'text-slate-400'}>
+              Are you sure you want to reject and remove <span className="font-semibold">{selectedRequestIds.size}</span> pending student registrations? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isBulkProcessing} className={isLight ? 'border-slate-200 text-slate-700' : 'bg-slate-800 border-slate-700 text-slate-300'}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isBulkProcessing}
+              onClick={(e) => {
+                e.preventDefault();
+                handleBulkReject();
+              }}
+              className="bg-rose-600 hover:bg-rose-700 text-white"
+            >
+              {isBulkProcessing ? 'Rejecting...' : `Confirm Reject (${selectedRequestIds.size})`}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
