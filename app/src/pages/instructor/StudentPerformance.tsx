@@ -23,6 +23,8 @@ import {
   Table as TableIcon,
   Sparkles,
   TrendingUp,
+  ClipboardCheck,
+  AlertTriangle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -377,7 +379,43 @@ export function StudentPerformance() {
   // Executive Stats
   const stats = useMemo(() => {
     const total = students.length;
-    if (total === 0) return { total: 0, avgQuiz: 0, avgLab: 0, avgOverall: 0, passRate: 0 };
+    if (total === 0) {
+      return {
+        total: 0,
+        studentsTakenQuiz: 0,
+        quizParticipationRate: 0,
+        studentsSubmittedLab: 0,
+        labSubmissionRate: 0,
+        noQuizCount: 0,
+        noQuizRate: 0,
+        noLabCount: 0,
+        noLabRate: 0,
+        neitherCount: 0,
+        neitherRate: 0,
+        avgQuiz: 0,
+        avgLab: 0,
+        avgOverall: 0,
+        passRate: 0,
+      };
+    }
+
+    // Quiz participation: students who have completed at least one quiz
+    const studentsTakenQuiz = students.filter((s) => s.quizzesCompleted > 0).length;
+    const quizParticipationRate = Math.round((studentsTakenQuiz / total) * 100);
+
+    // Lab submissions: students who have submitted at least one lab
+    const studentsSubmittedLab = students.filter((s) => s.labsCompleted > 0).length;
+    const labSubmissionRate = Math.round((studentsSubmittedLab / total) * 100);
+
+    // Untaken quizzes and unsubmitted laboratories
+    const noQuizCount = students.filter((s) => s.quizzesCompleted === 0).length;
+    const noQuizRate = Math.round((noQuizCount / total) * 100);
+
+    const noLabCount = students.filter((s) => s.labsCompleted === 0).length;
+    const noLabRate = Math.round((noLabCount / total) * 100);
+
+    const neitherCount = students.filter((s) => s.quizzesCompleted === 0 && s.labsCompleted === 0).length;
+    const neitherRate = Math.round((neitherCount / total) * 100);
 
     const validQuizAvgs = students.map((s) => s.quizAverage).filter((q): q is number => q !== null);
     const validLabAvgs = students.map((s) => s.labAverage).filter((l): l is number => l !== null);
@@ -388,9 +426,25 @@ export function StudentPerformance() {
     const avgOverall = validOverall.length > 0 ? Math.round(validOverall.reduce((a, b) => a + b, 0) / validOverall.length) : 0;
 
     const passingCount = students.filter((s) => s.overallAverage !== null && s.overallAverage >= 75).length;
-    const passRate = total > 0 ? Math.round((passingCount / total) * 100) : 0;
+    const passRate = Math.round((passingCount / total) * 100);
 
-    return { total, avgQuiz, avgLab, avgOverall, passRate };
+    return {
+      total,
+      studentsTakenQuiz,
+      quizParticipationRate,
+      studentsSubmittedLab,
+      labSubmissionRate,
+      noQuizCount,
+      noQuizRate,
+      noLabCount,
+      noLabRate,
+      neitherCount,
+      neitherRate,
+      avgQuiz,
+      avgLab,
+      avgOverall,
+      passRate,
+    };
   }, [students]);
 
   // Export to CSV
@@ -578,7 +632,7 @@ export function StudentPerformance() {
               <span>Student Performance Ledger &amp; Records</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-              All Students &amp; Records
+              All Students Records
             </h1>
           </div>
 
@@ -619,53 +673,112 @@ export function StudentPerformance() {
       )}
 
       {/* KPI Metric Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-        <Card className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/60 shadow-sm">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Handled Students
-            </span>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+        {/* Card 1: Total Students */}
+        <Card className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/60 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Total Students
+              </span>
+              <Users className="w-4 h-4 text-slate-400" />
+            </div>
+            <div className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+              {stats.total}
+            </div>
           </div>
-          <div className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-            {stats.total}
-          </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Across {sectionOptions.length} section(s)</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Across {sectionOptions.length} section(s)</p>
         </Card>
 
-        <Card className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/60 shadow-sm">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-sky-500 dark:text-sky-400">
-              Class Quiz Average
-            </span>
+        {/* Card 2: Total Student Take The Quiz / Overall Student */}
+        <Card className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/60 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400">
+                Students Taken Quiz
+              </span>
+              <ClipboardCheck className="w-4 h-4 text-sky-500" />
+            </div>
+            <div className="text-3xl font-extrabold text-sky-600 dark:text-sky-400 tracking-tight">
+              {stats.studentsTakenQuiz} <span className="text-lg font-semibold text-slate-400 dark:text-slate-500">/ {stats.total}</span>
+            </div>
           </div>
-          <div className="text-3xl font-extrabold text-sky-600 dark:text-sky-400 tracking-tight">
-            {stats.avgQuiz}%
+          <div className="mt-2 space-y-1">
+            <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
+              <div
+                className="bg-sky-500 h-1.5 rounded-full transition-all duration-500"
+                style={{ width: `${stats.quizParticipationRate}%` }}
+              />
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {stats.quizParticipationRate}% student quiz participation
+            </p>
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Mean assessment score</p>
         </Card>
 
-        <Card className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/60 shadow-sm">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-teal-500 dark:text-teal-400">
-              Class Lab Average
-            </span>
+        {/* Card 3: Total Student Laboratory Submitted / Overall Student */}
+        <Card className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/60 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400">
+                Labs Submitted
+              </span>
+              <Beaker className="w-4 h-4 text-teal-500" />
+            </div>
+            <div className="text-3xl font-extrabold text-teal-600 dark:text-teal-400 tracking-tight">
+              {stats.studentsSubmittedLab} <span className="text-lg font-semibold text-slate-400 dark:text-slate-500">/ {stats.total}</span>
+            </div>
           </div>
-          <div className="text-3xl font-extrabold text-teal-600 dark:text-teal-400 tracking-tight">
-            {stats.avgLab} <span className="text-sm font-semibold text-slate-400">/ 100</span>
+          <div className="mt-2 space-y-1">
+            <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
+              <div
+                className="bg-teal-500 h-1.5 rounded-full transition-all duration-500"
+                style={{ width: `${stats.labSubmissionRate}%` }}
+              />
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {stats.labSubmissionRate}% submitted laboratory work
+            </p>
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Evaluated lab submissions</p>
         </Card>
 
-        <Card className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/60 shadow-sm">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-emerald-500 dark:text-emerald-400">
-              Passing Rate
-            </span>
+        {/* Card 4: Untaken Quizzes & Unsubmitted Laboratories */}
+        <Card className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/60 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">
+                Untaken &amp; Unsubmitted
+              </span>
+              <AlertTriangle className="w-4 h-4 text-rose-500" />
+            </div>
+            <div className="text-3xl font-extrabold text-rose-600 dark:text-rose-400 tracking-tight">
+              {stats.neitherRate}%
+            </div>
           </div>
-          <div className="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight">
-            {stats.passRate}%
+          <div className="mt-2 space-y-1.5 text-xs text-slate-500 dark:text-slate-400">
+            {/* Visual mini bar breakdown */}
+            <div className="space-y-1">
+              <div className="flex justify-between text-[11px]">
+                <span className="text-amber-600 dark:text-amber-400">No Quiz: {stats.noQuizCount} ({stats.noQuizRate}%)</span>
+                <span className="text-rose-600 dark:text-rose-400">No Lab: {stats.noLabCount} ({stats.noLabRate}%)</span>
+              </div>
+              <div className="flex h-1.5 w-full rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 gap-0.5">
+                <div
+                  className="bg-amber-500 h-full transition-all duration-500"
+                  style={{ width: `${stats.noQuizRate}%` }}
+                  title={`Untaken Quizzes: ${stats.noQuizCount}`}
+                />
+                <div
+                  className="bg-rose-500 h-full transition-all duration-500"
+                  style={{ width: `${stats.noLabRate}%` }}
+                  title={`Unsubmitted Labs: ${stats.noLabCount}`}
+                />
+              </div>
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              {stats.neitherCount} student{stats.neitherCount !== 1 ? 's' : ''} have neither taken quizzes nor submitted labs
+            </p>
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Grade of 75% or higher</p>
         </Card>
       </div>
 

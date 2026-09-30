@@ -53,7 +53,7 @@ export function App() {
   // Wait for auth state to hydrate from localStorage
   if (!isHydrated) {
     return (
-      <div className="min-h-screen bg-slate-950 p-6 sm:p-10 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-6 sm:p-10 flex items-center justify-center">
         <AetherLoader variant="dashboard" label="Initializing Interactive Learning Platform..." />
       </div>
     );

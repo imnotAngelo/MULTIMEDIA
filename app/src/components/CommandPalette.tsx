@@ -131,7 +131,7 @@ export function CommandPalette({ open: controlledOpen, onOpenChange: setControll
 
               <CommandItem onSelect={() => runCommand(() => navigate('/instructor/student-performance'))}>
                 <Users className="mr-2.5 h-4 w-4 text-teal-400" />
-                <span>View All Students (Quiz & Lab Records)</span>
+                <span>All Students Records (Quiz & Lab Records)</span>
               </CommandItem>
 
               <CommandItem onSelect={() => runCommand(() => navigate('/instructor/student-approvals'))}>

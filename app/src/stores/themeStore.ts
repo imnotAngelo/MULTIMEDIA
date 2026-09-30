@@ -12,7 +12,7 @@ interface ThemeStore {
 export const useThemeStore = create<ThemeStore>()(
   persist(
     (set, get) => ({
-      theme: 'dark',
+      theme: 'light',
       
       setTheme: (theme: Theme) => {
         set({ theme });
@@ -32,7 +32,7 @@ export const useThemeStore = create<ThemeStore>()(
       name: 'theme-store',
       onRehydrateStorage: () => (state) => {
         const html = document.documentElement;
-        const theme = state?.theme ?? 'dark';
+        const theme = state?.theme ?? 'light';
         html.classList.toggle('dark', theme === 'dark');
         html.classList.toggle('light', theme === 'light');
         html.style.colorScheme = theme;

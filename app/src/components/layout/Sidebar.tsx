@@ -309,7 +309,7 @@ export function Sidebar({
         {
           title: 'Evaluation & Quizzes',
           items: [
-            { label: 'View All Students', href: '/instructor/student-performance', icon: Users },
+            { label: 'All Students Records', href: '/instructor/student-performance', icon: Users },
             {
               label: 'Quizzes',
               href: '/instructor/quizzes',

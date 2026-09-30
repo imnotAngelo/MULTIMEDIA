@@ -446,35 +446,6 @@ export function Laboratories() {
         </button>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        <div className={`${shellCardClass} rounded-xl p-5`}>
-          <div className="w-9 h-9 rounded-lg bg-violet-500/10 flex items-center justify-center mb-2">
-            <Beaker className="w-4 h-4 text-violet-500" />
-          </div>
-          <div className={`text-2xl font-bold ${headingTextClass}`}>{labs.length}</div>
-          <p className={`${secondaryTextClass} text-xs mt-1`}>Total Laboratories</p>
-        </div>
-        <div className={`${shellCardClass} rounded-xl p-5`}>
-          <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center mb-2">
-            <Calendar className="w-4 h-4 text-amber-500" />
-          </div>
-          <div className={`text-2xl font-bold ${headingTextClass}`}>
-            {labs.filter(l => l.dueDate && new Date(l.dueDate).getTime() >= Date.now()).length}
-          </div>
-          <p className={`${secondaryTextClass} text-xs mt-1`}>Upcoming</p>
-        </div>
-        <div className={`${shellCardClass} rounded-xl p-5`}>
-          <div className="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center mb-2">
-            <Zap className="w-4 h-4 text-emerald-500" />
-          </div>
-          <div className={`text-2xl font-bold ${headingTextClass}`}>
-            {new Set(labs.map(l => l.platform)).size}
-          </div>
-          <p className={`${secondaryTextClass} text-xs mt-1`}>Platforms</p>
-        </div>
-      </div>
-
       {/* Lab List */}
       {labs.length === 0 ? (
         <div className={`${shellCardClass} rounded-xl p-12 text-center`}>

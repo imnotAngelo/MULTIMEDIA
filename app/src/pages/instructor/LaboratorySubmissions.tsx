@@ -25,6 +25,7 @@ import {
   ExternalLink,
   Sparkles,
   CheckCircle2,
+  RefreshCw,
 } from 'lucide-react';
 import { AetherSpinner } from '@/components/AetherSpinner';
 import { AetherLoader } from '@/components/AetherLoader';
@@ -111,6 +112,7 @@ export function LaboratorySubmissions() {
 
   // Filter & Search states
   const [searchQuery, setSearchQuery] = useState('');
+  const [labResultSearchQuery, setLabResultSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'graded'>('all');
 
   useEffect(() => {
@@ -142,74 +144,85 @@ export function LaboratorySubmissions() {
     };
   }, [fileSubs]);
 
-  // Load file submissions
-  useEffect(() => {
-    authFetch('/laboratory-submissions/all-files', { cache: 'no-store' })
-      .then(async (r) => {
-        if (!r.ok) {
-          const body = await r.json().catch(() => ({}));
-          throw new Error(body.error ?? `Failed to load submissions (${r.status})`);
-        }
-        return r.json();
-      })
-      .then((rows: FileSubmission[]) =>
-        setFileSubs(
-          rows.map((row) => ({
-            ...row,
-            studentSection: row.studentSection || (row as FileSubmission & { section?: string }).section || 'Unassigned',
-            grade:
-              row.grade === null || row.grade === undefined || (row.grade as any) === ''
-                ? null
-                : Number(row.grade),
-            status:
-              row.grade !== null && row.grade !== undefined &&
-              (row.status === 'pending' || row.status === 'submitted' || !row.status)
-                ? 'reviewed'
-                : row.status || 'submitted',
-          }))
-        )
-      )
-      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load file submissions'))
-      .finally(() => setLoadingFileSubs(false));
-  }, []);
+  const fetchSubmissions = async () => {
+    setLoadingFileSubs(true);
+    try {
+      const r = await authFetch('/laboratory-submissions/all-files', { cache: 'no-store' });
+      if (!r.ok) {
+        const body = await r.json().catch(() => ({}));
+        throw new Error(body.error ?? `Failed to load submissions (${r.status})`);
+      }
+      const rows: FileSubmission[] = await r.json();
+      setFileSubs(
+        rows.map((row) => ({
+          ...row,
+          studentSection: row.studentSection || (row as FileSubmission & { section?: string }).section || 'Unassigned',
+          grade:
+            row.grade === null || row.grade === undefined || (row.grade as any) === ''
+              ? null
+              : Number(row.grade),
+          status:
+            row.grade !== null && row.grade !== undefined &&
+            (row.status === 'pending' || row.status === 'submitted' || !row.status)
+              ? 'reviewed'
+              : row.status || 'submitted',
+        }))
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load file submissions');
+    } finally {
+      setLoadingFileSubs(false);
+    }
+  };
+
+  const fetchLabsAndStudents = async () => {
+    try {
+      const [laboratoriesResponse, studentsResponse] = await Promise.all([
+        authFetch('/laboratories', { cache: 'no-store' }),
+        authFetch('/instructor/handled-students', { cache: 'no-store' }),
+      ]);
+      const laboratoriesData = await laboratoriesResponse.json().catch(() => ({}));
+      const studentsData = await studentsResponse.json().catch(() => ({}));
+      const laboratoryRows = Array.isArray(laboratoriesData?.data)
+        ? laboratoriesData.data
+        : Array.isArray(laboratoriesData)
+          ? laboratoriesData
+          : [];
+      const studentRows = Array.isArray(studentsData?.data)
+        ? studentsData.data
+        : Array.isArray(studentsData)
+          ? studentsData
+          : [];
+      setLaboratories(laboratoryRows.map((laboratory: any) => ({
+        id: String(laboratory.id),
+        title: laboratory.title || laboratory.name || `Laboratory ${laboratory.id}`,
+      })));
+      setHandledStudents(studentRows);
+    } catch {
+      // The submissions response remains usable if roster metadata is unavailable.
+    }
+  };
+
+  const handleRefresh = () => {
+    void fetchSubmissions();
+    void fetchLabsAndStudents();
+  };
 
   useEffect(() => {
-    Promise.all([
-      authFetch('/laboratories', { cache: 'no-store' }),
-      authFetch('/instructor/handled-students', { cache: 'no-store' }),
-    ])
-      .then(async ([laboratoriesResponse, studentsResponse]) => {
-        const laboratoriesData = await laboratoriesResponse.json().catch(() => ({}));
-        const studentsData = await studentsResponse.json().catch(() => ({}));
-        const laboratoryRows = Array.isArray(laboratoriesData?.data)
-          ? laboratoriesData.data
-          : Array.isArray(laboratoriesData)
-            ? laboratoriesData
-            : [];
-        const studentRows = Array.isArray(studentsData?.data)
-          ? studentsData.data
-          : Array.isArray(studentsData)
-            ? studentsData
-            : [];
-        setLaboratories(laboratoryRows.map((laboratory: any) => ({
-          id: String(laboratory.id),
-          title: laboratory.title || laboratory.name || `Laboratory ${laboratory.id}`,
-        })));
-        setHandledStudents(studentRows);
-      })
-      .catch(() => {
-        // The submissions response remains usable if roster metadata is unavailable.
-      });
+    void fetchSubmissions();
+    void fetchLabsAndStudents();
   }, []);
 
   // Filtered submissions
   const filteredSubmissions = useMemo(() => {
     return fileSubs.filter((sub) => {
+      const q = searchQuery.toLowerCase().trim();
       const matchesSearch =
-        searchQuery === '' ||
-        sub.studentName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        sub.labTitle?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        sub.studentSection?.toLowerCase().includes(searchQuery.toLowerCase());
+        q === '' ||
+        sub.studentName?.toLowerCase().includes(q) ||
+        sub.labTitle?.toLowerCase().includes(q) ||
+        sub.studentSection?.toLowerCase().includes(q) ||
+        sub.studentEmail?.toLowerCase().includes(q);
 
       const isGraded = sub.grade !== null && sub.grade !== undefined;
       const matchesStatus =
@@ -244,6 +257,34 @@ export function LaboratorySubmissions() {
     }
     return [...groups.entries()];
   }, [filteredSubmissions, handledStudents, showLaboratoryResults]);
+
+  const hasLabResultMatches = useMemo(() => {
+    if (!showLaboratoryResults) return true;
+    const query = labResultSearchQuery.trim().toLowerCase();
+    if (!query) return true;
+    const cleanSectionQuery = query.replace(/^section\s+/i, '').trim();
+
+    return groupedFileSubs.some(([section, labGroups]) => {
+      const sectionMatches = section.toLowerCase().includes(query) || (cleanSectionQuery ? section.toLowerCase().includes(cleanSectionQuery) : false);
+      if (sectionMatches) return true;
+
+      const sectionStudents = [
+        ...handledStudents.filter((student) => {
+          const studentSection = student.section?.trim()
+            || student.teaching_sections?.find((item) => item?.trim())?.trim()
+            || 'Unassigned';
+          return studentSection === section;
+        }),
+        ...[...labGroups.values()].flatMap((group) => group.submissions),
+      ];
+
+      return sectionStudents.some((student) => {
+        const name = (student as any).full_name || (student as any).studentName || '';
+        const email = (student as any).email || (student as any).studentEmail || '';
+        return name.toLowerCase().includes(query) || email.toLowerCase().includes(query);
+      });
+    });
+  }, [groupedFileSubs, handledStudents, labResultSearchQuery, showLaboratoryResults]);
 
   const exportSection = (
     section: string,
@@ -340,6 +381,66 @@ export function LaboratorySubmissions() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-10">
+      {showLaboratoryResults && (
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h1 className={`text-2xl sm:text-3xl font-bold tracking-tight ${isLightMode ? 'text-slate-900' : 'text-white'}`}>
+                Laboratory Results
+              </h1>
+              <p className={`text-sm mt-1 ${isLightMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                Detailed performance and submission scores across all laboratory activities.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleRefresh}
+                className={isLightMode ? 'border-slate-300 text-slate-700 hover:bg-slate-100' : 'border-slate-700 text-slate-300 hover:bg-slate-800'}
+              >
+                <RefreshCw className={`w-3.5 h-3.5 mr-2 ${loadingFileSubs ? 'animate-spin' : ''}`} />
+                Refresh Results
+              </Button>
+            </div>
+          </div>
+
+          {/* Search bar for Laboratory Results */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+              <input
+                type="text"
+                value={labResultSearchQuery}
+                onChange={(e) => setLabResultSearchQuery(e.target.value)}
+                placeholder="Search by student name, section, or email (Gmail)..."
+                className={`w-full pl-10 pr-9 py-2 text-sm rounded-xl border ${
+                  isLightMode
+                    ? 'border-slate-300 bg-white text-slate-900 placeholder:text-slate-400'
+                    : 'border-slate-700 bg-slate-900 text-white placeholder:text-slate-500'
+                } focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all shadow-sm`}
+              />
+              {labResultSearchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setLabResultSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                  aria-label="Clear search"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            {labResultSearchQuery && (
+              <div className="text-xs text-slate-500 dark:text-slate-400">
+                Searching for "<span className="font-semibold text-slate-900 dark:text-white">{labResultSearchQuery}</span>"
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {!showLaboratoryResults && <>
       {/* Top Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -650,11 +751,32 @@ export function LaboratorySubmissions() {
           <AetherLoader variant="cards" count={3} label="Loading student lab submissions..." />
         )}
 
+        {showLaboratoryResults && loadingFileSubs && (
+          <AetherLoader variant="table" count={3} label="Loading laboratory results..." />
+        )}
+
         {!showLaboratoryResults && !loadingFileSubs && filteredSubmissions.length === 0 && (
           <div className={`text-sm ${isLightMode ? 'text-slate-600 border-slate-200 bg-slate-50' : 'text-slate-400 border-slate-800 bg-slate-950/20'} py-12 text-center rounded-2xl border border-dashed`}>
             <Beaker className="w-8 h-8 text-slate-600 mx-auto mb-2 opacity-50" />
             <p className="font-medium text-slate-300">No matching submissions found</p>
             <p className="text-xs text-slate-500 mt-1">Try adjusting your search query or filter settings.</p>
+          </div>
+        )}
+
+        {showLaboratoryResults && !loadingFileSubs && !hasLabResultMatches && (
+          <div className={`p-10 text-center rounded-2xl border border-dashed ${isLightMode ? 'border-slate-300 bg-white text-slate-700' : 'border-slate-800 bg-slate-900/60 text-slate-300'}`}>
+            <Search className="w-8 h-8 text-slate-400 dark:text-slate-500 mx-auto mb-2 opacity-50" />
+            <p className="font-semibold text-sm">No laboratory results match "{labResultSearchQuery}"</p>
+            <p className="text-xs text-slate-500 mt-1">Try searching by student name, section, or Gmail address.</p>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setLabResultSearchQuery('')}
+              className={`mt-4 ${isLightMode ? 'border-slate-300 text-slate-700' : 'border-slate-700 text-slate-300'}`}
+            >
+              Clear Search
+            </Button>
           </div>
         )}
 
@@ -689,6 +811,23 @@ export function LaboratorySubmissions() {
                 ]
               ).values(),
             ];
+
+            const query = labResultSearchQuery.trim().toLowerCase();
+            const cleanSectionQuery = query.replace(/^section\s+/i, '').trim();
+            const sectionMatches = section.toLowerCase().includes(query) || (cleanSectionQuery ? section.toLowerCase().includes(cleanSectionQuery) : false);
+
+            const filteredResultStudents = resultStudents.filter((student) => {
+              if (!query) return true;
+              if (sectionMatches) return true;
+              const nameMatches = student.studentName.toLowerCase().includes(query);
+              const emailMatches = student.studentEmail.toLowerCase().includes(query);
+              return nameMatches || emailMatches;
+            });
+
+            if (showLaboratoryResults && query && filteredResultStudents.length === 0) {
+              return null;
+            }
+
             const sectionExpanded = expandedSections[section] ?? true;
             const sectionSubmissionCount = [...labGroups.values()].reduce(
               (total, group) => total + group.submissions.length,
@@ -706,7 +845,9 @@ export function LaboratorySubmissions() {
                     <User className="w-4 h-4 text-cyan-400 shrink-0" />
                     <span className="font-bold text-sm">Section {section}</span>
                     <span className={`text-xs ${isLightMode ? 'bg-slate-200 text-slate-700' : 'bg-slate-700/60 text-slate-300'} px-2 py-0.5 rounded-full font-medium`}>
-                      {sectionSubmissionCount} submission{sectionSubmissionCount !== 1 ? 's' : ''}
+                      {showLaboratoryResults
+                        ? `${filteredResultStudents.length} student${filteredResultStudents.length !== 1 ? 's' : ''}`
+                        : `${sectionSubmissionCount} submission${sectionSubmissionCount !== 1 ? 's' : ''}`}
                     </span>
                   </div>
                   {sectionExpanded ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
@@ -715,7 +856,7 @@ export function LaboratorySubmissions() {
                 {sectionExpanded && (
                   <div className={`space-y-3 p-4 ${sectionBodyClass}`}>
                     {showLaboratoryResults && <div id="lab-results" className={`overflow-hidden rounded-xl border ${isLightMode ? 'border-slate-200 bg-white' : 'border-slate-800/90 bg-slate-900/70'}`}>
-                      <div className="flex items-center justify-between gap-3 border-b border-slate-800 px-4 py-3">
+                      <div className={`flex items-center justify-between gap-3 border-b ${isLightMode ? 'border-slate-200' : 'border-slate-800'} px-4 py-3`}>
                         <div>
                           <h3 className={`text-sm font-semibold ${isLightMode ? 'text-slate-900' : 'text-white'}`}>Laboratory Results</h3>
                           <p className="mt-1 text-xs text-slate-500">One row per student</p>
@@ -724,7 +865,7 @@ export function LaboratorySubmissions() {
                           type="button"
                           size="sm"
                           variant="outline"
-                          onClick={() => exportSection(section, resultLabGroups, resultStudents)}
+                          onClick={() => exportSection(section, resultLabGroups, filteredResultStudents)}
                           className={`${isLightMode ? 'border-slate-200 text-slate-700 hover:bg-slate-100' : 'border-slate-700 text-slate-300 hover:bg-slate-800'}`}
                         >
                           <Download className="mr-2 h-3.5 w-3.5" />
@@ -742,7 +883,7 @@ export function LaboratorySubmissions() {
                             </tr>
                           </thead>
                           <tbody className={`divide-y ${isLightMode ? 'divide-slate-200' : 'divide-slate-800'}`}>
-                            {resultStudents.map((student) => (
+                            {filteredResultStudents.map((student) => (
                               <tr key={student.studentId} className={`${isLightMode ? 'text-slate-700 hover:bg-slate-50' : 'text-slate-300 hover:bg-slate-800/40'} transition-colors`}>
                                 <td className="px-4 py-3">
                                   <div className={`font-medium ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{student.studentName}</div>

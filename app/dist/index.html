@@ -1,16 +1,38 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="light" style="color-scheme: light;">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/interactive-learning-favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MULTIMEDIA - Interactive Learning Platform</title>
-    <script type="module" crossorigin src="/assets/index-CHBlQy_1.js"></script>
+    <script>
+      (function() {
+        try {
+          var raw = localStorage.getItem('theme-store');
+          var theme = raw ? JSON.parse(raw)?.state?.theme : 'light';
+          var isDark = theme === 'dark';
+          var html = document.documentElement;
+          if (isDark) {
+            html.classList.remove('light');
+            html.classList.add('dark');
+            html.style.colorScheme = 'dark';
+          } else {
+            html.classList.remove('dark');
+            html.classList.add('light');
+            html.style.colorScheme = 'light';
+          }
+        } catch (e) {
+          document.documentElement.classList.add('light');
+          document.documentElement.style.colorScheme = 'light';
+        }
+      })();
+    </script>
+    <script type="module" crossorigin src="/assets/index-ecuXp5TU.js"></script>
     <link rel="modulepreload" crossorigin href="/assets/vendor-react-CBB9Ygoy.js">
     <link rel="modulepreload" crossorigin href="/assets/vendor-icons-BbWaDAPm.js">
     <link rel="modulepreload" crossorigin href="/assets/vendor-pdf-CkaST7mo.js">
     <link rel="stylesheet" crossorigin href="/assets/vendor-react-DHcASMlu.css">
-    <link rel="stylesheet" crossorigin href="/assets/index-sXqQ7stQ.css">
+    <link rel="stylesheet" crossorigin href="/assets/index-ByWvFQVP.css">
   </head>
   <body>
     <div id="root"></div>

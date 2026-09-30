@@ -1,4 +1,4 @@
-import { Fragment, useState, useEffect } from 'react';
+import { Fragment, useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { usePageCache } from '@/stores/pageCacheStore';
@@ -17,6 +17,8 @@ import {
   KeyRound,
   Eye,
   EyeOff,
+  Search,
+  X,
 } from 'lucide-react';
 import { AetherLoader } from '@/components/AetherLoader';
 import { toast } from 'sonner';
@@ -105,6 +107,8 @@ export function QuizManagement() {
   const [submissionsLoading, setSubmissionsLoading] = useState<string | null>(null);
   const [studentScores, setStudentScores] = useState<StudentScore[]>([]);
   const [studentScoresLoading, setStudentScoresLoading] = useState(false);
+  const [resultSearchQuery, setResultSearchQuery] = useState('');
+  const [submissionSearch, setSubmissionSearch] = useState<Record<string, string>>({});
   const [quizToDelete, setQuizToDelete] = useState<Quiz | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const showQuizResult = location.hash === '#quiz-result';
@@ -399,8 +403,25 @@ export function QuizManagement() {
   };
 
   const groupSubmissionsBySection = (quizId: string) => {
+    const rawSubmissions = submissions[quizId] || [];
+    const query = (submissionSearch[quizId] || '').trim().toLowerCase();
+    const cleanSectionQuery = query.replace(/^section\s+/i, '').trim();
+
+    const filteredSubmissions = rawSubmissions.filter((submission) => {
+      if (!query) return true;
+      const name = (submission.student?.full_name || '').toLowerCase();
+      const email = (submission.student?.email || '').toLowerCase();
+      const section = getSubmissionSection(submission).toLowerCase();
+
+      const nameMatch = name.includes(query);
+      const emailMatch = email.includes(query);
+      const sectionMatch = section.includes(query) || (cleanSectionQuery ? section.includes(cleanSectionQuery) : false);
+
+      return nameMatch || emailMatch || sectionMatch;
+    });
+
     const groups = new Map<string, QuizSubmission[]>();
-    for (const submission of submissions[quizId] || []) {
+    for (const submission of filteredSubmissions) {
       const section = getSubmissionSection(submission);
       const sectionSubmissions = groups.get(section) || [];
       sectionSubmissions.push(submission);
@@ -436,8 +457,21 @@ export function QuizManagement() {
   };
 
   const renderStudentScores = () => {
+    const query = resultSearchQuery.trim().toLowerCase();
+    const cleanSectionQuery = query.replace(/^section\s+/i, '').trim();
+
+    const filteredStudentScores = studentScores.filter((student) => {
+      if (!query) return true;
+      const nameMatch = student.studentName?.toLowerCase().includes(query);
+      const emailMatch = student.studentEmail?.toLowerCase().includes(query);
+      const sectionLower = student.section?.toLowerCase() || '';
+      const sectionMatch = sectionLower.includes(query) || (cleanSectionQuery ? sectionLower.includes(cleanSectionQuery) : false);
+
+      return nameMatch || emailMatch || sectionMatch;
+    });
+
     const sectionGroups = Array.from(
-      studentScores.reduce((groups, student) => {
+      filteredStudentScores.reduce((groups, student) => {
         const sectionStudents = groups.get(student.section) || [];
         sectionStudents.push(student);
         groups.set(student.section, sectionStudents);
@@ -447,9 +481,52 @@ export function QuizManagement() {
 
     return (
       <div id="quiz-result" className="space-y-5">
-        <div>
-          <h2 className="text-base font-semibold text-slate-900 dark:text-white">Quiz Result</h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Scores from every quiz submission</p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h2 className="text-base font-semibold text-slate-900 dark:text-white">Quiz Result</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Scores from every quiz submission</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => { void loadAllStudentScores(quizzes); }}
+              className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 mr-2 ${studentScoresLoading ? 'animate-spin' : ''}`} />
+              Refresh Scores
+            </Button>
+          </div>
+        </div>
+
+        {/* Search Bar for Name, Section, or Email/Gmail */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500 pointer-events-none" />
+            <input
+              type="text"
+              value={resultSearchQuery}
+              onChange={(e) => setResultSearchQuery(e.target.value)}
+              placeholder="Search by student name, section, or email (Gmail)..."
+              className="w-full pl-10 pr-9 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all shadow-sm"
+            />
+            {resultSearchQuery && (
+              <button
+                type="button"
+                onClick={() => setResultSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                aria-label="Clear search"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+          {resultSearchQuery && (
+            <div className="text-xs text-slate-500 dark:text-slate-400">
+              Showing <span className="font-semibold text-slate-900 dark:text-white">{filteredStudentScores.length}</span> of {studentScores.length} students
+            </div>
+          )}
         </div>
 
         {studentScoresLoading ? (
@@ -457,6 +534,21 @@ export function QuizManagement() {
         ) : studentScores.length === 0 ? (
           <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 px-5 py-8 text-sm text-slate-500 dark:text-slate-400 shadow-sm">
             No student scores available yet.
+          </div>
+        ) : filteredStudentScores.length === 0 ? (
+          <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 px-5 py-10 text-center shadow-sm">
+            <Search className="mx-auto h-8 w-8 text-slate-400 dark:text-slate-500 opacity-60 mb-2" />
+            <p className="text-sm font-medium text-slate-900 dark:text-white">No students found matching "{resultSearchQuery}"</p>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Try searching by student name, section, or Gmail address.</p>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setResultSearchQuery('')}
+              className="mt-4 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300"
+            >
+              Clear Search
+            </Button>
           </div>
         ) : (
           sectionGroups.map(([section, sectionStudents]) => (
@@ -693,18 +785,41 @@ export function QuizManagement() {
                     )}
 
                     <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-                      <div className="flex items-center justify-between mb-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
                         <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Student Submissions</h4>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => loadSubmissions(quiz.id)}
-                          className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                        >
-                          <RefreshCw className={`w-3.5 h-3.5 mr-2 ${submissionsLoading === quiz.id ? 'animate-spin' : ''}`} />
-                          Refresh
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          {Boolean(submissions[quiz.id]?.length) && (
+                            <div className="relative w-full sm:w-64">
+                              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+                              <input
+                                type="text"
+                                value={submissionSearch[quiz.id] || ''}
+                                onChange={(e) => setSubmissionSearch((prev) => ({ ...prev, [quiz.id]: e.target.value }))}
+                                placeholder="Search name, section, Gmail..."
+                                className="w-full pl-8 pr-7 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                              />
+                              {submissionSearch[quiz.id] && (
+                                <button
+                                  type="button"
+                                  onClick={() => setSubmissionSearch((prev) => ({ ...prev, [quiz.id]: '' }))}
+                                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              )}
+                            </div>
+                          )}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => loadSubmissions(quiz.id)}
+                            className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                          >
+                            <RefreshCw className={`w-3.5 h-3.5 mr-2 ${submissionsLoading === quiz.id ? 'animate-spin' : ''}`} />
+                            Refresh
+                          </Button>
+                        </div>
                       </div>
                       {submissionsLoading === quiz.id && !submissions[quiz.id] ? (
                         <div className="py-2">
@@ -712,6 +827,10 @@ export function QuizManagement() {
                         </div>
                       ) : !submissions[quiz.id]?.length ? (
                         <p className="text-sm text-slate-500 dark:text-slate-400 py-3">No students have submitted this quiz yet.</p>
+                      ) : groupSubmissionsBySection(quiz.id).length === 0 ? (
+                        <p className="text-sm text-slate-500 dark:text-slate-400 py-4 text-center">
+                          No submissions match "{submissionSearch[quiz.id]}".
+                        </p>
                       ) : (
                         <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
                           <table className="w-full text-left text-sm">
