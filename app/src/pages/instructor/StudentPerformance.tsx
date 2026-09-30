@@ -348,10 +348,12 @@ export function StudentPerformance() {
     return students.filter((s) => {
       // Search
       if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
+        const q = searchQuery.toLowerCase().trim();
+        const cleanSectionQuery = q.replace(/^section\s+/i, '').trim();
         const matchesName = s.full_name.toLowerCase().includes(q);
         const matchesEmail = s.email.toLowerCase().includes(q);
-        if (!matchesName && !matchesEmail) return false;
+        const matchesSection = (s.section?.toLowerCase().includes(q) || (cleanSectionQuery ? s.section?.toLowerCase().includes(cleanSectionQuery) : false));
+        if (!matchesName && !matchesEmail && !matchesSection) return false;
       }
       // Section
       if (selectedSection !== 'all') {
@@ -787,13 +789,23 @@ export function StudentPerformance() {
         <div className="flex flex-1 flex-wrap items-center gap-3">
           {/* Search */}
           <div className="relative min-w-[240px] flex-1 max-w-sm">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search student name or email..."
-              className="pl-9 bg-slate-50 dark:bg-slate-950/60 border-slate-300 dark:border-slate-800 text-sm h-9"
+              placeholder="Search by student name, email, or section..."
+              className="pl-9 pr-8 bg-slate-50 dark:bg-slate-950/60 border-slate-300 dark:border-slate-800 text-sm h-9"
             />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                aria-label="Clear search"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
 
           {/* Section Filter */}
