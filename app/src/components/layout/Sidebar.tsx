@@ -270,8 +270,14 @@ export function Sidebar({
                 { label: 'Quiz Result', href: '/quizzes#quiz-result', icon: Trophy },
               ],
             },
-            { label: 'Laboratories', href: '/laboratories', icon: Layers },
-            { label: 'Portfolio', href: '/portfolio', icon: Image },
+            {
+              label: 'Laboratories',
+              href: '/laboratories',
+              icon: Layers,
+              subItems: [
+                { label: 'Laboratory Result', href: '/portfolio', icon: ClipboardCheck },
+              ],
+            },
           ],
         },
         {
@@ -340,6 +346,22 @@ export function Sidebar({
     ];
   }, [userRole, courseOutline]);
 
+  // Ensure parent accordion is expanded if current path matches any subitem
+  useEffect(() => {
+    categorizedGroups.forEach((group) => {
+      group.items.forEach((item) => {
+        if (
+          item.subItems?.some((sub) => {
+            const subPath = sub.href.split('#')[0].split('?')[0];
+            return subPath && subPath !== '/' && (location.pathname === subPath || location.pathname.startsWith(subPath + '/'));
+          })
+        ) {
+          setExpandedItems((prev) => (prev.includes(item.label) ? prev : [...prev, item.label]));
+        }
+      });
+    });
+  }, [location.pathname, categorizedGroups]);
+
   const SidebarContent = ({ isRail = false }: { isRail?: boolean }) => (
     <div className="flex h-full flex-col aether-sidebar select-none">
       {/* Brand Header */}
@@ -396,6 +418,12 @@ export function Sidebar({
               const hasSubItems = Boolean((item.subItems && item.subItems.length > 0) || isCourseOutlineItem);
 
               const currentPath = location.pathname;
+              const isChildActive = Boolean(
+                item.subItems?.some((sub) => {
+                  const subPath = sub.href.split('#')[0].split('?')[0];
+                  return subPath && subPath !== '/' && (currentPath === subPath || currentPath.startsWith(subPath + '/'));
+                })
+              );
               const isPrimaryActive =
                 currentPath === item.href.split('?')[0] ||
                 (item.href === '/lessons' && currentPath.startsWith('/lessons')) ||
@@ -410,7 +438,7 @@ export function Sidebar({
                     className={({ isActive }) =>
                       cn(
                         'relative flex h-11 w-full items-center justify-center rounded-xl transition-all duration-200 group',
-                        isActive || isPrimaryActive
+                        isActive || isPrimaryActive || isChildActive
                           ? 'bg-violet-600 text-white shadow-md shadow-violet-500/25'
                           : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white'
                       )
@@ -419,7 +447,7 @@ export function Sidebar({
                   >
                     <item.icon className="w-5 h-5" />
                     {/* Active glowing dot */}
-                    {(isPrimaryActive) && (
+                    {(isPrimaryActive || isChildActive) && (
                       <span className="absolute -left-1 top-1/2 -translate-y-1/2 w-1.5 h-4 bg-violet-500 rounded-r" />
                     )}
                   </NavLink>

@@ -17,6 +17,8 @@ import { authFetch } from '@/lib/authFetch';
 import { AetherLoader } from '@/components/AetherLoader';
 import { toast } from 'sonner';
 
+import { useThemeStore } from '@/stores/themeStore';
+
 interface Unit {
   id: string;
   title: string;
@@ -46,6 +48,8 @@ interface ActiveStudent {
 
 export function InstructorDashboard() {
   const { user } = useAuthStore();
+  const theme = useThemeStore((state) => state.theme);
+  const isLightMode = theme === 'light';
   const navigate = useNavigate();
   const pageCache = usePageCache();
   const CACHE_KEY = `instructor-dashboard:${user?.id ?? 'anon'}`;
@@ -233,31 +237,42 @@ export function InstructorDashboard() {
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-8">
-      {/* Hero Welcome Banner */}
-      <div className="relative overflow-hidden rounded-3xl border border-violet-500/20 bg-gradient-to-r from-violet-950/40 via-slate-900/80 to-slate-900/60 p-6 sm:p-8 backdrop-blur-xl shadow-2xl">
+      {/* Hero Welcome Banner - White Crystal in Day Mode */}
+      <div className={`relative overflow-hidden rounded-3xl p-6 sm:p-8 transition-all ${
+        isLightMode
+          ? 'bg-white/85 backdrop-blur-2xl border border-white/90 shadow-[0_8px_30px_rgb(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.95)] ring-1 ring-slate-900/5'
+          : 'bg-gradient-to-r from-violet-950/40 via-slate-900/80 to-slate-900/60 border border-violet-900/30 backdrop-blur-xl shadow-2xl'
+      }`}>
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-xs font-semibold text-violet-300">
-              <GraduationCap className="h-3.5 w-3.5" />
-              <span>Instructor</span>
+            <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${
+              isLightMode
+                ? 'bg-white/90 backdrop-blur-md text-violet-700 border border-slate-200/80 shadow-sm'
+                : 'border border-violet-500/30 bg-violet-500/10 text-violet-300'
+            }`}>
+              <GraduationCap className="h-3.5 w-3.5 text-violet-500" />
+              <span>Instructor Command Center</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+            <h1 className={`text-2xl sm:text-3xl font-bold tracking-tight ${isLightMode ? 'text-slate-900' : 'text-white'}`}>
               {getGreeting()},{' '}
-              <span className="bg-gradient-to-r from-violet-400 via-fuchsia-300 to-cyan-300 bg-clip-text text-transparent">
+              <span className={
+                isLightMode
+                  ? 'bg-gradient-to-r from-violet-600 via-indigo-600 to-sky-600 bg-clip-text text-transparent'
+                  : 'bg-gradient-to-r from-violet-400 via-fuchsia-300 to-cyan-300 bg-clip-text text-transparent'
+              }>
                 {user?.full_name || 'Professor'}
               </span>
             </h1>
-          
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            
           </div>
         </div>
 
-        {/* Decorative ambient gradient backdrop glow */}
-        <div className="absolute -right-16 -top-16 h-64 w-64 rounded-full bg-violet-600/15 blur-3xl pointer-events-none" />
-        <div className="absolute -left-16 -bottom-16 h-64 w-64 rounded-full bg-cyan-600/10 blur-3xl pointer-events-none" />
+        {/* Decorative ambient crystal refraction glow */}
+        <div className={`absolute -right-16 -top-16 h-64 w-64 rounded-full blur-3xl pointer-events-none ${
+          isLightMode ? 'bg-gradient-to-br from-sky-400/20 via-violet-300/15 to-transparent' : 'bg-violet-600/15'
+        }`} />
+        <div className={`absolute -left-16 -bottom-16 h-64 w-64 rounded-full blur-3xl pointer-events-none ${
+          isLightMode ? 'bg-gradient-to-tr from-violet-400/15 via-pink-300/15 to-transparent' : 'bg-cyan-600/10'
+        }`} />
       </div>
 
       {/* KPI Cards Grid */}

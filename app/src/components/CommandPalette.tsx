@@ -24,6 +24,7 @@ import {
   FileText,
   UserCheck,
   Users,
+  ClipboardCheck,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useThemeStore } from '@/stores/themeStore';
@@ -103,6 +104,15 @@ export function CommandPalette({ open: controlledOpen, onOpenChange: setControll
             <Beaker className="mr-2.5 h-4 w-4 text-amber-500" />
             <span>Laboratories & Workspaces</span>
           </CommandItem>
+
+          {!isInstructor && !isAdmin && (
+            <CommandItem
+              onSelect={() => runCommand(() => navigate('/portfolio'))}
+            >
+              <ClipboardCheck className="mr-2.5 h-4 w-4 text-emerald-500" />
+              <span>Laboratory Result</span>
+            </CommandItem>
+          )}
 
           <CommandItem
             onSelect={() =>

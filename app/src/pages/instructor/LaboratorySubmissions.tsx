@@ -497,17 +497,32 @@ export function LaboratorySubmissions() {
       {!showLaboratoryResults && <>
       {/* Filter and Search Bar */}
       <div className={`flex flex-col sm:flex-row items-center justify-between gap-3 ${isLightMode ? 'bg-white border-slate-200' : 'bg-slate-900/60 border-slate-800'} border p-3.5 rounded-2xl`}>
-        <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+        <div className="relative w-full sm:w-96">
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           <input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search student, lab, or section..."
-            className={`w-full pl-10 pr-4 py-2 rounded-xl border text-xs outline-none focus:border-violet-500 ${isLightMode ? 'bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400' : 'bg-slate-950 border-slate-800 text-white'}`}
+            className={`w-full pl-10 pr-9 py-2 rounded-xl border text-xs sm:text-sm outline-none focus:border-violet-500 transition-all ${isLightMode ? 'bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400' : 'bg-slate-950 border-slate-800 text-white placeholder:text-slate-500'}`}
           />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+              aria-label="Clear search"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto">
+          {searchQuery && (
+            <span className={`text-xs mr-2 whitespace-nowrap ${isLightMode ? 'text-slate-500' : 'text-slate-400'}`}>
+              Found <span className={`font-semibold ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{filteredSubmissions.length}</span> results
+            </span>
+          )}
           <button
             onClick={() => setStatusFilter('all')}
             className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${

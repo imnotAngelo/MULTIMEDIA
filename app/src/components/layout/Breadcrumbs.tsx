@@ -15,7 +15,7 @@ const ROUTE_LABELS: Record<string, string> = {
   exam: 'Examination',
   laboratories: 'Laboratories',
   'laboratory-submissions': 'Submissions',
-  portfolio: 'Portfolio',
+  portfolio: 'Laboratory Result',
   announcements: 'Announcements',
   messages: 'Messages',
   settings: 'Settings',

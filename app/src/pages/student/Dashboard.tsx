@@ -143,30 +143,52 @@ export function Dashboard() {
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-12">
-      {/* Welcome Banner */}
-      <div className={`p-8 rounded-3xl border relative overflow-hidden ${
+      {/* Welcome Banner - White Crystal in Day Mode */}
+      <div className={`p-8 rounded-3xl border relative overflow-hidden transition-all ${
         isLightMode
-          ? 'bg-gradient-to-br from-violet-500/10 via-sky-500/5 to-white border-violet-200'
-          : 'bg-gradient-to-br from-violet-950/40 via-slate-900 to-slate-950 border-violet-900/30'
+          ? 'bg-white/85 backdrop-blur-2xl border-white/90 shadow-[0_8px_30px_rgb(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.95)] ring-1 ring-slate-900/5'
+          : 'bg-gradient-to-br from-violet-950/40 via-slate-900 to-slate-950 border-violet-900/30 shadow-2xl'
       }`}>
+        {/* Crystal Refraction Ambient Glows */}
+        <div className={`absolute -right-16 -top-16 h-64 w-64 rounded-full blur-3xl pointer-events-none ${
+          isLightMode ? 'bg-gradient-to-br from-sky-400/20 via-violet-300/15 to-transparent' : 'bg-violet-600/15'
+        }`} />
+        <div className={`absolute -left-16 -bottom-16 h-64 w-64 rounded-full blur-3xl pointer-events-none ${
+          isLightMode ? 'bg-gradient-to-tr from-violet-400/15 via-pink-300/15 to-transparent' : 'bg-cyan-600/10'
+        }`} />
+
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-violet-500/10 text-violet-500 border border-violet-500/20">
-              <Sparkles className="w-3.5 h-3.5" />
+            <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold ${
+              isLightMode
+                ? 'bg-white/90 backdrop-blur-md text-violet-700 border border-slate-200/80 shadow-sm'
+                : 'bg-violet-500/10 text-violet-400 border border-violet-500/20'
+            }`}>
+              <Sparkles className="w-3.5 h-3.5 text-violet-500" />
               <span>Interactive Learning Portal</span>
             </div>
             <h1 className={`text-3xl font-bold tracking-tight ${headingColor}`}>
-              {getGreeting()}, <span className="bg-gradient-to-r from-violet-500 to-sky-500 bg-clip-text text-transparent">{user?.full_name}</span>!
+              {getGreeting()},{' '}
+              <span className={
+                isLightMode
+                  ? 'bg-gradient-to-r from-violet-600 via-indigo-600 to-sky-600 bg-clip-text text-transparent'
+                  : 'bg-gradient-to-r from-violet-400 via-fuchsia-300 to-sky-300 bg-clip-text text-transparent'
+              }>
+                {user?.full_name}
+              </span>!
             </h1>
             {user?.section && (
               <div className="flex items-center gap-2 pt-1 text-xs">
-                <span className="px-2.5 py-0.5 rounded-md bg-slate-200/60 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
+                <span className={`px-2.5 py-0.5 rounded-md font-semibold ${
+                  isLightMode
+                    ? 'bg-white/80 border border-slate-200/70 text-slate-700 shadow-sm'
+                    : 'bg-slate-800 text-slate-300'
+                }`}>
                   Section {user.section}
                 </span>
               </div>
             )}
           </div>
-
         </div>
       </div>
 

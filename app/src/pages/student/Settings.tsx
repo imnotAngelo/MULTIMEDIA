@@ -390,7 +390,7 @@ export function StudentSettings() {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between p-3 bg-slate-800/40 rounded-lg">
                     <p className="text-white text-sm font-medium">{portfolioCount} saved design{portfolioCount !== 1 ? 's' : ''}</p>
-                    <button onClick={() => navigate('/portfolio')} className="text-xs text-emerald-400">View portfolio</button>
+                    <button onClick={() => navigate('/portfolio')} className="text-xs text-emerald-400">View laboratory result</button>
                   </div>
                 </div>
               </div>
