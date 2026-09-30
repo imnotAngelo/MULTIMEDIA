@@ -425,41 +425,6 @@ export function LaboratoriesManagement() {
         </div>
       </div>
 
-      {/* Stats Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/60 rounded-xl p-5 shadow-sm">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-9 h-9 rounded-lg bg-violet-500/10 flex items-center justify-center">
-              <Beaker className="w-4 h-4 text-violet-400" />
-            </div>
-          </div>
-          <div className="text-2xl font-bold text-slate-900 dark:text-white">{laboratories.length}</div>
-          <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">Total Laboratories</p>
-        </div>
-        <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/60 rounded-xl p-5 shadow-sm">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-9 h-9 rounded-lg bg-cyan-500/10 flex items-center justify-center">
-              <Monitor className="w-4 h-4 text-cyan-400" />
-            </div>
-          </div>
-          <div className="text-2xl font-bold text-slate-900 dark:text-white">
-            {new Set(laboratories.map(l => l.platform)).size}
-          </div>
-          <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">Platforms Used</p>
-        </div>
-        <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/60 rounded-xl p-5 shadow-sm">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-              <Layers className="w-4 h-4 text-emerald-400" />
-            </div>
-          </div>
-          <div className="text-2xl font-bold text-slate-900 dark:text-white">
-            {new Set(laboratories.filter(l => l.unitId).map(l => l.unitId)).size}
-          </div>
-          <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">Units Covered</p>
-        </div>
-      </div>
-
       {/* ── Create/Edit Wizard (full-page on /create route, modal on edit) ── */}
       {showCreateForm && (
         isCreateRoute ? (
