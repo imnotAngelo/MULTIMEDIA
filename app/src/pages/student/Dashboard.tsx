@@ -137,7 +137,7 @@ export function Dashboard() {
   const headingColor = isLightMode ? 'text-slate-900' : 'text-white';
   const mutedText = isLightMode ? 'text-slate-500' : 'text-slate-400';
 
-  if (loading && stats.unitsCount === 0 && stats.totalLaboratories === 0 && stats.totalQuizzes === 0) {
+  if (loading && stats.totalLessons === 0 && stats.totalLaboratories === 0 && stats.totalQuizzes === 0) {
     return <AetherLoader variant="dashboard" label="Organizing your learning dashboard..." />;
   }
 

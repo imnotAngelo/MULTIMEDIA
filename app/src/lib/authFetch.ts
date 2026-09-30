@@ -128,3 +128,99 @@ export async function authFetch(
 
   return response;
 }
+
+export interface UploadProgressEvent {
+  percent: number;
+  loaded: number;
+  total: number;
+}
+
+/**
+ * An XMLHttpRequest-backed upload wrapper supporting real-time upload progress events
+ * and standard Bearer JWT authorization.
+ */
+export async function authUpload(
+  url: string,
+  formData: FormData,
+  onProgress?: (event: UploadProgressEvent) => void
+): Promise<Response> {
+  const fullUrl = normalizeUrl(url);
+  let token = localStorage.getItem('access_token');
+
+  const executeXhr = (authToken?: string | null): Promise<Response> => {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', fullUrl);
+      if (authToken) {
+        xhr.setRequestHeader('Authorization', `Bearer ${authToken}`);
+      }
+
+      if (xhr.upload && onProgress) {
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable && e.total > 0) {
+            const percent = Math.min(100, Math.round((e.loaded / e.total) * 100));
+            onProgress({ percent, loaded: e.loaded, total: e.total });
+          }
+        };
+      }
+
+      xhr.onload = () => {
+        const headers = new Headers();
+        const rawHeaders = xhr.getAllResponseHeaders().trim().split(/[\r\n]+/);
+        for (const line of rawHeaders) {
+          if (!line) continue;
+          const parts = line.split(': ');
+          const key = parts.shift();
+          const value = parts.join(': ');
+          if (key) headers.set(key, value);
+        }
+
+        const response = new Response(xhr.response, {
+          status: xhr.status,
+          statusText: xhr.statusText,
+          headers,
+        });
+        resolve(response);
+      };
+
+      xhr.onerror = () => {
+        reject(new TypeError('Network request failed'));
+      };
+
+      xhr.ontimeout = () => {
+        reject(new TypeError('Upload timed out'));
+      };
+
+      xhr.send(formData);
+    });
+  };
+
+  let response = await executeXhr(token);
+
+  if (response.status === 401) {
+    const refreshToken = localStorage.getItem('refresh_token');
+    if (refreshToken) {
+      try {
+        const refreshRes = await fetch(`${API_BASE || FALLBACK_API_BASE}/auth/refresh`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh_token: refreshToken }),
+        });
+
+        if (refreshRes.ok) {
+          const refreshData = await refreshRes.json();
+          if (refreshData.success && typeof refreshData.data?.access_token === 'string') {
+            const newToken: string = refreshData.data.access_token;
+            token = newToken;
+            localStorage.setItem('access_token', newToken);
+            response = await executeXhr(newToken);
+          }
+        }
+      } catch {
+        // Fall through
+      }
+    }
+  }
+
+  return response;
+}

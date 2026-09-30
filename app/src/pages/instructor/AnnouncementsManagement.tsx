@@ -3,7 +3,7 @@ import { Megaphone, Send, Trash2, Clock, Paperclip, X, FileText } from 'lucide-r
 import { AetherSpinner } from '@/components/AetherSpinner';
 import { Button } from '@/components/ui/button';
 import { notificationService } from '@/services/notificationService';
-import { authFetch } from '@/lib/authFetch';
+import { authFetch, authUpload } from '@/lib/authFetch';
 import { resolveBackendAssetUrl } from '@/lib/apiConfig';
 import { useAuthStore } from '@/stores/authStore';
 import { toast } from 'sonner';
@@ -49,9 +49,22 @@ export function AnnouncementsManagement() {
   const [message, setMessage] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [sending, setSending] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [itemToDelete, setItemToDelete] = useState<Announcement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = e.target.files?.[0] ?? null;
+    if (selected && selected.size > 50 * 1024 * 1024) {
+      setError('Attachment is too large. Maximum size is 50 MB.');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      setFile(null);
+      return;
+    }
+    setError(null);
+    setFile(selected);
+  };
 
   useEffect(() => {
     const loadHistory = async () => {
@@ -101,10 +114,19 @@ export function AnnouncementsManagement() {
       fd.append('message', message.trim());
       if (file) fd.append('file', file);
 
-      const res = await authFetch('/notifications/announcement', {
-        method: 'POST',
-        body: fd,
-      });
+      let res: Response;
+      if (file) {
+        setUploadProgress(0);
+        res = await authUpload('/notifications/announcement', fd, (evt) => {
+          setUploadProgress(evt.percent);
+        });
+      } else {
+        res = await authFetch('/notifications/announcement', {
+          method: 'POST',
+          body: fd,
+        });
+      }
+
       if (!res.ok) {
         const errorPayload = await res.json().catch(() => null);
         throw new Error(errorPayload?.error?.message || errorPayload?.error || `Server error (${res.status})`);
@@ -140,6 +162,7 @@ export function AnnouncementsManagement() {
       toast.error(msg);
     } finally {
       setSending(false);
+      setUploadProgress(null);
     }
   };
 
@@ -202,15 +225,7 @@ export function AnnouncementsManagement() {
           <input
             ref={fileInputRef}
             type="file"
-            onChange={(e) => {
-              const f = e.target.files?.[0] ?? null;
-              if (f && f.size > 50 * 1024 * 1024) {
-                setError('File too large. Max 50 MB.');
-                return;
-              }
-              setError(null);
-              setFile(f);
-            }}
+            onChange={handleFileChange}
             className="hidden"
             id="announcement-file-input"
           />
@@ -232,7 +247,8 @@ export function AnnouncementsManagement() {
                   setFile(null);
                   if (fileInputRef.current) fileInputRef.current.value = '';
                 }}
-                className="text-slate-400 hover:text-red-400 ml-1"
+                disabled={sending}
+                className="text-slate-400 hover:text-red-400 ml-1 disabled:opacity-40"
                 title="Remove attachment"
               >
                 <X className="w-4 h-4" />
@@ -240,6 +256,22 @@ export function AnnouncementsManagement() {
             </div>
           )}
         </div>
+
+        {/* Live Upload Progress */}
+        {sending && uploadProgress !== null && file && (
+          <div className="p-3 rounded-lg bg-slate-950/70 border border-slate-800 space-y-1.5">
+            <div className="flex items-center justify-between text-xs text-slate-400">
+              <span className="text-amber-400 font-medium">Uploading attachment ({uploadProgress}%)</span>
+              <span>{((file.size * (uploadProgress / 100)) / (1024 * 1024)).toFixed(1)} / {(file.size / (1024 * 1024)).toFixed(1)} MB</span>
+            </div>
+            <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+              <div
+                className="bg-amber-500 h-full rounded-full transition-all duration-150 ease-out"
+                style={{ width: `${uploadProgress}%` }}
+              />
+            </div>
+          </div>
+        )}
 
         {error && (
           <div className="px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-sm text-red-400">
@@ -259,7 +291,7 @@ export function AnnouncementsManagement() {
             {sending ? (
               <>
                 <AetherSpinner className="w-4 h-4 mr-2" />
-                Sending...
+                {uploadProgress !== null && uploadProgress < 100 ? `Uploading (${uploadProgress}%)...` : 'Sending...'}
               </>
             ) : (
               <>

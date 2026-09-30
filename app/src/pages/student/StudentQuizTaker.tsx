@@ -12,8 +12,11 @@ import {
   AlertCircle,
   Send,
   RefreshCw,
+  Save,
+  Sparkles,
 } from 'lucide-react';
 import { AetherLoader } from '@/components/AetherLoader';
+import { toast } from 'sonner';
 
 interface QuestionOption {
   id: string;
@@ -102,6 +105,8 @@ export function StudentQuizTaker() {
   const [gradingResults, setGradingResults] = useState<Record<string, boolean>>({});
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [quizStartTime] = useState<Date>(new Date());
+  const [restoredFromDraft, setRestoredFromDraft] = useState(false);
+  const [lastAutosavedAt, setLastAutosavedAt] = useState<Date | null>(null);
 
   const normalizeShortAnswer = (value: string) => value
     .toLowerCase()
@@ -331,6 +336,35 @@ export function StudentQuizTaker() {
           setTimeRemaining(quizData.time_limit * 60); // Convert minutes to seconds
         }
 
+        // Restore unsaved draft if not already submitted
+        if (!savedSubmission && user?.id && id) {
+          const draftKey = `quiz-draft:${user.id}:${id}`;
+          const rawDraft = localStorage.getItem(draftKey);
+          if (rawDraft) {
+            try {
+              const draft = JSON.parse(rawDraft);
+              if (Array.isArray(draft.answers) && draft.answers.length > 0) {
+                setStudentAnswers(draft.answers);
+                setRestoredFromDraft(true);
+                if (typeof draft.currentQuestionIndex === 'number' && draft.currentQuestionIndex < finalQuiz.questions_data.length) {
+                  setCurrentQuestionIndex(draft.currentQuestionIndex);
+                }
+                if (typeof draft.timeRemaining === 'number' && draft.savedAt) {
+                  const elapsedSeconds = Math.floor((Date.now() - draft.savedAt) / 1000);
+                  const remaining = Math.max(1, draft.timeRemaining - elapsedSeconds);
+                  setTimeRemaining(remaining);
+                }
+                setLastAutosavedAt(new Date(draft.savedAt || Date.now()));
+                toast.info('Restored your previously entered answers.', {
+                  description: 'You can continue your quiz without losing your progress.',
+                });
+              }
+            } catch (e) {
+              console.warn('Could not restore quiz draft', e);
+            }
+          }
+        }
+
         // Shuffle questions if needed
         if (quizData.shuffle_questions && questionsData) {
           const shuffledQuestions = [...questionsData].sort(
@@ -356,6 +390,28 @@ export function StudentQuizTaker() {
       setLoading(false);
     }
   };
+
+  // Autosave draft effect whenever answers change
+  useEffect(() => {
+    if (!submitted && !loading && quiz && user?.id && id && studentAnswers.length > 0) {
+      const draftKey = `quiz-draft:${user.id}:${id}`;
+      const now = Date.now();
+      try {
+        localStorage.setItem(
+          draftKey,
+          JSON.stringify({
+            answers: studentAnswers,
+            currentQuestionIndex,
+            timeRemaining,
+            savedAt: now,
+          })
+        );
+        setLastAutosavedAt(new Date(now));
+      } catch (e) {
+        console.warn('Could not autosave quiz draft', e);
+      }
+    }
+  }, [studentAnswers, currentQuestionIndex, timeRemaining, submitted, loading, quiz, user?.id, id]);
 
   const handleAnswerChange = (questionId: string, answer: string) => {
     setStudentAnswers(prev => {
@@ -419,6 +475,7 @@ export function StudentQuizTaker() {
 
       setScore(normalizedEarnedPoints || 0);
       if (user?.id && id) {
+        localStorage.removeItem(`quiz-draft:${user.id}:${id}`);
         localStorage.setItem(`quiz-submission:${user.id}:${id}`, JSON.stringify({
           score: Number(result.score ?? result.data?.score ?? 0),
           earned_points: normalizedEarnedPoints,
@@ -601,9 +658,23 @@ export function StudentQuizTaker() {
         <div className={`${headerCardClass} flex items-center justify-between mb-8`}>
           <div className="flex-1">
             <h1 className={`text-2xl md:text-3xl font-bold ${headingTextClass}`}>{quiz.title}</h1>
-            <p className={`${secondaryTextClass} mt-1`}>
-              Question {currentQuestionIndex + 1} of {quiz.questions_data.length}
-            </p>
+            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+              <p className={`${secondaryTextClass} text-sm`}>
+                Question {currentQuestionIndex + 1} of {quiz.questions_data.length}
+              </p>
+              {lastAutosavedAt && (
+                <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full font-medium">
+                  <CheckCircle2 className="w-3 h-3" />
+                  Autosaved
+                </span>
+              )}
+              {restoredFromDraft && (
+                <span className="inline-flex items-center gap-1 text-[11px] text-violet-600 dark:text-violet-400 bg-violet-500/10 border border-violet-500/20 px-2 py-0.5 rounded-full font-medium">
+                  <Sparkles className="w-3 h-3" />
+                  Draft restored
+                </span>
+              )}
+            </div>
           </div>
           {timeRemaining !== null && (
             <div

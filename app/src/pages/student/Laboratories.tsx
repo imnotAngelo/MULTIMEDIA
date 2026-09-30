@@ -13,8 +13,9 @@ import {
   Send,
   FileUp,
   Eye,
+  Loader2,
 } from 'lucide-react';
-import { authFetch } from '@/lib/authFetch';
+import { authFetch, authUpload } from '@/lib/authFetch';
 import { resolveBackendAssetUrl } from '@/lib/apiConfig';
 import { useAuthStore } from '@/stores/authStore';
 import { useThemeStore } from '@/stores/themeStore';
@@ -104,6 +105,7 @@ export function Laboratories() {
   const [submitNote, setSubmitNote] = useState('');
   const [submitError, setSubmitError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [viewingLabId, setViewingLabId] = useState<string | null>(null);
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -188,19 +190,34 @@ export function Laboratories() {
   };
 
   const closeModal = () => {
+    if (submitting) return;
     setSubmittingLabId(null);
     setSelectedFile(null);
     setPreviewUrl('');
     setSubmitNote('');
     setSubmitError('');
+    setUploadProgress(null);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setSubmitError('');
+
+    // Pre-upload validation: Check type (images and videos)
+    const isImageOrVideo = file.type.startsWith('image/') || file.type.startsWith('video/');
+    const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'mp4', 'mov', 'webm', 'avi', 'mkv'];
+    const fileExt = file.name.split('.').pop()?.toLowerCase() || '';
+
+    if (!isImageOrVideo && !allowedExtensions.includes(fileExt)) {
+      setSubmitError('Invalid file format. Please upload an image (PNG, JPG, GIF) or video (MP4, MOV, WEBM).');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
     if (file.size > 500 * 1024 * 1024) {
       setSubmitError('File is too large. Maximum size is 500 MB.');
+      if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
     setSelectedFile(file);
@@ -220,6 +237,7 @@ export function Laboratories() {
       return;
     }
     setSubmitting(true);
+    setUploadProgress(0);
     setSubmitError('');
     try {
       const form = new FormData();
@@ -228,9 +246,8 @@ export function Laboratories() {
       form.append('labTitle', lab?.title ?? '');
       form.append('note', submitNote.trim());
 
-      const res = await authFetch('/laboratory-submissions/upload-file', {
-        method: 'POST',
-        body: form,
+      const res = await authUpload('/laboratory-submissions/upload-file', form, (event) => {
+        setUploadProgress(event.percent);
       });
 
       if (!res.ok) {
@@ -263,6 +280,7 @@ export function Laboratories() {
       setSubmitError(err.message ?? 'Upload failed. Please try again.');
     } finally {
       setSubmitting(false);
+      setUploadProgress(null);
     }
   };
 
@@ -374,20 +392,50 @@ export function Laboratories() {
                   />
                 </div>
 
+                {/* Live Upload Progress */}
+                {submitting && (
+                  <div className={`p-3 rounded-xl border space-y-2 ${isLightMode ? 'bg-slate-50 border-slate-200' : 'bg-slate-800/60 border-slate-700'}`}>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="flex items-center gap-1.5 font-medium text-emerald-500">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        {uploadProgress !== null && uploadProgress < 100
+                          ? `Uploading ${uploadProgress}%`
+                          : 'Processing submission...'}
+                      </span>
+                      {selectedFile && uploadProgress !== null && (
+                        <span className={secondaryTextClass}>
+                          {((selectedFile.size * (uploadProgress / 100)) / (1024 * 1024)).toFixed(1)} / {(selectedFile.size / (1024 * 1024)).toFixed(1)} MB
+                        </span>
+                      )}
+                    </div>
+                    <div className="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
+                      <div
+                        className="bg-emerald-500 h-full rounded-full transition-all duration-150 ease-out"
+                        style={{ width: `${uploadProgress ?? 100}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex justify-end gap-3 pt-1">
                   <button
                     onClick={closeModal}
-                    className={`px-4 py-2 rounded-lg border text-sm transition-colors ${secondaryButtonClass}`}
+                    disabled={submitting}
+                    className={`px-4 py-2 rounded-lg border text-sm transition-colors disabled:opacity-50 ${secondaryButtonClass}`}
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleSubmit}
-                    disabled={submitting}
+                    disabled={submitting || !selectedFile}
                     className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-sm font-medium transition-colors"
                   >
-                    <Send className="w-4 h-4" />
-                    {submitting ? 'Submitting...' : 'Submit'}
+                    {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                    {submitting
+                      ? uploadProgress !== null && uploadProgress < 100
+                        ? `${uploadProgress}%`
+                        : 'Submitting...'
+                      : 'Submit'}
                   </button>
                 </div>
               </div>

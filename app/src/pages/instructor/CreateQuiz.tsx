@@ -594,61 +594,65 @@ export function CreateQuiz() {
             </Card>
 
             {/* Teaching Sections Selection */}
-            {user?.teaching_sections && user.teaching_sections.length > 0 && (
-              <Card className={cardClass}>
-                <div className="flex items-center justify-between mb-2">
-                  <h2 className={`text-lg font-semibold ${headingTextClass}`}>Assign to Sections</h2>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (user.teaching_sections.every(s => targetSections.includes(s))) {
-                        setTargetSections([]);
-                      } else {
-                        setTargetSections([...user.teaching_sections]);
-                      }
-                    }}
-                    className="text-xs font-semibold text-violet-500 hover:text-violet-400 transition-colors"
-                  >
-                    {user.teaching_sections.every(s => targetSections.includes(s)) ? 'Deselect All' : 'Select All'}
-                  </button>
-                </div>
-                <p className={`text-sm mb-4 ${secondaryTextClass}`}>Select which sections can access this quiz (leave unchecked for all sections)</p>
-                <div className="flex flex-wrap items-center gap-3">
-                  <label className="flex items-center gap-2 cursor-pointer font-medium border-r border-slate-300 dark:border-slate-700 pr-3">
-                    <input
-                      type="checkbox"
-                      checked={user.teaching_sections.length > 0 && user.teaching_sections.every(s => targetSections.includes(s))}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setTargetSections([...user.teaching_sections]);
-                        } else {
+            {user?.teaching_sections && user.teaching_sections.length > 0 && (() => {
+              const teachingSections = user.teaching_sections;
+              const allSelected = teachingSections.length > 0 && teachingSections.every(s => targetSections.includes(s));
+              return (
+                <Card className={cardClass}>
+                  <div className="flex items-center justify-between mb-2">
+                    <h2 className={`text-lg font-semibold ${headingTextClass}`}>Assign to Sections</h2>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (allSelected) {
                           setTargetSections([]);
+                        } else {
+                          setTargetSections([...teachingSections]);
                         }
                       }}
-                      className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-violet-500 focus:ring-violet-500 cursor-pointer"
-                    />
-                    <span className="text-xs font-semibold text-violet-600 dark:text-violet-400">Select All ({user.teaching_sections.length})</span>
-                  </label>
-                  {user.teaching_sections.map((section) => (
-                    <label key={section} className="flex items-center gap-2 cursor-pointer">
+                      className="text-xs font-semibold text-violet-500 hover:text-violet-400 transition-colors"
+                    >
+                      {allSelected ? 'Deselect All' : 'Select All'}
+                    </button>
+                  </div>
+                  <p className={`text-sm mb-4 ${secondaryTextClass}`}>Select which sections can access this quiz (leave unchecked for all sections)</p>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <label className="flex items-center gap-2 cursor-pointer font-medium border-r border-slate-300 dark:border-slate-700 pr-3">
                       <input
                         type="checkbox"
-                        checked={targetSections.includes(section)}
+                        checked={allSelected}
                         onChange={(e) => {
                           if (e.target.checked) {
-                            setTargetSections([...targetSections, section]);
+                            setTargetSections([...teachingSections]);
                           } else {
-                            setTargetSections(targetSections.filter(s => s !== section));
+                            setTargetSections([]);
                           }
                         }}
                         className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-violet-500 focus:ring-violet-500 cursor-pointer"
                       />
-                      <span className={`text-sm ${labelTextClass}`}>{section}</span>
+                      <span className="text-xs font-semibold text-violet-600 dark:text-violet-400">Select All ({teachingSections.length})</span>
                     </label>
-                  ))}
-                </div>
-              </Card>
-            )}
+                    {teachingSections.map((section) => (
+                      <label key={section} className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={targetSections.includes(section)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setTargetSections([...targetSections, section]);
+                            } else {
+                              setTargetSections(targetSections.filter(s => s !== section));
+                            }
+                          }}
+                          className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-violet-500 focus:ring-violet-500 cursor-pointer"
+                        />
+                        <span className={`text-sm ${labelTextClass}`}>{section}</span>
+                      </label>
+                    ))}
+                  </div>
+                </Card>
+              );
+            })()}
 
             {/* Questions Section */}
             <Card className={cardClass}>

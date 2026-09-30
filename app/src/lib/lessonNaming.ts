@@ -96,7 +96,7 @@ export function extractLessonNumber(title: string): number | null {
   }
 
   // 2. Starts with Roman numeral or number followed by punctuation/space: "I. Title" or "1. Title"
-  const startPattern = /^([ivxlcdm]+|\d+)[\.\s:–-]/i;
+  const startPattern = /^([ivxlcdm]+|\d+)[.\s:–-]/i;
   const startMatch = clean.match(startPattern);
   if (startMatch) {
     const val = startMatch[1];
